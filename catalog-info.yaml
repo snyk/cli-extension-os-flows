@@ -1,7 +1,7 @@
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: cli-extension-test
+  name: cli-extension-os-flows
 spec:
   type: snyk-cli-plugin
   lifecycle: "-"
