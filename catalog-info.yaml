@@ -1,0 +1,8 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cli-extension-test
+spec:
+  type: snyk-cli-plugin
+  lifecycle: "-"
+  owner: unify
