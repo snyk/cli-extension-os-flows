@@ -12,9 +12,6 @@ jobs:
     resource_class: small
     steps:
       - checkout
-      - go/load-cache
-      - go/mod-download
-      - go/save-cache
       - prodsec/security_scans:
           mode: auto
           iac-scan: disabled
@@ -29,6 +26,9 @@ workflows:
             - snyk-bot-slack
           trusted-branch: main
           channel: snyk-vuln-alerts-unify
+          filters:
+            branches:
+              ignore: main
       - security-scans:
           name: Security Scans
           context:
