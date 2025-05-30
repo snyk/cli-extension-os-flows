@@ -43,11 +43,6 @@ func (ef *ErrorFactory) newErr(err error, userMsg string) *OSFlowsExtensionError
 	}
 }
 
-func (ef *ErrorFactory) NewLegacyFallbackError() *OSFlowsExtensionError {
-	// Return "unknown command" to trigger fallback to legacy CLI
-	return ef.newErr(fmt.Errorf("falling back to legacy CLI"), "unknown command")
-}
-
 func (ef *ErrorFactory) NewNotImplementedError() *OSFlowsExtensionError {
 	// TODO : Remove this error after the transition is complete
 	return ef.newErr(

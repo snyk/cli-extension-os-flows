@@ -5,6 +5,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/code_workflow"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 )
 
@@ -41,7 +42,7 @@ func OSWorkflow(
 
 	if !config.GetBool(flags.FlagUnifiedTestAPI) && riskScoreThreshold == -1 {
 		logger.Debug().Msg("Using legacy flow since risk score threshold and unified test flags are disabled")
-		return nil, errFactory.NewLegacyFallbackError()
+		return code_workflow.EntryPointLegacy(icontext)
 	}
 
 	// TODO: Implement new workflow with risk score calculation
