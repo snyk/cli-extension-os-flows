@@ -1,3 +1,11 @@
+// Package ostest implements the "test" command for the Snyk CLI's Open Source security testing.
+//
+// This package provides the core functionality for running Open Source security tests
+// through the Snyk CLI. It handles workflow registration, command-line flag parsing,
+// and implements the test execution logic with support for both legacy and new unified test flows.
+//
+// The package is primarily used by the main osflows package to register and expose
+// the test command to the Snyk CLI framework.
 package ostest
 
 import (
@@ -9,15 +17,17 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 )
 
+// WorkflowID is the identifier for the Open Source Test workflow.
 var WorkflowID = workflow.NewWorkflowIdentifier("test")
 
+// RegisterWorkflows registers the "test" workflow.
 func RegisterWorkflows(e workflow.Engine) error {
 	// Check if workflow already exists
 	if existing, _ := e.GetWorkflow(WorkflowID); existing != nil {
 		return fmt.Errorf("workflow with ID %s already exists", WorkflowID)
 	}
 
-	osTestFlagset := flags.GetOSTestFlagSet()
+	osTestFlagset := flags.OSTestFlagSet()
 
 	c := workflow.ConfigurationOptionsFromFlagset(osTestFlagset)
 
@@ -28,6 +38,7 @@ func RegisterWorkflows(e workflow.Engine) error {
 	return nil
 }
 
+// OSWorkflow is the entry point for the Open Source Test workflow.
 func OSWorkflow(
 	icontext workflow.InvocationContext,
 	_ []workflow.Data,

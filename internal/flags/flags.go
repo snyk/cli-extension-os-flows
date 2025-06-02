@@ -3,11 +3,12 @@ package flags
 import "github.com/spf13/pflag"
 
 const (
-	FlagRiskScoreThreshold = "risk-score-threshold"
-	FlagUnifiedTestAPI     = "unified-test"
+	FlagRiskScoreThreshold = "risk-score-threshold" // minimum risk score for which findings are included
+	FlagUnifiedTestAPI     = "unified-test"         // use modern (non-legacy) workflow even without risk score threshold
 )
 
-func GetOSTestFlagSet() *pflag.FlagSet {
+// OSTestFlagSet returns a flag set for the Open Source Test workflow.
+func OSTestFlagSet() *pflag.FlagSet {
 	flagSet := pflag.NewFlagSet("snyk-cli-extension-os-flows", pflag.ExitOnError)
 
 	flagSet.Bool(FlagUnifiedTestAPI, false, "Use the unified test API workflow.")
