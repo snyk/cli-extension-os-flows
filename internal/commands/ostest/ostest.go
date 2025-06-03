@@ -53,7 +53,11 @@ func OSWorkflow(
 
 	if !config.GetBool(flags.FlagUnifiedTestAPI) && riskScoreThreshold == -1 {
 		logger.Debug().Msg("Using legacy flow since risk score threshold and unified test flags are disabled")
-		return code_workflow.EntryPointLegacy(icontext)
+		data, err := code_workflow.EntryPointLegacy(icontext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to run legacy code workflow: %w", err)
+		}
+		return data, nil
 	}
 
 	// TODO: Implement new workflow with risk score calculation
