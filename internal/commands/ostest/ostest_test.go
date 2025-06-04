@@ -125,7 +125,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 		{
 			name:               "Unified test API flag set to true",
 			unifiedTestAPI:     true,
-			riskScoreThreshold: -1,
+			riskScoreThreshold: -1, // -1 is default == not set
 			expectedError:      "feature is not yet available",
 		},
 		{
