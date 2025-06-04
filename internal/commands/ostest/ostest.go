@@ -11,10 +11,11 @@ package ostest
 import (
 	"fmt"
 
-	"github.com/snyk/cli-extension-os-flows/internal/errors"
-	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/code_workflow"
 	"github.com/snyk/go-application-framework/pkg/workflow"
+
+	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	"github.com/snyk/cli-extension-os-flows/internal/flags"
 )
 
 // WorkflowID is the identifier for the Open Source Test workflow.

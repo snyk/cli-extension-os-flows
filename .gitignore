@@ -1,0 +1,7 @@
+### Golang files (with tooling) ###
+.bin/
+
+### Local development ###
+# Local build system configuration
+/local.mk
+

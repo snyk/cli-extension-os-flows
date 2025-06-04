@@ -25,12 +25,15 @@ linters-settings:
       - style
   gocyclo:
     min-complexity: 15
+  gofumpt:
+    module-path: github.com/snyk/cli-extension-os-flows
+    extra-rules: true
   goimports:
-    local-prefixes: github.com/snyk/cli-extension-sbom
+    local-prefixes: github.com/snyk/cli-extension-os-flows
   gosimple:
     checks: ["all"]
   govet:
-    check-shadowing: true
+    enable-all: true
     disable:
       - fieldalignment
   ireturn:
@@ -51,6 +54,34 @@ linters-settings:
     for-loops: true
   promlinter:
     strict: true
+  revive:
+    rules:
+      - name: blank-imports
+        disabled: true
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+        disabled: true
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
   staticcheck:
     checks: ["all"]
   stylecheck:
@@ -60,6 +91,10 @@ linters-settings:
     http-status-code-whitelist: []
   varcheck:
     exported-fields: true
+  wrapcheck:
+    ignoreSigs:
+      - .EntryPointLegacy(
+      - .Errorf(
 
 linters:
   enable:
@@ -82,6 +117,7 @@ linters:
     - gocritic
     - gocyclo
     - godot
+    - gofumpt
     - goimports
     - goprintffuncname
     - gosec
@@ -98,6 +134,7 @@ linters:
     - prealloc
     - predeclared
     - promlinter
+    - revive
     - rowserrcheck
     - sqlclosecheck
     - stylecheck
@@ -111,14 +148,19 @@ linters:
     - usestdlibvars
     - wastedassign
     - whitespace
+    - wrapcheck
 
 issues:
   exclude-rules:
     - path: _test\.go
       linters:
         - bodyclose
+        - forcetypeassert
         - goconst
         - ireturn
     - path: internal/view/(.+)_test\.go
       linters:
         - testpackage
+  include:
+    - EXC0012
+    - EXC0014
