@@ -28,7 +28,7 @@ const FeatureFlagSBOMTestReachability = "feature_flag_sbom_test_reachability"
 // RegisterWorkflows registers the "test" workflow.
 func RegisterWorkflows(e workflow.Engine) error {
 	// Check if workflow already exists
-	if existing, _ := e.GetWorkflow(WorkflowID); existing != nil {
+	if _, ok := e.GetWorkflow(WorkflowID); ok {
 		return fmt.Errorf("workflow with ID %s already exists", WorkflowID)
 	}
 
@@ -64,11 +64,7 @@ func OSWorkflow(
 
 	if !config.GetBool(flags.FlagUnifiedTestAPI) && riskScoreThreshold == -1 && !sbomTestReachability {
 		logger.Debug().Msg("Using legacy flow since risk score threshold, unified test and sbom reachability flags are disabled")
-		data, err := code_workflow.EntryPointLegacy(icontext)
-		if err != nil {
-			return nil, fmt.Errorf("failed to run legacy code workflow: %w", err)
-		}
-		return data, nil
+		return code_workflow.EntryPointLegacy(icontext)
 	}
 
 	if sbomTestReachability && !config.GetBool(FeatureFlagSBOMTestReachability) {
