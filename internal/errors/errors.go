@@ -56,3 +56,11 @@ func (ef *ErrorFactory) NewNotImplementedError() *OSFlowsExtensionError {
 		"This feature is not yet available.",
 	)
 }
+
+// NewFeatureNotPermittedError creates a new OSFlowsExtensionError for missing feature flags.
+func (ef *ErrorFactory) NewFeatureNotPermittedError(featureFlag string) *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("feature %q not permitted", featureFlag),
+		"The feature you are trying to use is not available for your organization.",
+	)
+}

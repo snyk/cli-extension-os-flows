@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"github.com/snyk/go-application-framework/pkg/local_workflows/code_workflow"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -20,6 +21,9 @@ import (
 
 // WorkflowID is the identifier for the Open Source Test workflow.
 var WorkflowID = workflow.NewWorkflowIdentifier("test")
+
+// FeatureFlagSBOMTestReachability is used to gate the sbom test reachability feature.
+const FeatureFlagSBOMTestReachability = "feature_flag_sbom_test_reachability"
 
 // RegisterWorkflows registers the "test" workflow.
 func RegisterWorkflows(e workflow.Engine) error {
@@ -36,6 +40,9 @@ func RegisterWorkflows(e workflow.Engine) error {
 		return fmt.Errorf("error while registering test workflow: %w", err)
 	}
 
+	// Reachability ff.
+	config_utils.AddFeatureFlagToConfig(e, FeatureFlagSBOMTestReachability, "sbomTestReachability")
+
 	return nil
 }
 
@@ -51,14 +58,21 @@ func OSWorkflow(
 
 	config := icontext.GetConfiguration()
 	riskScoreThreshold := config.GetInt(flags.FlagRiskScoreThreshold)
+	reachability := config.GetBool(flags.FlagReachability)
+	sbom := config.GetString(flags.FlagSBOM)
+	sbomTestReachability := reachability && sbom != ""
 
-	if !config.GetBool(flags.FlagUnifiedTestAPI) && riskScoreThreshold == -1 {
-		logger.Debug().Msg("Using legacy flow since risk score threshold and unified test flags are disabled")
+	if !config.GetBool(flags.FlagUnifiedTestAPI) && riskScoreThreshold == -1 && !sbomTestReachability {
+		logger.Debug().Msg("Using legacy flow since risk score threshold, unified test and sbom reachability flags are disabled")
 		data, err := code_workflow.EntryPointLegacy(icontext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to run legacy code workflow: %w", err)
 		}
 		return data, nil
+	}
+
+	if sbomTestReachability && !config.GetBool(FeatureFlagSBOMTestReachability) {
+		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagSBOMTestReachability)
 	}
 
 	// TODO: Implement new workflow with risk score calculation
