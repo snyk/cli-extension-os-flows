@@ -73,6 +73,48 @@ func TestOSWorkflow_RiskScoreThreshold(t *testing.T) {
 	assert.Contains(t, err.Error(), "feature is not yet available")
 }
 
+func TestOSWorkflow_SBOMReachabilityFlag_MissingFF(t *testing.T) {
+	// Setup - Unified test flag set to true
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockEngine := mocks.NewMockEngine(ctrl)
+	mockInvocationCtx := createMockInvocationCtx(ctrl, mockEngine)
+
+	// Set the sbom reachability flags
+	mockInvocationCtx.GetConfiguration().Set(flags.FlagReachability, true)
+	mockInvocationCtx.GetConfiguration().Set(flags.FlagSBOM, "bom.json")
+
+	// Execute
+	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
+
+	// Verify - Should return not implemented error
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "The feature you are trying to use is not available for your organization.")
+}
+
+func TestOSWorkflow_SBOMReachabilityFlag(t *testing.T) {
+	// Setup - Unified test flag set to true
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockEngine := mocks.NewMockEngine(ctrl)
+	mockInvocationCtx := createMockInvocationCtx(ctrl, mockEngine)
+
+	// Set the sbom reachability flags
+	mockInvocationCtx.GetConfiguration().Set(flags.FlagReachability, true)
+	mockInvocationCtx.GetConfiguration().Set(flags.FlagSBOM, "bom.json")
+	mockInvocationCtx.GetConfiguration().Set(ostest.FeatureFlagSBOMTestReachability, true)
+
+	// Execute
+	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
+
+	// Verify - Should return not implemented error
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "feature is not yet available")
+}
+
+// TODO: Test combinations with sbom and reachability flags.
 func TestOSWorkflow_FlagCombinations(t *testing.T) {
 	tests := []struct {
 		name               string
