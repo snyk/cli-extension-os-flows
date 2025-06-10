@@ -5,7 +5,7 @@ go 1.24.1
 require (
 	github.com/golang/mock v1.6.0
 	github.com/rs/zerolog v1.34.0
-	github.com/snyk/go-application-framework v0.0.0-20250403123644-f23723bf9378
+	github.com/snyk/go-application-framework v0.0.0-20250610150242-e3144f14a5fb
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 )
@@ -17,6 +17,7 @@ require (
 	github.com/alexbrainman/sspi v0.0.0-20210105120005-909beea2cc74 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
+	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/charmbracelet/lipgloss v0.10.0 // indirect
 	github.com/cloudflare/circl v1.6.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
@@ -62,6 +63,7 @@ require (
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/pact-foundation/pact-go/v2 v2.4.1 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect

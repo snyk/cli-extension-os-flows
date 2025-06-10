@@ -1,6 +1,7 @@
 package ostest_test
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -14,6 +15,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 )
 
+// TestOSWorkflow_LegacyFlow tests the workflow when run with no special flags.
 func TestOSWorkflow_LegacyFlow(t *testing.T) {
 	// Setup - No special flags set
 	ctrl := gomock.NewController(t)
@@ -35,6 +37,7 @@ func TestOSWorkflow_LegacyFlow(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// TestOSWorkflow_UnifiedTestFlag tests the workflow when run with the unified test flag.
 func TestOSWorkflow_UnifiedTestFlag(t *testing.T) {
 	// Setup - Unified test flag set to true
 	ctrl := gomock.NewController(t)
@@ -49,11 +52,12 @@ func TestOSWorkflow_UnifiedTestFlag(t *testing.T) {
 	// Execute
 	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
 
-	// Verify - Should return not implemented error
+	// Verify - Should return feature not available error
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "feature is not yet available")
+	assert.Contains(t, err.Error(), "This feature is not yet available.")
 }
 
+// TestOSWorkflow_RiskScoreThreshold tests the workflow when run with a risk score threshold.
 func TestOSWorkflow_RiskScoreThreshold(t *testing.T) {
 	// Setup - Risk score threshold set
 	ctrl := gomock.NewController(t)
@@ -68,11 +72,12 @@ func TestOSWorkflow_RiskScoreThreshold(t *testing.T) {
 	// Execute
 	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
 
-	// Verify - Should return not implemented error
+	// Verify - Should return feature not available error
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "feature is not yet available")
+	assert.Contains(t, err.Error(), "This feature is not yet available.")
 }
 
+// TestOSWorkflow_SBOMReachabilityFlag_MissingFF tests requirement of the SBOM reachability feature flag.
 func TestOSWorkflow_SBOMReachabilityFlag_MissingFF(t *testing.T) {
 	// Setup - Unified test flag set to true
 	ctrl := gomock.NewController(t)
@@ -88,13 +93,14 @@ func TestOSWorkflow_SBOMReachabilityFlag_MissingFF(t *testing.T) {
 	// Execute
 	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
 
-	// Verify - Should return not implemented error
+	// Verify - Should return feature not permitted error
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "The feature you are trying to use is not available for your organization.")
+	assert.Contains(t, err.Error(), "The feature you are trying to use is not available for your organization")
 }
 
+// TestOSWorkflow_SBOMReachabilityFlag tests the workflow with sbom and reachability flags.
 func TestOSWorkflow_SBOMReachabilityFlag(t *testing.T) {
-	// Setup - Unified test flag set to true
+	// Setup - SBOM reachability test
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -109,36 +115,58 @@ func TestOSWorkflow_SBOMReachabilityFlag(t *testing.T) {
 	// Execute
 	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
 
-	// Verify - Should return not implemented error
+	// Verify - Should return error about reachability not implemented
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "feature is not yet available")
+	assert.Contains(t, err.Error(), "reachability analysis is not yet implemented")
 }
 
-// TODO: Test combinations with sbom and reachability flags.
+// TestOSWorkflow_FlagCombinations tests the workflow with different flag combinations.
 func TestOSWorkflow_FlagCombinations(t *testing.T) {
 	tests := []struct {
-		name               string
-		unifiedTestAPI     bool
-		riskScoreThreshold int
-		expectedError      string
+		name          string
+		setup         func(config configuration.Configuration)
+		expectedError string
 	}{
 		{
-			name:               "Unified test API flag set to true",
-			unifiedTestAPI:     true,
-			riskScoreThreshold: -1, // -1 is default == not set
-			expectedError:      "feature is not yet available",
+			name: "Unified test API flag set to true",
+			setup: func(config configuration.Configuration) {
+				config.Set(flags.FlagUnifiedTestAPI, true)
+			},
+			expectedError: "This feature is not yet available.",
 		},
 		{
-			name:               "Risk score threshold set",
-			unifiedTestAPI:     false,
-			riskScoreThreshold: 700,
-			expectedError:      "feature is not yet available",
+			name: "Risk score threshold set",
+			setup: func(config configuration.Configuration) {
+				config.Set(flags.FlagRiskScoreThreshold, 700)
+			},
+			expectedError: "This feature is not yet available.",
 		},
 		{
-			name:               "Both flags set",
-			unifiedTestAPI:     true,
-			riskScoreThreshold: 700,
-			expectedError:      "feature is not yet available",
+			name: "Both unified test and risk score set",
+			setup: func(config configuration.Configuration) {
+				config.Set(flags.FlagUnifiedTestAPI, true)
+				config.Set(flags.FlagRiskScoreThreshold, 700)
+			},
+			expectedError: "This feature is not yet available.",
+		},
+		{
+			name: "SBOM reachability without feature flag",
+			setup: func(config configuration.Configuration) {
+				config.Set(flags.FlagReachability, true)
+				config.Set(flags.FlagSBOM, "bom.json")
+				// Don't set the feature flag
+			},
+			expectedError: "The feature you are trying to use is not available for your organization",
+		},
+		{
+			name: "SBOM reachability with feature flag",
+			setup: func(config configuration.Configuration) {
+				config.Set(flags.FlagReachability, true)
+				config.Set(flags.FlagSBOM, "bom.json")
+				config.Set(ostest.FeatureFlagSBOMTestReachability, true)
+				// No need to mock depgraph as we expect reachability error first
+			},
+			expectedError: "reachability analysis is not yet implemented",
 		},
 	}
 
@@ -150,16 +178,15 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			mockEngine := mocks.NewMockEngine(ctrl)
 			mockInvocationCtx := createMockInvocationCtx(ctrl, mockEngine)
 
-			// Set the flags
-			mockInvocationCtx.GetConfiguration().Set(flags.FlagUnifiedTestAPI, test.unifiedTestAPI)
-			mockInvocationCtx.GetConfiguration().Set(flags.FlagRiskScoreThreshold, test.riskScoreThreshold)
+			// Setup test case
+			test.setup(mockInvocationCtx.GetConfiguration())
 
 			// Execute
 			_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
 
-			// Verify - Should return not implemented error
+			// Verify
 			assert.Error(t, err)
-			assert.Contains(t, err.Error(), test.expectedError)
+			assert.Contains(t, err.Error(), test.expectedError, "Expected error to contain: %s", test.expectedError)
 		})
 	}
 }
@@ -171,10 +198,12 @@ func createMockInvocationCtx(ctrl *gomock.Controller, engine workflow.Engine) wo
 	mockConfig := configuration.New()
 	mockConfig.Set(configuration.AUTHENTICATION_TOKEN, "<SOME API TOKEN>")
 	mockConfig.Set(configuration.API_URL, "https://mock.server/api")
+	mockConfig.Set(configuration.ORGANIZATION, "test-org")
 
 	// Initialize with default values for our flags
 	mockConfig.Set(flags.FlagUnifiedTestAPI, false)
 	mockConfig.Set(flags.FlagRiskScoreThreshold, -1)
+	mockConfig.Set(flags.FlagFile, "test-file.txt") // Add default test file
 
 	mockLogger := zerolog.Nop()
 
@@ -185,6 +214,11 @@ func createMockInvocationCtx(ctrl *gomock.Controller, engine workflow.Engine) wo
 	if engine != nil {
 		icontext.EXPECT().GetEngine().Return(engine).AnyTimes()
 	}
+
+	// Mock network access
+	mockNetwork := mocks.NewMockNetworkAccess(ctrl)
+	mockNetwork.EXPECT().GetHttpClient().Return(&http.Client{}).AnyTimes()
+	icontext.EXPECT().GetNetworkAccess().Return(mockNetwork).AnyTimes()
 
 	return icontext
 }

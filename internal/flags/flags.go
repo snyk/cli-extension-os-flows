@@ -2,6 +2,9 @@ package flags
 
 import "github.com/spf13/pflag"
 
+// FlagFile is the filename of a single manifest file to test.
+const FlagFile = "file"
+
 // FlagRiskScoreThreshold is the flag for the minimum risk score for which findings are included.
 const FlagRiskScoreThreshold = "risk-score-threshold"
 
@@ -18,6 +21,7 @@ const FlagSBOM = "sbom"
 func OSTestFlagSet() *pflag.FlagSet {
 	flagSet := pflag.NewFlagSet("snyk-cli-extension-os-flows", pflag.ExitOnError)
 
+	flagSet.String(FlagFile, "", "Specify a test subject file.")
 	flagSet.Bool(FlagUnifiedTestAPI, false, "Use the unified test API workflow.")
 	flagSet.Int(FlagRiskScoreThreshold, -1, "Include findings at or over this risk score threshold")
 

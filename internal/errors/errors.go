@@ -48,6 +48,23 @@ func (ef *ErrorFactory) newErr(err error, userMsg string) *OSFlowsExtensionError
 	}
 }
 
+// NewEmptyOrgError creates a new error for when no organization ID is found.
+func (ef *ErrorFactory) NewEmptyOrgError() *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("failed to determine org id"),
+		"Snyk failed to infer an organization ID. Please make sure to authenticate using `snyk auth`. "+
+			"Should the issue persist, explicitly set an organization ID via the `--org` flag.",
+	)
+}
+
+// NewMissingFilenameFlagError creates a new error for when the required file flag is missing.
+func (ef *ErrorFactory) NewMissingFilenameFlagError() *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("file flag not set"),
+		"Flag `--file` is required to execute this command. Value should point to a valid manifest file.",
+	)
+}
+
 // NewNotImplementedError creates a new OSFlowsExtensionError for a not implemented error.
 func (ef *ErrorFactory) NewNotImplementedError() *OSFlowsExtensionError {
 	// TODO : Remove this error after the transition is complete
