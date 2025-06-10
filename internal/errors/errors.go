@@ -97,3 +97,11 @@ func (ef *ErrorFactory) NewDirectoryIsEmptyError(dirPath string) *OSFlowsExtensi
 		fmt.Sprintf("The directory %s is empty", dirPath),
 	)
 }
+
+// NewDepGraphWorkflowError creates a new error for failures in the dependency graph workflow.
+func (ef *ErrorFactory) NewDepGraphWorkflowError(err error) *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("error while invoking depgraph workflow: %w", err),
+		"An error occurred while running the underlying analysis needed to generate the test.",
+	)
+}

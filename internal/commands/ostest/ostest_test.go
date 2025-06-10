@@ -51,12 +51,18 @@ func TestOSWorkflow_UnifiedTestFlag(t *testing.T) {
 	// Set the unified test flag
 	mockInvocationCtx.GetConfiguration().Set(flags.FlagUnifiedTestAPI, true)
 
+	// Mock the depgraph workflow
+	mockEngine.EXPECT().
+		InvokeWithConfig(gomock.Any(), gomock.Any()).
+		Return(nil, assert.AnError).
+		AnyTimes()
+
 	// Execute
 	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
 
-	// Verify - Should return feature not available error
+	// Verify - Should return error from depgraph workflow
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "This feature is not yet available.")
+	assert.Contains(t, err.Error(), "failed to create depgraph")
 }
 
 // TestOSWorkflow_RiskScoreThreshold tests the workflow when run with a risk score threshold.
@@ -71,12 +77,18 @@ func TestOSWorkflow_RiskScoreThreshold(t *testing.T) {
 	// Set a risk score threshold
 	mockInvocationCtx.GetConfiguration().Set(flags.FlagRiskScoreThreshold, 700)
 
+	// Mock the depgraph workflow
+	mockEngine.EXPECT().
+		InvokeWithConfig(gomock.Any(), gomock.Any()).
+		Return(nil, assert.AnError).
+		AnyTimes()
+
 	// Execute
 	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
 
-	// Verify - Should return feature not available error
+	// Verify - Should return error from depgraph workflow
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "This feature is not yet available.")
+	assert.Contains(t, err.Error(), "failed to create depgraph")
 }
 
 // TestOSWorkflow_SBOMReachabilityFlag_MissingFF tests requirement of the SBOM reachability feature flag.
@@ -104,34 +116,46 @@ func TestOSWorkflow_SBOMReachabilityFlag_MissingFF(t *testing.T) {
 func TestOSWorkflow_FlagCombinations(t *testing.T) {
 	tests := []struct {
 		name          string
-		setup         func(config configuration.Configuration)
+		setup         func(config configuration.Configuration, mockEngine *mocks.MockEngine)
 		expectedError string
 	}{
 		{
 			name: "Unified test API flag set to true",
-			setup: func(config configuration.Configuration) {
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				config.Set(flags.FlagUnifiedTestAPI, true)
+				mockEngine.EXPECT().
+					InvokeWithConfig(gomock.Any(), gomock.Any()).
+					Return(nil, assert.AnError).
+					AnyTimes()
 			},
-			expectedError: "This feature is not yet available.",
+			expectedError: "failed to create depgraph",
 		},
 		{
 			name: "Risk score threshold set",
-			setup: func(config configuration.Configuration) {
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				config.Set(flags.FlagRiskScoreThreshold, 700)
+				mockEngine.EXPECT().
+					InvokeWithConfig(gomock.Any(), gomock.Any()).
+					Return(nil, assert.AnError).
+					AnyTimes()
 			},
-			expectedError: "This feature is not yet available.",
+			expectedError: "failed to create depgraph",
 		},
 		{
 			name: "Both unified test and risk score set",
-			setup: func(config configuration.Configuration) {
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				config.Set(flags.FlagUnifiedTestAPI, true)
 				config.Set(flags.FlagRiskScoreThreshold, 700)
+				mockEngine.EXPECT().
+					InvokeWithConfig(gomock.Any(), gomock.Any()).
+					Return(nil, assert.AnError).
+					AnyTimes()
 			},
-			expectedError: "This feature is not yet available.",
+			expectedError: "failed to create depgraph",
 		},
 		{
 			name: "SBOM reachability without feature flag",
-			setup: func(config configuration.Configuration) {
+			setup: func(config configuration.Configuration, _ *mocks.MockEngine) {
 				config.Set(flags.FlagReachability, true)
 				config.Set(flags.FlagSBOM, "bom.json")
 				// Don't set the feature flag
@@ -149,7 +173,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
 
 			// Setup test case
-			test.setup(mockInvocationCtx.GetConfiguration())
+			test.setup(mockInvocationCtx.GetConfiguration(), mockEngine)
 
 			// Execute
 			_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
