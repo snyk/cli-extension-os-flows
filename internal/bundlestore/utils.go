@@ -8,7 +8,6 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"golang.org/x/net/html/charset"
 )
 
@@ -42,14 +41,13 @@ func encodeRequestBody(requestBody []byte) (*bytes.Buffer, error) {
 	return b, nil
 }
 
-//nolint:gocritic // Code copied verbatim from code-client-go
-func toRelativeUnixPath(baseDir string, absoluteFilePath string) (string, error) {
+func toRelativeUnixPath(baseDir, absoluteFilePath string) (string, error) {
 	relativePath, err := filepath.Rel(baseDir, absoluteFilePath)
 	if err != nil {
 		relativePath = absoluteFilePath
 		if baseDir != "" {
 			errMsg := fmt.Sprint("could not get relative path for file: ", absoluteFilePath, " and root path: ", baseDir)
-			return "", errors.Wrap(err, errMsg)
+			return "", fmt.Errorf("%s: %w", errMsg, err)
 		}
 	}
 

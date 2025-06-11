@@ -20,6 +20,7 @@ import (
 	listsources "github.com/snyk/cli-extension-os-flows/internal/files"
 )
 
+// Client defines the interface for interacting with the Snyk bundle store.
 type Client interface {
 	UploadSourceCode(ctx context.Context, sourceCodePath string) (string, error)
 	UploadSBOM(ctx context.Context, sbomPath string) (string, error)
@@ -35,23 +36,30 @@ type client struct {
 var _ Client = (*client)(nil)
 
 type (
+	// BundleFile represents a file to be included in a bundle, including its hash and content.
 	BundleFile struct {
 		Hash    string `json:"hash"`
 		Content string `json:"content"`
 	}
+	// BundleResponse represents the response from creating or extending a bundle.
 	BundleResponse struct {
 		BundleHash   string   `json:"bundleHash"`
 		MissingFiles []string `json:"missingFiles"`
 	}
+	// ExtendBundleRequest represents the request to extend an existing bundle with new or removed files.
 	ExtendBundleRequest struct {
 		Files        map[string]BundleFile `json:"files"`
 		RemovedFiles []string              `json:"removedFiles,omitempty"`
 	}
 )
 
+// CodeScanner is a global instance of the Snyk Code scanner.
 var CodeScanner codeclient.CodeScanner
 
-func NewClient(config configuration.Configuration, hc codeclienthttp.HTTPClientFactory, logger *zerolog.Logger) *client {
+// NewClient creates a new client for interacting with the Snyk bundle store.
+//
+//nolint:ireturn // returning an interface is desired here to decouple the implementation
+func NewClient(config configuration.Configuration, hc codeclienthttp.HTTPClientFactory, logger *zerolog.Logger) Client {
 	codeScannerConfig := &codeClientConfig{
 		localConfiguration: config,
 	}
@@ -97,7 +105,7 @@ func (c *client) request(
 
 	req, err := http.NewRequestWithContext(ctx, method, c.host()+path, bodyBuffer)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
 	org := c.codeClientConfig.Organization()
@@ -111,7 +119,7 @@ func (c *client) request(
 
 	response, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error sending request: %w", err)
 	}
 
 	if response.StatusCode < 200 || response.StatusCode > 299 {
@@ -126,7 +134,7 @@ func (c *client) request(
 	}()
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	return responseBody, nil
@@ -136,7 +144,7 @@ func (c *client) request(
 func (c *client) createBundle(ctx context.Context, fileHashes map[string]string) (string, []string, error) {
 	requestBody, err := json.Marshal(fileHashes)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("failed to marshal create bundle request: %w", err)
 	}
 
 	responseBody, err := c.request(ctx, http.MethodPost, "/bundle", requestBody)
@@ -147,7 +155,7 @@ func (c *client) createBundle(ctx context.Context, fileHashes map[string]string)
 	var bundle BundleResponse
 	err = json.Unmarshal(responseBody, &bundle)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("failed to unmarshal create bundle response: %w", err)
 	}
 	return bundle.BundleHash, bundle.MissingFiles, nil
 }
@@ -159,7 +167,7 @@ func (c *client) extendBundle(ctx context.Context, bundleHash string, files map[
 		RemovedFiles: removedFiles,
 	})
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("failed to marshal extend bundle request: %w", err)
 	}
 
 	responseBody, err := c.request(ctx, http.MethodPut, "/bundle/"+bundleHash, requestBody)
@@ -170,9 +178,9 @@ func (c *client) extendBundle(ctx context.Context, bundleHash string, files map[
 	var bundleResponse BundleResponse
 	err = json.Unmarshal(responseBody, &bundleResponse)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("failed to unmarshal extend bundle response: %w", err)
 	}
-	return bundleResponse.BundleHash, bundleResponse.MissingFiles, err
+	return bundleResponse.BundleHash, bundleResponse.MissingFiles, nil
 }
 
 func (c *client) UploadSBOM(ctx context.Context, sbomPath string) (string, error) {
@@ -180,7 +188,7 @@ func (c *client) UploadSBOM(ctx context.Context, sbomPath string) (string, error
 	fileContent, err := os.ReadFile(sbomPath)
 	if err != nil {
 		c.logger.Error().Err(err).Str("filePath", sbomPath).Msg("could not load content of file")
-		return "", err
+		return "", fmt.Errorf("could not read sbom file %s: %w", sbomPath, err)
 	}
 
 	relativeFilePath, err := toRelativeUnixPath(filepath.Dir(sbomPath), sbomPath)
@@ -213,20 +221,20 @@ func (c *client) UploadSourceCode(ctx context.Context, sourceCodePath string) (s
 	filesChan, err := listsources.ForPath(sourceCodePath, c.logger, numThreads)
 	if err != nil {
 		c.logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("failed to list files in directory") //nolint:goconst // repeated sourceCodePath is fine
-		return "", err
+		return "", fmt.Errorf("failed to list files in directory")
 	}
 
 	target, err := codeclientscan.NewRepositoryTarget(sourceCodePath)
 	if err != nil {
 		c.logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("failed to initialize target")
-		return "", err
+		return "", fmt.Errorf("failed to initialize target")
 	}
 
 	requestID := uuid.New().String()
 	bundle, err := c.codeScanner.Upload(ctx, requestID, target, filesChan, make(map[string]bool))
 	if err != nil {
 		c.logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("failed to upload source code")
-		return "", err
+		return "", fmt.Errorf("failed to upload source code")
 	}
 
 	return bundle.GetBundleHash(), nil

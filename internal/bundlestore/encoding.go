@@ -3,9 +3,11 @@ package bundlestore
 import (
 	"compress/gzip"
 	"encoding/base64"
+	"fmt"
 	"io"
 )
 
+// EncoderWriter is a writer that base64 encodes, compresses, and writes data to an underlying writer.
 type EncoderWriter struct {
 	w io.Writer
 }
@@ -24,17 +26,15 @@ func (ew *EncoderWriter) Write(b []byte) (int, error) {
 
 	n, err := b64Writer.Write(b)
 	if err != nil {
-		return n, err
+		return n, fmt.Errorf("failed to write to base64 encoder: %w", err)
 	}
 
-	//nolint:gocritic // Code copied verbatim from code-client-go
 	if err = b64Writer.Close(); err != nil {
-		return n, err
+		return n, fmt.Errorf("failed to close base64 encoder: %w", err)
 	}
-	//nolint:gocritic // Code copied verbatim from code-client-go
 	if err = zipWriter.Close(); err != nil {
-		return n, err
+		return n, fmt.Errorf("failed to close gzip writer: %w", err)
 	}
 
-	return n, err
+	return n, nil
 }
