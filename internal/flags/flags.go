@@ -17,6 +17,9 @@ const FlagReachability = "reachability"
 // FlagSBOM is used to specify the SBOM file to be tested. TODO: Revisit this after talking with design and product.
 const FlagSBOM = "sbom"
 
+// FlagSourceDir is used to specify the source code directory to be tested.
+const FlagSourceDir = "source-dir"
+
 // OSTestFlagSet returns a flag set for the Open Source Test workflow.
 func OSTestFlagSet() *pflag.FlagSet {
 	flagSet := pflag.NewFlagSet("snyk-cli-extension-os-flows", pflag.ExitOnError)
@@ -29,6 +32,7 @@ func OSTestFlagSet() *pflag.FlagSet {
 	flagSet.Bool(FlagReachability, false, "Run reachability analysis on source code.")
 
 	flagSet.String(FlagSBOM, "", "Specify an SBOM file to be tested.")
+	flagSet.String(FlagSourceDir, "", "Path of the directory containing the source code.")
 
 	return flagSet
 }

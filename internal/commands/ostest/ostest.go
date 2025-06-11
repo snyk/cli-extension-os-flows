@@ -9,6 +9,7 @@
 package ostest
 
 import (
+	"context"
 	"fmt"
 	"math"
 
@@ -57,7 +58,7 @@ func OSWorkflow(
 	config := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
-
+	ctx := context.Background()
 	logger.Println("OS Test workflow start")
 
 	logger.Info().Msg("Getting preferred organization ID")
@@ -69,6 +70,7 @@ func OSWorkflow(
 	}
 
 	sbom := config.GetString(flags.FlagSBOM)
+	sourceDir := config.GetString(flags.FlagSourceDir)
 	sbomTestReachability := config.GetBool(flags.FlagReachability) && sbom != ""
 
 	// Route to the appropriate flow based on flags
@@ -77,7 +79,7 @@ func OSWorkflow(
 		if !config.GetBool(FeatureFlagSBOMTestReachability) {
 			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagSBOMTestReachability)
 		}
-		return runReachabilityFlow()
+		return runReachabilityFlow(ctx, config, errFactory, ictx, logger, sbom, sourceDir)
 
 	default:
 		riskScoreThreshold := config.GetInt(flags.FlagRiskScoreThreshold)
@@ -125,8 +127,14 @@ func runUnifiedTestFlow(
 }
 
 // runReachabilityFlow handles the reachability analysis flow.
-func runReachabilityFlow() ([]workflow.Data, error) {
-	// TODO: Implement reachability analysis flow
-	// This will be implemented in a future iteration
-	return nil, fmt.Errorf("reachability analysis is not yet implemented")
+func runReachabilityFlow(
+	ctx context.Context,
+	config configuration.Configuration,
+	errFactory *errors.ErrorFactory,
+	ictx workflow.InvocationContext,
+	logger *zerolog.Logger,
+	sbomPath string,
+	sourceCodePath string,
+) ([]workflow.Data, error) {
+	return sbomTestReachability(ctx, config, errFactory, ictx, logger, sbomPath, sourceCodePath)
 }

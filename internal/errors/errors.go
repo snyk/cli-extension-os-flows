@@ -81,3 +81,19 @@ func (ef *ErrorFactory) NewFeatureNotPermittedError(featureFlag string) *OSFlows
 		"The feature you are trying to use is not available for your organization.",
 	)
 }
+
+// NewDirectoryDoesNotExistError creates a new OSFlowsExtensionError for a directory that does not exist.
+func (ef *ErrorFactory) NewDirectoryDoesNotExistError(dirPath string) *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("directory does not exist"),
+		fmt.Sprintf("The directory %s does not exist", dirPath),
+	)
+}
+
+// NewDirectoryIsEmptyError creates a new OSFlowsExtensionError for a directory that is empty.
+func (ef *ErrorFactory) NewDirectoryIsEmptyError(dirPath string) *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("directory is empty"),
+		fmt.Sprintf("The directory %s is empty", dirPath),
+	)
+}
