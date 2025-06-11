@@ -13,7 +13,7 @@ type EncoderWriter struct {
 }
 
 // NewEncoder returns a new EncoderWriter.
-// Writes to the returned writer are base64 encoded, compressed and written to w.
+// Writes to the returned writer are compressed, base64 encoded and written to w.
 func NewEncoder(w io.Writer) *EncoderWriter {
 	enc := new(EncoderWriter)
 	enc.w = w

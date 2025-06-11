@@ -6,9 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	gomock_deprecated "github.com/golang/mock/gomock"
+	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
-	"go.uber.org/mock/gomock"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,15 +22,15 @@ import (
 	svcmocks "github.com/snyk/cli-extension-os-flows/internal/mocks"
 )
 
-//go:generate go run go.uber.org/mock/mockgen -package=mocks -destination=../../mocks/mock_codescanner.go github.com/snyk/code-client-go CodeScanner
-//go:generate go run go.uber.org/mock/mockgen -package=mocks -destination=../../mocks/mock_bundlestore_client.go github.com/snyk/cli-extension-os-flows/internal/bundlestore Client
+//go:generate go run github.com/golang/mock/mockgen -package=mocks -destination=../../mocks/mock_codescanner.go github.com/snyk/code-client-go CodeScanner
+//go:generate go run github.com/golang/mock/mockgen -package=mocks -destination=../../mocks/mock_bundlestore_client.go github.com/snyk/cli-extension-os-flows/internal/bundlestore Client
 
 var logger = zerolog.New(&bytes.Buffer{})
 
 func TestSBOMTestWorkflow_Reachability(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	ctrlDep := gomock_deprecated.NewController(t)
+	ctrlDep := gomock.NewController(t)
 	defer ctrlDep.Finish()
 
 	mockBundleHash := "mockHash123abc"
@@ -89,7 +88,7 @@ func TestSBOMTestWorkflow_Reachability(t *testing.T) {
 func TestSBOMTestWorkflow_Reachability_DefaultPath(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	ctrlDep := gomock_deprecated.NewController(t)
+	ctrlDep := gomock.NewController(t)
 	defer ctrlDep.Finish()
 
 	mockICTX := createMockInvocationCtxWithURL(t, ctrlDep, nil, mockServerURL)
@@ -122,7 +121,7 @@ func TestSBOMTestWorkflow_Reachability_DefaultPath(t *testing.T) {
 func TestSBOMTestWorkflow_Reachability_ExplicitPath_ContainsFiles(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	ctrlDep := gomock_deprecated.NewController(t)
+	ctrlDep := gomock.NewController(t)
 	defer ctrlDep.Finish()
 
 	sourceCodePath := "testdata/test_dir"
@@ -156,7 +155,7 @@ func TestSBOMTestWorkflow_Reachability_ExplicitPath_ContainsFiles(t *testing.T) 
 func TestSBOMTestWorkflow_Reachability_ExplicitPath_DoesntExist(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	ctrlDep := gomock_deprecated.NewController(t)
+	ctrlDep := gomock.NewController(t)
 	defer ctrlDep.Finish()
 
 	sourceCodePath := "this/dir/does/not/exist"
@@ -191,7 +190,7 @@ func TestSBOMTestWorkflow_Reachability_ExplicitPath_DoesntExist(t *testing.T) {
 func TestSBOMTestWorkflow_Reachability_ExplicitPath_Empty(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	ctrlDep := gomock_deprecated.NewController(t)
+	ctrlDep := gomock.NewController(t)
 	defer ctrlDep.Finish()
 
 	sourceCodePath := t.TempDir()

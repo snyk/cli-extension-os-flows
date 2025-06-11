@@ -113,7 +113,7 @@ func (c *client) request(
 		req.Header.Set("snyk-org-name", org)
 	}
 	// https://www.keycdn.com/blog/http-cache-headers
-	req.Header.Set("Cache-Control", "private, max-age=0, no-cache")
+	req.Header.Set("Cache-Control", "private, max-age=0, no-cache, no-store")
 	req.Header.Set("Content-Type", "application/octet-stream")
 	req.Header.Set("Content-Encoding", "gzip")
 

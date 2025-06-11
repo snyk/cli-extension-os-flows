@@ -4,10 +4,13 @@ go 1.24.1
 
 require (
 	github.com/golang/mock v1.6.0
+	github.com/google/uuid v1.6.0
 	github.com/rs/zerolog v1.34.0
+	github.com/snyk/code-client-go v1.21.3
 	github.com/snyk/go-application-framework v0.0.0-20250610150242-e3144f14a5fb
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
+	golang.org/x/net v0.38.0
 )
 
 require (
@@ -33,7 +36,6 @@ require (
 	github.com/go-openapi/swag v0.23.1 // indirect
 	github.com/gofrs/flock v0.12.1 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/go-version v1.7.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -76,7 +78,6 @@ require (
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
-	github.com/snyk/code-client-go v1.21.3 // indirect
 	github.com/snyk/error-catalog-golang-public v0.0.0-20250429130542-564b0605020e // indirect
 	github.com/snyk/go-httpauth v0.0.0-20231117135515-eb445fea7530 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.1 // indirect
@@ -92,10 +93,8 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-	go.uber.org/mock v0.5.2
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
