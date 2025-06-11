@@ -10,7 +10,10 @@ package ostest
 
 import (
 	"fmt"
+	"math"
 
+	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/code_workflow"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
 	"github.com/snyk/go-application-framework/pkg/workflow"
@@ -48,33 +51,82 @@ func RegisterWorkflows(e workflow.Engine) error {
 
 // OSWorkflow is the entry point for the Open Source Test workflow.
 func OSWorkflow(
-	icontext workflow.InvocationContext,
+	ictx workflow.InvocationContext,
 	_ []workflow.Data,
 ) ([]workflow.Data, error) {
-	logger := icontext.GetEnhancedLogger()
+	config := ictx.GetConfiguration()
+	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
 
 	logger.Println("OS Test workflow start")
 
-	config := icontext.GetConfiguration()
-	riskScoreThreshold := config.GetInt(flags.FlagRiskScoreThreshold)
-	reachability := config.GetBool(flags.FlagReachability)
+	logger.Info().Msg("Getting preferred organization ID")
+
+	orgID := config.GetString(configuration.ORGANIZATION)
+	if orgID == "" {
+		logger.Error().Msg("No organization ID provided")
+		return nil, errFactory.NewEmptyOrgError()
+	}
+
 	sbom := config.GetString(flags.FlagSBOM)
-	sbomTestReachability := reachability && sbom != ""
+	sbomTestReachability := config.GetBool(flags.FlagReachability) && sbom != ""
 
-	if !config.GetBool(flags.FlagUnifiedTestAPI) && riskScoreThreshold == -1 && !sbomTestReachability {
-		logger.Debug().Msg("Using legacy flow since risk score threshold, unified test and sbom reachability flags are disabled")
-		return code_workflow.EntryPointLegacy(icontext)
+	// Route to the appropriate flow based on flags
+	switch {
+	case sbomTestReachability:
+		if !config.GetBool(FeatureFlagSBOMTestReachability) {
+			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagSBOMTestReachability)
+		}
+		return runReachabilityFlow()
+
+	default:
+		riskScoreThreshold := config.GetInt(flags.FlagRiskScoreThreshold)
+		if !config.GetBool(flags.FlagUnifiedTestAPI) && riskScoreThreshold == -1 {
+			logger.Debug().Msg("Using legacy flow since risk score threshold and unified test flags are disabled")
+			return code_workflow.EntryPointLegacy(ictx)
+		}
+
+		// Unified test flow (with risk score threshold or unified-test flag)
+		filename := config.GetString(flags.FlagFile)
+		if filename == "" {
+			logger.Error().Msg("No file specified for testing")
+			return nil, errFactory.NewMissingFilenameFlagError()
+		}
+
+		var riskScorePtr *uint16
+		if riskScoreThreshold >= math.MaxUint16 {
+			// the API will enforce a range from the test spec
+			logger.Warn().Msgf("Risk score threshold %d exceeds maximum uint16 value. Setting to maximum.", riskScoreThreshold)
+			maxVal := uint16(math.MaxUint16)
+			riskScorePtr = &maxVal
+		}
+		if riskScoreThreshold >= 0 {
+			rs := uint16(riskScoreThreshold)
+			riskScorePtr = &rs
+		}
+
+		return runUnifiedTestFlow(riskScorePtr, config, logger, errFactory)
 	}
+}
 
-	if sbomTestReachability && !config.GetBool(FeatureFlagSBOMTestReachability) {
-		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagSBOMTestReachability)
-	}
-
+// runUnifiedTestFlow handles the unified test API flow.
+func runUnifiedTestFlow(
+	riskScoreThreshold *uint16,
+	config configuration.Configuration,
+	logger *zerolog.Logger,
+	errFactory *errors.ErrorFactory,
+) ([]workflow.Data, error) {
 	// TODO: Implement new workflow with risk score calculation
 	logger.Println("OS Test workflow not yet implemented")
 	logger.Println("Risk score threshold	= ", riskScoreThreshold)
 	logger.Println("Force Unified Test API 	= ", config.GetBool(flags.FlagUnifiedTestAPI))
 
 	return nil, errFactory.NewNotImplementedError()
+}
+
+// runReachabilityFlow handles the reachability analysis flow.
+func runReachabilityFlow() ([]workflow.Data, error) {
+	// TODO: Implement reachability analysis flow
+	// This will be implemented in a future iteration
+	return nil, fmt.Errorf("reachability analysis is not yet implemented")
 }
