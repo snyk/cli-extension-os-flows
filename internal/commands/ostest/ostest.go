@@ -10,17 +10,21 @@ package ostest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/code_workflow"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
+	service "github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
+	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
 )
 
 // WorkflowID is the identifier for the Open Source Test workflow.
@@ -59,7 +63,6 @@ func OSWorkflow(
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
 	ctx := context.Background()
-	logger.Println("OS Test workflow start")
 
 	logger.Info().Msg("Getting preferred organization ID")
 
@@ -101,29 +104,130 @@ func OSWorkflow(
 			logger.Warn().Msgf("Risk score threshold %d exceeds maximum uint16 value. Setting to maximum.", riskScoreThreshold)
 			maxVal := uint16(math.MaxUint16)
 			riskScorePtr = &maxVal
-		}
-		if riskScoreThreshold >= 0 {
+		} else if riskScoreThreshold >= 0 {
 			rs := uint16(riskScoreThreshold)
 			riskScorePtr = &rs
 		}
-
-		return runUnifiedTestFlow(riskScorePtr, config, logger, errFactory)
+		return runUnifiedTestFlow(ctx, filename, riskScorePtr, ictx, config, orgID, logger)
 	}
 }
 
 // runUnifiedTestFlow handles the unified test API flow.
 func runUnifiedTestFlow(
+	ctx context.Context,
+	filename string,
 	riskScoreThreshold *uint16,
-	config configuration.Configuration,
+	ictx workflow.InvocationContext,
+	_ configuration.Configuration,
+	orgID string,
 	logger *zerolog.Logger,
-	errFactory *errors.ErrorFactory,
 ) ([]workflow.Data, error) {
-	// TODO: Implement new workflow with risk score calculation
-	logger.Println("OS Test workflow not yet implemented")
-	logger.Println("Risk score threshold	= ", riskScoreThreshold)
-	logger.Println("Force Unified Test API 	= ", config.GetBool(flags.FlagUnifiedTestAPI))
+	logger.Info().Msg("Starting open source test")
 
-	return nil, errFactory.NewNotImplementedError()
+	// Create depgraph
+	depGraph, err := createDepGraph(ictx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create depgraph: %w", err)
+	}
+
+	// Create depgraph subject
+	depGraphSubject := testapi.DepGraphSubjectCreate{
+		Type:     testapi.DepGraphSubjectCreateTypeDepGraph,
+		DepGraph: depGraph,
+		Locator: testapi.LocalPathLocator{
+			Paths: []string{filename},
+			Type:  testapi.LocalPath,
+		},
+	}
+
+	// Create test subject with depgraph
+	var subject testapi.TestSubjectCreate
+	err = subject.FromDepGraphSubjectCreate(depGraphSubject)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create test subject: %w", err)
+	}
+
+	// Only create local policy if risk score threshold is specified
+	var localPolicy *testapi.LocalPolicy
+	if riskScoreThreshold != nil {
+		localPolicy = &testapi.LocalPolicy{
+			RiskScoreThreshold: riskScoreThreshold,
+		}
+	}
+
+	// Run the test with the depgraph subject
+	return runTest(ctx, subject, ictx, orgID, logger, localPolicy)
+}
+
+// runTest executes the common test flow with the provided test subject.
+func runTest(
+	ctx context.Context,
+	subject testapi.TestSubjectCreate,
+	ictx workflow.InvocationContext,
+	orgID string,
+	logger *zerolog.Logger,
+	localPolicy *testapi.LocalPolicy,
+) ([]workflow.Data, error) {
+	// Create Snyk client
+	httpClient := ictx.GetNetworkAccess().GetHttpClient()
+	snykClient := snykclient.NewSnykClient(httpClient, ictx.GetConfiguration().GetString(configuration.API_URL), orgID)
+
+	startParams := testapi.StartTestParams{
+		OrgID:       orgID,
+		Subject:     subject,
+		LocalPolicy: localPolicy,
+	}
+
+	// Create and execute test client
+	testClient, err := testapi.NewTestClient(
+		snykClient.GetAPIBaseURL(),
+		testapi.WithCustomHTTPClient(snykClient.GetClient()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create test client: %w", err)
+	}
+
+	handle, err := testClient.StartTest(ctx, startParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start test: %w", err)
+	}
+
+	if waitErr := handle.Wait(ctx); waitErr != nil {
+		return nil, fmt.Errorf("test run failed: %w", err)
+	}
+
+	finalStatus := handle.Result()
+	if finalStatus == nil {
+		return nil, fmt.Errorf("test completed but no result was returned")
+	}
+
+	// Process and log the test results
+	processTestResult(finalStatus)
+
+	// Get findings for the test
+	findingsData, complete, err := finalStatus.Findings(ctx)
+	if err != nil {
+		logger.Error().Err(err).Msg("Error fetching findings")
+		if !complete && len(findingsData) > 0 {
+			logger.Warn().Int("count", len(findingsData)).Msg("Partial findings retrieved as an error occurred")
+		}
+	} else {
+		logger.Info().Msgf("Findings count: %d\n", len(findingsData))
+
+		logger.Info().
+			Bool("complete", complete).
+			Int("count", len(findingsData)).
+			Msg("Findings fetched successfully")
+	}
+
+	// Convert findings to workflow data
+	findingsJSON, err := json.Marshal(findingsData)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to marshal findings to JSON")
+		return nil, fmt.Errorf("failed to marshal findings: %w", err)
+	}
+
+	return []workflow.Data{newWorkflowData(nil, "application/json", findingsJSON)}, nil
 }
 
 // runReachabilityFlow handles the reachability analysis flow.
@@ -137,4 +241,43 @@ func runReachabilityFlow(
 	sourceCodePath string,
 ) ([]workflow.Data, error) {
 	return sbomTestReachability(ctx, config, errFactory, ictx, logger, sbomPath, sourceCodePath)
+}
+
+// createDepGraph creates a depgraph from the file parameter in the context.
+func createDepGraph(ictx workflow.InvocationContext) (testapi.IoSnykApiV1testdepgraphRequestDepGraph, error) {
+	var contents []byte
+	var err error
+
+	depGraphResult, err := service.GetDepGraph(ictx)
+	if err != nil {
+		return testapi.IoSnykApiV1testdepgraphRequestDepGraph{}, fmt.Errorf("failed to get dependency graph: %w", err)
+	}
+
+	if len(depGraphResult.DepGraphBytes) > 1 {
+		err = fmt.Errorf("multiple depgraphs found, but only one is currently supported")
+		return testapi.IoSnykApiV1testdepgraphRequestDepGraph{}, err
+	}
+	// TODO revisit handling multiple depgraphs
+	contents = depGraphResult.DepGraphBytes[0]
+
+	var depGraphStruct testapi.IoSnykApiV1testdepgraphRequestDepGraph
+	err = json.Unmarshal(contents, &depGraphStruct)
+	if err != nil {
+		return testapi.IoSnykApiV1testdepgraphRequestDepGraph{},
+			fmt.Errorf("unmarshaling depGraph from args failed: %w", err)
+	}
+
+	return depGraphStruct, nil
+}
+
+// Temporary support for dumping findings output to built-in JSON formatter.
+func newWorkflowData(depGraph workflow.Data, contentType string, sbom []byte) workflow.Data {
+	// TODO: refactor to workflow.NewData()
+	//nolint:staticcheck // Silencing since we are only upgrading the GAF to remediate a vuln.
+	return workflow.NewDataFromInput(
+		depGraph,
+		workflow.NewTypeIdentifier(WorkflowID, "ostest"),
+		contentType,
+		sbom,
+	)
 }
