@@ -33,6 +33,12 @@ var WorkflowID = workflow.NewWorkflowIdentifier("test")
 // FeatureFlagSBOMTestReachability is used to gate the sbom test reachability feature.
 const FeatureFlagSBOMTestReachability = "feature_flag_sbom_test_reachability"
 
+// FeatureFlagRiskScore is used to gate the risk score feature.
+const FeatureFlagRiskScore = "feature_flag_experimental_risk_score"
+
+// FeatureFlagRiskScoreInCLI is used to gate the risk score feature in the CLI.
+const FeatureFlagRiskScoreInCLI = "feature_flag_experimental_risk_score_in_cli"
+
 // RegisterWorkflows registers the "test" workflow.
 func RegisterWorkflows(e workflow.Engine) error {
 	// Check if workflow already exists
@@ -48,8 +54,12 @@ func RegisterWorkflows(e workflow.Engine) error {
 		return fmt.Errorf("error while registering test workflow: %w", err)
 	}
 
-	// Reachability ff.
+	// Reachability FF.
 	config_utils.AddFeatureFlagToConfig(e, FeatureFlagSBOMTestReachability, "sbomTestReachability")
+
+	// Risk score FFs.
+	config_utils.AddFeatureFlagToConfig(e, FeatureFlagRiskScore, "useExperimentalRiskScore")
+	config_utils.AddFeatureFlagToConfig(e, FeatureFlagRiskScoreInCLI, "useExperimentalRiskScoreInCLI")
 
 	return nil
 }
@@ -92,6 +102,13 @@ func OSWorkflow(
 		}
 
 		// Unified test flow (with risk score threshold or unified-test flag)
+		if !config.GetBool(FeatureFlagRiskScore) {
+			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScore)
+		}
+		if !config.GetBool(FeatureFlagRiskScoreInCLI) {
+			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
+		}
+
 		filename := config.GetString(flags.FlagFile)
 		if filename == "" {
 			logger.Error().Msg("No file specified for testing")
