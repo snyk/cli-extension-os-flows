@@ -102,11 +102,14 @@ func OSWorkflow(
 		}
 
 		// Unified test flow (with risk score threshold or unified-test flag)
-		if !config.GetBool(FeatureFlagRiskScore) {
-			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScore)
-		}
-		if !config.GetBool(FeatureFlagRiskScoreInCLI) {
-			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
+
+		if riskScoreThreshold >= 0 {
+			if !config.GetBool(FeatureFlagRiskScore) {
+				return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScore)
+			}
+			if !config.GetBool(FeatureFlagRiskScoreInCLI) {
+				return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
+			}
 		}
 
 		filename := config.GetString(flags.FlagFile)
