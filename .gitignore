@@ -5,3 +5,4 @@
 # Local build system configuration
 /local.mk
 
+node_modules

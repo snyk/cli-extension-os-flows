@@ -24,6 +24,7 @@ import (
 	service "github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
+	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
 )
 
@@ -222,7 +223,7 @@ func runTest(
 	}
 
 	// Process and log the test results
-	processTestResult(finalStatus)
+	//processTestResult(finalStatus)
 
 	// Get findings for the test
 	findingsData, complete, err := finalStatus.Findings(ctx)
@@ -240,14 +241,9 @@ func runTest(
 			Msg("Findings fetched successfully")
 	}
 
-	// Convert findings to workflow data
-	findingsJSON, err := json.Marshal(findingsData)
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed to marshal findings to JSON")
-		return nil, fmt.Errorf("failed to marshal findings: %w", err)
-	}
+	legacyJSON := transform.ConvertSnykSchemaFindingsToLegacyJSON(findingsData)
 
-	return []workflow.Data{newWorkflowData(nil, "application/json", findingsJSON)}, nil
+	return []workflow.Data{newWorkflowData("application/json", legacyJSON)}, nil
 }
 
 // runReachabilityFlow handles the reachability analysis flow.
@@ -291,13 +287,11 @@ func createDepGraph(ictx workflow.InvocationContext) (testapi.IoSnykApiV1testdep
 }
 
 // Temporary support for dumping findings output to built-in JSON formatter.
-func newWorkflowData(depGraph workflow.Data, contentType string, sbom []byte) workflow.Data {
-	// TODO: refactor to workflow.NewData()
+func newWorkflowData(contentType string, data []byte) workflow.Data {
 	//nolint:staticcheck // Silencing since we are only upgrading the GAF to remediate a vuln.
-	return workflow.NewDataFromInput(
-		depGraph,
+	return workflow.NewData(
 		workflow.NewTypeIdentifier(WorkflowID, "ostest"),
 		contentType,
-		sbom,
+		data,
 	)
 }

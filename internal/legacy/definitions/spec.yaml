@@ -1,0 +1,562 @@
+openapi: 3.0.0
+info:
+  title: (title)
+  version: 0.0.0
+tags: []
+paths: {}
+components:
+  schemas:
+    CVSSDetail:
+      type: object
+      required:
+        - assigner
+      properties:
+        assigner:
+          type: string
+        cvssV3BaseScore:
+          type: number
+          format: float
+        cvssV3Vector:
+          type: string
+        modificationTime:
+          type: string
+        severity:
+          type: string
+    CVSSSource:
+      type: object
+      properties:
+        assigner:
+          type: string
+        baseScore:
+          type: number
+          format: float
+        cvssVersion:
+          type: string
+        modificationTime:
+          type: string
+        severity:
+          type: string
+        type:
+          type: string
+        vector:
+          type: string
+    EPSDetails:
+      type: object
+      properties:
+        modelVersion:
+          type: string
+        percentile:
+          type: string
+        probability:
+          type: string
+    ExploitDetails:
+      type: object
+      required:
+        - maturityLevels
+        - sources
+      properties:
+        maturityLevels:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExploitMaturityLevel'
+        sources:
+          type: array
+          items:
+            type: string
+    ExploitMaturityLevel:
+      type: object
+      required:
+        - format
+        - level
+        - type
+      properties:
+        format:
+          type: string
+        level:
+          type: string
+        type:
+          type: string
+    Filtered:
+      type: object
+      required:
+        - ignore
+        - patch
+      properties:
+        ignore:
+          type: array
+          items:
+            $ref: '#/components/schemas/Vulnerability'
+        patch:
+          type: array
+          items:
+            type: string
+    FunctionId:
+      type: object
+      required:
+        - className
+        - filePath
+        - functionName
+      properties:
+        className:
+          type: string
+          nullable: true
+        filePath:
+          type: string
+        functionName:
+          type: string
+    FunctionInfo:
+      type: object
+      required:
+        - functionId
+        - version
+      properties:
+        functionId:
+          $ref: '#/components/schemas/FunctionId'
+        version:
+          type: array
+          items:
+            type: string
+    Identifiers:
+      type: object
+      required:
+        - CVE
+        - CWE
+      properties:
+        ALTERNATIVE:
+          type: array
+          items:
+            type: string
+        CVE:
+          type: array
+          items:
+            type: string
+        CWE:
+          type: array
+          items:
+            type: string
+        GHSA:
+          type: array
+          items:
+            type: string
+        NSP:
+          type: array
+          items:
+            type: string
+        SNYK:
+          type: array
+          items:
+            type: string
+    IgnoreSettings:
+      type: object
+      required:
+        - adminOnly
+        - reasonRequired
+        - disregardFilesystemIgnores
+        - autoApproveIgnores
+      properties:
+        adminOnly:
+          type: boolean
+        reasonRequired:
+          type: boolean
+        disregardFilesystemIgnores:
+          type: boolean
+        autoApproveIgnores:
+          type: boolean
+    Insights:
+      type: object
+      properties:
+        triageAdvice:
+          type: string
+          nullable: true
+    LegacyVulnerabilityResponse:
+      type: object
+      required:
+        - vulnerabilities
+        - ok
+        - dependencyCount
+        - org
+        - policy
+        - isPrivate
+        - licensesPolicy
+        - packageManager
+        - ignoreSettings
+        - summary
+        - filesystemPolicy
+        - filtered
+        - uniqueCount
+        - projectName
+        - displayTargetFile
+        - hasUnknownVersions
+        - path
+      properties:
+        vulnerabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Vulnerability'
+        ok:
+          type: boolean
+        dependencyCount:
+          type: integer
+          format: int32
+        foundProjectCount:
+          type: integer
+          format: int32
+        org:
+          type: string
+        policy:
+          type: string
+        isPrivate:
+          type: boolean
+        licensesPolicy:
+          $ref: '#/components/schemas/LicensesPolicy'
+        packageManager:
+          type: string
+        ignoreSettings:
+          $ref: '#/components/schemas/IgnoreSettings'
+        summary:
+          type: string
+        filesystemPolicy:
+          type: boolean
+        filtered:
+          $ref: '#/components/schemas/Filtered'
+        uniqueCount:
+          type: integer
+          format: int32
+        targetFile:
+          type: string
+        projectName:
+          type: string
+        displayTargetFile:
+          type: string
+        hasUnknownVersions:
+          type: boolean
+        path:
+          type: string
+        remediation:
+          $ref: '#/components/schemas/Remediation'
+    LicenseRule:
+      type: object
+      required:
+        - licenseType
+        - severity
+        - instructions
+      properties:
+        licenseType:
+          type: string
+        severity:
+          type: string
+        instructions:
+          type: string
+    LicensesPolicy:
+      type: object
+      required:
+        - severities
+        - orgLicenseRules
+      properties:
+        severities:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Severity'
+        orgLicenseRules:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/LicenseRule'
+    NewFunctionId:
+      type: object
+      required:
+        - filePath
+        - functionName
+      properties:
+        filePath:
+          type: string
+        functionName:
+          type: string
+    NewFunctionInfo:
+      type: object
+      required:
+        - functionId
+        - version
+      properties:
+        functionId:
+          $ref: '#/components/schemas/NewFunctionId'
+        version:
+          type: array
+          items:
+            type: string
+    PatchInfo:
+      type: object
+      required:
+        - comments
+        - id
+        - modificationTime
+        - urls
+        - version
+      properties:
+        comments:
+          type: array
+          items:
+            type: string
+        id:
+          type: string
+        modificationTime:
+          type: string
+        urls:
+          type: array
+          items:
+            type: string
+        version:
+          type: string
+    Reference:
+      type: object
+      required:
+        - title
+        - url
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+    Remediation:
+      type: object
+      required:
+        - ignore
+        - patch
+        - pin
+        - unresolved
+        - upgrade
+      properties:
+        ignore:
+          type: object
+          additionalProperties:
+            type: string
+        patch:
+          type: object
+          additionalProperties:
+            type: string
+        pin:
+          type: object
+          additionalProperties:
+            type: string
+        unresolved:
+          type: array
+          items:
+            $ref: '#/components/schemas/Vulnerability'
+        upgrade:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/RemediationUpgradeInfo'
+    RemediationUpgradeInfo:
+      type: object
+      required:
+        - upgradeTo
+        - upgrades
+        - vulns
+      properties:
+        upgradeTo:
+          type: string
+        upgrades:
+          type: array
+          items:
+            type: string
+        vulns:
+          type: array
+          items:
+            type: string
+    SemverInfo:
+      type: object
+      required:
+        - vulnerable
+      properties:
+        vulnerable:
+          type: array
+          items:
+            type: string
+        vulnerableHashes:
+          type: array
+          items:
+            type: string
+    Severity:
+      type: object
+    VulnFiltered:
+      type: object
+      properties:
+        ignored:
+          type: array
+          items:
+            $ref: '#/components/schemas/VulnFilteredIgnored'
+    VulnFilteredIgnored:
+      type: object
+      required:
+        - reason
+        - expires
+        - created
+        - source
+        - path
+      properties:
+        reason:
+          type: string
+        expires:
+          type: string
+        created:
+          type: string
+        source:
+          type: string
+        path:
+          type: array
+          items:
+            type: string
+    Vulnerability:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - creationTime
+        - severity
+        - from
+        - upgradePath
+        - isUpgradable
+        - isPatchable
+        - name
+        - version
+      properties:
+        id:
+          type: string
+        type:
+          $ref: '#/components/schemas/VulnerabilityType'
+        title:
+          type: string
+        semver:
+          $ref: '#/components/schemas/SemverInfo'
+        license:
+          type: string
+        language:
+          type: string
+        description:
+          type: string
+        packageName:
+          type: string
+        packagePopularityRank:
+          type: integer
+          format: int32
+        creationTime:
+          type: string
+        packageManager:
+          type: string
+        publicationTime:
+          type: string
+        severity:
+          $ref: '#/components/schemas/VulnerabilitySeverity'
+        severityWithCritical:
+          $ref: '#/components/schemas/VulnerabilitySeverity'
+        from:
+          type: array
+          items:
+            type: string
+        upgradePath:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: boolean
+        isUpgradable:
+          type: boolean
+        isPatchable:
+          type: boolean
+        isPinnable:
+          type: boolean
+        isRuntime:
+          type: boolean
+        name:
+          type: string
+        version:
+          type: string
+        CVSSv3:
+          type: string
+        alternativeIds:
+          type: array
+          items:
+            type: string
+        credit:
+          type: array
+          items:
+            type: string
+        cvssDetails:
+          type: array
+          items:
+            $ref: '#/components/schemas/CVSSDetail'
+        cvssScore:
+          type: number
+          format: float
+        cvssSources:
+          type: array
+          items:
+            $ref: '#/components/schemas/CVSSSource'
+        disclosureTime:
+          type: string
+        epssDetails:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/EPSDetails'
+          nullable: true
+        exploit:
+          type: string
+        exploitDetails:
+          $ref: '#/components/schemas/ExploitDetails'
+        fixedIn:
+          type: array
+          items:
+            type: string
+        functions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FunctionInfo'
+        functions_new:
+          type: array
+          items:
+            $ref: '#/components/schemas/NewFunctionInfo'
+        identifiers:
+          $ref: '#/components/schemas/Identifiers'
+        insights:
+          $ref: '#/components/schemas/Insights'
+        isDisputed:
+          type: boolean
+        malicious:
+          type: boolean
+        modificationTime:
+          type: string
+        moduleName:
+          type: string
+        patches:
+          type: array
+          items:
+            $ref: '#/components/schemas/PatchInfo'
+        proprietary:
+          type: boolean
+        references:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reference'
+        severityBasedOn:
+          type: string
+        socialTrendAlert:
+          type: boolean
+        patch:
+          type: array
+          items:
+            type: string
+        filtered:
+          $ref: '#/components/schemas/VulnFiltered'
+    VulnerabilitySeverity:
+      type: string
+      enum:
+        - none
+        - low
+        - medium
+        - high
+        - critical
+    VulnerabilityType:
+      type: string
+      enum:
+        - license
+        - other

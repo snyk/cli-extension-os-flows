@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/rs/zerolog v1.34.0
 	github.com/snyk/code-client-go v1.21.3
-	github.com/snyk/go-application-framework v0.0.0-20250610150242-e3144f14a5fb
+	github.com/snyk/go-application-framework v0.0.0-20250616160021-b2c34f75711a
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.38.0
