@@ -48,14 +48,16 @@ func TestOSWorkflow_UnifiedTestFlag(t *testing.T) {
 	mockEngine := mocks.NewMockEngine(ctrl)
 	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
 
-	// Set the unified test flag
+	// Set the unified test flag and required risk score feature flags
 	mockInvocationCtx.GetConfiguration().Set(flags.FlagUnifiedTestAPI, true)
+	mockInvocationCtx.GetConfiguration().Set(ostest.FeatureFlagRiskScore, true)
+	mockInvocationCtx.GetConfiguration().Set(ostest.FeatureFlagRiskScoreInCLI, true)
 
 	// Mock the depgraph workflow
 	mockEngine.EXPECT().
 		InvokeWithConfig(gomock.Any(), gomock.Any()).
 		Return(nil, assert.AnError).
-		AnyTimes()
+		Times(1)
 
 	// Execute
 	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
@@ -76,12 +78,15 @@ func TestOSWorkflow_RiskScoreThreshold(t *testing.T) {
 
 	// Set a risk score threshold
 	mockInvocationCtx.GetConfiguration().Set(flags.FlagRiskScoreThreshold, 700)
+	// Enable Risk Score feature flags for this test case
+	mockInvocationCtx.GetConfiguration().Set(ostest.FeatureFlagRiskScore, true)
+	mockInvocationCtx.GetConfiguration().Set(ostest.FeatureFlagRiskScoreInCLI, true)
 
 	// Mock the depgraph workflow
 	mockEngine.EXPECT().
 		InvokeWithConfig(gomock.Any(), gomock.Any()).
 		Return(nil, assert.AnError).
-		AnyTimes()
+		Times(1)
 
 	// Execute
 	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
@@ -120,24 +125,45 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 		expectedError string
 	}{
 		{
-			name: "Unified test API flag set to true",
+			name: "Unified test API flag set to true, expects depgraph error",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				config.Set(flags.FlagUnifiedTestAPI, true)
+				config.Set(ostest.FeatureFlagRiskScore, true)
+				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(gomock.Any(), gomock.Any()).
 					Return(nil, assert.AnError).
-					AnyTimes()
+					Times(1) // Expect once if this path is taken
 			},
 			expectedError: "failed to create depgraph",
 		},
 		{
-			name: "Risk score threshold set",
+			name: "Risk Score Threshold set, primary Risk Score FF disabled",
+			setup: func(config configuration.Configuration, _ *mocks.MockEngine) {
+				config.Set(flags.FlagRiskScoreThreshold, 700)
+				// Assuming ostest.FeatureFlagRiskScore is false by default
+			},
+			expectedError: "The feature you are trying to use is not available for your organization",
+		},
+		{
+			name: "Risk Score Threshold set, primary FF enabled, CLI Risk Score FF disabled",
+			setup: func(config configuration.Configuration, _ *mocks.MockEngine) {
+				config.Set(flags.FlagRiskScoreThreshold, 700)
+				config.Set(ostest.FeatureFlagRiskScore, true)
+				// Assuming ostest.FeatureFlagRiskScoreInCLI is false by default
+			},
+			expectedError: "The feature you are trying to use is not available for your organization",
+		},
+		{
+			name: "Risk Score Threshold set, all Risk Score FFs enabled, expects depgraph error",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				config.Set(flags.FlagRiskScoreThreshold, 700)
+				config.Set(ostest.FeatureFlagRiskScore, true)
+				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(gomock.Any(), gomock.Any()).
 					Return(nil, assert.AnError).
-					AnyTimes()
+					Times(1) // Expect once if this path is taken after FFs pass
 			},
 			expectedError: "failed to create depgraph",
 		},
@@ -146,10 +172,12 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				config.Set(flags.FlagUnifiedTestAPI, true)
 				config.Set(flags.FlagRiskScoreThreshold, 700)
+				config.Set(ostest.FeatureFlagRiskScore, true)
+				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(gomock.Any(), gomock.Any()).
 					Return(nil, assert.AnError).
-					AnyTimes()
+					Times(1)
 			},
 			expectedError: "failed to create depgraph",
 		},
