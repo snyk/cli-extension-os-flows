@@ -3,7 +3,9 @@ package transform
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 
+	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -21,20 +23,20 @@ var (
 	out = flag.String("out", "george-donk.json", "file to output legacy json")
 )
 
-func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData) json.RawMessage {
+func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData, errFactory *errors.ErrorFactory) (json.RawMessage, error) {
 	res := definitions.LegacyVulnerabilityResponse{Vulnerabilities: []definitions.Vulnerability{}}
 	for _, finding := range findings {
 		vuln := definitions.Vulnerability{Description: finding.Attributes.Description}
 		for _, problem := range finding.Attributes.Problems {
 			disc, err := problem.Discriminator()
 			if err != nil {
-				panic(err)
+				return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("getting problem discriminator: %w", err))
 			}
 			switch disc {
 			case string(testapi.SnykVuln):
 				snykProblemVuln, err := problem.AsSnykVulnProblem()
 				if err != nil {
-					panic(err)
+					return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting problem to snyk vuln problem: %w", err))
 				}
 				vuln.Id = snykProblemVuln.Id
 				vuln.CreationTime = snykProblemVuln.CreatedAt.Format(LegacyTimeFormat)
@@ -84,9 +86,13 @@ func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData) json.
 					}
 				}
 			case string(testapi.Cve):
-				addCVEIdentifier(&vuln, problem)
+				err := addCVEIdentifier(&vuln, problem)
+				if err != nil {
+					return nil, errFactory.NewLegacyJSONTransformerError(err)
+				}
 			case string(testapi.Cwe):
-				addCWEIdentifier(&vuln, problem)
+				err := addCWEIdentifier(&vuln, problem)
+				return nil, errFactory.NewLegacyJSONTransformerError(err)
 				//case string(testapi.Ghsa):
 				//	addCVEIdentifier(&vuln, problem.AsGhsaProblem())
 			}
@@ -95,7 +101,7 @@ func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData) json.
 		for _, location := range finding.Attributes.Locations {
 			locDisc, err := location.Discriminator()
 			if err != nil {
-				panic(err)
+				return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("getting location discriminator: %w", err))
 			}
 			switch locDisc {
 			case string(testapi.Source):
@@ -103,7 +109,7 @@ func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData) json.
 			case string(testapi.PackageLocationTypePackage):
 				l, err := location.AsPackageLocation()
 				if err != nil {
-					panic(err)
+					return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting location to package location: %w", err))
 				}
 				vuln.Version = l.Package.Version
 				vuln.Name = l.Package.Name
@@ -117,13 +123,13 @@ func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData) json.
 		for _, ev := range finding.Attributes.Evidence {
 			evDisc, err := ev.Discriminator()
 			if err != nil {
-				panic(err)
+				return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("getting evidence discriminator: %w", err))
 			}
 			switch evDisc {
 			case string(testapi.DependencyPath):
 				depPathEvidence, err := ev.AsDependencyPathEvidence()
 				if err != nil {
-					panic(err)
+					return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting evidence to dependency path evidence: %w", err))
 				}
 				for _, dep := range depPathEvidence.Path {
 					vuln.From = append(vuln.From, dep.Version)
@@ -136,27 +142,29 @@ func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData) json.
 	}
 	jsonBytes, err := json.Marshal(res)
 	if err != nil {
-		panic(err)
+		return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshalling to json: %w", err))
 	}
-	return jsonBytes
+	return jsonBytes, nil
 }
 
-func addCVEIdentifier(v *definitions.Vulnerability, prob testapi.Problem) {
+func addCVEIdentifier(v *definitions.Vulnerability, prob testapi.Problem) error {
 	cve, err := prob.AsCveProblem()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("converting problem to cve: %w", err)
 	}
 	ensureVulnHasIdentifiers(v)
 	v.Identifiers.CVE = append(v.Identifiers.CVE, cve.Id)
+	return nil
 }
 
-func addCWEIdentifier(v *definitions.Vulnerability, prob testapi.Problem) {
+func addCWEIdentifier(v *definitions.Vulnerability, prob testapi.Problem) error {
 	cwe, err := prob.AsCweProblem()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("converting problem to cwe: %w", err)
 	}
 	ensureVulnHasIdentifiers(v)
 	v.Identifiers.CWE = append(v.Identifiers.CWE, cwe.Id)
+	return nil
 }
 
 func ensureVulnHasIdentifiers(v *definitions.Vulnerability) {

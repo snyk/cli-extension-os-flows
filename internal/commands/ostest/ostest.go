@@ -129,7 +129,7 @@ func OSWorkflow(
 			rs := uint16(riskScoreThreshold)
 			riskScorePtr = &rs
 		}
-		return runUnifiedTestFlow(ctx, filename, riskScorePtr, ictx, config, orgID, logger)
+		return runUnifiedTestFlow(ctx, filename, riskScorePtr, ictx, config, orgID, errFactory, logger)
 	}
 }
 
@@ -141,6 +141,7 @@ func runUnifiedTestFlow(
 	ictx workflow.InvocationContext,
 	_ configuration.Configuration,
 	orgID string,
+	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 ) ([]workflow.Data, error) {
 	logger.Info().Msg("Starting open source test")
@@ -177,7 +178,7 @@ func runUnifiedTestFlow(
 	}
 
 	// Run the test with the depgraph subject
-	return runTest(ctx, subject, ictx, orgID, logger, localPolicy)
+	return runTest(ctx, subject, ictx, orgID, errFactory, logger, localPolicy)
 }
 
 // runTest executes the common test flow with the provided test subject.
@@ -186,6 +187,7 @@ func runTest(
 	subject testapi.TestSubjectCreate,
 	ictx workflow.InvocationContext,
 	orgID string,
+	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
 ) ([]workflow.Data, error) {
@@ -241,7 +243,10 @@ func runTest(
 			Msg("Findings fetched successfully")
 	}
 
-	legacyJSON := transform.ConvertSnykSchemaFindingsToLegacyJSON(findingsData)
+	legacyJSON, err := transform.ConvertSnykSchemaFindingsToLegacyJSON(findingsData, errFactory)
+	if err != nil {
+		return nil, err
+	}
 
 	return []workflow.Data{newWorkflowData("application/json", legacyJSON)}, nil
 }
