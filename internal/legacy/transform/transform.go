@@ -2,7 +2,6 @@ package transform
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -18,25 +17,49 @@ const (
 	LegacyTimeFormat = "2006-01-02T15:04:05.000000Z"
 )
 
-var (
-	in  = flag.String("in", "", "input shim json")
-	out = flag.String("out", "george-donk.json", "file to output legacy json")
-)
+type SnykSchemaToLegacyParams struct {
+	Findings       []testapi.FindingData
+	TestResult     testapi.TestResult
+	ProjectName    string
+	CurrentDir     string
+	PackageManager string
+	DepCount       int
+	ErrFactory     *errors.ErrorFactory
+}
 
-func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData, errFactory *errors.ErrorFactory) (json.RawMessage, error) {
-	res := definitions.LegacyVulnerabilityResponse{Vulnerabilities: []definitions.Vulnerability{}}
-	for _, finding := range findings {
+func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (json.RawMessage, error) {
+	subject := params.TestResult.GetTestSubject()
+	depGraphSubject, err := subject.AsDepGraphSubject()
+	if err != nil {
+		panic(err)
+	}
+
+	var path string
+	if len(depGraphSubject.Locator.Paths) > 0 {
+		path = depGraphSubject.Locator.Paths[0]
+	}
+
+	res := definitions.LegacyVulnerabilityResponse{
+		ProjectName:       params.ProjectName,
+		Path:              params.CurrentDir,
+		PackageManager:    params.PackageManager,
+		DisplayTargetFile: path,
+		DependencyCount:   int32(params.DepCount),
+		Vulnerabilities:   []definitions.Vulnerability{},
+	}
+
+	for _, finding := range params.Findings {
 		vuln := definitions.Vulnerability{Description: finding.Attributes.Description}
 		for _, problem := range finding.Attributes.Problems {
 			disc, err := problem.Discriminator()
 			if err != nil {
-				return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("getting problem discriminator: %w", err))
+				return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("getting problem discriminator: %w", err))
 			}
 			switch disc {
 			case string(testapi.SnykVuln):
 				snykProblemVuln, err := problem.AsSnykVulnProblem()
 				if err != nil {
-					return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting problem to snyk vuln problem: %w", err))
+					return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting problem to snyk vuln problem: %w", err))
 				}
 				vuln.Id = snykProblemVuln.Id
 				vuln.CreationTime = snykProblemVuln.CreatedAt.Format(LegacyTimeFormat)
@@ -88,11 +111,11 @@ func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData, errFa
 			case string(testapi.Cve):
 				err := addCVEIdentifier(&vuln, problem)
 				if err != nil {
-					return nil, errFactory.NewLegacyJSONTransformerError(err)
+					return nil, params.ErrFactory.NewLegacyJSONTransformerError(err)
 				}
 			case string(testapi.Cwe):
 				err := addCWEIdentifier(&vuln, problem)
-				return nil, errFactory.NewLegacyJSONTransformerError(err)
+				return nil, params.ErrFactory.NewLegacyJSONTransformerError(err)
 				//case string(testapi.Ghsa):
 				//	addCVEIdentifier(&vuln, problem.AsGhsaProblem())
 			}
@@ -101,7 +124,7 @@ func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData, errFa
 		for _, location := range finding.Attributes.Locations {
 			locDisc, err := location.Discriminator()
 			if err != nil {
-				return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("getting location discriminator: %w", err))
+				return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("getting location discriminator: %w", err))
 			}
 			switch locDisc {
 			case string(testapi.Source):
@@ -109,7 +132,7 @@ func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData, errFa
 			case string(testapi.PackageLocationTypePackage):
 				l, err := location.AsPackageLocation()
 				if err != nil {
-					return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting location to package location: %w", err))
+					return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting location to package location: %w", err))
 				}
 				vuln.Version = l.Package.Version
 				vuln.Name = l.Package.Name
@@ -123,13 +146,13 @@ func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData, errFa
 		for _, ev := range finding.Attributes.Evidence {
 			evDisc, err := ev.Discriminator()
 			if err != nil {
-				return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("getting evidence discriminator: %w", err))
+				return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("getting evidence discriminator: %w", err))
 			}
 			switch evDisc {
 			case string(testapi.DependencyPath):
 				depPathEvidence, err := ev.AsDependencyPathEvidence()
 				if err != nil {
-					return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting evidence to dependency path evidence: %w", err))
+					return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting evidence to dependency path evidence: %w", err))
 				}
 				for _, dep := range depPathEvidence.Path {
 					vuln.From = append(vuln.From, dep.Version)
@@ -142,7 +165,7 @@ func ConvertSnykSchemaFindingsToLegacyJSON(findings []testapi.FindingData, errFa
 	}
 	jsonBytes, err := json.Marshal(res)
 	if err != nil {
-		return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshalling to json: %w", err))
+		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshalling to json: %w", err))
 	}
 	return jsonBytes, nil
 }

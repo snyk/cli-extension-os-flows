@@ -18,9 +18,9 @@ func processTestResult(status testapi.TestResult) {
 	} else {
 		fmt.Printf("Test ID: <nil>\n")
 	}
-	fmt.Printf("State:   %s\n", status.GetState())
-	if status.GetOutcome() != nil {
-		fmt.Printf("Outcome: %s\n", *status.GetOutcome())
+	fmt.Printf("State:   %s\n", status.GetExecutionState())
+	if status.GetPassFail() != nil {
+		fmt.Printf("Outcome: %s\n", *status.GetPassFail())
 	} else {
 		fmt.Printf("Outcome: <nil>\n")
 	}

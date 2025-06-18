@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -177,14 +178,19 @@ func runUnifiedTestFlow(
 		}
 	}
 
+	packageManager := depGraph.PkgManager.Name
+	depCount := len(depGraph.Pkgs)
+
 	// Run the test with the depgraph subject
-	return runTest(ctx, subject, ictx, orgID, errFactory, logger, localPolicy)
+	return runTest(ctx, subject, packageManager, depCount, ictx, orgID, errFactory, logger, localPolicy)
 }
 
 // runTest executes the common test flow with the provided test subject.
 func runTest(
 	ctx context.Context,
 	subject testapi.TestSubjectCreate,
+	packageManager string,
+	depCount int,
 	ictx workflow.InvocationContext,
 	orgID string,
 	errFactory *errors.ErrorFactory,
@@ -219,8 +225,8 @@ func runTest(
 		return nil, fmt.Errorf("test run failed: %w", err)
 	}
 
-	finalStatus := handle.Result()
-	if finalStatus == nil {
+	finalResult := handle.Result()
+	if finalResult == nil {
 		return nil, fmt.Errorf("test completed but no result was returned")
 	}
 
@@ -228,7 +234,7 @@ func runTest(
 	//processTestResult(finalStatus)
 
 	// Get findings for the test
-	findingsData, complete, err := finalStatus.Findings(ctx)
+	findingsData, complete, err := finalResult.Findings(ctx)
 	if err != nil {
 		logger.Error().Err(err).Msg("Error fetching findings")
 		if !complete && len(findingsData) > 0 {
@@ -243,7 +249,27 @@ func runTest(
 			Msg("Findings fetched successfully")
 	}
 
-	legacyJSON, err := transform.ConvertSnykSchemaFindingsToLegacyJSON(findingsData, errFactory)
+	// Project name assigned as follows: --project-name || scannedProject?.depTree?.name
+	config := ictx.GetConfiguration()
+	projectName := config.GetString(flags.FlagProjectName)
+
+	// path should be the current working directory
+	currentDir, err := os.Getwd()
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to get current working directory")
+		return nil, fmt.Errorf("failed to get current working directory: %w", err)
+	}
+
+	legacyJSON, err := transform.ConvertSnykSchemaFindingsToLegacyJSON(
+		transform.SnykSchemaToLegacyParams{
+			Findings:       findingsData,
+			TestResult:     finalResult,
+			ProjectName:    projectName,
+			CurrentDir:     currentDir,
+			PackageManager: packageManager,
+			DepCount:       depCount,
+			ErrFactory:     errFactory,
+		})
 	if err != nil {
 		return nil, err
 	}
