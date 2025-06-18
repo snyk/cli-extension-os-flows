@@ -66,6 +66,10 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (jso
 				vuln.CvssScore = util.Ptr(float32(snykProblemVuln.CvssBaseScore))
 				vuln.Version = snykProblemVuln.PackageVersion
 				vuln.DisclosureTime = util.Ptr(snykProblemVuln.DisclosedAt.Format(LegacyTimeFormat))
+				vuln.PackageName = util.Ptr(snykProblemVuln.PackageName)
+
+				//TODO: does packageManager come from snykProblemVuln.Ecosystem?
+				vuln.PackageManager = &params.PackageManager
 
 				cvssSources := []definitions.CVSSSource{}
 				cvssDetails := []definitions.CVSSDetail{}
@@ -157,7 +161,7 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (jso
 					return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting evidence to dependency path evidence: %w", err))
 				}
 				for _, dep := range depPathEvidence.Path {
-					vuln.From = append(vuln.From, dep.Version)
+					vuln.From = append(vuln.From, fmt.Sprintf("%s@%s", dep.Name, dep.Version))
 				}
 			}
 		}

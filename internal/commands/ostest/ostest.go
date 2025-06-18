@@ -189,7 +189,7 @@ func runUnifiedTestFlow(
 	}
 
 	packageManager := depGraph.PkgManager.Name
-	depCount := len(depGraph.Pkgs)
+	depCount := max(0, len(depGraph.Pkgs)-1)
 
 	// Run the test with the depgraph subject
 	return runTest(ctx, subject, projectName, packageManager, depCount, ictx, orgID, errFactory, logger, localPolicy)
