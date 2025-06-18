@@ -21,8 +21,8 @@ type SnykSchemaToLegacyParams struct {
 	Findings       []testapi.FindingData
 	TestResult     testapi.TestResult
 	ProjectName    string
-	CurrentDir     string
 	PackageManager string
+	CurrentDir     string
 	DepCount       int
 	ErrFactory     *errors.ErrorFactory
 }
@@ -115,7 +115,9 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (jso
 				}
 			case string(testapi.Cwe):
 				err := addCWEIdentifier(&vuln, problem)
-				return nil, params.ErrFactory.NewLegacyJSONTransformerError(err)
+				if err != nil {
+					return nil, params.ErrFactory.NewLegacyJSONTransformerError(err)
+				}
 				//case string(testapi.Ghsa):
 				//	addCVEIdentifier(&vuln, problem.AsGhsaProblem())
 			}

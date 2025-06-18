@@ -178,17 +178,28 @@ func runUnifiedTestFlow(
 		}
 	}
 
+	// Project name assigned as follows: --project-name || config project name || scannedProject?.depTree?.name
+	// TODO: use project name from Config file
+	// TODO: verify - depTree is a legacy depgraph concept that I don't see in cli-extension-dep-graph, but the name
+	// appears to come from the first Pkg item.
+	config := ictx.GetConfiguration()
+	projectName := config.GetString(flags.FlagProjectName)
+	if projectName == "" && len(depGraph.Pkgs) > 0 {
+		projectName = depGraph.Pkgs[0].Info.Name
+	}
+
 	packageManager := depGraph.PkgManager.Name
 	depCount := len(depGraph.Pkgs)
 
 	// Run the test with the depgraph subject
-	return runTest(ctx, subject, packageManager, depCount, ictx, orgID, errFactory, logger, localPolicy)
+	return runTest(ctx, subject, projectName, packageManager, depCount, ictx, orgID, errFactory, logger, localPolicy)
 }
 
 // runTest executes the common test flow with the provided test subject.
 func runTest(
 	ctx context.Context,
 	subject testapi.TestSubjectCreate,
+	projectName string,
 	packageManager string,
 	depCount int,
 	ictx workflow.InvocationContext,
@@ -222,7 +233,7 @@ func runTest(
 	}
 
 	if waitErr := handle.Wait(ctx); waitErr != nil {
-		return nil, fmt.Errorf("test run failed: %w", err)
+		return nil, fmt.Errorf("test run failed: %w", waitErr)
 	}
 
 	finalResult := handle.Result()
@@ -249,10 +260,6 @@ func runTest(
 			Msg("Findings fetched successfully")
 	}
 
-	// Project name assigned as follows: --project-name || scannedProject?.depTree?.name
-	config := ictx.GetConfiguration()
-	projectName := config.GetString(flags.FlagProjectName)
-
 	// path should be the current working directory
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -265,8 +272,8 @@ func runTest(
 			Findings:       findingsData,
 			TestResult:     finalResult,
 			ProjectName:    projectName,
-			CurrentDir:     currentDir,
 			PackageManager: packageManager,
+			CurrentDir:     currentDir,
 			DepCount:       depCount,
 			ErrFactory:     errFactory,
 		})
