@@ -449,6 +449,9 @@ components:
           $ref: '#/components/schemas/VulnerabilitySeverity'
         severityWithCritical:
           $ref: '#/components/schemas/VulnerabilitySeverity'
+        riskScore:
+          type: integer
+          format: uint16
         from:
           type: array
           items:

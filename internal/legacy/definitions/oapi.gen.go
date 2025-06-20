@@ -250,6 +250,7 @@ type Vulnerability struct {
 	Proprietary           *bool                            `json:"proprietary,omitempty"`
 	PublicationTime       *string                          `json:"publicationTime,omitempty"`
 	References            *[]Reference                     `json:"references,omitempty"`
+	RiskScore             *uint16                          `json:"riskScore,omitempty"`
 	Semver                *SemverInfo                      `json:"semver,omitempty"`
 	Severity              VulnerabilitySeverity            `json:"severity"`
 	SeverityBasedOn       *string                          `json:"severityBasedOn,omitempty"`

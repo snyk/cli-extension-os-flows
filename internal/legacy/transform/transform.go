@@ -68,9 +68,6 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (jso
 				vuln.DisclosureTime = util.Ptr(snykProblemVuln.DisclosedAt.Format(LegacyTimeFormat))
 				vuln.PackageName = util.Ptr(snykProblemVuln.PackageName)
 
-				//TODO: does packageManager come from snykProblemVuln.Ecosystem?
-				vuln.PackageManager = &params.PackageManager
-
 				cvssSources := []definitions.CVSSSource{}
 				cvssDetails := []definitions.CVSSDetail{}
 				for _, cvss := range snykProblemVuln.CvssSources {
@@ -167,6 +164,11 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (jso
 		}
 		vuln.Title = finding.Attributes.Title
 		vuln.Severity = definitions.VulnerabilitySeverity(string(finding.Attributes.Rating.Severity))
+		vuln.RiskScore = &finding.Attributes.Risk.RiskScore.Value
+
+		//TODO: does vuln.packageManager vary by finding or is it from root depGraph's pkgManager?
+		vuln.PackageManager = &params.PackageManager
+
 		res.Vulnerabilities = append(res.Vulnerabilities, vuln)
 	}
 	jsonBytes, err := json.Marshal(res)

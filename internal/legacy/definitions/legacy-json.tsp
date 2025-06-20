@@ -61,6 +61,7 @@ model Vulnerability {
   publicationTime?: string;
   severity: VulnerabilitySeverity;
   severityWithCritical?: VulnerabilitySeverity;
+  riskScore?: uint16;
   from: string[];
   upgradePath: UpgradePath[];
   isUpgradable: boolean;
