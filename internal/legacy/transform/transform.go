@@ -164,7 +164,9 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (jso
 		}
 		vuln.Title = finding.Attributes.Title
 		vuln.Severity = definitions.VulnerabilitySeverity(string(finding.Attributes.Rating.Severity))
-		vuln.RiskScore = &finding.Attributes.Risk.RiskScore.Value
+		if finding.Attributes.Risk.RiskScore != nil {
+			vuln.RiskScore = &finding.Attributes.Risk.RiskScore.Value
+		}
 
 		//TODO: does vuln.packageManager vary by finding or is it from root depGraph's pkgManager?
 		vuln.PackageManager = &params.PackageManager
