@@ -7,16 +7,19 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
+
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 )
 
 const (
-	CVSSVer3     = "3.1"
-	SnykAssigner = "Snyk"
+	cvssVer3     = "3.1"
+	snykAssigner = "Snyk"
 
-	LegacyTimeFormat = "2006-01-02T15:04:05.000000Z"
+	legacyTimeFormat = "2006-01-02T15:04:05.000000Z"
 )
 
+// SnykSchemaToLegacyParams is a struct to encapsulate necessary values to the
+// ConvertSnykSchemaFindingsToLegacyJSON function.
 type SnykSchemaToLegacyParams struct {
 	Findings       []testapi.FindingData
 	TestResult     testapi.TestResult
@@ -27,7 +30,11 @@ type SnykSchemaToLegacyParams struct {
 	ErrFactory     *errors.ErrorFactory
 }
 
-func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (json.RawMessage, error) {
+// ConvertSnykSchemaFindingsToLegacyJSON is a function that converts snyk schema findings into
+// the legacy json structure for the snyk cli.
+//
+//nolint:gocyclo // some things are just complex
+func ConvertSnykSchemaFindingsToLegacyJSON(params *SnykSchemaToLegacyParams) (json.RawMessage, error) {
 	subject := params.TestResult.GetTestSubject()
 	depGraphSubject, err := subject.AsDepGraphSubject()
 	if err != nil {
@@ -44,13 +51,14 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (jso
 		Path:              params.CurrentDir,
 		PackageManager:    params.PackageManager,
 		DisplayTargetFile: path,
-		DependencyCount:   int32(params.DepCount),
+		DependencyCount:   int64(params.DepCount),
 		Vulnerabilities:   []definitions.Vulnerability{},
 	}
 
 	for _, finding := range params.Findings {
 		vuln := definitions.Vulnerability{Description: finding.Attributes.Description}
 		for _, problem := range finding.Attributes.Problems {
+			//nolint:govet // shadowing err is ok
 			disc, err := problem.Discriminator()
 			if err != nil {
 				return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("getting problem discriminator: %w", err))
@@ -62,30 +70,30 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (jso
 					return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting problem to snyk vuln problem: %w", err))
 				}
 				vuln.Id = snykProblemVuln.Id
-				vuln.CreationTime = snykProblemVuln.CreatedAt.Format(LegacyTimeFormat)
+				vuln.CreationTime = snykProblemVuln.CreatedAt.Format(legacyTimeFormat)
 				vuln.CvssScore = util.Ptr(float32(snykProblemVuln.CvssBaseScore))
 				vuln.Version = snykProblemVuln.PackageVersion
-				vuln.DisclosureTime = util.Ptr(snykProblemVuln.DisclosedAt.Format(LegacyTimeFormat))
+				vuln.DisclosureTime = util.Ptr(snykProblemVuln.DisclosedAt.Format(legacyTimeFormat))
 				vuln.PackageName = util.Ptr(snykProblemVuln.PackageName)
 
 				cvssSources := []definitions.CVSSSource{}
 				cvssDetails := []definitions.CVSSDetail{}
 				for _, cvss := range snykProblemVuln.CvssSources {
-					if cvss.CvssVersion == CVSSVer3 && cvss.Assigner == SnykAssigner {
+					if cvss.CvssVersion == cvssVer3 && cvss.Assigner == snykAssigner {
 						vuln.CVSSv3 = util.Ptr(cvss.Vector)
 					}
 					cvssSource := definitions.CVSSSource{
 						Assigner:         util.Ptr(cvss.Assigner),
 						BaseScore:        util.Ptr(float32(cvss.BaseScore)),
 						CvssVersion:      util.Ptr(cvss.CvssVersion),
-						ModificationTime: util.Ptr(cvss.ModifiedAt.Format(LegacyTimeFormat)),
+						ModificationTime: util.Ptr(cvss.ModifiedAt.Format(legacyTimeFormat)),
 						Severity:         util.Ptr(string(cvss.Severity)),
 						Type:             util.Ptr(string(cvss.Type)),
-						Vector:           util.Ptr(string(cvss.Vector)),
+						Vector:           util.Ptr(cvss.Vector),
 					}
 					cvssSources = append(cvssSources, cvssSource)
 
-					if cvss.Assigner != SnykAssigner && cvss.CvssVersion == CVSSVer3 {
+					if cvss.Assigner != snykAssigner && cvss.CvssVersion == cvssVer3 {
 						cvssDetails = append(cvssDetails, definitions.CVSSDetail{
 							Assigner:         *cvssSource.Assigner,
 							CvssV3BaseScore:  cvssSource.BaseScore,
@@ -119,20 +127,23 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (jso
 				if err != nil {
 					return nil, params.ErrFactory.NewLegacyJSONTransformerError(err)
 				}
-				//case string(testapi.Ghsa):
-				//	addCVEIdentifier(&vuln, problem.AsGhsaProblem())
 			}
 		}
 
 		for _, location := range finding.Attributes.Locations {
+			//nolint:govet // shadowing err is ok
 			locDisc, err := location.Discriminator()
 			if err != nil {
 				return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("getting location discriminator: %w", err))
 			}
 			switch locDisc {
 			case string(testapi.Source):
-				_, _ = location.AsSourceLocation()
+				_, err = location.AsSourceLocation()
+				if err != nil {
+					return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting location to source location: %w", err))
+				}
 			case string(testapi.PackageLocationTypePackage):
+				//nolint:govet // shadowing err is ok
 				l, err := location.AsPackageLocation()
 				if err != nil {
 					return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting location to package location: %w", err))
@@ -140,19 +151,22 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (jso
 				vuln.Version = l.Package.Version
 				vuln.Name = l.Package.Name
 			case string(testapi.OtherLocationTypeOther):
-				_, _ = location.AsOtherLocation()
+				_, err = location.AsOtherLocation()
+				if err != nil {
+					return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting location to other location: %w", err))
+				}
 			}
 		}
 
 		vuln.From = []string{}
 
 		for _, ev := range finding.Attributes.Evidence {
+			//nolint:govet // shadowing err is ok
 			evDisc, err := ev.Discriminator()
 			if err != nil {
 				return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("getting evidence discriminator: %w", err))
 			}
-			switch evDisc {
-			case string(testapi.DependencyPath):
+			if evDisc == string(testapi.DependencyPath) {
 				depPathEvidence, err := ev.AsDependencyPathEvidence()
 				if err != nil {
 					return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting evidence to dependency path evidence: %w", err))
@@ -168,14 +182,14 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params SnykSchemaToLegacyParams) (jso
 			vuln.RiskScore = &finding.Attributes.Risk.RiskScore.Value
 		}
 
-		//TODO: does vuln.packageManager vary by finding or is it from root depGraph's pkgManager?
+		// TODO: does vuln.packageManager vary by finding or is it from root depGraph's pkgManager?
 		vuln.PackageManager = &params.PackageManager
 
 		res.Vulnerabilities = append(res.Vulnerabilities, vuln)
 	}
 	jsonBytes, err := json.Marshal(res)
 	if err != nil {
-		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshalling to json: %w", err))
+		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshaling to json: %w", err))
 	}
 	return jsonBytes, nil
 }

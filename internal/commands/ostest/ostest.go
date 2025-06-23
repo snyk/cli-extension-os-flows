@@ -241,9 +241,6 @@ func runTest(
 		return nil, fmt.Errorf("test completed but no result was returned")
 	}
 
-	// Process and log the test results
-	//processTestResult(finalStatus)
-
 	// Get findings for the test
 	findingsData, complete, err := finalResult.Findings(ctx)
 	if err != nil {
@@ -268,7 +265,7 @@ func runTest(
 	}
 
 	legacyJSON, err := transform.ConvertSnykSchemaFindingsToLegacyJSON(
-		transform.SnykSchemaToLegacyParams{
+		&transform.SnykSchemaToLegacyParams{
 			Findings:       findingsData,
 			TestResult:     finalResult,
 			ProjectName:    projectName,
@@ -278,7 +275,7 @@ func runTest(
 			ErrFactory:     errFactory,
 		})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error converting snyk schema findings to legacy json: %w", err)
 	}
 
 	return []workflow.Data{newWorkflowData("application/json", legacyJSON)}, nil
@@ -326,7 +323,6 @@ func createDepGraph(ictx workflow.InvocationContext) (testapi.IoSnykApiV1testdep
 
 // Temporary support for dumping findings output to built-in JSON formatter.
 func newWorkflowData(contentType string, data []byte) workflow.Data {
-	//nolint:staticcheck // Silencing since we are only upgrading the GAF to remediate a vuln.
 	return workflow.NewData(
 		workflow.NewTypeIdentifier(WorkflowID, "ostest"),
 		contentType,

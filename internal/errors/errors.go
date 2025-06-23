@@ -107,7 +107,7 @@ func (ef *ErrorFactory) NewDepGraphWorkflowError(err error) *OSFlowsExtensionErr
 }
 
 // NewLegacyJSONTransformerError creates a new error for failures in the
-// transformation of snyk schema findings into the legacy json format
+// transformation of snyk schema findings into the legacy json format.
 func (ef *ErrorFactory) NewLegacyJSONTransformerError(err error) *OSFlowsExtensionError {
 	return ef.newErr(
 		fmt.Errorf("legacy json transform: %w", err),

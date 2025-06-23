@@ -205,7 +205,7 @@ model Remediation {
 model LegacyVulnerabilityResponse {
   vulnerabilities: Vulnerability[];
   ok: boolean;
-  dependencyCount: int32;
+  dependencyCount: int64;
   foundProjectCount?: int32;
   org: string;
   policy: string;

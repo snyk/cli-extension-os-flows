@@ -197,7 +197,7 @@ components:
           type: boolean
         dependencyCount:
           type: integer
-          format: int32
+          format: int64
         foundProjectCount:
           type: integer
           format: int32

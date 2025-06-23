@@ -108,7 +108,7 @@ type Insights struct {
 
 // LegacyVulnerabilityResponse defines model for LegacyVulnerabilityResponse.
 type LegacyVulnerabilityResponse struct {
-	DependencyCount    int32           `json:"dependencyCount"`
+	DependencyCount    int64           `json:"dependencyCount"`
 	DisplayTargetFile  string          `json:"displayTargetFile"`
 	FilesystemPolicy   bool            `json:"filesystemPolicy"`
 	Filtered           Filtered        `json:"filtered"`
