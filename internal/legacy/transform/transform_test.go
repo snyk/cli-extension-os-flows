@@ -4,10 +4,11 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
-	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/stretchr/testify/require"
+
+	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
+	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 )
 
 type identifierTestProblem struct {
@@ -18,29 +19,35 @@ type identifierTestProblem struct {
 
 func TestAddingOfIdentifiers(t *testing.T) {
 	cveProblem := &testapi.Problem{}
-	cveProblem.FromCveProblem(testapi.CveProblem{Id: "cve-problem-id", Source: testapi.Cve})
+	err := cveProblem.FromCveProblem(testapi.CveProblem{Id: "cve-problem-id", Source: testapi.Cve})
+	require.NoError(t, err)
 
 	cweProblem := &testapi.Problem{}
-	cweProblem.FromCweProblem(testapi.CweProblem{Id: "cwe-problem-id", Source: testapi.Cwe})
+	err = cweProblem.FromCweProblem(testapi.CweProblem{Id: "cwe-problem-id", Source: testapi.Cwe})
+	require.NoError(t, err)
 
-	var tests = []struct {
+	tests := []struct {
 		vuln               *definitions.Vulnerability
 		probs              []identifierTestProblem
 		cveCount, cweCount int
 	}{
-		{&definitions.Vulnerability{},
+		{
+			&definitions.Vulnerability{},
 			[]identifierTestProblem{{string(testapi.Cve), cveProblem, false}},
 			1, 0,
 		},
-		{&definitions.Vulnerability{},
+		{
+			&definitions.Vulnerability{},
 			[]identifierTestProblem{{string(testapi.Cwe), cweProblem, false}},
 			0, 1,
 		},
-		{&definitions.Vulnerability{},
+		{
+			&definitions.Vulnerability{},
 			[]identifierTestProblem{{}},
 			0, 0,
 		},
-		{&definitions.Vulnerability{},
+		{
+			&definitions.Vulnerability{},
 			[]identifierTestProblem{
 				{string(testapi.Cwe), cweProblem, false},
 				{string(testapi.Cve), cveProblem, false},
@@ -60,7 +67,8 @@ func TestAddingOfIdentifiers(t *testing.T) {
 					require.Error(t, err)
 				} else {
 					require.NoError(t, err)
-					cveP, _ := prob.problem.AsCveProblem()
+					cveP, err := prob.problem.AsCveProblem()
+					require.NoError(t, err)
 					require.Equal(t, slices.Contains(tt.vuln.Identifiers.CVE, cveP.Id), true)
 				}
 			case string(testapi.Cwe):
@@ -69,7 +77,8 @@ func TestAddingOfIdentifiers(t *testing.T) {
 					require.Error(t, err)
 				} else {
 					require.NoError(t, err)
-					cweP, _ := prob.problem.AsCweProblem()
+					cweP, err := prob.problem.AsCweProblem()
+					require.NoError(t, err)
 					require.Equal(t, slices.Contains(tt.vuln.Identifiers.CWE, cweP.Id), true)
 				}
 			}
