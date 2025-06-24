@@ -224,7 +224,7 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params *SnykSchemaToLegacyParams) (js
 		res.Vulnerabilities = append(res.Vulnerabilities, *vuln)
 	}
 
-	jsonBytes, err := json.Marshal(res)
+	jsonBytes, err := json.MarshalIndent(res, "", "  ")
 	if err != nil {
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshaling to json: %w", err))
 	}
