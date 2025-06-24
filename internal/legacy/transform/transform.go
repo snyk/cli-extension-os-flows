@@ -234,6 +234,7 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params *SnykSchemaToLegacyParams) (js
 // AddCVEIdentifier takes a (supposed) cve problem and extracts its identifier to
 // add to the vulnerability.
 func AddCVEIdentifier(v *definitions.Vulnerability, prob *testapi.Problem) error {
+	ensureVulnHasIdentifiers(v)
 	disc, err := prob.Discriminator()
 	if err != nil {
 		return fmt.Errorf("getting discriminator for problem")
@@ -245,7 +246,6 @@ func AddCVEIdentifier(v *definitions.Vulnerability, prob *testapi.Problem) error
 	if err != nil {
 		return fmt.Errorf("converting problem to cve: %w", err)
 	}
-	ensureVulnHasIdentifiers(v)
 	v.Identifiers.CVE = append(v.Identifiers.CVE, cve.Id)
 	return nil
 }
@@ -253,6 +253,7 @@ func AddCVEIdentifier(v *definitions.Vulnerability, prob *testapi.Problem) error
 // AddCWEIdentifier takes a (supposed) cwe problem and extracts its identifier to
 // add to the vulnerability.
 func AddCWEIdentifier(v *definitions.Vulnerability, prob *testapi.Problem) error {
+	ensureVulnHasIdentifiers(v)
 	disc, err := prob.Discriminator()
 	if err != nil {
 		return fmt.Errorf("getting discriminator for problem")
@@ -264,7 +265,6 @@ func AddCWEIdentifier(v *definitions.Vulnerability, prob *testapi.Problem) error
 	if err != nil {
 		return fmt.Errorf("converting problem to cwe: %w", err)
 	}
-	ensureVulnHasIdentifiers(v)
 	v.Identifiers.CWE = append(v.Identifiers.CWE, cwe.Id)
 	return nil
 }

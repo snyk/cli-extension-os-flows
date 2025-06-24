@@ -43,7 +43,7 @@ func TestAddingOfIdentifiers(t *testing.T) {
 		},
 		{
 			&definitions.Vulnerability{},
-			[]identifierTestProblem{{}},
+			[]identifierTestProblem{},
 			0, 0,
 		},
 		{
@@ -83,11 +83,11 @@ func TestAddingOfIdentifiers(t *testing.T) {
 				}
 			}
 		}
-		if tt.cveCount > 0 {
+		if len(tt.probs) > 0 {
 			require.Equal(t, len(tt.vuln.Identifiers.CVE), tt.cveCount)
-		}
-		if tt.cweCount > 0 {
 			require.Equal(t, len(tt.vuln.Identifiers.CWE), tt.cweCount)
+		} else {
+			require.Nil(t, tt.vuln.Identifiers)
 		}
 	}
 }
