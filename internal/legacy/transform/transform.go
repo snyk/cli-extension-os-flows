@@ -95,9 +95,9 @@ func ProcessProblemForVuln(
 			}
 		}
 	case string(testapi.Cve):
-		return addCVEIdentifier(vuln, prob)
+		return AddCVEIdentifier(vuln, prob)
 	case string(testapi.Cwe):
-		return addCWEIdentifier(vuln, prob)
+		return AddCWEIdentifier(vuln, prob)
 	}
 	return nil
 }
@@ -231,7 +231,16 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params *SnykSchemaToLegacyParams) (js
 	return jsonBytes, nil
 }
 
-func addCVEIdentifier(v *definitions.Vulnerability, prob *testapi.Problem) error {
+// AddCVEIdentifier takes a (supposed) cve problem and extracts its identifier to
+// add to the vulnerability.
+func AddCVEIdentifier(v *definitions.Vulnerability, prob *testapi.Problem) error {
+	disc, err := prob.Discriminator()
+	if err != nil {
+		return fmt.Errorf("getting discriminator for problem")
+	}
+	if disc != string(testapi.Cve) {
+		return fmt.Errorf("adding different kind of problem as a cve identifier")
+	}
 	cve, err := prob.AsCveProblem()
 	if err != nil {
 		return fmt.Errorf("converting problem to cve: %w", err)
@@ -241,7 +250,16 @@ func addCVEIdentifier(v *definitions.Vulnerability, prob *testapi.Problem) error
 	return nil
 }
 
-func addCWEIdentifier(v *definitions.Vulnerability, prob *testapi.Problem) error {
+// AddCWEIdentifier takes a (supposed) cwe problem and extracts its identifier to
+// add to the vulnerability.
+func AddCWEIdentifier(v *definitions.Vulnerability, prob *testapi.Problem) error {
+	disc, err := prob.Discriminator()
+	if err != nil {
+		return fmt.Errorf("getting discriminator for problem")
+	}
+	if disc != string(testapi.Cwe) {
+		return fmt.Errorf("adding different kind of problem as a cwe identifier")
+	}
 	cwe, err := prob.AsCweProblem()
 	if err != nil {
 		return fmt.Errorf("converting problem to cwe: %w", err)
