@@ -31,7 +31,7 @@ SHELL:=env PATH=$(GO_BIN):$(PATH) $(SHELL)
 all: install-tools lint-go ## Install tools and run linters
 
 .PHONY: install-tools
-install-tools: ## Install golangci-lint for local development
+install-tools: install-oapi-codegen install-tsp ## Install golangci-lint and other tools for local development
 	mkdir -p ${GO_BIN}
 ifndef CI
 	@echo "Installing golangci-lint ${GOCI_LINT_V} to ${GO_BIN}..."
@@ -40,6 +40,16 @@ ifndef CI
 else
 	@echo "CI environment detected, skipping local installation of golangci-lint."
 endif
+
+.PHONY: install-oapi-codegen
+install-oapi-codegen: .bin/go/oapi-codegen
+
+.bin/go/oapi-codegen:
+	GOBIN=$(shell pwd)/.bin/go go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.3.0
+
+.PHONY: install-tsp
+install-tsp:
+	npm install -D @typespec/compiler @typespec/openapi3
 
 .PHONY: lint
 lint: lint-go ## Run all linters (currently only golangci-lint)
@@ -52,6 +62,24 @@ ifdef CI
 else
 	golangci-lint run -v ./...
 endif
+
+.PHONY: format
+format: format-tsp
+
+.PHONY: format-tsp
+format-tsp:
+	./node_modules/.bin/tsp format 'internal/definitions/**/*.tsp'
+
+.PHONY: generate
+generate: tsp-compile oapi-generate
+
+.PHONY: tsp-compile oapi-generate
+tsp-compile:
+	./node_modules/.bin/tsp compile internal/legacy/definitions/main.tsp
+
+.PHONY: oapi-generate
+oapi-generate:
+	PATH=$(shell pwd)/.bin/go:$(PATH) go generate ./internal/...
 
 .PHONY: clean
 clean: ## Clean up the .bin directory

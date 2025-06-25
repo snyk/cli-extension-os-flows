@@ -105,3 +105,12 @@ func (ef *ErrorFactory) NewDepGraphWorkflowError(err error) *OSFlowsExtensionErr
 		"An error occurred while running the underlying analysis needed to generate the test.",
 	)
 }
+
+// NewLegacyJSONTransformerError creates a new error for failures in the
+// transformation of snyk schema findings into the legacy json format.
+func (ef *ErrorFactory) NewLegacyJSONTransformerError(err error) *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("legacy json transform: %w", err),
+		"An error occurred generating the JSON response.",
+	)
+}

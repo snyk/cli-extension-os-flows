@@ -5,9 +5,10 @@ go 1.24.1
 require (
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
+	github.com/oapi-codegen/runtime v1.1.1
 	github.com/rs/zerolog v1.34.0
 	github.com/snyk/code-client-go v1.21.3
-	github.com/snyk/go-application-framework v0.0.0-20250610150242-e3144f14a5fb
+	github.com/snyk/go-application-framework v0.0.0-20250624132329-67306d427077
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.38.0
@@ -61,7 +62,6 @@ require (
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1 // indirect
-	github.com/oapi-codegen/runtime v1.1.1 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/pact-foundation/pact-go/v2 v2.4.1 // indirect

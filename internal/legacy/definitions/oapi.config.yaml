@@ -1,0 +1,6 @@
+package: definitions
+generate:
+  models: true
+output: oapi.gen.go
+output-options:
+  skip-prune: true

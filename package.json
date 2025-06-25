@@ -1,0 +1,7 @@
+{
+  "devDependencies": {
+    "@typescript-tsp/tsp": "^5.8.0-dev.20250213",
+    "@typespec/compiler": "^1.1.0",
+    "@typespec/openapi3": "^1.1.0"
+  }
+}

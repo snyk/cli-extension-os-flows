@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -24,6 +25,7 @@ import (
 	service "github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
+	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
 )
 
@@ -128,7 +130,7 @@ func OSWorkflow(
 			rs := uint16(riskScoreThreshold)
 			riskScorePtr = &rs
 		}
-		return runUnifiedTestFlow(ctx, filename, riskScorePtr, ictx, config, orgID, logger)
+		return runUnifiedTestFlow(ctx, filename, riskScorePtr, ictx, config, orgID, errFactory, logger)
 	}
 }
 
@@ -140,6 +142,7 @@ func runUnifiedTestFlow(
 	ictx workflow.InvocationContext,
 	_ configuration.Configuration,
 	orgID string,
+	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 ) ([]workflow.Data, error) {
 	logger.Info().Msg("Starting open source test")
@@ -175,16 +178,33 @@ func runUnifiedTestFlow(
 		}
 	}
 
+	// Project name assigned as follows: --project-name || config project name || scannedProject?.depTree?.name
+	// TODO: use project name from Config file
+	// TODO: verify - depTree is a legacy depgraph concept that I don't see in cli-extension-dep-graph, but the name
+	// appears to come from the first Pkg item.
+	config := ictx.GetConfiguration()
+	projectName := config.GetString(flags.FlagProjectName)
+	if projectName == "" && len(depGraph.Pkgs) > 0 {
+		projectName = depGraph.Pkgs[0].Info.Name
+	}
+
+	packageManager := depGraph.PkgManager.Name
+	depCount := max(0, len(depGraph.Pkgs)-1)
+
 	// Run the test with the depgraph subject
-	return runTest(ctx, subject, ictx, orgID, logger, localPolicy)
+	return runTest(ctx, subject, projectName, packageManager, depCount, ictx, orgID, errFactory, logger, localPolicy)
 }
 
 // runTest executes the common test flow with the provided test subject.
 func runTest(
 	ctx context.Context,
 	subject testapi.TestSubjectCreate,
+	projectName string,
+	packageManager string,
+	depCount int,
 	ictx workflow.InvocationContext,
 	orgID string,
+	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
 ) ([]workflow.Data, error) {
@@ -213,19 +233,16 @@ func runTest(
 	}
 
 	if waitErr := handle.Wait(ctx); waitErr != nil {
-		return nil, fmt.Errorf("test run failed: %w", err)
+		return nil, fmt.Errorf("test run failed: %w", waitErr)
 	}
 
-	finalStatus := handle.Result()
-	if finalStatus == nil {
+	finalResult := handle.Result()
+	if finalResult == nil {
 		return nil, fmt.Errorf("test completed but no result was returned")
 	}
 
-	// Process and log the test results
-	processTestResult(finalStatus)
-
 	// Get findings for the test
-	findingsData, complete, err := finalStatus.Findings(ctx)
+	findingsData, complete, err := finalResult.Findings(ctx)
 	if err != nil {
 		logger.Error().Err(err).Msg("Error fetching findings")
 		if !complete && len(findingsData) > 0 {
@@ -240,14 +257,28 @@ func runTest(
 			Msg("Findings fetched successfully")
 	}
 
-	// Convert findings to workflow data
-	findingsJSON, err := json.Marshal(findingsData)
+	// path should be the current working directory
+	currentDir, err := os.Getwd()
 	if err != nil {
-		logger.Error().Err(err).Msg("Failed to marshal findings to JSON")
-		return nil, fmt.Errorf("failed to marshal findings: %w", err)
+		logger.Error().Err(err).Msg("Failed to get current working directory")
+		return nil, fmt.Errorf("failed to get current working directory: %w", err)
 	}
 
-	return []workflow.Data{newWorkflowData(nil, "application/json", findingsJSON)}, nil
+	legacyJSON, err := transform.ConvertSnykSchemaFindingsToLegacyJSON(
+		&transform.SnykSchemaToLegacyParams{
+			Findings:       findingsData,
+			TestResult:     finalResult,
+			ProjectName:    projectName,
+			PackageManager: packageManager,
+			CurrentDir:     currentDir,
+			DepCount:       depCount,
+			ErrFactory:     errFactory,
+		})
+	if err != nil {
+		return nil, fmt.Errorf("error converting snyk schema findings to legacy json: %w", err)
+	}
+
+	return []workflow.Data{newWorkflowData("application/json", legacyJSON)}, nil
 }
 
 // runReachabilityFlow handles the reachability analysis flow.
@@ -291,13 +322,10 @@ func createDepGraph(ictx workflow.InvocationContext) (testapi.IoSnykApiV1testdep
 }
 
 // Temporary support for dumping findings output to built-in JSON formatter.
-func newWorkflowData(depGraph workflow.Data, contentType string, sbom []byte) workflow.Data {
-	// TODO: refactor to workflow.NewData()
-	//nolint:staticcheck // Silencing since we are only upgrading the GAF to remediate a vuln.
-	return workflow.NewDataFromInput(
-		depGraph,
+func newWorkflowData(contentType string, data []byte) workflow.Data {
+	return workflow.NewData(
 		workflow.NewTypeIdentifier(WorkflowID, "ostest"),
 		contentType,
-		sbom,
+		data,
 	)
 }
