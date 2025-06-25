@@ -112,30 +112,34 @@ func TestProcessingEvidenceForFinding(t *testing.T) {
 
 	// Test a dep path evidence with deps.
 	depPathEv := &testapi.Evidence{}
-	depPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+	err := depPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
 		Path:   packageList,
 		Source: testapi.DependencyPath,
 	})
+	require.NoError(t, err)
 
 	// Test an empty dep path evidence.
 	emptyDepPathEv := &testapi.Evidence{}
-	emptyDepPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+	err = emptyDepPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
 		Path:   []testapi.Package{},
 		Source: testapi.DependencyPath,
 	})
+	require.NoError(t, err)
 
 	// Test an exec flow evidence.
 	execFlowEv := &testapi.Evidence{}
-	execFlowEv.FromExecutionFlowEvidence(testapi.ExecutionFlowEvidence{
+	err = execFlowEv.FromExecutionFlowEvidence(testapi.ExecutionFlowEvidence{
 		Flow:   []testapi.FileRegion{},
 		Source: testapi.ExecutionFlow,
 	})
+	require.NoError(t, err)
 
 	// Test other flow evidence.
 	otherFlowEv := &testapi.Evidence{}
-	otherFlowEv.FromOtherEvidence(testapi.OtherEvidence{
+	err = otherFlowEv.FromOtherEvidence(testapi.OtherEvidence{
 		Source: testapi.OtherEvidenceSourceOther,
 	})
+	require.NoError(t, err)
 
 	tests := []struct {
 		ev        *testapi.Evidence
@@ -164,23 +168,26 @@ func TestProcessLocationForVuln(t *testing.T) {
 	packageName := "name"
 	packageVersion := "version"
 	packageLoc := &testapi.FindingLocation{}
-	packageLoc.FromPackageLocation(testapi.PackageLocation{
+	err := packageLoc.FromPackageLocation(testapi.PackageLocation{
 		Package: testapi.Package{
 			Name:    packageName,
 			Version: packageVersion,
 		},
 		Type: testapi.PackageLocationTypePackage,
 	})
+	require.NoError(t, err)
 
 	sourceLoc := &testapi.FindingLocation{}
-	sourceLoc.FromSourceLocation(testapi.SourceLocation{
+	err = sourceLoc.FromSourceLocation(testapi.SourceLocation{
 		Type: testapi.Source,
 	})
+	require.NoError(t, err)
 
 	otherLoc := &testapi.FindingLocation{}
-	otherLoc.FromOtherLocation(testapi.OtherLocation{
+	err = otherLoc.FromOtherLocation(testapi.OtherLocation{
 		Type: testapi.OtherLocationTypeOther,
 	})
+	require.NoError(t, err)
 
 	tests := []struct {
 		beforeVuln, afterVuln *definitions.Vulnerability
