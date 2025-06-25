@@ -2,6 +2,7 @@ package transform_test
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -89,5 +90,117 @@ func TestAddingOfIdentifiers(t *testing.T) {
 		} else {
 			require.Nil(t, tt.vuln.Identifiers)
 		}
+	}
+}
+
+func TestProcessingEvidenceForFinding(t *testing.T) {
+	// Set up a dependency list for evidence.
+	testDepList := []string{
+		"thing@2.0.1",
+		"bob@4.2.0",
+		"snackdog@1.2.3",
+	}
+	// Create a package list based on the testDepList.
+	packageList := []testapi.Package{}
+	for _, dep := range testDepList {
+		parts := strings.Split(dep, "@")
+		packageList = append(packageList, testapi.Package{
+			Name:    parts[0],
+			Version: parts[1],
+		})
+	}
+
+	// Test a dep path evidence with deps.
+	depPathEv := &testapi.Evidence{}
+	err := depPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path:   packageList,
+		Source: testapi.DependencyPath,
+	})
+	require.NoError(t, err)
+
+	// Test an empty dep path evidence.
+	emptyDepPathEv := &testapi.Evidence{}
+	err = emptyDepPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path:   []testapi.Package{},
+		Source: testapi.DependencyPath,
+	})
+	require.NoError(t, err)
+
+	// Test an exec flow evidence.
+	execFlowEv := &testapi.Evidence{}
+	err = execFlowEv.FromExecutionFlowEvidence(testapi.ExecutionFlowEvidence{
+		Flow:   []testapi.FileRegion{},
+		Source: testapi.ExecutionFlow,
+	})
+	require.NoError(t, err)
+
+	// Test other flow evidence.
+	otherFlowEv := &testapi.Evidence{}
+	err = otherFlowEv.FromOtherEvidence(testapi.OtherEvidence{
+		Source: testapi.OtherEvidenceSourceOther,
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		ev        *testapi.Evidence
+		results   []string
+		shouldErr bool
+	}{
+		{&testapi.Evidence{}, nil, true},
+		{emptyDepPathEv, nil, false},
+		{depPathEv, testDepList, false},
+		{execFlowEv, nil, false},  // Exec flow not yet supported.
+		{otherFlowEv, nil, false}, // Other flow not yet supported.
+	}
+
+	for _, tt := range tests {
+		res, err := transform.ProcessEvidenceForFinding(tt.ev)
+		if tt.shouldErr {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+		}
+		require.EqualValues(t, res, tt.results)
+	}
+}
+
+func TestProcessLocationForVuln(t *testing.T) {
+	packageName := "name"
+	packageVersion := "version"
+	packageLoc := &testapi.FindingLocation{}
+	err := packageLoc.FromPackageLocation(testapi.PackageLocation{
+		Package: testapi.Package{
+			Name:    packageName,
+			Version: packageVersion,
+		},
+		Type: testapi.PackageLocationTypePackage,
+	})
+	require.NoError(t, err)
+
+	sourceLoc := &testapi.FindingLocation{}
+	err = sourceLoc.FromSourceLocation(testapi.SourceLocation{
+		Type: testapi.Source,
+	})
+	require.NoError(t, err)
+
+	otherLoc := &testapi.FindingLocation{}
+	err = otherLoc.FromOtherLocation(testapi.OtherLocation{
+		Type: testapi.OtherLocationTypeOther,
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		beforeVuln, afterVuln *definitions.Vulnerability
+		loc                   *testapi.FindingLocation
+	}{
+		{&definitions.Vulnerability{}, &definitions.Vulnerability{Name: packageName, Version: packageVersion}, packageLoc},
+		{&definitions.Vulnerability{}, &definitions.Vulnerability{}, sourceLoc}, // Source location not supported.
+		{&definitions.Vulnerability{}, &definitions.Vulnerability{}, otherLoc},  // Other location not supported.
+	}
+
+	for _, tt := range tests {
+		err := transform.ProcessLocationForVuln(tt.beforeVuln, tt.loc)
+		require.NoError(t, err)
+		require.EqualValues(t, tt.beforeVuln, tt.afterVuln)
 	}
 }
