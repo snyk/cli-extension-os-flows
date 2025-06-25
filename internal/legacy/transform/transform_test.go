@@ -159,3 +159,41 @@ func TestProcessingEvidenceForFinding(t *testing.T) {
 		require.EqualValues(t, res, tt.results)
 	}
 }
+
+func TestProcessLocationForVuln(t *testing.T) {
+	packageName := "name"
+	packageVersion := "version"
+	packageLoc := &testapi.FindingLocation{}
+	packageLoc.FromPackageLocation(testapi.PackageLocation{
+		Package: testapi.Package{
+			Name:    packageName,
+			Version: packageVersion,
+		},
+		Type: testapi.PackageLocationTypePackage,
+	})
+
+	sourceLoc := &testapi.FindingLocation{}
+	sourceLoc.FromSourceLocation(testapi.SourceLocation{
+		Type: testapi.Source,
+	})
+
+	otherLoc := &testapi.FindingLocation{}
+	otherLoc.FromOtherLocation(testapi.OtherLocation{
+		Type: testapi.OtherLocationTypeOther,
+	})
+
+	tests := []struct {
+		beforeVuln, afterVuln *definitions.Vulnerability
+		loc                   *testapi.FindingLocation
+	}{
+		{&definitions.Vulnerability{}, &definitions.Vulnerability{Name: packageName, Version: packageVersion}, packageLoc},
+		{&definitions.Vulnerability{}, &definitions.Vulnerability{}, sourceLoc}, // Source location not supported.
+		{&definitions.Vulnerability{}, &definitions.Vulnerability{}, otherLoc},  // Other location not supported.
+	}
+
+	for _, tt := range tests {
+		err := transform.ProcessLocationForVuln(tt.beforeVuln, tt.loc)
+		require.NoError(t, err)
+		require.EqualValues(t, tt.beforeVuln, tt.afterVuln)
+	}
+}
