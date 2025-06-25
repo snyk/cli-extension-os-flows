@@ -2,6 +2,7 @@ package transform_test
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -89,5 +90,72 @@ func TestAddingOfIdentifiers(t *testing.T) {
 		} else {
 			require.Nil(t, tt.vuln.Identifiers)
 		}
+	}
+}
+
+func TestProcessingEvidenceForFinding(t *testing.T) {
+	// Set up a dependency list for evidence.
+	testDepList := []string{
+		"thing@2.0.1",
+		"bob@4.2.0",
+		"snackdog@1.2.3",
+	}
+	// Create a package list based on the testDepList.
+	packageList := []testapi.Package{}
+	for _, dep := range testDepList {
+		parts := strings.Split(dep, "@")
+		packageList = append(packageList, testapi.Package{
+			Name:    parts[0],
+			Version: parts[1],
+		})
+	}
+
+	// Test a dep path evidence with deps.
+	depPathEv := &testapi.Evidence{}
+	depPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path:   packageList,
+		Source: testapi.DependencyPath,
+	})
+
+	// Test an empty dep path evidence.
+	emptyDepPathEv := &testapi.Evidence{}
+	emptyDepPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path:   []testapi.Package{},
+		Source: testapi.DependencyPath,
+	})
+
+	// Test an exec flow evidence.
+	execFlowEv := &testapi.Evidence{}
+	execFlowEv.FromExecutionFlowEvidence(testapi.ExecutionFlowEvidence{
+		Flow:   []testapi.FileRegion{},
+		Source: testapi.ExecutionFlow,
+	})
+
+	// Test other flow evidence.
+	otherFlowEv := &testapi.Evidence{}
+	otherFlowEv.FromOtherEvidence(testapi.OtherEvidence{
+		Source: testapi.OtherEvidenceSourceOther,
+	})
+
+	tests := []struct {
+		ev        *testapi.Evidence
+		results   []string
+		shouldErr bool
+	}{
+		{&testapi.Evidence{}, nil, true},
+		{emptyDepPathEv, nil, false},
+		{depPathEv, testDepList, false},
+		{execFlowEv, nil, false},  // Exec flow not yet supported.
+		{otherFlowEv, nil, false}, // Other flow not yet supported.
+	}
+
+	for _, tt := range tests {
+		res, err := transform.ProcessEvidenceForFinding(tt.ev)
+		if tt.shouldErr {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+		}
+		require.EqualValues(t, res, tt.results)
 	}
 }
