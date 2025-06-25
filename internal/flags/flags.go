@@ -11,6 +11,9 @@ const FlagProjectName = "project-name"
 // FlagRiskScoreThreshold is the flag for the minimum risk score for which findings are included.
 const FlagRiskScoreThreshold = "risk-score-threshold"
 
+// FlagSeverityThreshold reports only vulnerabilities at the specified level or higher.
+const FlagSeverityThreshold = "severity-threshold"
+
 // FlagUnifiedTestAPI forces use of the modern (non-legacy) workflow even without risk score threshold.
 const FlagUnifiedTestAPI = "unified-test"
 
@@ -27,11 +30,13 @@ const FlagSourceDir = "source-dir"
 func OSTestFlagSet() *pflag.FlagSet {
 	flagSet := pflag.NewFlagSet("snyk-cli-extension-os-flows", pflag.ExitOnError)
 
+	// Open Source
 	flagSet.String(FlagFile, "", "Specify a test subject file.")
 	flagSet.String(FlagProjectName, "", "Specify a name for the project.")
 
 	flagSet.Bool(FlagUnifiedTestAPI, false, "Use the unified test API workflow.")
-	flagSet.Int(FlagRiskScoreThreshold, -1, "Include findings at or over this risk score threshold")
+	flagSet.Int(FlagRiskScoreThreshold, -1, "Include findings at or over this risk score threshold.")
+	flagSet.String(FlagSeverityThreshold, "", "Report only findings at the specified level or higher.")
 
 	// Reachability
 	flagSet.Bool(FlagReachability, false, "Run reachability analysis on source code.")

@@ -190,6 +190,43 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			},
 			expectedError: "The feature you are trying to use is not available for your organization",
 		},
+		{
+			name: "Severity threshold set with unified test flag, expects depgraph error",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(flags.FlagUnifiedTestAPI, true)
+				config.Set(flags.FlagSeverityThreshold, "high")
+				mockEngine.EXPECT().
+					InvokeWithConfig(gomock.Any(), gomock.Any()).
+					Return(nil, assert.AnError).
+					Times(1)
+			},
+			expectedError: "failed to create depgraph",
+		},
+		{
+			name: "Severity threshold set with risk score threshold, expects depgraph error",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(flags.FlagRiskScoreThreshold, 500)
+				config.Set(flags.FlagSeverityThreshold, "medium")
+				config.Set(ostest.FeatureFlagRiskScore, true)
+				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				mockEngine.EXPECT().
+					InvokeWithConfig(gomock.Any(), gomock.Any()).
+					Return(nil, assert.AnError).
+					Times(1)
+			},
+			expectedError: "failed to create depgraph",
+		},
+		{
+			name: "Severity threshold alone, uses legacy flow",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(flags.FlagSeverityThreshold, "low")
+				mockEngine.EXPECT().
+					InvokeWithConfig(gomock.Any(), gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			},
+			expectedError: "", // No error, should succeed via legacy path
+		},
 	}
 
 	for _, test := range tests {
@@ -207,8 +244,12 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
 
 			// Verify
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), test.expectedError, "Expected error to contain: %s", test.expectedError)
+			if test.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectedError, "Expected error to contain: %s", test.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }

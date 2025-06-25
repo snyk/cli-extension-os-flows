@@ -196,7 +196,7 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params *SnykSchemaToLegacyParams) (js
 	subject := params.TestResult.GetTestSubject()
 	depGraphSubject, err := subject.AsDepGraphSubject()
 	if err != nil {
-		panic(err)
+		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshaling to json: %w", err))
 	}
 
 	var path string
