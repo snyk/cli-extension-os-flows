@@ -362,7 +362,7 @@ components:
           type: array
           items:
             type: string
-    SemverInfo:
+    SemVerInfo:
       type: object
       required:
         - vulnerable
@@ -427,7 +427,7 @@ components:
         title:
           type: string
         semver:
-          $ref: '#/components/schemas/SemverInfo'
+          $ref: '#/components/schemas/SemVerInfo'
         license:
           type: string
         language:

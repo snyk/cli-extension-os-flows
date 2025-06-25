@@ -1,4 +1,4 @@
-model SemverInfo {
+model SemVerInfo {
   vulnerable: string[];
   vulnerableHashes?: string[];
 }
@@ -50,7 +50,7 @@ model Vulnerability {
   id: string;
   type?: VulnerabilityType;
   title: string;
-  semver?: SemverInfo;
+  semver?: SemVerInfo;
   license?: string;
   language?: string;
   description: string;

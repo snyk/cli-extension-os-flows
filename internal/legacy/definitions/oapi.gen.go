@@ -186,8 +186,8 @@ type RemediationUpgradeInfo struct {
 	Vulns     []string `json:"vulns"`
 }
 
-// SemverInfo defines model for SemverInfo.
-type SemverInfo struct {
+// SemVerInfo defines model for SemVerInfo.
+type SemVerInfo struct {
 	Vulnerable       []string  `json:"vulnerable"`
 	VulnerableHashes *[]string `json:"vulnerableHashes,omitempty"`
 }
@@ -251,7 +251,7 @@ type Vulnerability struct {
 	PublicationTime       *string                          `json:"publicationTime,omitempty"`
 	References            *[]Reference                     `json:"references,omitempty"`
 	RiskScore             *uint16                          `json:"riskScore,omitempty"`
-	Semver                *SemverInfo                      `json:"semver,omitempty"`
+	Semver                *SemVerInfo                      `json:"semver,omitempty"`
 	Severity              VulnerabilitySeverity            `json:"severity"`
 	SeverityBasedOn       *string                          `json:"severityBasedOn,omitempty"`
 	SeverityWithCritical  *VulnerabilitySeverity           `json:"severityWithCritical,omitempty"`
