@@ -130,7 +130,15 @@ func OSWorkflow(
 			rs := uint16(riskScoreThreshold)
 			riskScorePtr = &rs
 		}
-		return runUnifiedTestFlow(ctx, filename, riskScorePtr, ictx, config, orgID, errFactory, logger)
+
+		var severityThresholdPtr *testapi.Severity
+		severityThresholdStr := config.GetString(flags.FlagSeverityThreshold)
+		if severityThresholdStr != "" {
+			st := testapi.Severity(severityThresholdStr)
+			severityThresholdPtr = &st
+		}
+
+		return runUnifiedTestFlow(ctx, filename, riskScorePtr, severityThresholdPtr, ictx, config, orgID, errFactory, logger)
 	}
 }
 
@@ -139,6 +147,7 @@ func runUnifiedTestFlow(
 	ctx context.Context,
 	filename string,
 	riskScoreThreshold *uint16,
+	severityThreshold *testapi.Severity,
 	ictx workflow.InvocationContext,
 	_ configuration.Configuration,
 	orgID string,
@@ -170,11 +179,15 @@ func runUnifiedTestFlow(
 		return nil, fmt.Errorf("failed to create test subject: %w", err)
 	}
 
-	// Only create local policy if risk score threshold is specified
+	// Only create local policy if risk score or severity threshold are specified
 	var localPolicy *testapi.LocalPolicy
-	if riskScoreThreshold != nil {
-		localPolicy = &testapi.LocalPolicy{
-			RiskScoreThreshold: riskScoreThreshold,
+	if riskScoreThreshold != nil || severityThreshold != nil {
+		localPolicy = &testapi.LocalPolicy{}
+		if riskScoreThreshold != nil {
+			localPolicy.RiskScoreThreshold = riskScoreThreshold
+		}
+		if severityThreshold != nil {
+			localPolicy.SeverityThreshold = severityThreshold
 		}
 	}
 
