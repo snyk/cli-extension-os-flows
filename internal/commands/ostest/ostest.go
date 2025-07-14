@@ -11,15 +11,19 @@ package ostest
 import (
 	"context"
 	"encoding/json"
+	std_errors "errors"
 	"fmt"
 	"math"
 	"os"
+	"sort"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/code_workflow"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	service "github.com/snyk/cli-extension-os-flows/internal/common"
@@ -40,6 +44,12 @@ const FeatureFlagRiskScore = "feature_flag_experimental_risk_score"
 
 // FeatureFlagRiskScoreInCLI is used to gate the risk score feature in the CLI.
 const FeatureFlagRiskScoreInCLI = "feature_flag_experimental_risk_score_in_cli"
+
+// ApplicationJSONContentType matches the content type for legacy JSON findings records.
+const ApplicationJSONContentType = "application/json"
+
+// ErrNoSummaryData is returned when a test summary cannot be generated due to lack of data.
+var ErrNoSummaryData = std_errors.New("no summary data to create")
 
 // RegisterWorkflows registers the "test" workflow.
 func RegisterWorkflows(e workflow.Engine) error {
@@ -291,7 +301,105 @@ func runTest(
 		return nil, fmt.Errorf("error converting snyk schema findings to legacy json: %w", err)
 	}
 
-	return []workflow.Data{newWorkflowData("application/json", legacyJSON)}, nil
+	legacyData := NewWorkflowData(ApplicationJSONContentType, legacyJSON)
+	outputData := []workflow.Data{legacyData}
+
+	summaryData, err := NewSummaryData(finalResult, logger, currentDir)
+	if err != nil {
+		if !std_errors.Is(err, ErrNoSummaryData) {
+			logger.Warn().Err(err).Msg("Failed to create test summary for exit code handling")
+		}
+	} else {
+		outputData = append(outputData, summaryData)
+	}
+
+	return outputData, nil
+}
+
+// extractSeverityKeys returns a map of severity keys present in the summaries.
+func extractSeverityKeys(summaries ...*testapi.FindingSummary) map[string]bool {
+	keys := make(map[string]bool)
+	for _, summary := range summaries {
+		if summary != nil && summary.CountBy != nil {
+			if severityCounts, ok := (*summary.CountBy)["severity"]; ok {
+				for severity := range severityCounts {
+					keys[severity] = true
+				}
+			}
+		}
+	}
+	return keys
+}
+
+// getSeverityCount safely retrieves the count for a given severity from a summary.
+func getSeverityCount(summary *testapi.FindingSummary, severity string) uint32 {
+	if summary == nil || summary.CountBy == nil {
+		return 0
+	}
+	if severityCounts, ok := (*summary.CountBy)["severity"]; ok {
+		return severityCounts[severity]
+	}
+	return 0
+}
+
+// NewSummaryData creates a workflow.Data object containing a json_schemas.TestSummary
+// from a testapi.TestResult. This is used for downstream processing, like determining
+// the CLI exit code.
+func NewSummaryData(testResult testapi.TestResult, logger *zerolog.Logger, path string) (workflow.Data, error) {
+	rawSummary := testResult.GetRawSummary()
+	effectiveSummary := testResult.GetEffectiveSummary()
+
+	if rawSummary == nil || effectiveSummary == nil {
+		return nil, fmt.Errorf("test result missing summary information")
+	}
+
+	severityKeys := extractSeverityKeys(rawSummary, effectiveSummary)
+
+	if len(severityKeys) == 0 && rawSummary.Count == 0 {
+		logger.Debug().Msg("No findings in summary, skipping summary creation.")
+		return nil, fmt.Errorf("no findings in summary: %w", ErrNoSummaryData)
+	}
+
+	var summaryResults []json_schemas.TestSummaryResult
+	for severity := range severityKeys {
+		total := getSeverityCount(rawSummary, severity)
+		open := getSeverityCount(effectiveSummary, severity)
+
+		if total > 0 || open > 0 {
+			ignored := 0
+			if total > open {
+				ignored = int(total - open)
+			}
+			summaryResults = append(summaryResults, json_schemas.TestSummaryResult{
+				Severity: severity,
+				Total:    int(total),
+				Open:     int(open),
+				Ignored:  ignored,
+			})
+		}
+	}
+
+	if len(summaryResults) > 0 {
+		// Sort results for consistent output, matching the standard CLI order.
+		sort.Slice(summaryResults, func(i, j int) bool {
+			order := map[string]int{"critical": 4, "high": 3, "medium": 2, "low": 1}
+			return order[summaryResults[i].Severity] > order[summaryResults[j].Severity]
+		})
+
+		testSummary := json_schemas.NewTestSummary("open-source", path)
+		testSummary.Results = summaryResults
+		testSummary.SeverityOrderAsc = []string{"low", "medium", "high", "critical"}
+
+		summaryBytes, err := json.Marshal(testSummary)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal test summary: %w", err)
+		}
+
+		summaryWorkflowData := NewWorkflowData(content_type.TEST_SUMMARY, summaryBytes)
+		return summaryWorkflowData, nil
+	}
+
+	return nil, fmt.Errorf("no summary results to process: %w", ErrNoSummaryData)
 }
 
 // runReachabilityFlow handles the reachability analysis flow.
@@ -334,8 +442,8 @@ func createDepGraph(ictx workflow.InvocationContext) (testapi.IoSnykApiV1testdep
 	return depGraphStruct, nil
 }
 
-// Temporary support for dumping findings output to built-in JSON formatter.
-func newWorkflowData(contentType string, data []byte) workflow.Data {
+// NewWorkflowData creates a workflow.Data object with the given content type and data.
+func NewWorkflowData(contentType string, data []byte) workflow.Data {
 	return workflow.NewData(
 		workflow.NewTypeIdentifier(WorkflowID, "ostest"),
 		contentType,

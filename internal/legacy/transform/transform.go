@@ -211,6 +211,7 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params *SnykSchemaToLegacyParams) (js
 		DisplayTargetFile: path,
 		DependencyCount:   int64(params.DepCount),
 		Vulnerabilities:   []definitions.Vulnerability{},
+		Ok:                len(params.Findings) == 0,
 	}
 
 	for _, finding := range params.Findings {
