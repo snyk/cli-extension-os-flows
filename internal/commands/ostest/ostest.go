@@ -16,6 +16,7 @@ import (
 	"math"
 	"os"
 	"sort"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -104,7 +105,7 @@ func OSWorkflow(
 		if !config.GetBool(FeatureFlagSBOMTestReachability) {
 			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagSBOMTestReachability)
 		}
-		return runReachabilityFlow(ctx, config, errFactory, ictx, logger, sbom, sourceDir)
+		return runReachabilityFlow(ctx, config, errFactory, ictx, logger, sbom, sourceDir, orgID)
 
 	default:
 		riskScoreThreshold := config.GetInt(flags.FlagRiskScoreThreshold)
@@ -245,6 +246,7 @@ func runTest(
 	testClient, err := testapi.NewTestClient(
 		snykClient.GetAPIBaseURL(),
 		testapi.WithCustomHTTPClient(snykClient.GetClient()),
+		testapi.WithPollInterval(5*time.Second),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create test client: %w", err)
@@ -411,8 +413,9 @@ func runReachabilityFlow(
 	logger *zerolog.Logger,
 	sbomPath string,
 	sourceCodePath string,
+	orgID string,
 ) ([]workflow.Data, error) {
-	return sbomTestReachability(ctx, config, errFactory, ictx, logger, sbomPath, sourceCodePath)
+	return sbomTestReachability(ctx, config, errFactory, ictx, logger, sbomPath, sourceCodePath, orgID)
 }
 
 // createDepGraph creates a depgraph from the file parameter in the context.

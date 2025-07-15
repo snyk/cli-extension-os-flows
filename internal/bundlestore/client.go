@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"runtime"
 
 	"github.com/google/uuid"
@@ -55,6 +54,9 @@ type (
 
 // CodeScanner is a global instance of the Snyk Code scanner.
 var CodeScanner codeclient.CodeScanner
+
+// SBOMMonitorFilename is the hardcoded SBOM file name the server is looking for.
+const SBOMMonitorFilename = "sbom_monitor_820F1A6A-3CFD-4B81-AD30-7F255A9D93ED.sbom"
 
 // NewClient creates a new client for interacting with the Snyk bundle store.
 //
@@ -191,10 +193,8 @@ func (c *client) UploadSBOM(ctx context.Context, sbomPath string) (string, error
 		return "", fmt.Errorf("could not read sbom file %s: %w", sbomPath, err)
 	}
 
-	relativeFilePath, err := toRelativeUnixPath(filepath.Dir(sbomPath), sbomPath)
-	if err != nil {
-		return "", err
-	}
+	// We use the hardcoded SBOM file name expected on the server side.
+	relativeFilePath := SBOMMonitorFilename
 
 	bf := bundleFileFrom(fileContent)
 	fileHashes := make(map[string]string)
