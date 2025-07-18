@@ -2,6 +2,8 @@ module github.com/snyk/cli-extension-os-flows
 
 go 1.23.10
 
+toolchain go1.24.1
+
 require (
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
