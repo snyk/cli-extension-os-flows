@@ -10,6 +10,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 
+	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 )
@@ -25,6 +26,7 @@ func sbomTestReachability(
 	logger *zerolog.Logger,
 	sbomPath string,
 	sourceCodePath string,
+	orgID string,
 ) ([]workflow.Data, error) {
 	if sourceCodePath == "" {
 		sourceCodePath = "."
@@ -53,7 +55,25 @@ func sbomTestReachability(
 	}
 	logger.Println("sourceCodeBundleHash", sourceCodeBundleHash)
 
-	return nil, nil // TODO: return something meaningful once this function is complete
+	var subject testapi.TestSubjectCreate
+	err = subject.FromSbomReachabilitySubject(testapi.SbomReachabilitySubject{
+		Type:         testapi.SbomReachability,
+		CodeBundleId: sourceCodeBundleHash,
+		SbomBundleId: sbomBundleHash,
+		Locator: testapi.LocalPathLocator{
+			Paths: []string{
+				sbomPath,
+				sourceCodePath,
+			},
+			Type: testapi.LocalPath,
+		},
+	})
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to create SBOM reachability test subject")
+		return nil, fmt.Errorf("failed to create sbom test reachability subject: %w", err)
+	}
+
+	return runTest(ctx, subject, "", "", int(0), ictx, orgID, errFactory, logger, nil)
 }
 
 func validateDirectory(sourceCodePath string, logger *zerolog.Logger, errFactory *errors.ErrorFactory) error {
