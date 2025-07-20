@@ -121,7 +121,7 @@ func Test_newSummaryData(t *testing.T) {
 		data, err := ostest.NewSummaryData(testResult, &logger, path)
 		assert.Nil(t, data)
 		assert.True(t, errors.Is(err, ostest.ErrNoSummaryData))
-		assert.ErrorContains(t, err, "no summary results to process")
+		assert.ErrorContains(t, err, "no findings in summary")
 	})
 
 	t.Run("one critical finding should create summary data, implying exit code 1", func(t *testing.T) {
