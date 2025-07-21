@@ -1,24 +1,22 @@
 package transform_test
 
 import (
-	"slices"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
-type identifierTestProblem struct {
-	disc        string
-	problem     *testapi.Problem
-	shouldError bool
-}
-
-func TestAddingOfIdentifiers(t *testing.T) {
+func TestProcessProblemForVuln_Identifiers(t *testing.T) {
+	// Setup valid problems
 	cveProblem := &testapi.Problem{}
 	err := cveProblem.FromCveProblem(testapi.CveProblem{Id: "cve-problem-id", Source: testapi.Cve})
 	require.NoError(t, err)
@@ -27,69 +25,85 @@ func TestAddingOfIdentifiers(t *testing.T) {
 	err = cweProblem.FromCweProblem(testapi.CweProblem{Id: "cwe-problem-id", Source: testapi.Cwe})
 	require.NoError(t, err)
 
+	// Setup invalid problem
+	malformedProblem := &testapi.Problem{} // empty union
+
 	tests := []struct {
-		vuln               *definitions.Vulnerability
-		probs              []identifierTestProblem
-		cveCount, cweCount int
+		name        string
+		vuln        *definitions.Vulnerability
+		problem     *testapi.Problem
+		shouldError bool
+		assertFunc  func(t *testing.T, v *definitions.Vulnerability)
 	}{
 		{
-			&definitions.Vulnerability{},
-			[]identifierTestProblem{{string(testapi.Cve), cveProblem, false}},
-			1, 0,
-		},
-		{
-			&definitions.Vulnerability{},
-			[]identifierTestProblem{{string(testapi.Cwe), cweProblem, false}},
-			0, 1,
-		},
-		{
-			&definitions.Vulnerability{},
-			[]identifierTestProblem{},
-			0, 0,
-		},
-		{
-			&definitions.Vulnerability{},
-			[]identifierTestProblem{
-				{string(testapi.Cwe), cweProblem, false},
-				{string(testapi.Cve), cveProblem, false},
-				{string(testapi.Cwe), cveProblem, true}, // wrong discriminator.
-				{string(testapi.Cve), cweProblem, true}, // wrong discriminator.
+			name:    "should add CVE identifier to empty vulnerability",
+			vuln:    &definitions.Vulnerability{},
+			problem: cveProblem,
+			assertFunc: func(t *testing.T, v *definitions.Vulnerability) {
+				t.Helper()
+				require.NotNil(t, v.Identifiers)
+				require.Len(t, v.Identifiers.CVE, 1)
+				assert.Equal(t, "cve-problem-id", v.Identifiers.CVE[0])
+				require.Len(t, v.Identifiers.CWE, 0)
 			},
-			1, 1,
+		},
+		{
+			name:    "should add CWE identifier to empty vulnerability",
+			vuln:    &definitions.Vulnerability{},
+			problem: cweProblem,
+			assertFunc: func(t *testing.T, v *definitions.Vulnerability) {
+				t.Helper()
+				require.NotNil(t, v.Identifiers)
+				require.Len(t, v.Identifiers.CWE, 1)
+				assert.Equal(t, "cwe-problem-id", v.Identifiers.CWE[0])
+				require.Len(t, v.Identifiers.CVE, 0)
+			},
+		},
+		{
+			name: "should append CWE identifier to existing CVE",
+			vuln: &definitions.Vulnerability{
+				Identifiers: &definitions.Identifiers{
+					CVE: []string{"existing-cve"},
+					CWE: []string{},
+				},
+			},
+			problem: cweProblem,
+			assertFunc: func(t *testing.T, v *definitions.Vulnerability) {
+				t.Helper()
+				require.NotNil(t, v.Identifiers)
+				require.Len(t, v.Identifiers.CWE, 1)
+				assert.Equal(t, "cwe-problem-id", v.Identifiers.CWE[0])
+				require.Len(t, v.Identifiers.CVE, 1)
+				assert.Equal(t, "existing-cve", v.Identifiers.CVE[0])
+			},
+		},
+		{
+			name:        "should error on malformed problem",
+			vuln:        &definitions.Vulnerability{},
+			problem:     malformedProblem,
+			shouldError: true,
+			assertFunc: func(t *testing.T, v *definitions.Vulnerability) {
+				t.Helper()
+				assert.Nil(t, v.Identifiers)
+			},
 		},
 	}
 
 	for _, tt := range tests {
-		for _, prob := range tt.probs {
-			switch prob.disc {
-			case string(testapi.Cve):
-				err := transform.AddCVEIdentifier(tt.vuln, prob.problem)
-				if prob.shouldError {
-					require.Error(t, err)
-				} else {
-					require.NoError(t, err)
-					cveP, err := prob.problem.AsCveProblem()
-					require.NoError(t, err)
-					require.Equal(t, slices.Contains(tt.vuln.Identifiers.CVE, cveP.Id), true)
-				}
-			case string(testapi.Cwe):
-				err := transform.AddCWEIdentifier(tt.vuln, prob.problem)
-				if prob.shouldError {
-					require.Error(t, err)
-				} else {
-					require.NoError(t, err)
-					cweP, err := prob.problem.AsCweProblem()
-					require.NoError(t, err)
-					require.Equal(t, slices.Contains(tt.vuln.Identifiers.CWE, cweP.Id), true)
-				}
+		t.Run(tt.name, func(t *testing.T) {
+			logger := zerolog.Nop()
+			err := transform.ProcessProblemForVuln(tt.vuln, tt.problem, &logger)
+
+			if tt.shouldError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-		}
-		if len(tt.probs) > 0 {
-			require.Equal(t, len(tt.vuln.Identifiers.CVE), tt.cveCount)
-			require.Equal(t, len(tt.vuln.Identifiers.CWE), tt.cweCount)
-		} else {
-			require.Nil(t, tt.vuln.Identifiers)
-		}
+
+			if tt.assertFunc != nil {
+				tt.assertFunc(t, tt.vuln)
+			}
+		})
 	}
 }
 
@@ -154,7 +168,8 @@ func TestProcessingEvidenceForFinding(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		res, err := transform.ProcessEvidenceForFinding(tt.ev)
+		logger := zerolog.Nop()
+		res, err := transform.ProcessEvidenceForFinding(tt.ev, &logger)
 		if tt.shouldErr {
 			require.Error(t, err)
 		} else {
@@ -199,8 +214,121 @@ func TestProcessLocationForVuln(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		err := transform.ProcessLocationForVuln(tt.beforeVuln, tt.loc)
+		logger := zerolog.Nop()
+		err := transform.ProcessLocationForVuln(tt.beforeVuln, tt.loc, &logger)
 		require.NoError(t, err)
 		require.EqualValues(t, tt.beforeVuln, tt.afterVuln)
+	}
+}
+
+func TestProcessProblemForVuln_License(t *testing.T) {
+	// Common license problem data
+	now := time.Now()
+	licenseProblemBase := testapi.SnykLicenseProblem{
+		Id:             "snyk:lic:npm:light-my-request:ISC",
+		Source:         testapi.SnykLicense,
+		CreatedAt:      now,
+		PublishedAt:    now,
+		PackageName:    "light-my-request",
+		PackageVersion: "5.0.0",
+		Severity:       testapi.SeverityLow,
+		License:        "ISC",
+	}
+
+	// Case 1: Build Ecosystem
+	buildEcosystem := testapi.SnykvulndbPackageEcosystem{}
+	err := buildEcosystem.FromSnykvulndbBuildPackageEcosystem(testapi.SnykvulndbBuildPackageEcosystem{
+		Type:           testapi.Build,
+		Language:       "javascript",
+		PackageManager: "npm",
+	})
+	require.NoError(t, err)
+
+	licenseProblemBuild := licenseProblemBase
+	licenseProblemBuild.Ecosystem = buildEcosystem
+
+	problemBuild := &testapi.Problem{}
+	err = problemBuild.FromSnykLicenseProblem(licenseProblemBuild)
+	require.NoError(t, err)
+
+	// Case 2: OS Ecosystem
+	osEcosystem := testapi.SnykvulndbPackageEcosystem{}
+	err = osEcosystem.FromSnykvulndbOsPackageEcosystem(testapi.SnykvulndbOsPackageEcosystem{
+		Type:         testapi.Os,
+		Distribution: "alpine",
+		OsName:       "linux",
+		Release:      "3.16",
+	})
+	require.NoError(t, err)
+
+	licenseProblemOs := licenseProblemBase
+	licenseProblemOs.Ecosystem = osEcosystem
+
+	problemOs := &testapi.Problem{}
+	err = problemOs.FromSnykLicenseProblem(licenseProblemOs)
+	require.NoError(t, err)
+
+	// Case 3: Other Ecosystem (should be ignored)
+	otherEcosystem := testapi.SnykvulndbPackageEcosystem{}
+	err = otherEcosystem.FromSnykvulndbOtherPackageEcosystem(testapi.SnykvulndbOtherPackageEcosystem{
+		Type: testapi.Other,
+	})
+	require.NoError(t, err)
+
+	licenseProblemOther := licenseProblemBase
+	licenseProblemOther.Ecosystem = otherEcosystem
+
+	problemOther := &testapi.Problem{}
+	err = problemOther.FromSnykLicenseProblem(licenseProblemOther)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name                   string
+		vuln                   *definitions.Vulnerability
+		problem                *testapi.Problem
+		shouldError            bool
+		expectedPackageManager *string
+		expectedLanguage       *string
+	}{
+		{
+			name:                   "Build ecosystem",
+			vuln:                   &definitions.Vulnerability{},
+			problem:                problemBuild,
+			shouldError:            false,
+			expectedPackageManager: util.Ptr("npm"),
+			expectedLanguage:       util.Ptr("javascript"),
+		},
+		{
+			name:                   "OS ecosystem",
+			vuln:                   &definitions.Vulnerability{},
+			problem:                problemOs,
+			shouldError:            false,
+			expectedPackageManager: util.Ptr("alpine:3.16"),
+			expectedLanguage:       nil,
+		},
+		{
+			name:                   "Other ecosystem",
+			vuln:                   &definitions.Vulnerability{},
+			problem:                problemOther,
+			shouldError:            false,
+			expectedPackageManager: nil,
+			expectedLanguage:       nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := zerolog.Nop()
+			err := transform.ProcessProblemForVuln(tt.vuln, tt.problem, &logger)
+
+			if tt.shouldError {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedPackageManager, tt.vuln.PackageManager)
+			require.Equal(t, tt.expectedLanguage, tt.vuln.Language)
+		})
 	}
 }
