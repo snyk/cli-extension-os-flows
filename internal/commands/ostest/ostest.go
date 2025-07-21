@@ -48,6 +48,9 @@ const FeatureFlagRiskScoreInCLI = "feature_flag_experimental_risk_score_in_cli"
 // ApplicationJSONContentType matches the content type for legacy JSON findings records.
 const ApplicationJSONContentType = "application/json"
 
+// LogFieldCount is the logger key for number of findings.
+const LogFieldCount = "count"
+
 // ErrNoSummaryData is returned when a test summary cannot be generated due to lack of data.
 var ErrNoSummaryData = std_errors.New("no summary data to create")
 
@@ -269,14 +272,14 @@ func runTest(
 	if err != nil {
 		logger.Error().Err(err).Msg("Error fetching findings")
 		if !complete && len(findingsData) > 0 {
-			logger.Warn().Int("count", len(findingsData)).Msg("Partial findings retrieved as an error occurred")
+			logger.Warn().Int(LogFieldCount, len(findingsData)).Msg("Partial findings retrieved as an error occurred")
 		}
 	} else {
 		logger.Info().Msgf("Findings count: %d\n", len(findingsData))
 
 		logger.Info().
 			Bool("complete", complete).
-			Int("count", len(findingsData)).
+			Int(LogFieldCount, len(findingsData)).
 			Msg("Findings fetched successfully")
 	}
 
@@ -287,6 +290,17 @@ func runTest(
 		return nil, fmt.Errorf("failed to get current working directory: %w", err)
 	}
 
+	var uniqueCount int32
+	summary := finalResult.GetEffectiveSummary()
+	if summary != nil {
+		if summary.Count > math.MaxInt32 {
+			uniqueCount = math.MaxInt32
+			logger.Warn().Uint32(LogFieldCount, summary.Count).Msg("Unique finding count exceeds int32 max, capping value.")
+		} else {
+			uniqueCount = int32(summary.Count)
+		}
+	}
+
 	legacyJSON, err := transform.ConvertSnykSchemaFindingsToLegacyJSON(
 		&transform.SnykSchemaToLegacyParams{
 			Findings:       findingsData,
@@ -294,6 +308,7 @@ func runTest(
 			ProjectName:    projectName,
 			PackageManager: packageManager,
 			CurrentDir:     currentDir,
+			UniqueCount:    uniqueCount,
 			DepCount:       depCount,
 			ErrFactory:     errFactory,
 		})

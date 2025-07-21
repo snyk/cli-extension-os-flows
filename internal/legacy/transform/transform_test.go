@@ -4,12 +4,14 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 type identifierTestProblem struct {
@@ -202,5 +204,127 @@ func TestProcessLocationForVuln(t *testing.T) {
 		err := transform.ProcessLocationForVuln(tt.beforeVuln, tt.loc)
 		require.NoError(t, err)
 		require.EqualValues(t, tt.beforeVuln, tt.afterVuln)
+	}
+}
+
+func TestAddSnykLicenseIdentifier(t *testing.T) {
+	// Common license problem data
+	now := time.Now()
+	licenseProblemBase := testapi.SnykLicenseProblem{
+		Id:             "snyk:lic:npm:light-my-request:ISC",
+		Source:         testapi.SnykLicense,
+		CreatedAt:      now,
+		PublishedAt:    now,
+		PackageName:    "light-my-request",
+		PackageVersion: "5.0.0",
+		Severity:       testapi.SeverityLow,
+		License:        "ISC",
+	}
+
+	// Case 1: Build Ecosystem
+	buildEcosystem := testapi.SnykvulndbPackageEcosystem{}
+	err := buildEcosystem.FromSnykvulndbBuildPackageEcosystem(testapi.SnykvulndbBuildPackageEcosystem{
+		Type:           testapi.Build,
+		Language:       "javascript",
+		PackageManager: "npm",
+	})
+	require.NoError(t, err)
+
+	licenseProblemBuild := licenseProblemBase
+	licenseProblemBuild.Ecosystem = buildEcosystem
+
+	problemBuild := &testapi.Problem{}
+	err = problemBuild.FromSnykLicenseProblem(licenseProblemBuild)
+	require.NoError(t, err)
+
+	// Case 2: OS Ecosystem
+	osEcosystem := testapi.SnykvulndbPackageEcosystem{}
+	err = osEcosystem.FromSnykvulndbOsPackageEcosystem(testapi.SnykvulndbOsPackageEcosystem{
+		Type:         testapi.Os,
+		Distribution: "alpine",
+		OsName:       "linux",
+		Release:      "3.16",
+	})
+	require.NoError(t, err)
+
+	licenseProblemOs := licenseProblemBase
+	licenseProblemOs.Ecosystem = osEcosystem
+
+	problemOs := &testapi.Problem{}
+	err = problemOs.FromSnykLicenseProblem(licenseProblemOs)
+	require.NoError(t, err)
+
+	// Case 3: Other Ecosystem (should be ignored)
+	otherEcosystem := testapi.SnykvulndbPackageEcosystem{}
+	err = otherEcosystem.FromSnykvulndbOtherPackageEcosystem(testapi.SnykvulndbOtherPackageEcosystem{
+		Type: testapi.Other,
+	})
+	require.NoError(t, err)
+
+	licenseProblemOther := licenseProblemBase
+	licenseProblemOther.Ecosystem = otherEcosystem
+
+	problemOther := &testapi.Problem{}
+	err = problemOther.FromSnykLicenseProblem(licenseProblemOther)
+	require.NoError(t, err)
+
+	// Case 4: Wrong problem type
+	cveProblem := &testapi.Problem{}
+	err = cveProblem.FromCveProblem(testapi.CveProblem{Id: "cve-id", Source: testapi.Cve})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name                   string
+		vuln                   *definitions.Vulnerability
+		problem                *testapi.Problem
+		shouldError            bool
+		expectedPackageManager *string
+		expectedLanguage       *string
+	}{
+		{
+			name:                   "Build ecosystem",
+			vuln:                   &definitions.Vulnerability{},
+			problem:                problemBuild,
+			shouldError:            false,
+			expectedPackageManager: util.Ptr("npm"),
+			expectedLanguage:       util.Ptr("javascript"),
+		},
+		{
+			name:                   "OS ecosystem",
+			vuln:                   &definitions.Vulnerability{},
+			problem:                problemOs,
+			shouldError:            false,
+			expectedPackageManager: util.Ptr("alpine:3.16"),
+			expectedLanguage:       nil,
+		},
+		{
+			name:                   "Other ecosystem",
+			vuln:                   &definitions.Vulnerability{},
+			problem:                problemOther,
+			shouldError:            false,
+			expectedPackageManager: nil,
+			expectedLanguage:       nil,
+		},
+		{
+			name:        "Wrong problem type",
+			vuln:        &definitions.Vulnerability{},
+			problem:     cveProblem,
+			shouldError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := transform.AddSnykLicenseIdentifier(tt.vuln, tt.problem)
+
+			if tt.shouldError {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedPackageManager, tt.vuln.PackageManager)
+			require.Equal(t, tt.expectedLanguage, tt.vuln.Language)
+		})
 	}
 }
