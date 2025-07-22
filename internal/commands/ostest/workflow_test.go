@@ -24,7 +24,7 @@ func TestOSWorkflow_LegacyFlow(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
 
 	// Mock the legacy flow to return successfully
 	mockEngine.EXPECT().
@@ -46,7 +46,7 @@ func TestOSWorkflow_UnifiedTestFlag(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
 
 	// Set the unified test flag and required risk score feature flags
 	mockInvocationCtx.GetConfiguration().Set(flags.FlagUnifiedTestAPI, true)
@@ -74,7 +74,7 @@ func TestOSWorkflow_RiskScoreThreshold(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
 
 	// Set a risk score threshold
 	mockInvocationCtx.GetConfiguration().Set(flags.FlagRiskScoreThreshold, 700)
@@ -103,7 +103,7 @@ func TestOSWorkflow_SBOMReachabilityFlag_MissingFF(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
 
 	// Set the sbom reachability flags
 	mockInvocationCtx.GetConfiguration().Set(flags.FlagReachability, true)
@@ -235,7 +235,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockEngine := mocks.NewMockEngine(ctrl)
-			mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
+			mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
 
 			// Setup test case
 			test.setup(mockInvocationCtx.GetConfiguration(), mockEngine)
@@ -257,13 +257,13 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 // Helpers
 
 // createMockInvocationCtx creates a mock invocation context with default values for our flags.
-func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engine workflow.Engine, sbomServiceURL string) workflow.InvocationContext {
+func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engine workflow.Engine) workflow.InvocationContext {
 	t.Helper()
 
 	mockConfig := configuration.New()
 	mockConfig.Set(configuration.AUTHENTICATION_TOKEN, "<SOME API TOKEN>")
 	mockConfig.Set(configuration.ORGANIZATION, "test-org")
-	mockConfig.Set(configuration.API_URL, sbomServiceURL)
+	mockConfig.Set(configuration.API_URL, mockServerURL)
 
 	// Initialize with default values for our flags
 	mockConfig.Set(flags.FlagUnifiedTestAPI, false)
