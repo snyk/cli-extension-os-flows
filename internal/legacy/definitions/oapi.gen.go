@@ -9,6 +9,12 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for Reachability.
+const (
+	NOTREACHABLE Reachability = "NOT_REACHABLE"
+	REACHABLE    Reachability = "REACHABLE"
+)
+
 // Defines values for VulnerabilitySeverity.
 const (
 	Critical VulnerabilitySeverity = "critical"
@@ -164,6 +170,9 @@ type PatchInfo struct {
 	Version          string   `json:"version"`
 }
 
+// Reachability defines model for Reachability.
+type Reachability string
+
 // Reference defines model for Reference.
 type Reference struct {
 	Title string `json:"title"`
@@ -249,6 +258,7 @@ type Vulnerability struct {
 	Patches               *[]PatchInfo                     `json:"patches,omitempty"`
 	Proprietary           *bool                            `json:"proprietary,omitempty"`
 	PublicationTime       *string                          `json:"publicationTime,omitempty"`
+	Reachability          *Reachability                    `json:"reachability,omitempty"`
 	References            *[]Reference                     `json:"references,omitempty"`
 	RiskScore             *uint16                          `json:"riskScore,omitempty"`
 	Semver                *SemVerInfo                      `json:"semver,omitempty"`

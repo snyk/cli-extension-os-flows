@@ -16,6 +16,11 @@ enum VulnerabilitySeverity {
   critical,
 }
 
+enum Reachability {
+  REACHABLE,
+  NOT_REACHABLE,
+}
+
 alias UpgradePath = string | boolean;
 
 model FunctionId {
@@ -63,6 +68,7 @@ model Vulnerability {
   severityWithCritical?: VulnerabilitySeverity;
   riskScore?: uint16;
   from: string[];
+  reachability?: Reachability;
   upgradePath: UpgradePath[];
   isUpgradable: boolean;
   isPatchable: boolean;

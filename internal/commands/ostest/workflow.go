@@ -121,7 +121,7 @@ func OSWorkflow(
 		)
 
 		bsClient := bundlestore.NewClient(ictx.GetNetworkAccess().GetHttpClient(), codeScannerConfig, cScanner, logger)
-		return RunSbomReachabilityFlow(ctx, errFactory, logger, sbom, sourceDir, bsClient)
+		return RunSbomReachabilityFlow(ctx, testClient, errFactory, logger, sbom, sourceDir, bsClient, orgID)
 
 	default:
 		riskScoreThreshold := config.GetInt(flags.FlagRiskScoreThreshold)
