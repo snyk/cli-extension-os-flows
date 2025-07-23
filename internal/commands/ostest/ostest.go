@@ -98,14 +98,6 @@ func OSWorkflow(
 	errFactory := errors.NewErrorFactory(logger)
 	ctx := context.Background()
 
-	logger.Info().Msg("Getting preferred organization ID")
-
-	orgID := config.GetString(configuration.ORGANIZATION)
-	if orgID == "" {
-		logger.Error().Msg("No organization ID provided")
-		return nil, errFactory.NewEmptyOrgError()
-	}
-
 	sbom := config.GetString(flags.FlagSBOM)
 	sourceDir := config.GetString(flags.FlagSourceDir)
 	sbomTestReachability := config.GetBool(flags.FlagReachability) && sbom != ""
@@ -145,6 +137,13 @@ func OSWorkflow(
 		}
 
 		// Unified test flow
+
+		logger.Info().Msg("Getting preferred organization ID")
+		orgID := config.GetString(configuration.ORGANIZATION)
+		if orgID == "" {
+			logger.Error().Msg("No organization ID provided")
+			return nil, errFactory.NewEmptyOrgError()
+		}
 
 		var riskScorePtr *uint16
 		if riskScoreThreshold >= math.MaxUint16 {
