@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"io"
-	"path/filepath"
 
 	"golang.org/x/net/html/charset"
 )
@@ -39,18 +37,4 @@ func encodeRequestBody(requestBody []byte) (*bytes.Buffer, error) {
 		return nil, err
 	}
 	return b, nil
-}
-
-func toRelativeUnixPath(baseDir, absoluteFilePath string) (string, error) {
-	relativePath, err := filepath.Rel(baseDir, absoluteFilePath)
-	if err != nil {
-		relativePath = absoluteFilePath
-		if baseDir != "" {
-			errMsg := fmt.Sprint("could not get relative path for file: ", absoluteFilePath, " and root path: ", baseDir)
-			return "", fmt.Errorf("%s: %w", errMsg, err)
-		}
-	}
-
-	relativePath = filepath.ToSlash(relativePath) // treat all paths as unix paths
-	return relativePath, nil
 }

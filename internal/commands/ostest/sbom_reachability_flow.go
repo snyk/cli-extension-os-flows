@@ -6,25 +6,23 @@ import (
 	"os"
 
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
+	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
-
-	"github.com/snyk/go-application-framework/pkg/configuration"
-	"github.com/snyk/go-application-framework/pkg/workflow"
 )
 
-// BundlestoreClient is exported to allow it to be mocked.
-var BundlestoreClient bundlestore.Client
-
-func sbomTestReachability(
+// RunSbomReachabilityFlow runs the SBOM reachability flow.
+func RunSbomReachabilityFlow(
 	ctx context.Context,
-	config configuration.Configuration,
+	testClient testapi.TestClient,
 	errFactory *errors.ErrorFactory,
-	ictx workflow.InvocationContext,
 	logger *zerolog.Logger,
 	sbomPath string,
 	sourceCodePath string,
+	bsClient bundlestore.Client,
+	orgID string,
 ) ([]workflow.Data, error) {
 	if sourceCodePath == "" {
 		sourceCodePath = "."
@@ -34,18 +32,14 @@ func sbomTestReachability(
 		return nil, err
 	}
 
-	if BundlestoreClient == nil {
-		BundlestoreClient = bundlestore.NewClient(config, ictx.GetNetworkAccess().GetHttpClient, logger)
-	}
-
-	sbomBundleHash, err := BundlestoreClient.UploadSBOM(ctx, sbomPath)
+	sbomBundleHash, err := bsClient.UploadSBOM(ctx, sbomPath)
 	if err != nil {
 		logger.Error().Err(err).Str("sbomPath", sbomPath).Msg("Failed to upload SBOM")
 		return nil, fmt.Errorf("failed to upload SBOM: %w", err)
 	}
 	logger.Println("sbomBundleHash", sbomBundleHash)
 
-	sourceCodeBundleHash, err := BundlestoreClient.UploadSourceCode(ctx, sourceCodePath)
+	sourceCodeBundleHash, err := bsClient.UploadSourceCode(ctx, sourceCodePath)
 	if err != nil {
 		//nolint:goconst // sourceCodePath is ok
 		logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("Failed to upload SBOM")
@@ -53,7 +47,25 @@ func sbomTestReachability(
 	}
 	logger.Println("sourceCodeBundleHash", sourceCodeBundleHash)
 
-	return nil, nil // TODO: return something meaningful once this function is complete
+	var subject testapi.TestSubjectCreate
+	err = subject.FromSbomReachabilitySubject(testapi.SbomReachabilitySubject{
+		Type:         testapi.SbomReachability,
+		CodeBundleId: sourceCodeBundleHash,
+		SbomBundleId: sbomBundleHash,
+		Locator: testapi.LocalPathLocator{
+			Paths: []string{
+				sbomPath,
+				sourceCodePath,
+			},
+			Type: testapi.LocalPath,
+		},
+	})
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to create SBOM reachability test subject")
+		return nil, fmt.Errorf("failed to create sbom test reachability subject: %w", err)
+	}
+
+	return RunTest(ctx, testClient, subject, "", "", int(0), orgID, errFactory, logger, nil)
 }
 
 func validateDirectory(sourceCodePath string, logger *zerolog.Logger, errFactory *errors.ErrorFactory) error {

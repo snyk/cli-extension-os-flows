@@ -75,7 +75,7 @@ generate: tsp-compile oapi-generate
 
 .PHONY: tsp-compile oapi-generate
 tsp-compile:
-	./node_modules/.bin/tsp compile internal/legacy/definitions/main.tsp
+	node node_modules/@typespec/compiler/cmd/tsp.js compile internal/legacy/definitions/main.tsp
 
 .PHONY: oapi-generate
 oapi-generate:

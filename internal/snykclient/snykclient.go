@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// SnykClient is a client for interacting with the Snyk API.
-type SnykClient struct {
+// Client is used for interacting with the Snyk API.
+type Client struct {
 	client     *http.Client
 	apiBaseURL string
 	orgID      string
@@ -17,18 +17,18 @@ type SnykClient struct {
 type backoffFn func()
 
 // GetClient returns the HTTP client.
-func (s *SnykClient) GetClient() *http.Client {
+func (s *Client) GetClient() *http.Client {
 	return s.client
 }
 
 // GetAPIBaseURL returns the API base URL.
-func (s *SnykClient) GetAPIBaseURL() string {
+func (s *Client) GetAPIBaseURL() string {
 	// TODO: remove this when we go GA.
 	return s.apiBaseURL + "/closed-beta/"
 }
 
 // GetOrgID returns the organization ID.
-func (s *SnykClient) GetOrgID() string {
+func (s *Client) GetOrgID() string {
 	return s.orgID
 }
 
@@ -39,8 +39,8 @@ var DefaultBackoff backoffFn = func() {
 }
 
 // NewSnykClient creates a new SnykClient instance.
-func NewSnykClient(c *http.Client, apiBaseURL, orgID string) *SnykClient {
-	return &SnykClient{
+func NewSnykClient(c *http.Client, apiBaseURL, orgID string) *Client {
+	return &Client{
 		client:     createNonRedirectingHTTPClient(c),
 		apiBaseURL: apiBaseURL,
 		orgID:      orgID,
