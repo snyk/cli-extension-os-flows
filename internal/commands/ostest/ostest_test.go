@@ -39,85 +39,37 @@ func TestOSWorkflow_LegacyFlow(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestOSWorkflow_UnifiedTestFlag tests the workflow when run with the unified test flag.
-func TestOSWorkflow_UnifiedTestFlag(t *testing.T) {
-	// Setup - Unified test flag set to true
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+func TestOSWorkflow_ForceLegacyFlowWithEnvVar(t *testing.T) {
+	t.Run("forces legacy flow when env var is set, even with unified flow flags", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 
-	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
+		mockEngine := mocks.NewMockEngine(ctrl)
+		mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
 
-	// Set the unified test flag and required risk score feature flags
-	mockInvocationCtx.GetConfiguration().Set(flags.FlagUnifiedTestAPI, true)
-	mockInvocationCtx.GetConfiguration().Set(ostest.FeatureFlagRiskScore, true)
-	mockInvocationCtx.GetConfiguration().Set(ostest.FeatureFlagRiskScoreInCLI, true)
+		// Setup: set the env var and all flags that would normally trigger the unified flow
+		config := mockInvocationCtx.GetConfiguration()
+		config.Set(ostest.ForceLegacyCLIEnvVar, true)
+		config.Set(ostest.FeatureFlagRiskScore, true)
+		config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+		config.Set(flags.FlagRiskScoreThreshold, 500)
 
-	// Mock the depgraph workflow
-	mockEngine.EXPECT().
-		InvokeWithConfig(gomock.Any(), gomock.Any()).
-		Return(nil, assert.AnError).
-		Times(1)
+		// Mock the legacy flow, which should be called despite the unified flow flags
+		mockEngine.EXPECT().
+			InvokeWithConfig(gomock.Any(), gomock.Any()).
+			Return([]workflow.Data{}, nil).
+			Times(1)
 
-	// Execute
-	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
+		// Execute
+		_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
 
-	// Verify - Should return error from depgraph workflow
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to create depgraph")
+		// Verify
+		assert.NoError(t, err)
+	})
 }
 
-// TestOSWorkflow_RiskScoreThreshold tests the workflow when run with a risk score threshold.
-func TestOSWorkflow_RiskScoreThreshold(t *testing.T) {
-	// Setup - Risk score threshold set
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
-
-	// Set a risk score threshold
-	mockInvocationCtx.GetConfiguration().Set(flags.FlagRiskScoreThreshold, 700)
-	// Enable Risk Score feature flags for this test case
-	mockInvocationCtx.GetConfiguration().Set(ostest.FeatureFlagRiskScore, true)
-	mockInvocationCtx.GetConfiguration().Set(ostest.FeatureFlagRiskScoreInCLI, true)
-
-	// Mock the depgraph workflow
-	mockEngine.EXPECT().
-		InvokeWithConfig(gomock.Any(), gomock.Any()).
-		Return(nil, assert.AnError).
-		Times(1)
-
-	// Execute
-	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
-
-	// Verify - Should return error from depgraph workflow
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to create depgraph")
-}
-
-// TestOSWorkflow_SBOMReachabilityFlag_MissingFF tests requirement of the SBOM reachability feature flag.
-func TestOSWorkflow_SBOMReachabilityFlag_MissingFF(t *testing.T) {
-	// Setup - Unified test flag set to true
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
-
-	// Set the sbom reachability flags
-	mockInvocationCtx.GetConfiguration().Set(flags.FlagReachability, true)
-	mockInvocationCtx.GetConfiguration().Set(flags.FlagSBOM, "bom.json")
-
-	// Execute
-	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
-
-	// Verify - Should return feature not permitted error
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "The feature you are trying to use is not available for your organization")
-}
-
-// TODO: Test combinations with sbom and reachability flags.
+// TestOSWorkflow_FlagCombinations tests various flag combinations to ensure correct routing
+// between the legacy, unified, and reachability test flows.
 func TestOSWorkflow_FlagCombinations(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -127,7 +79,6 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 		{
 			name: "Unified test API flag set to true, expects depgraph error",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
-				config.Set(flags.FlagUnifiedTestAPI, true)
 				config.Set(ostest.FeatureFlagRiskScore, true)
 				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
 				mockEngine.EXPECT().
@@ -168,20 +119,6 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			expectedError: "failed to create depgraph",
 		},
 		{
-			name: "Both unified test and risk score set",
-			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
-				config.Set(flags.FlagUnifiedTestAPI, true)
-				config.Set(flags.FlagRiskScoreThreshold, 700)
-				config.Set(ostest.FeatureFlagRiskScore, true)
-				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
-				mockEngine.EXPECT().
-					InvokeWithConfig(gomock.Any(), gomock.Any()).
-					Return(nil, assert.AnError).
-					Times(1)
-			},
-			expectedError: "failed to create depgraph",
-		},
-		{
 			name: "SBOM reachability without feature flag",
 			setup: func(config configuration.Configuration, _ *mocks.MockEngine) {
 				config.Set(flags.FlagReachability, true)
@@ -193,7 +130,8 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 		{
 			name: "Severity threshold set with unified test flag, expects depgraph error",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
-				config.Set(flags.FlagUnifiedTestAPI, true)
+				config.Set(ostest.FeatureFlagRiskScore, true)
+				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
 				config.Set(flags.FlagSeverityThreshold, "high")
 				mockEngine.EXPECT().
 					InvokeWithConfig(gomock.Any(), gomock.Any()).
@@ -220,6 +158,30 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			name: "Severity threshold alone, uses legacy flow",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				config.Set(flags.FlagSeverityThreshold, "low")
+				mockEngine.EXPECT().
+					InvokeWithConfig(gomock.Any(), gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			},
+			expectedError: "", // No error, should succeed via legacy path
+		},
+		{
+			name: "Only one risk score FF enabled, uses legacy flow",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(ostest.FeatureFlagRiskScore, true)
+				// ffRiskScoreInCLI is false by default
+				mockEngine.EXPECT().
+					InvokeWithConfig(gomock.Any(), gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			},
+			expectedError: "", // No error, should succeed via legacy path
+		},
+		{
+			name: "Only CLI risk score FF enabled, uses legacy flow",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				// ffRiskScore is false by default
 				mockEngine.EXPECT().
 					InvokeWithConfig(gomock.Any(), gomock.Any()).
 					Return([]workflow.Data{}, nil).
@@ -266,7 +228,6 @@ func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engin
 	mockConfig.Set(configuration.API_URL, sbomServiceURL)
 
 	// Initialize with default values for our flags
-	mockConfig.Set(flags.FlagUnifiedTestAPI, false)
 	mockConfig.Set(flags.FlagRiskScoreThreshold, -1)
 	mockConfig.Set(flags.FlagFile, "test-file.txt") // Add default test file
 

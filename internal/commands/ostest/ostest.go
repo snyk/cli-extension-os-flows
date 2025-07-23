@@ -45,6 +45,9 @@ const FeatureFlagRiskScore = "feature_flag_experimental_risk_score"
 // FeatureFlagRiskScoreInCLI is used to gate the risk score feature in the CLI.
 const FeatureFlagRiskScoreInCLI = "feature_flag_experimental_risk_score_in_cli"
 
+// ForceLegacyCLIEnvVar is an internal environment variable to force the legacy CLI flow.
+const ForceLegacyCLIEnvVar = "SNYK_FORCE_LEGACY_CLI"
+
 // ApplicationJSONContentType matches the content type for legacy JSON findings records.
 const ApplicationJSONContentType = "application/json"
 
@@ -107,22 +110,32 @@ func OSWorkflow(
 		return runReachabilityFlow(ctx, config, errFactory, ictx, logger, sbom, sourceDir)
 
 	default:
-		riskScoreThreshold := config.GetInt(flags.FlagRiskScoreThreshold)
-		if !config.GetBool(flags.FlagUnifiedTestAPI) && riskScoreThreshold == -1 {
-			logger.Debug().Msg("Using legacy flow since risk score threshold and unified test flags are disabled")
+		if config.GetBool(ForceLegacyCLIEnvVar) {
+			logger.Debug().Msgf("Using legacy flow due to %s environment variable.", ForceLegacyCLIEnvVar)
 			return code_workflow.EntryPointLegacy(ictx)
 		}
 
-		// Unified test flow (with risk score threshold or unified-test flag)
+		ffRiskScore := config.GetBool(FeatureFlagRiskScore)
+		ffRiskScoreInCLI := config.GetBool(FeatureFlagRiskScoreInCLI)
+		useUnifiedFlow := ffRiskScore && ffRiskScoreInCLI
 
-		if riskScoreThreshold >= 0 {
-			if !config.GetBool(FeatureFlagRiskScore) {
+		// The unified test flow is only used if both risk score feature flags are enabled.
+		riskScoreThreshold := config.GetInt(flags.FlagRiskScoreThreshold)
+		if riskScoreThreshold != -1 && !useUnifiedFlow {
+			// The user tried to use a risk score threshold without the required feature flags.
+			// Return a specific error for the first missing flag found.
+			if !ffRiskScore {
 				return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScore)
 			}
-			if !config.GetBool(FeatureFlagRiskScoreInCLI) {
-				return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
-			}
+			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
 		}
+
+		if !useUnifiedFlow {
+			logger.Debug().Msg("Using legacy flow since one or both experimental risk score feature flags are not enabled.")
+			return code_workflow.EntryPointLegacy(ictx)
+		}
+
+		// Unified test flow
 
 		filename := config.GetString(flags.FlagFile)
 		if filename == "" {

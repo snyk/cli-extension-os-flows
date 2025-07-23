@@ -9,7 +9,6 @@ const (
 	FlagProjectName        = "project-name"
 	FlagRiskScoreThreshold = "risk-score-threshold"
 	FlagSeverityThreshold  = "severity-threshold"
-	FlagUnifiedTestAPI     = "unified-test"
 
 	// SBOM reachability.
 	FlagReachability = "reachability"
@@ -67,7 +66,6 @@ func OSTestFlagSet() *pflag.FlagSet {
 	flagSet.String(FlagFile, "", "Specify a package file.")
 	flagSet.String(FlagProjectName, "", "Specify a name for the project.")
 
-	flagSet.Bool(FlagUnifiedTestAPI, false, "Use the unified test API workflow.")
 	flagSet.Int(FlagRiskScoreThreshold, -1, "Include findings at or over this risk score threshold.")
 	flagSet.String(FlagSeverityThreshold, "", "Report only findings at the specified level or higher.")
 
