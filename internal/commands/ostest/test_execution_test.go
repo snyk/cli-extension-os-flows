@@ -86,7 +86,7 @@ func (m *mockTestResult) GetID() string {
 	return ""
 }
 
-func Test_newSummaryData(t *testing.T) {
+func Test_NewSummaryData(t *testing.T) {
 	logger := zerolog.Nop()
 	path := "/test/path"
 

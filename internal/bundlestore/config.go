@@ -9,33 +9,43 @@ import (
 
 var defaultSnykCodeTimeout = 12 * time.Hour
 
-type codeClientConfig struct {
-	localConfiguration configuration.Configuration
+// CodeClientConfig holds the configuration for the code client.
+type CodeClientConfig struct {
+	// LocalConfiguration is the underlying configuration source.
+	LocalConfiguration configuration.Configuration
 }
 
-func (c *codeClientConfig) Organization() string {
-	return c.localConfiguration.GetString(configuration.ORGANIZATION)
+// Organization returns the organization ID from the configuration.
+func (c *CodeClientConfig) Organization() string {
+	return c.LocalConfiguration.GetString(configuration.ORGANIZATION)
 }
 
-func (c *codeClientConfig) IsFedramp() bool {
-	return c.localConfiguration.GetBool(configuration.IS_FEDRAMP)
+// IsFedramp returns true if the configuration is set for FedRAMP.
+func (c *CodeClientConfig) IsFedramp() bool {
+	return c.LocalConfiguration.GetBool(configuration.IS_FEDRAMP)
 }
 
+// SnykCodeApi returns the Snyk Code API URL, replacing "api" with "deeproxy" in the base API URL.
+//
 //nolint:revive,var-naming // SnykCodeApi is intentionally cased this way.
-func (c *codeClientConfig) SnykCodeApi() string {
+func (c *CodeClientConfig) SnykCodeApi() string {
 	//nolint:gocritic // Code copied verbatim from code-client-go
-	return strings.Replace(c.localConfiguration.GetString(configuration.API_URL), "api", "deeproxy", -1)
+	return strings.Replace(c.LocalConfiguration.GetString(configuration.API_URL), "api", "deeproxy", -1)
 }
 
+// SnykApi returns the base Snyk API URL from the configuration.
+//
 //nolint:revive,var-naming // SnykApi is intentionally cased this way.
-func (c *codeClientConfig) SnykApi() string {
-	return c.localConfiguration.GetString(configuration.API_URL)
+func (c *CodeClientConfig) SnykApi() string {
+	return c.LocalConfiguration.GetString(configuration.API_URL)
 }
 
-func (c *codeClientConfig) SnykCodeAnalysisTimeout() time.Duration {
-	if !c.localConfiguration.IsSet(configuration.TIMEOUT) {
+// SnykCodeAnalysisTimeout returns the timeout duration for Snyk Code analysis.
+// If not set in the configuration, it returns the default timeout.
+func (c *CodeClientConfig) SnykCodeAnalysisTimeout() time.Duration {
+	if !c.LocalConfiguration.IsSet(configuration.TIMEOUT) {
 		return defaultSnykCodeTimeout
 	}
-	timeoutInSeconds := c.localConfiguration.GetInt(configuration.TIMEOUT)
+	timeoutInSeconds := c.LocalConfiguration.GetInt(configuration.TIMEOUT)
 	return time.Duration(timeoutInSeconds) * time.Second
 }
