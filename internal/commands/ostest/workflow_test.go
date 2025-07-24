@@ -24,7 +24,7 @@ func TestOSWorkflow_LegacyFlow(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
 
 	// Mock the legacy flow to return successfully
 	mockEngine.EXPECT().
@@ -45,7 +45,7 @@ func TestOSWorkflow_ForceLegacyFlowWithEnvVar(t *testing.T) {
 		defer ctrl.Finish()
 
 		mockEngine := mocks.NewMockEngine(ctrl)
-		mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
+		mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
 
 		// Setup: set the env var and all flags that would normally trigger the unified flow
 		config := mockInvocationCtx.GetConfiguration()
@@ -197,7 +197,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockEngine := mocks.NewMockEngine(ctrl)
-			mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockServerURL)
+			mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
 
 			// Setup test case
 			test.setup(mockInvocationCtx.GetConfiguration(), mockEngine)
@@ -219,13 +219,13 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 // Helpers
 
 // createMockInvocationCtx creates a mock invocation context with default values for our flags.
-func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engine workflow.Engine, sbomServiceURL string) workflow.InvocationContext {
+func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engine workflow.Engine) workflow.InvocationContext {
 	t.Helper()
 
 	mockConfig := configuration.New()
 	mockConfig.Set(configuration.AUTHENTICATION_TOKEN, "<SOME API TOKEN>")
 	mockConfig.Set(configuration.ORGANIZATION, "test-org")
-	mockConfig.Set(configuration.API_URL, sbomServiceURL)
+	mockConfig.Set(configuration.API_URL, mockServerURL)
 
 	// Initialize with default values for our flags
 	mockConfig.Set(flags.FlagRiskScoreThreshold, -1)

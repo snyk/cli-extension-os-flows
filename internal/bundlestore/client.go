@@ -13,9 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	codeclient "github.com/snyk/code-client-go"
-	codeclienthttp "github.com/snyk/code-client-go/http"
 	codeclientscan "github.com/snyk/code-client-go/scan"
-	"github.com/snyk/go-application-framework/pkg/configuration"
 
 	listsources "github.com/snyk/cli-extension-os-flows/internal/files"
 )
@@ -26,14 +24,15 @@ type Client interface {
 	UploadSBOM(ctx context.Context, sbomPath string) (string, error)
 }
 
-type client struct {
+// HTTPClient is the concrete implementation of the Client interface.
+type HTTPClient struct {
 	httpClient *http.Client
-	codeClientConfig
+	CodeClientConfig
 	codeScanner codeclient.CodeScanner
 	logger      *zerolog.Logger
 }
 
-var _ Client = (*client)(nil)
+var _ Client = (*HTTPClient)(nil)
 
 type (
 	// BundleFile represents a file to be included in a bundle, including its hash and content.
@@ -53,46 +52,24 @@ type (
 	}
 )
 
-// CodeScanner is a global instance of the Snyk Code scanner.
-var CodeScanner codeclient.CodeScanner
-
 // NewClient creates a new client for interacting with the Snyk bundle store.
-//
-//nolint:ireturn // returning an interface is desired here to decouple the implementation
-func NewClient(config configuration.Configuration, hc codeclienthttp.HTTPClientFactory, logger *zerolog.Logger) Client {
-	codeScannerConfig := &codeClientConfig{
-		localConfiguration: config,
-	}
-
-	httpClient := codeclienthttp.NewHTTPClient(
-		hc,
-		codeclienthttp.WithLogger(logger),
-	)
-
-	if CodeScanner == nil {
-		CodeScanner = codeclient.NewCodeScanner(
-			codeScannerConfig,
-			httpClient,
-			codeclient.WithLogger(logger),
-		)
-	}
-
-	return &client{
-		hc(),
-		*codeScannerConfig,
-		CodeScanner,
+func NewClient(httpClient *http.Client, csConfig CodeClientConfig, cScanner codeclient.CodeScanner, logger *zerolog.Logger) *HTTPClient {
+	return &HTTPClient{
+		httpClient,
+		csConfig,
+		cScanner,
 		logger,
 	}
 }
 
-func (c *client) host() string {
-	if c.codeClientConfig.IsFedramp() {
-		return c.SnykApi() + "/hidden/orgs/" + c.codeClientConfig.Organization() + "/code"
+func (c *HTTPClient) host() string {
+	if c.CodeClientConfig.IsFedramp() {
+		return c.SnykApi() + "/hidden/orgs/" + c.CodeClientConfig.Organization() + "/code"
 	}
 	return c.SnykCodeApi()
 }
 
-func (c *client) request(
+func (c *HTTPClient) request(
 	ctx context.Context,
 	method string,
 	path string,
@@ -108,7 +85,7 @@ func (c *client) request(
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
-	org := c.codeClientConfig.Organization()
+	org := c.CodeClientConfig.Organization()
 	if org != "" {
 		req.Header.Set("snyk-org-name", org)
 	}
@@ -141,7 +118,7 @@ func (c *client) request(
 }
 
 //nolint:gocritic // Code copied verbatim from code-client-go
-func (c *client) createBundle(ctx context.Context, fileHashes map[string]string) (string, []string, error) {
+func (c *HTTPClient) createBundle(ctx context.Context, fileHashes map[string]string) (string, []string, error) {
 	requestBody, err := json.Marshal(fileHashes)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to marshal create bundle request: %w", err)
@@ -161,7 +138,7 @@ func (c *client) createBundle(ctx context.Context, fileHashes map[string]string)
 }
 
 //nolint:gocritic // Code copied verbatim from code-client-go
-func (c *client) extendBundle(ctx context.Context, bundleHash string, files map[string]BundleFile, removedFiles []string) (string, []string, error) {
+func (c *HTTPClient) extendBundle(ctx context.Context, bundleHash string, files map[string]BundleFile, removedFiles []string) (string, []string, error) {
 	requestBody, err := json.Marshal(ExtendBundleRequest{
 		Files:        files,
 		RemovedFiles: removedFiles,
@@ -183,7 +160,8 @@ func (c *client) extendBundle(ctx context.Context, bundleHash string, files map[
 	return bundleResponse.BundleHash, bundleResponse.MissingFiles, nil
 }
 
-func (c *client) UploadSBOM(ctx context.Context, sbomPath string) (string, error) {
+// UploadSBOM uploads an SBOM file to the bundle store and returns the bundle hash.
+func (c *HTTPClient) UploadSBOM(ctx context.Context, sbomPath string) (string, error) {
 	var fileContent []byte
 	fileContent, err := os.ReadFile(sbomPath)
 	if err != nil {
@@ -216,7 +194,8 @@ func (c *client) UploadSBOM(ctx context.Context, sbomPath string) (string, error
 	return bundleHash, nil
 }
 
-func (c *client) UploadSourceCode(ctx context.Context, sourceCodePath string) (string, error) {
+// UploadSourceCode uploads source code from the specified path to the bundle store and returns the bundle hash.
+func (c *HTTPClient) UploadSourceCode(ctx context.Context, sourceCodePath string) (string, error) {
 	numThreads := runtime.NumCPU()
 	filesChan, err := listsources.ForPath(sourceCodePath, c.logger, numThreads)
 	if err != nil {

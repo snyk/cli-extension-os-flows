@@ -6,25 +6,20 @@ import (
 	"os"
 
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
-
-	"github.com/snyk/go-application-framework/pkg/configuration"
-	"github.com/snyk/go-application-framework/pkg/workflow"
 )
 
-// BundlestoreClient is exported to allow it to be mocked.
-var BundlestoreClient bundlestore.Client
-
-func sbomTestReachability(
+// RunSbomReachabilityFlow runs the SBOM reachability flow.
+func RunSbomReachabilityFlow(
 	ctx context.Context,
-	config configuration.Configuration,
 	errFactory *errors.ErrorFactory,
-	ictx workflow.InvocationContext,
 	logger *zerolog.Logger,
 	sbomPath string,
 	sourceCodePath string,
+	bsClient bundlestore.Client,
 ) ([]workflow.Data, error) {
 	if sourceCodePath == "" {
 		sourceCodePath = "."
@@ -34,18 +29,14 @@ func sbomTestReachability(
 		return nil, err
 	}
 
-	if BundlestoreClient == nil {
-		BundlestoreClient = bundlestore.NewClient(config, ictx.GetNetworkAccess().GetHttpClient, logger)
-	}
-
-	sbomBundleHash, err := BundlestoreClient.UploadSBOM(ctx, sbomPath)
+	sbomBundleHash, err := bsClient.UploadSBOM(ctx, sbomPath)
 	if err != nil {
 		logger.Error().Err(err).Str("sbomPath", sbomPath).Msg("Failed to upload SBOM")
 		return nil, fmt.Errorf("failed to upload SBOM: %w", err)
 	}
 	logger.Println("sbomBundleHash", sbomBundleHash)
 
-	sourceCodeBundleHash, err := BundlestoreClient.UploadSourceCode(ctx, sourceCodePath)
+	sourceCodeBundleHash, err := bsClient.UploadSourceCode(ctx, sourceCodePath)
 	if err != nil {
 		//nolint:goconst // sourceCodePath is ok
 		logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("Failed to upload SBOM")
