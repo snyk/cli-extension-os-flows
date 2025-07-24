@@ -9,6 +9,7 @@
 package ostest
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	std_errors "errors"
@@ -16,6 +17,7 @@ import (
 	"math"
 	"os"
 	"sort"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -29,6 +31,7 @@ import (
 	service "github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
+	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
 )
@@ -56,6 +59,9 @@ const LogFieldCount = "count"
 
 // ErrNoSummaryData is returned when a test summary cannot be generated due to lack of data.
 var ErrNoSummaryData = std_errors.New("no summary data to create")
+
+// PollInterval is the polling interval for the test API. It is exported to be configurable in tests.
+var PollInterval = 8 * time.Second
 
 // RegisterWorkflows registers the "test" workflow.
 func RegisterWorkflows(e workflow.Engine) error {
@@ -140,12 +146,6 @@ func OSWorkflow(
 
 		// Unified test flow
 
-		filename := config.GetString(flags.FlagFile)
-		if filename == "" {
-			logger.Error().Msg("No file specified for testing")
-			return nil, errFactory.NewMissingFilenameFlagError()
-		}
-
 		var riskScorePtr *uint16
 		if riskScoreThreshold >= math.MaxUint16 {
 			// the API will enforce a range from the test spec
@@ -164,14 +164,29 @@ func OSWorkflow(
 			severityThresholdPtr = &st
 		}
 
-		return runUnifiedTestFlow(ctx, filename, riskScorePtr, severityThresholdPtr, ictx, config, orgID, errFactory, logger)
+		return runUnifiedTestFlow(ctx, riskScorePtr, severityThresholdPtr, ictx, config, orgID, errFactory, logger)
 	}
+}
+
+// Create local policy only if risk score or severity threshold are specified.
+func createLocalPolicy(riskScoreThreshold *uint16, severityThreshold *testapi.Severity) *testapi.LocalPolicy {
+	if riskScoreThreshold == nil && severityThreshold == nil {
+		return nil
+	}
+
+	localPolicy := &testapi.LocalPolicy{}
+	if riskScoreThreshold != nil {
+		localPolicy.RiskScoreThreshold = riskScoreThreshold
+	}
+	if severityThreshold != nil {
+		localPolicy.SeverityThreshold = severityThreshold
+	}
+	return localPolicy
 }
 
 // runUnifiedTestFlow handles the unified test API flow.
 func runUnifiedTestFlow(
 	ctx context.Context,
-	filename string,
 	riskScoreThreshold *uint16,
 	severityThreshold *testapi.Severity,
 	ictx workflow.InvocationContext,
@@ -182,56 +197,90 @@ func runUnifiedTestFlow(
 ) ([]workflow.Data, error) {
 	logger.Info().Msg("Starting open source test")
 
-	// Create depgraph
-	depGraph, err := createDepGraph(ictx)
+	// Create depgraphs and get their associated target files
+	depGraphs, displayTargetFiles, err := createDepGraphs(ictx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create depgraph: %w", err)
+		return nil, err
 	}
+	var allFindings []definitions.LegacyVulnerabilityResponse
+	var allSummaries []workflow.Data
 
-	// Create depgraph subject
-	depGraphSubject := testapi.DepGraphSubjectCreate{
-		Type:     testapi.DepGraphSubjectCreateTypeDepGraph,
-		DepGraph: depGraph,
-		Locator: testapi.LocalPathLocator{
-			Paths: []string{filename},
-			Type:  testapi.LocalPath,
-		},
-	}
+	localPolicy := createLocalPolicy(riskScoreThreshold, severityThreshold)
 
-	// Create test subject with depgraph
-	var subject testapi.TestSubjectCreate
-	err = subject.FromDepGraphSubjectCreate(depGraphSubject)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create test subject: %w", err)
-	}
-
-	// Only create local policy if risk score or severity threshold are specified
-	var localPolicy *testapi.LocalPolicy
-	if riskScoreThreshold != nil || severityThreshold != nil {
-		localPolicy = &testapi.LocalPolicy{}
-		if riskScoreThreshold != nil {
-			localPolicy.RiskScoreThreshold = riskScoreThreshold
+	for i, depGraph := range depGraphs {
+		displayTargetFile := ""
+		if i < len(displayTargetFiles) {
+			displayTargetFile = displayTargetFiles[i]
 		}
-		if severityThreshold != nil {
-			localPolicy.SeverityThreshold = severityThreshold
+
+		// Create depgraph subject
+		depGraphSubject := testapi.DepGraphSubjectCreate{
+			Type:     testapi.DepGraphSubjectCreateTypeDepGraph,
+			DepGraph: depGraph,
+			Locator: testapi.LocalPathLocator{
+				Paths: []string{displayTargetFile},
+				Type:  testapi.LocalPath,
+			},
+		}
+
+		// Create test subject with depgraph
+		var subject testapi.TestSubjectCreate
+		err = subject.FromDepGraphSubjectCreate(depGraphSubject)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create test subject: %w", err)
+		}
+
+		// Project name assigned as follows: --project-name || config project name || scannedProject?.depTree?.name
+		// TODO: use project name from Config file
+		config := ictx.GetConfiguration()
+		projectName := config.GetString(flags.FlagProjectName)
+		if projectName == "" && len(depGraph.Pkgs) > 0 {
+			projectName = depGraph.Pkgs[0].Info.Name
+		}
+
+		packageManager := depGraph.PkgManager.Name
+		depCount := max(0, len(depGraph.Pkgs)-1)
+
+		// Run the test with the depgraph subject
+		findings, summary, err := runTest(ctx, subject, projectName, packageManager, depCount, displayTargetFile, ictx, orgID, errFactory, logger, localPolicy)
+		if err != nil {
+			return nil, err
+		}
+
+		if findings != nil {
+			allFindings = append(allFindings, *findings)
+		}
+		if summary != nil {
+			allSummaries = append(allSummaries, summary)
 		}
 	}
 
-	// Project name assigned as follows: --project-name || config project name || scannedProject?.depTree?.name
-	// TODO: use project name from Config file
-	// TODO: verify - depTree is a legacy depgraph concept that I don't see in cli-extension-dep-graph, but the name
-	// appears to come from the first Pkg item.
-	config := ictx.GetConfiguration()
-	projectName := config.GetString(flags.FlagProjectName)
-	if projectName == "" && len(depGraph.Pkgs) > 0 {
-		projectName = depGraph.Pkgs[0].Info.Name
+	var finalOutput []workflow.Data
+	if len(allFindings) > 0 {
+		var findingsData any
+		if len(allFindings) == 1 {
+			findingsData = allFindings[0]
+		} else {
+			findingsData = allFindings
+		}
+
+		var buffer bytes.Buffer
+		encoder := json.NewEncoder(&buffer)
+		encoder.SetEscapeHTML(false)
+		encoder.SetIndent("", "  ")
+		err := encoder.Encode(findingsData)
+		if err != nil {
+			return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshaling to json: %w", err))
+		}
+		// encoder.Encode adds a newline, which we trim to match Marshal's behavior.
+		findingsBytes := bytes.TrimRight(buffer.Bytes(), "\n")
+
+		finalOutput = append(finalOutput, NewWorkflowData(ApplicationJSONContentType, findingsBytes))
 	}
 
-	packageManager := depGraph.PkgManager.Name
-	depCount := max(0, len(depGraph.Pkgs)-1)
+	finalOutput = append(finalOutput, allSummaries...)
 
-	// Run the test with the depgraph subject
-	return runTest(ctx, subject, projectName, packageManager, depCount, ictx, orgID, errFactory, logger, localPolicy)
+	return finalOutput, nil
 }
 
 // runTest executes the common test flow with the provided test subject.
@@ -241,12 +290,13 @@ func runTest(
 	projectName string,
 	packageManager string,
 	depCount int,
+	displayTargetFile string,
 	ictx workflow.InvocationContext,
 	orgID string,
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
-) ([]workflow.Data, error) {
+) (*definitions.LegacyVulnerabilityResponse, workflow.Data, error) {
 	// Create Snyk client
 	httpClient := ictx.GetNetworkAccess().GetHttpClient()
 	snykClient := snykclient.NewSnykClient(httpClient, ictx.GetConfiguration().GetString(configuration.API_URL), orgID)
@@ -260,24 +310,25 @@ func runTest(
 	// Create and execute test client
 	testClient, err := testapi.NewTestClient(
 		snykClient.GetAPIBaseURL(),
+		testapi.WithPollInterval(PollInterval),
 		testapi.WithCustomHTTPClient(snykClient.GetClient()),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create test client: %w", err)
+		return nil, nil, fmt.Errorf("failed to create test client: %w", err)
 	}
 
 	handle, err := testClient.StartTest(ctx, startParams)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start test: %w", err)
+		return nil, nil, fmt.Errorf("failed to start test: %w", err)
 	}
 
 	if waitErr := handle.Wait(ctx); waitErr != nil {
-		return nil, fmt.Errorf("test run failed: %w", waitErr)
+		return nil, nil, fmt.Errorf("test run failed: %w", waitErr)
 	}
 
 	finalResult := handle.Result()
 	if finalResult == nil {
-		return nil, fmt.Errorf("test completed but no result was returned")
+		return nil, nil, fmt.Errorf("test completed but no result was returned")
 	}
 
 	// Get findings for the test
@@ -300,7 +351,7 @@ func runTest(
 	currentDir, err := os.Getwd()
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed to get current working directory")
-		return nil, fmt.Errorf("failed to get current working directory: %w", err)
+		return nil, nil, fmt.Errorf("failed to get current working directory: %w", err)
 	}
 
 	var uniqueCount int32
@@ -314,35 +365,32 @@ func runTest(
 		}
 	}
 
-	legacyJSON, err := transform.ConvertSnykSchemaFindingsToLegacyJSON(
+	legacyVulnResponse, err := transform.ConvertSnykSchemaFindingsToLegacy(
 		&transform.SnykSchemaToLegacyParams{
-			Findings:       findingsData,
-			TestResult:     finalResult,
-			ProjectName:    projectName,
-			PackageManager: packageManager,
-			CurrentDir:     currentDir,
-			UniqueCount:    uniqueCount,
-			DepCount:       depCount,
-			ErrFactory:     errFactory,
-			Logger:         logger,
+			Findings:          findingsData,
+			TestResult:        finalResult,
+			ProjectName:       projectName,
+			PackageManager:    packageManager,
+			CurrentDir:        currentDir,
+			UniqueCount:       uniqueCount,
+			DepCount:          depCount,
+			DisplayTargetFile: displayTargetFile,
+			ErrFactory:        errFactory,
+			Logger:            logger,
 		})
 	if err != nil {
-		return nil, fmt.Errorf("error converting snyk schema findings to legacy json: %w", err)
+		return nil, nil, fmt.Errorf("error converting snyk schema findings to legacy json: %w", err)
 	}
-
-	legacyData := NewWorkflowData(ApplicationJSONContentType, legacyJSON)
-	outputData := []workflow.Data{legacyData}
 
 	summaryData, err := NewSummaryData(finalResult, logger, currentDir)
 	if err != nil {
 		if !std_errors.Is(err, ErrNoSummaryData) {
 			logger.Warn().Err(err).Msg("Failed to create test summary for exit code handling")
 		}
-	} else {
-		outputData = append(outputData, summaryData)
+		return legacyVulnResponse, nil, nil
 	}
 
-	return outputData, nil
+	return legacyVulnResponse, summaryData, nil
 }
 
 // extractSeverityKeys returns a map of severity keys present in the summaries.
@@ -382,12 +430,12 @@ func NewSummaryData(testResult testapi.TestResult, logger *zerolog.Logger, path 
 		return nil, fmt.Errorf("test result missing summary information")
 	}
 
-	severityKeys := extractSeverityKeys(rawSummary, effectiveSummary)
-
-	if len(severityKeys) == 0 && rawSummary.Count == 0 {
+	if rawSummary.Count == 0 {
 		logger.Debug().Msg("No findings in summary, skipping summary creation.")
 		return nil, fmt.Errorf("no findings in summary: %w", ErrNoSummaryData)
 	}
+
+	severityKeys := extractSeverityKeys(rawSummary, effectiveSummary)
 
 	var summaryResults []json_schemas.TestSummaryResult
 	for severity := range severityKeys {
@@ -444,31 +492,29 @@ func runReachabilityFlow(
 	return sbomTestReachability(ctx, config, errFactory, ictx, logger, sbomPath, sourceCodePath)
 }
 
-// createDepGraph creates a depgraph from the file parameter in the context.
-func createDepGraph(ictx workflow.InvocationContext) (testapi.IoSnykApiV1testdepgraphRequestDepGraph, error) {
-	var contents []byte
-	var err error
-
+// createDepGraphs creates depgraphs from the file parameter in the context.
+func createDepGraphs(ictx workflow.InvocationContext) ([]testapi.IoSnykApiV1testdepgraphRequestDepGraph, []string, error) {
 	depGraphResult, err := service.GetDepGraph(ictx)
 	if err != nil {
-		return testapi.IoSnykApiV1testdepgraphRequestDepGraph{}, fmt.Errorf("failed to get dependency graph: %w", err)
+		return nil, nil, fmt.Errorf("failed to get dependency graph: %w", err)
 	}
 
-	if len(depGraphResult.DepGraphBytes) > 1 {
-		err = fmt.Errorf("multiple depgraphs found, but only one is currently supported")
-		return testapi.IoSnykApiV1testdepgraphRequestDepGraph{}, err
-	}
-	// TODO revisit handling multiple depgraphs
-	contents = depGraphResult.DepGraphBytes[0]
-
-	var depGraphStruct testapi.IoSnykApiV1testdepgraphRequestDepGraph
-	err = json.Unmarshal(contents, &depGraphStruct)
-	if err != nil {
-		return testapi.IoSnykApiV1testdepgraphRequestDepGraph{},
-			fmt.Errorf("unmarshaling depGraph from args failed: %w", err)
+	if len(depGraphResult.DepGraphBytes) == 0 {
+		return nil, nil, fmt.Errorf("no dependency graphs found")
 	}
 
-	return depGraphStruct, nil
+	depGraphs := make([]testapi.IoSnykApiV1testdepgraphRequestDepGraph, len(depGraphResult.DepGraphBytes))
+	for i, depGraphBytes := range depGraphResult.DepGraphBytes {
+		var depGraphStruct testapi.IoSnykApiV1testdepgraphRequestDepGraph
+		err = json.Unmarshal(depGraphBytes, &depGraphStruct)
+		if err != nil {
+			return nil, nil,
+				fmt.Errorf("unmarshaling depGraph from args failed: %w", err)
+		}
+		depGraphs[i] = depGraphStruct
+	}
+
+	return depGraphs, depGraphResult.DisplayTargetFiles, nil
 }
 
 // NewWorkflowData creates a workflow.Data object with the given content type and data.

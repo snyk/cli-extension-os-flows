@@ -1,8 +1,6 @@
 package transform
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 
 	"github.com/rs/zerolog"
@@ -22,17 +20,18 @@ const (
 )
 
 // SnykSchemaToLegacyParams is a struct to encapsulate necessary values to the
-// ConvertSnykSchemaFindingsToLegacyJSON function.
+// ConvertSnykSchemaFindingsToLegacy function.
 type SnykSchemaToLegacyParams struct {
-	Findings       []testapi.FindingData
-	TestResult     testapi.TestResult
-	ProjectName    string
-	PackageManager string
-	CurrentDir     string
-	UniqueCount    int32
-	DepCount       int
-	ErrFactory     *errors.ErrorFactory
-	Logger         *zerolog.Logger
+	Findings          []testapi.FindingData
+	TestResult        testapi.TestResult
+	ProjectName       string
+	PackageManager    string
+	CurrentDir        string
+	UniqueCount       int32
+	DepCount          int
+	DisplayTargetFile string
+	ErrFactory        *errors.ErrorFactory
+	Logger            *zerolog.Logger
 }
 
 // ProcessProblemForVuln is responsible for decorating the vulnerability with information provided
@@ -325,25 +324,19 @@ func FindingToLegacyVuln(finding *testapi.FindingData, logger *zerolog.Logger) (
 	return &vuln, nil
 }
 
-// ConvertSnykSchemaFindingsToLegacyJSON is a function that converts snyk schema findings into
-// the legacy json structure for the snyk cli.
-func ConvertSnykSchemaFindingsToLegacyJSON(params *SnykSchemaToLegacyParams) (json.RawMessage, error) {
-	subject := params.TestResult.GetTestSubject()
-	depGraphSubject, err := subject.AsDepGraphSubject()
-	if err != nil {
-		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshaling to json: %w", err))
-	}
-
-	var path string
-	if len(depGraphSubject.Locator.Paths) > 0 {
-		path = depGraphSubject.Locator.Paths[0]
+// ConvertSnykSchemaFindingsToLegacy is a function that converts snyk schema findings into
+// the legacy vulnerability response structure for the snyk cli.
+func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*definitions.LegacyVulnerabilityResponse, error) {
+	if _, err := params.TestResult.GetTestSubject().AsDepGraphSubject(); err != nil {
+		return nil, params.ErrFactory.NewLegacyJSONTransformerError(
+			fmt.Errorf("expected a depgraph subject but got something else: %w", err))
 	}
 
 	res := definitions.LegacyVulnerabilityResponse{
 		ProjectName:       params.ProjectName,
 		Path:              params.CurrentDir,
 		PackageManager:    params.PackageManager,
-		DisplayTargetFile: path,
+		DisplayTargetFile: params.DisplayTargetFile,
 		UniqueCount:       params.UniqueCount,
 		DependencyCount:   int64(params.DepCount),
 		Vulnerabilities:   []definitions.Vulnerability{},
@@ -355,7 +348,6 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params *SnykSchemaToLegacyParams) (js
 	}
 
 	for _, finding := range params.Findings {
-		//nolint:govet // it's ok to shadow err
 		vuln, err := FindingToLegacyVuln(&finding, params.Logger)
 		if err != nil {
 			return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting finding to legacy vuln: %w", err))
@@ -369,16 +361,7 @@ func ConvertSnykSchemaFindingsToLegacyJSON(params *SnykSchemaToLegacyParams) (js
 		res.Vulnerabilities = append(res.Vulnerabilities, *vuln)
 	}
 
-	var buffer bytes.Buffer
-	encoder := json.NewEncoder(&buffer)
-	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "  ")
-	err = encoder.Encode(&res)
-	if err != nil {
-		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshaling to json: %w", err))
-	}
-	// encoder.Encode adds a newline, which we trim to match Marshal's behavior.
-	return bytes.TrimRight(buffer.Bytes(), "\n"), nil
+	return &res, nil
 }
 
 // processCveProblem processes a CVE problem by extracting its identifier and adding it to the vulnerability.
