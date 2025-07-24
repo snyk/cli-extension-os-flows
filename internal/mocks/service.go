@@ -12,13 +12,13 @@ type MockResponse struct {
 	headers     http.Header
 }
 
-func NewMockSBOMService(resp MockResponse, assertions ...func(r *http.Request)) *httptest.Server {
+func NewMockService(resp MockResponse, assertions ...func(r *http.Request)) *httptest.Server {
 	responses := []MockResponse{resp}
 
-	return NewMockSBOMServiceMultiResponse(responses, assertions...)
+	return NewMockServiceMultiResponse(responses, assertions...)
 }
 
-func NewMockSBOMServiceMultiResponse(responses []MockResponse, assertions ...func(r *http.Request)) *httptest.Server {
+func NewMockServiceMultiResponse(responses []MockResponse, assertions ...func(r *http.Request)) *httptest.Server {
 	var responseIndex int
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
