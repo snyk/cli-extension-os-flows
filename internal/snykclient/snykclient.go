@@ -24,7 +24,7 @@ func (s *Client) GetClient() *http.Client {
 // GetAPIBaseURL returns the API base URL.
 func (s *Client) GetAPIBaseURL() string {
 	// TODO: remove this when we go GA.
-	return s.apiBaseURL + "/closed-beta/"
+	return s.apiBaseURL + "/rest/"
 }
 
 // GetOrgID returns the organization ID.
