@@ -1,5 +1,9 @@
 package lowlevel_fileupload
 
+import (
+	"io/fs"
+)
+
 type UploadRevisionRequestAttributes struct {
 	RevisionType string `json:"revision_type"`
 }
@@ -40,6 +44,6 @@ type ErrorResponseBody struct {
 }
 
 type UploadFile struct {
-	Name     string // The name to use for the file in the upload
-	FilePath string // Path to the file on disk
+	Path string // The name to use for the file in the upload
+	File fs.File
 }

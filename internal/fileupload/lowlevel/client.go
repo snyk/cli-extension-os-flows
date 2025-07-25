@@ -9,7 +9,6 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"os"
 
 	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 )
@@ -97,13 +96,13 @@ func (c *Client) UploadFiles(ctx context.Context, orgID string, revisionID strin
 
 	// Validate individual file sizes and existence
 	for i, file := range files {
-		fileInfo, err := os.Stat(file.FilePath)
+		fileInfo, err := file.File.Stat()
 		if err != nil {
-			return fmt.Errorf("file %d (%s) cannot be accessed: %w", i, file.Name, err)
+			return fmt.Errorf("file %d (%s) cannot be accessed: %w", i, file.Path, err)
 		}
 
 		if fileInfo.Size() > FILE_SIZE_LIMIT {
-			return fmt.Errorf("file %d (%s) size %d exceeds limit of %d bytes", i, file.Name, fileInfo.Size(), FILE_SIZE_LIMIT)
+			return fmt.Errorf("file %d (%s) size %d exceeds limit of %d bytes", i, file.Path, fileInfo.Size(), FILE_SIZE_LIMIT)
 		}
 	}
 
@@ -118,23 +117,16 @@ func (c *Client) UploadFiles(ctx context.Context, orgID string, revisionID strin
 
 		for _, file := range files {
 			// Create form file part
-			part, err := mpartWriter.CreateFormFile(file.FilePath, file.Name)
+			part, err := mpartWriter.CreateFormFile(file.Path, file.Path)
 			if err != nil {
-				pWriter.CloseWithError(fmt.Errorf("failed to create form file for %s: %w", file.Name, err))
+				pWriter.CloseWithError(fmt.Errorf("failed to create form file for %s: %w", file.Path, err))
 				return
 			}
 
-			// Open and stream file content
-			f, err := os.Open(file.FilePath)
+			_, err = io.Copy(part, file.File)
+			file.File.Close()
 			if err != nil {
-				pWriter.CloseWithError(fmt.Errorf("failed to open file %s: %w", file.Name, err))
-				return
-			}
-
-			_, err = io.Copy(part, f)
-			f.Close()
-			if err != nil {
-				pWriter.CloseWithError(fmt.Errorf("failed to copy file content for %s: %w", file.Name, err))
+				pWriter.CloseWithError(fmt.Errorf("failed to copy file content for %s: %w", file.Path, err))
 				return
 			}
 		}
