@@ -106,7 +106,6 @@ func OSTestFlagSet() *pflag.FlagSet {
 	flagSet.Bool(FlagFailFast, false, "Stop scanning after the first vulnerability is found when used with --all-projects.")
 	flagSet.Bool(FlagPrintDeps, false, "Print the dependency tree before sending it for analysis.")
 	flagSet.Bool(FlagPrintDepPaths, false, "Display dependencies. Shows what files contributed to each dependency.")
-	flagSet.String(FlagOrg, "", "Specify the <ORG_ID> to run Snyk commands tied to a specific organization.")
 	flagSet.Bool(FlagIgnorePolicy, false, "Ignore all set policies, the current policy in the .snyk file, Org level ignores, and the project policy on snyk.io.")
 	flagSet.Bool(FlagTrustPolicies, false, "Apply and use ignore rules from the Snyk policies in your dependencies.")
 	flagSet.String(FlagShowVulnerablePaths, "", "Display the dependency paths from the top level dependencies down to the vulnerable packages.")
