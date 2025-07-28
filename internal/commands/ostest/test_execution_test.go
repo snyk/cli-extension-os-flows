@@ -96,8 +96,9 @@ func Test_NewSummaryData(t *testing.T) {
 			effectiveSummary: &testapi.FindingSummary{Count: 0},
 		}
 
-		data, err := ostest.NewSummaryData(testResult, &logger, path)
+		summary, data, err := ostest.NewSummaryData(testResult, &logger, path)
 		assert.Nil(t, data)
+		assert.Nil(t, summary)
 		assert.True(t, errors.Is(err, ostest.ErrNoSummaryData))
 		assert.ErrorContains(t, err, "no findings in summary")
 	})
@@ -118,8 +119,9 @@ func Test_NewSummaryData(t *testing.T) {
 			},
 		}
 
-		data, err := ostest.NewSummaryData(testResult, &logger, path)
+		summaryStruct, data, err := ostest.NewSummaryData(testResult, &logger, path)
 		assert.Nil(t, data)
+		assert.Nil(t, summaryStruct)
 		assert.True(t, errors.Is(err, ostest.ErrNoSummaryData))
 		assert.ErrorContains(t, err, "no findings in summary")
 	})
@@ -140,9 +142,10 @@ func Test_NewSummaryData(t *testing.T) {
 			},
 		}
 
-		data, err := ostest.NewSummaryData(testResult, &logger, path)
+		summaryStruct, data, err := ostest.NewSummaryData(testResult, &logger, path)
 		require.NoError(t, err)
 		require.NotNil(t, data)
+		require.NotNil(t, summaryStruct)
 
 		assert.Equal(t, content_type.TEST_SUMMARY, data.GetContentType())
 
@@ -159,6 +162,12 @@ func Test_NewSummaryData(t *testing.T) {
 		assert.Equal(t, 1, summary.Results[0].Total)
 		assert.Equal(t, 1, summary.Results[0].Open)
 		assert.Equal(t, 0, summary.Results[0].Ignored)
+
+		// also check the returned struct
+		assert.Equal(t, "open-source", summaryStruct.Type)
+		assert.Equal(t, path, summaryStruct.Path)
+		require.Len(t, summaryStruct.Results, 1)
+		assert.Equal(t, "critical", summaryStruct.Results[0].Severity)
 	})
 
 	t.Run("multiple findings with ignored", func(t *testing.T) {
@@ -182,9 +191,10 @@ func Test_NewSummaryData(t *testing.T) {
 			},
 		}
 
-		data, err := ostest.NewSummaryData(testResult, &logger, path)
+		summaryStruct, data, err := ostest.NewSummaryData(testResult, &logger, path)
 		require.NoError(t, err)
 		require.NotNil(t, data)
+		require.NotNil(t, summaryStruct)
 
 		// Verify content type is set correctly
 		assert.Equal(t, content_type.TEST_SUMMARY, data.GetContentType())
@@ -214,8 +224,9 @@ func Test_NewSummaryData(t *testing.T) {
 			effectiveSummary: nil,
 		}
 
-		data, err := ostest.NewSummaryData(testResult, &logger, path)
+		summary, data, err := ostest.NewSummaryData(testResult, &logger, path)
 		assert.Nil(t, data)
+		assert.Nil(t, summary)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "test result missing summary information")
 	})

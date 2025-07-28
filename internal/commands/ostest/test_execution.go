@@ -5,19 +5,21 @@ import (
 	"encoding/json"
 	std_errors "errors"
 	"fmt"
-	"math"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/output_workflow"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
+	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 )
 
 // ApplicationJSONContentType matches the content type for legacy JSON findings records.
@@ -32,6 +34,7 @@ var ErrNoSummaryData = std_errors.New("no summary data to create")
 // RunTest executes the common test flow with the provided test subject.
 func RunTest(
 	ctx context.Context,
+	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
 	subject testapi.TestSubjectCreate,
 	projectName string,
@@ -42,7 +45,7 @@ func RunTest(
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
-) (*definitions.LegacyVulnerabilityResponse, workflow.Data, error) {
+) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	startParams := testapi.StartTestParams{
 		OrgID:       orgID,
 		Subject:     subject,
@@ -63,6 +66,18 @@ func RunTest(
 		return nil, nil, fmt.Errorf("test completed but no result was returned")
 	}
 
+	if finalResult.GetExecutionState() == testapi.Errored {
+		apiErrors := finalResult.GetErrors()
+		if apiErrors != nil && len(*apiErrors) > 0 {
+			var errorMessages []string
+			for _, apiError := range *apiErrors {
+				errorMessages = append(errorMessages, apiError.Detail)
+			}
+			return nil, nil, errFactory.NewTestExecutionError(strings.Join(errorMessages, "; "))
+		}
+		return nil, nil, errFactory.NewTestExecutionError("an unknown error occurred")
+	}
+
 	// Get findings for the test
 	findingsData, complete, err := finalResult.Findings(ctx)
 	if err != nil {
@@ -70,59 +85,84 @@ func RunTest(
 		if !complete && len(findingsData) > 0 {
 			logger.Warn().Int(LogFieldCount, len(findingsData)).Msg("Partial findings retrieved as an error occurred")
 		}
-	} else {
-		logger.Info().Msgf("Findings count: %d\n", len(findingsData))
-
-		logger.Info().
-			Bool("complete", complete).
-			Int(LogFieldCount, len(findingsData)).
-			Msg("Findings fetched successfully")
 	}
 
 	// path should be the current working directory
-	currentDir, err := os.Getwd()
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed to get current working directory")
-		return nil, nil, fmt.Errorf("failed to get current working directory: %w", err)
+	currentDir, wdErr := os.Getwd()
+	if wdErr != nil {
+		logger.Error().Err(wdErr).Msg("Failed to get current working directory")
+		return nil, nil, fmt.Errorf("failed to get current working directory: %w", wdErr)
 	}
 
-	var uniqueCount int32
-	summary := finalResult.GetEffectiveSummary()
-	if summary != nil {
-		if summary.Count > math.MaxInt32 {
-			uniqueCount = math.MaxInt32
-			logger.Warn().Uint32(LogFieldCount, summary.Count).Msg("Unique finding count exceeds int32 max, capping value.")
-		} else {
-			uniqueCount = int32(summary.Count)
+	uniqueCount := calculateUniqueIssueCount(findingsData)
+	config := ictx.GetConfiguration()
+	var outputData []workflow.Data
+	var legacyVulnResponse *definitions.LegacyVulnerabilityResponse
+
+	// The summary is always needed for the exit code calculation.
+	standardSummary, summaryData, summaryErr := NewSummaryData(finalResult, logger, currentDir)
+	if summaryErr == nil {
+		outputData = append(outputData, summaryData)
+	} else if !std_errors.Is(summaryErr, ErrNoSummaryData) {
+		// Log the error but continue, as this is not fatal.
+		logger.Warn().Err(summaryErr).Msg("Failed to create test summary for exit code handling")
+	}
+
+	wantsJSONStdOut := config.GetBool("json")
+	jsonFileOutput := config.GetString(output_workflow.OUTPUT_CONFIG_KEY_JSON_FILE)
+	wantsJSONFile := jsonFileOutput != ""
+	wantsAnyJSON := wantsJSONStdOut || wantsJSONFile
+
+	// Prepare legacy JSON response if any JSON output is requested.
+	if wantsAnyJSON {
+		var err error
+		legacyVulnResponse, err = transform.ConvertSnykSchemaFindingsToLegacy(
+			&transform.SnykSchemaToLegacyParams{
+				Findings:          findingsData,
+				TestResult:        finalResult,
+				ProjectName:       projectName,
+				PackageManager:    packageManager,
+				CurrentDir:        currentDir,
+				UniqueCount:       int32(uniqueCount),
+				DepCount:          depCount,
+				DisplayTargetFile: displayTargetFile,
+				ErrFactory:        errFactory,
+				Logger:            logger,
+			})
+		if err != nil {
+			return nil, nil, fmt.Errorf("error converting snyk schema findings to legacy json: %w", err)
 		}
 	}
 
-	legacyVulnResponse, err := transform.ConvertSnykSchemaFindingsToLegacy(
-		&transform.SnykSchemaToLegacyParams{
-			Findings:          findingsData,
-			TestResult:        finalResult,
-			ProjectName:       projectName,
-			PackageManager:    packageManager,
-			CurrentDir:        currentDir,
-			UniqueCount:       uniqueCount,
-			DepCount:          depCount,
-			DisplayTargetFile: displayTargetFile,
-			ErrFactory:        errFactory,
-			Logger:            logger,
-		})
-	if err != nil {
-		return nil, nil, fmt.Errorf("error converting snyk schema findings to legacy json: %w", err)
-	}
-
-	summaryData, err := NewSummaryData(finalResult, logger, currentDir)
-	if err != nil {
-		if !std_errors.Is(err, ErrNoSummaryData) {
-			logger.Warn().Err(err).Msg("Failed to create test summary for exit code handling")
+	// Prepare human-readable output unless JSON is being printed to stdout.
+	if !wantsJSONStdOut {
+		// For human-readable output, we pass the raw findings and summary to the output workflow.
+		findingsBytes, err := json.Marshal(findingsData)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to marshal findings: %w", err)
 		}
-		return legacyVulnResponse, nil, nil
+		outputData = append(outputData, NewWorkflowData("application/json; schema=local-unified-finding", findingsBytes))
+
+		if standardSummary != nil {
+			extendedPayload := presenters.SummaryPayload{
+				Summary:           standardSummary,
+				DependencyCount:   depCount,
+				PackageManager:    packageManager,
+				ProjectName:       projectName,
+				DisplayTargetFile: displayTargetFile,
+				UniqueCount:       uniqueCount,
+			}
+
+			extendedPayloadBytes, marshalErr := json.Marshal(extendedPayload)
+			if marshalErr != nil {
+				return nil, nil, fmt.Errorf("failed to marshal extended summary payload: %w", marshalErr)
+			}
+
+			outputData = append(outputData, NewWorkflowData("application/json; schema=local-unified-summary", extendedPayloadBytes))
+		}
 	}
 
-	return legacyVulnResponse, summaryData, nil
+	return legacyVulnResponse, outputData, nil
 }
 
 // getSeverityCount safely retrieves the count for a given severity from a summary.
@@ -154,17 +194,17 @@ func extractSeverityKeys(summaries ...*testapi.FindingSummary) map[string]bool {
 // NewSummaryData creates a workflow.Data object containing a json_schemas.TestSummary
 // from a testapi.TestResult. This is used for downstream processing, like determining
 // the CLI exit code.
-func NewSummaryData(testResult testapi.TestResult, logger *zerolog.Logger, path string) (workflow.Data, error) {
+func NewSummaryData(testResult testapi.TestResult, logger *zerolog.Logger, path string) (*json_schemas.TestSummary, workflow.Data, error) {
 	rawSummary := testResult.GetRawSummary()
 	effectiveSummary := testResult.GetEffectiveSummary()
 
 	if rawSummary == nil || effectiveSummary == nil {
-		return nil, fmt.Errorf("test result missing summary information")
+		return nil, nil, fmt.Errorf("test result missing summary information")
 	}
 
 	if rawSummary.Count == 0 {
 		logger.Debug().Msg("No findings in summary, skipping summary creation.")
-		return nil, fmt.Errorf("no findings in summary: %w", ErrNoSummaryData)
+		return nil, nil, fmt.Errorf("no findings in summary: %w", ErrNoSummaryData)
 	}
 
 	severityKeys := extractSeverityKeys(rawSummary, effectiveSummary)
@@ -201,14 +241,45 @@ func NewSummaryData(testResult testapi.TestResult, logger *zerolog.Logger, path 
 
 		summaryBytes, err := json.Marshal(testSummary)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal test summary: %w", err)
+			return nil, nil, fmt.Errorf("failed to marshal test summary: %w", err)
 		}
 
 		summaryWorkflowData := NewWorkflowData(content_type.TEST_SUMMARY, summaryBytes)
-		return summaryWorkflowData, nil
+		return testSummary, summaryWorkflowData, nil
 	}
 
-	return nil, fmt.Errorf("no summary results to process: %w", ErrNoSummaryData)
+	return nil, nil, fmt.Errorf("no summary results to process: %w", ErrNoSummaryData)
+}
+
+// calculateUniqueIssueCount iterates through findings to determine the number of unique issues.
+// A unique issue is identified by its Snyk ID (e.g., SNYK-JS-LODASH-12345).
+func calculateUniqueIssueCount(findings []testapi.FindingData) int {
+	issueIds := make(map[string]bool)
+	for _, finding := range findings {
+		var snykID string
+		// A finding can have multiple problems (e.g., a CVE and a Snyk ID).
+		// We iterate through them to find the canonical Snyk ID for uniqueness.
+		for _, problem := range finding.Attributes.Problems {
+			var id string
+
+			// The problem is a union type, so we need to check which type it is.
+			if p, err := problem.AsSnykVulnProblem(); err == nil {
+				id = p.Id
+			} else if p, err := problem.AsSnykLicenseProblem(); err == nil {
+				id = p.Id
+			}
+
+			if id != "" {
+				snykID = id
+				break // Found a Snyk ID, we can stop searching for this finding.
+			}
+		}
+
+		if snykID != "" {
+			issueIds[snykID] = true
+		}
+	}
+	return len(issueIds)
 }
 
 // NewWorkflowData creates a workflow.Data object with the given content type and data.

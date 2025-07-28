@@ -1,0 +1,9 @@
+{{- define "main" -}}
+{ "findings": [
+{{- range $i, $p := .Results -}}
+	{{- range $j, $f := $p.Findings -}}
+		"{{ $f.Attributes.Title }}"{{ if or (ne $i (sub (len $.Results) 1)) (ne $j (sub (len $p.Findings) 1)) }},{{ end }}
+	{{- end -}}
+{{- end -}}
+] }
+{{- end -}}
