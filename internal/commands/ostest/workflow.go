@@ -45,7 +45,7 @@ const FeatureFlagRiskScoreInCLI = "feature_flag_experimental_risk_score_in_cli"
 const ForceLegacyCLIEnvVar = "SNYK_FORCE_LEGACY_CLI"
 
 // PollInterval is the polling interval for the test API. It is exported to be configurable in tests.
-var PollInterval = 8 * time.Second
+var PollInterval = 2 * time.Second
 
 // RegisterWorkflows registers the "test" workflow.
 func RegisterWorkflows(e workflow.Engine) error {
