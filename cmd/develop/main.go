@@ -4,10 +4,12 @@ import (
 	"log"
 
 	"github.com/snyk/go-application-framework/pkg/devtools"
+
+	"github.com/snyk/cli-extension-os-flows/pkg/osflows"
 )
 
 func main() {
-	cmd, err := devtools.Cmd()
+	cmd, err := devtools.Cmd(osflows.Init)
 	if err != nil {
 		log.Fatal(err)
 	}
