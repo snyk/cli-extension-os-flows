@@ -398,6 +398,7 @@ func processSnykLicenseProblem(v *definitions.Vulnerability, prob *testapi.Probl
 	return nil
 }
 
+// setBasicLicenseInfo sets basic license information from a Snyk license problem.
 func setBasicLicenseInfo(v *definitions.Vulnerability, license *testapi.SnykLicenseProblem) {
 	v.CreationTime = license.CreatedAt.Format(legacyTimeFormat)
 	v.PublicationTime = util.Ptr(license.PublishedAt.Format(legacyTimeFormat))
@@ -411,6 +412,7 @@ func setBasicLicenseInfo(v *definitions.Vulnerability, license *testapi.SnykLice
 	v.PackageName = &license.PackageName
 }
 
+// ensureVulnHasIdentifiers ensures that a vulnerability has an identifiers field initialized.
 func ensureVulnHasIdentifiers(v *definitions.Vulnerability) {
 	if v.Identifiers == nil {
 		v.Identifiers = &definitions.Identifiers{CVE: []string{}, CWE: []string{}}

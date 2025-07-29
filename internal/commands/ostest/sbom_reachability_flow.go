@@ -47,6 +47,7 @@ func RunSbomReachabilityFlow(
 	return nil, nil // TODO: return something meaningful once this function is complete
 }
 
+// validateDirectory checks if the given path exists and contains files.
 func validateDirectory(sourceCodePath string, logger *zerolog.Logger, errFactory *errors.ErrorFactory) error {
 	exists, err := dirExists(sourceCodePath)
 	if err != nil {
@@ -68,6 +69,7 @@ func validateDirectory(sourceCodePath string, logger *zerolog.Logger, errFactory
 	return nil
 }
 
+// dirExists checks if the given path exists as a directory.
 func dirExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err != nil {
@@ -80,6 +82,7 @@ func dirExists(path string) (bool, error) {
 	return true, nil
 }
 
+// dirContainsFiles checks if the given directory contains any files.
 func dirContainsFiles(path string) (bool, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {

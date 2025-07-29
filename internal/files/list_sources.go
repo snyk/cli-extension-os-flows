@@ -8,7 +8,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/utils"
 )
 
-// ForPath Return a channel that notifies each file in the path that doesn't match the filter rules.
+// ForPath returns a channel that notifies each file in the path that doesn't match the filter rules.
 func ForPath(path string, logger *zerolog.Logger, maxThreads int) (<-chan string, error) {
 	filter := utils.NewFileFilter(path, logger, utils.WithThreadNumber(maxThreads))
 	rules, err := filter.GetRules([]string{".gitignore", ".dcignore", ".snyk"})

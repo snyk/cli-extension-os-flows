@@ -72,6 +72,7 @@ func RegisterWorkflows(e workflow.Engine) error {
 	return nil
 }
 
+// setupSBOMReachabilityFlow sets up and runs the SBOM reachability flow.
 func setupSBOMReachabilityFlow(
 	ctx context.Context,
 	ictx workflow.InvocationContext,
@@ -104,6 +105,7 @@ func setupSBOMReachabilityFlow(
 	return RunSbomReachabilityFlow(ctx, errFactory, logger, sbom, sourceDir, bsClient)
 }
 
+// setupDefaultTestFlow sets up and runs the default test flow with risk score and severity thresholds.
 func setupDefaultTestFlow(
 	ctx context.Context,
 	ictx workflow.InvocationContext,

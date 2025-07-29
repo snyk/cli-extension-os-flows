@@ -106,6 +106,14 @@ func (ef *ErrorFactory) NewDepGraphWorkflowError(err error) *OSFlowsExtensionErr
 	)
 }
 
+// NewTestExecutionError creates a new error for failures in the test execution.
+func (ef *ErrorFactory) NewTestExecutionError(details string) *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("test execution failed: %s", details),
+		fmt.Sprintf("Test execution failed: %s", details),
+	)
+}
+
 // NewLegacyJSONTransformerError creates a new error for failures in the
 // transformation of snyk schema findings into the legacy json format.
 func (ef *ErrorFactory) NewLegacyJSONTransformerError(err error) *OSFlowsExtensionError {
