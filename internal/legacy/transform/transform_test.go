@@ -25,6 +25,10 @@ func TestProcessProblemForVuln_Identifiers(t *testing.T) {
 	err = cweProblem.FromCweProblem(testapi.CweProblem{Id: "cwe-problem-id", Source: testapi.Cwe})
 	require.NoError(t, err)
 
+	ghsaProblem := &testapi.Problem{}
+	err = ghsaProblem.FromGithubSecurityAdvisoryProblem(testapi.GithubSecurityAdvisoryProblem{Id: "ghsa-problem-id", Source: testapi.Ghsa})
+	require.NoError(t, err)
+
 	// Setup invalid problem
 	malformedProblem := &testapi.Problem{} // empty union
 
@@ -56,6 +60,18 @@ func TestProcessProblemForVuln_Identifiers(t *testing.T) {
 				require.NotNil(t, v.Identifiers)
 				require.Len(t, v.Identifiers.CWE, 1)
 				assert.Equal(t, "cwe-problem-id", v.Identifiers.CWE[0])
+				require.Len(t, v.Identifiers.CVE, 0)
+			},
+		},
+		{
+			name:    "should add GHSA identifier to empty vulnerability",
+			vuln:    &definitions.Vulnerability{},
+			problem: ghsaProblem,
+			assertFunc: func(t *testing.T, v *definitions.Vulnerability) {
+				t.Helper()
+				require.NotNil(t, v.Identifiers)
+				require.Len(t, *v.Identifiers.GHSA, 1)
+				assert.Equal(t, "ghsa-problem-id", (*v.Identifiers.GHSA)[0])
 				require.Len(t, v.Identifiers.CVE, 0)
 			},
 		},

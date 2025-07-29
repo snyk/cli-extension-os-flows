@@ -53,6 +53,8 @@ func ProcessProblemForVuln(
 		return processCveProblem(vuln, prob)
 	case string(testapi.Cwe):
 		return processCweProblem(vuln, prob)
+	case string(testapi.Ghsa):
+		return processGhsaProblem(vuln, prob)
 	case string(testapi.SnykLicense):
 		return processSnykLicenseProblem(vuln, prob, logger)
 	default:
@@ -383,6 +385,19 @@ func processCweProblem(v *definitions.Vulnerability, prob *testapi.Problem) erro
 		return fmt.Errorf("converting problem to cwe: %w", err)
 	}
 	v.Identifiers.CWE = append(v.Identifiers.CWE, cwe.Id)
+	return nil
+}
+
+func processGhsaProblem(v *definitions.Vulnerability, prob *testapi.Problem) error {
+	ensureVulnHasIdentifiers(v)
+	ghsa, err := prob.AsGithubSecurityAdvisoryProblem()
+	if err != nil {
+		return fmt.Errorf("converting problem to github security advisory: %w", err)
+	}
+	if v.Identifiers.GHSA == nil {
+		v.Identifiers.GHSA = &[]string{}
+	}
+	*v.Identifiers.GHSA = append(*v.Identifiers.GHSA, ghsa.Id)
 	return nil
 }
 
