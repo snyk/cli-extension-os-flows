@@ -30,10 +30,10 @@ func Test_Output_InitOutputWorkflow(t *testing.T) {
 	err := InitOutputWorkflow(engine)
 	assert.Nil(t, err)
 
-	json := config.GetBool("json")
+	json := config.GetBool(OutputConfigKeyJSON)
 	assert.Equal(t, false, json)
 
-	jsonFileOutput := config.GetString("json-file-output")
+	jsonFileOutput := config.GetString(OutputConfigKeyJSONFile)
 	assert.Equal(t, "", jsonFileOutput)
 }
 

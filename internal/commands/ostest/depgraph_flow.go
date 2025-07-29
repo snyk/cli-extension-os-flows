@@ -150,7 +150,7 @@ func handleOutput(
 	errFactory *errors.ErrorFactory,
 ) ([]workflow.Data, error) {
 	config := ictx.GetConfiguration()
-	jsonOutput := config.GetBool("json")
+	jsonOutput := config.GetBool(outputworkflow.OutputConfigKeyJSON)
 	jsonFileOutput := config.GetString(outputworkflow.OutputConfigKeyJSONFile)
 
 	// Human-readable output is suppressed only when --json is specified.

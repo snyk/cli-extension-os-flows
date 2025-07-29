@@ -151,7 +151,7 @@ func prepareOutput(
 		outputData = append(outputData, summaryData)
 	}
 
-	wantsJSONStdOut := config.GetBool("json")
+	wantsJSONStdOut := config.GetBool(outputworkflow.OutputConfigKeyJSON)
 	jsonFileOutput := config.GetString(outputworkflow.OutputConfigKeyJSONFile)
 	wantsJSONFile := jsonFileOutput != ""
 	wantsAnyJSON := wantsJSONStdOut || wantsJSONFile

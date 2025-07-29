@@ -25,6 +25,7 @@ import (
 	common "github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
+	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 )
 
 var legacyWorkflowID = workflow.NewWorkflowIdentifier("legacycli")
@@ -462,7 +463,7 @@ func TestOSWorkflow_AllProjects_UnifiedFlow(t *testing.T) {
 	config.Set(ostest.FeatureFlagRiskScore, true)
 	config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
 	config.Set(flags.FlagAllProjects, true)
-	config.Set("json", true)
+	config.Set(outputworkflow.OutputConfigKeyJSON, true)
 
 	// Temporarily reduce the poll interval for this test to avoid timeouts.
 	originalPollInterval := ostest.PollInterval

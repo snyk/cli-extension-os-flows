@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-// OutputDestination is an interface for output destinations.
+// OutputDestination is an interface for where to direct workflow output.
 type OutputDestination interface {
 	Println(a ...any) (n int, err error)
 	Remove(name string) error
