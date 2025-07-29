@@ -224,17 +224,12 @@ func extractSeverityKeys(summaries ...*testapi.FindingSummary) map[string]bool {
 // NewSummaryData creates a workflow.Data object containing a json_schemas.TestSummary
 // from a testapi.TestResult. This is used for downstream processing, like determining
 // the CLI exit code.
-func NewSummaryData(testResult testapi.TestResult, logger *zerolog.Logger, path string) (*json_schemas.TestSummary, workflow.Data, error) {
+func NewSummaryData(testResult testapi.TestResult, _ *zerolog.Logger, path string) (*json_schemas.TestSummary, workflow.Data, error) {
 	rawSummary := testResult.GetRawSummary()
 	effectiveSummary := testResult.GetEffectiveSummary()
 
 	if rawSummary == nil || effectiveSummary == nil {
 		return nil, nil, fmt.Errorf("test result missing summary information")
-	}
-
-	if rawSummary.Count == 0 {
-		logger.Debug().Msg("No findings in summary, skipping summary creation.")
-		return nil, nil, fmt.Errorf("no findings in summary: %w", ErrNoSummaryData)
 	}
 
 	severityKeys := extractSeverityKeys(rawSummary, effectiveSummary)
@@ -258,27 +253,23 @@ func NewSummaryData(testResult testapi.TestResult, logger *zerolog.Logger, path 
 		}
 	}
 
-	if len(summaryResults) > 0 {
-		// Sort results for consistent output, matching the standard CLI order.
-		sort.Slice(summaryResults, func(i, j int) bool {
-			order := map[string]int{"critical": 4, "high": 3, "medium": 2, "low": 1}
-			return order[summaryResults[i].Severity] > order[summaryResults[j].Severity]
-		})
+	// Sort results for consistent output, matching the standard CLI order.
+	sort.Slice(summaryResults, func(i, j int) bool {
+		order := map[string]int{"critical": 4, "high": 3, "medium": 2, "low": 1}
+		return order[summaryResults[i].Severity] > order[summaryResults[j].Severity]
+	})
 
-		testSummary := json_schemas.NewTestSummary("open-source", path)
-		testSummary.Results = summaryResults
-		testSummary.SeverityOrderAsc = []string{"low", "medium", "high", "critical"}
+	testSummary := json_schemas.NewTestSummary("open-source", path)
+	testSummary.Results = summaryResults
+	testSummary.SeverityOrderAsc = []string{"low", "medium", "high", "critical"}
 
-		summaryBytes, err := json.Marshal(testSummary)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to marshal test summary: %w", err)
-		}
-
-		summaryWorkflowData := NewWorkflowData(content_type.TEST_SUMMARY, summaryBytes)
-		return testSummary, summaryWorkflowData, nil
+	summaryBytes, err := json.Marshal(testSummary)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to marshal test summary: %w", err)
 	}
 
-	return nil, nil, fmt.Errorf("no summary results to process: %w", ErrNoSummaryData)
+	summaryWorkflowData := NewWorkflowData(content_type.TEST_SUMMARY, summaryBytes)
+	return testSummary, summaryWorkflowData, nil
 }
 
 // calculateUniqueIssueCount iterates through findings to determine the number of unique issues.

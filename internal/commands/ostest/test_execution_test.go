@@ -3,7 +3,6 @@ package ostest_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
+	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -90,17 +90,32 @@ func Test_NewSummaryData(t *testing.T) {
 	logger := zerolog.Nop()
 	path := "/test/path"
 
-	t.Run("no findings should not create summary data, implying exit code 0", func(t *testing.T) {
+	t.Run("no findings creates empty summary data, exit code 0", func(t *testing.T) {
 		testResult := &mockTestResult{
 			rawSummary:       &testapi.FindingSummary{Count: 0},
 			effectiveSummary: &testapi.FindingSummary{Count: 0},
 		}
 
 		summary, data, err := ostest.NewSummaryData(testResult, &logger, path)
-		assert.Nil(t, data)
-		assert.Nil(t, summary)
-		assert.True(t, errors.Is(err, ostest.ErrNoSummaryData))
-		assert.ErrorContains(t, err, "no findings in summary")
+		assert.NoError(t, err)
+		assert.Equal(t,
+			workflow.NewData(
+				data.GetIdentifier(),
+				content_type.TEST_SUMMARY,
+				[]byte(`{"results":null,"severity_order_asc":["low","medium","high","critical"],"type":"open-source","artifacts":0,"path":"/test/path"}`),
+			),
+			data,
+		)
+		assert.Equal(t,
+			&json_schemas.TestSummary{
+				Results:          nil,
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+				Type:             "open-source",
+				Artifacts:        0,
+				Path:             "/test/path",
+			},
+			summary,
+		)
 	})
 
 	t.Run("no open or total findings should not create summary data", func(t *testing.T) {
@@ -120,10 +135,23 @@ func Test_NewSummaryData(t *testing.T) {
 		}
 
 		summaryStruct, data, err := ostest.NewSummaryData(testResult, &logger, path)
-		assert.Nil(t, data)
-		assert.Nil(t, summaryStruct)
-		assert.True(t, errors.Is(err, ostest.ErrNoSummaryData))
-		assert.ErrorContains(t, err, "no findings in summary")
+		assert.NoError(t, err)
+		assert.Equal(t,
+			workflow.NewData(
+				data.GetIdentifier(),
+				content_type.TEST_SUMMARY,
+				[]byte(`{"results":null,"severity_order_asc":["low","medium","high","critical"],"type":"open-source","artifacts":0,"path":"/test/path"}`),
+			),
+			data)
+		assert.Equal(t,
+			&json_schemas.TestSummary{
+				Results:          nil,
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+				Type:             "open-source",
+				Artifacts:        0,
+				Path:             "/test/path",
+			},
+			summaryStruct)
 	})
 
 	t.Run("one critical finding should create summary data, implying exit code 1", func(t *testing.T) {
