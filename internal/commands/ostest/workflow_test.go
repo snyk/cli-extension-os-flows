@@ -532,9 +532,9 @@ func TestOSWorkflow_AllProjects_UnifiedFlow(t *testing.T) {
 		}
 	}
 
-	// Should have 1 JSON output (as an array of results) and 0 summary outputs (since there are no findings)
+	// Should have 1 JSON output (as an array of results) and 2 summary outputs (no findings, empty summaries)
 	assert.Len(t, jsonOutputs, 1)
-	assert.Len(t, summaryOutputs, 0)
+	assert.Len(t, summaryOutputs, 2)
 
 	// Verify JSON output is an array of 2 results
 	var legacyResults []definitions.LegacyVulnerabilityResponse
