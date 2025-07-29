@@ -8,18 +8,22 @@ import (
 	"golang.org/x/net/html"
 )
 
+// ElementCallback is a function that can be used to transform an HTML element.
 type ElementCallback func(tagName, cssClass, originalContent string) string
 
+// HTMLpresenter is a presenter that can convert HTML to plain text.
 type HTMLpresenter struct {
 	Callback ElementCallback
 }
 
+// NewHTMLPresenter creates a new HTML presenter with the given callback.
 func NewHTMLPresenter(callback ElementCallback) *HTMLpresenter {
 	return &HTMLpresenter{
 		Callback: callback,
 	}
 }
 
+// getTextContent extracts text content from an HTML node.
 func getTextContent(n *html.Node) string {
 	var sb strings.Builder
 	var f func(*html.Node)
@@ -43,6 +47,7 @@ func getTextContent(n *html.Node) string {
 	return strings.TrimSuffix(str, " ")
 }
 
+// replaceChildren replaces all children of a node with new content.
 func replaceChildren(parent *html.Node, newContent string) {
 	for c := parent.FirstChild; c != nil; {
 		next := c.NextSibling
@@ -59,6 +64,7 @@ func replaceChildren(parent *html.Node, newContent string) {
 	}
 }
 
+// Present processes HTML content and returns plain text.
 func (p *HTMLpresenter) Present(htmlString string) (string, error) {
 	doc, err := html.Parse(strings.NewReader(htmlString))
 	if err != nil {
@@ -70,7 +76,7 @@ func (p *HTMLpresenter) Present(htmlString string) (string, error) {
 		if n.Type == html.ElementNode {
 			tagName := n.Data
 			var cssClass string
-			var hasClassAttribute bool = false
+			hasClassAttribute := false
 
 			for _, attr := range n.Attr {
 				if attr.Key == "class" {
@@ -102,7 +108,8 @@ func (p *HTMLpresenter) Present(htmlString string) (string, error) {
 	return finalPlainText, nil
 }
 
-func HtmlToAnsi(tag, cssClass, originalContent string) string {
+// HTMLToAnsi converts HTML content to ANSI formatted text.
+func HTMLToAnsi(_, cssClass, originalContent string) string {
 	switch cssClass {
 	case "prompt-help":
 		return lipgloss.NewStyle().Faint(true).Render(originalContent)
@@ -111,7 +118,8 @@ func HtmlToAnsi(tag, cssClass, originalContent string) string {
 	}
 }
 
-func IsHtml(str string) bool {
+// IsHTML checks if a string contains HTML content.
+func IsHTML(str string) bool {
 	if !strings.Contains(str, "<") || !strings.Contains(str, ">") {
 		return false
 	}

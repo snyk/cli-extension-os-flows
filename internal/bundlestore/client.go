@@ -62,6 +62,7 @@ func NewClient(httpClient *http.Client, csConfig CodeClientConfig, cScanner code
 	}
 }
 
+// host returns the appropriate host URL based on configuration.
 func (c *HTTPClient) host() string {
 	if c.CodeClientConfig.IsFedramp() {
 		return c.SnykApi() + "/hidden/orgs/" + c.CodeClientConfig.Organization() + "/code"
@@ -69,6 +70,7 @@ func (c *HTTPClient) host() string {
 	return c.SnykCodeApi()
 }
 
+// request sends an HTTP request to the bundle store.
 func (c *HTTPClient) request(
 	ctx context.Context,
 	method string,
@@ -117,6 +119,8 @@ func (c *HTTPClient) request(
 	return responseBody, nil
 }
 
+// createBundle creates a new bundle with the given file hashes.
+//
 //nolint:gocritic // Code copied verbatim from code-client-go
 func (c *HTTPClient) createBundle(ctx context.Context, fileHashes map[string]string) (string, []string, error) {
 	requestBody, err := json.Marshal(fileHashes)
@@ -137,6 +141,8 @@ func (c *HTTPClient) createBundle(ctx context.Context, fileHashes map[string]str
 	return bundle.BundleHash, bundle.MissingFiles, nil
 }
 
+// extendBundle extends an existing bundle with new or removed files.
+//
 //nolint:gocritic // Code copied verbatim from code-client-go
 func (c *HTTPClient) extendBundle(ctx context.Context, bundleHash string, files map[string]BundleFile, removedFiles []string) (string, []string, error) {
 	requestBody, err := json.Marshal(ExtendBundleRequest{

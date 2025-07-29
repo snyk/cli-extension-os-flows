@@ -3,22 +3,23 @@ package presenters
 import (
 	"context"
 	"fmt"
-
 	"net/http"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/snyk/go-application-framework/pkg/networking"
-
 	"github.com/charmbracelet/lipgloss"
 	"github.com/snyk/error-catalog-golang-public/snyk_errors"
+	"github.com/snyk/go-application-framework/pkg/networking"
 )
 
 const (
-	SNYK_DOCS_URL                = "https://docs.snyk.io"
-	SNYK_DOCS_ERROR_CATALOG_PATH = "/scan-with-snyk/error-catalog"
+	// SnykDocsURL is the base URL for Snyk's documentation.
+	SnykDocsURL = "https://docs.snyk.io"
+	// SnykDocsErrorCatalogPath is the path to the error catalog on Snyk's documentation website.
+	SnykDocsErrorCatalogPath = "/scan-with-snyk/error-catalog"
+	docsLabel                = "Docs:"
 )
 
 const valueStyleWidth = 80
@@ -39,7 +40,8 @@ func errorLevelToStyle(errLevel string) lipgloss.Style {
 	return style
 }
 
-func RenderError(err snyk_errors.Error, ctx context.Context) string {
+// RenderError renders a snyk_errors.Error to a string.
+func RenderError(ctx context.Context, err *snyk_errors.Error) string {
 	var body []string
 
 	level := strings.ToUpper(err.Level)
@@ -47,9 +49,9 @@ func RenderError(err snyk_errors.Error, ctx context.Context) string {
 	label := lipgloss.NewStyle().Width(8)
 	value := lipgloss.NewStyle().PaddingLeft(1).PaddingRight(1)
 
-	if len(err.Description) > 0 {
+	if err.Description != "" {
 		desc := err.Description
-		re := regexp.MustCompile("\n+")
+		re := regexp.MustCompile(`\n+`)
 		lines := re.Split(desc, -1)
 
 		if len(lines) > 1 {
@@ -66,7 +68,7 @@ func RenderError(err snyk_errors.Error, ctx context.Context) string {
 		))
 	}
 
-	if len(err.Detail) > 0 {
+	if err.Detail != "" {
 		detailValue := lipgloss.NewStyle().PaddingLeft(3).PaddingRight(1)
 		body = append(body, lipgloss.JoinHorizontal(lipgloss.Top,
 			label.Render("\n"),
@@ -74,16 +76,16 @@ func RenderError(err snyk_errors.Error, ctx context.Context) string {
 		))
 	}
 
-	if len(err.Detail) > 0 || len(err.Description) > 0 {
+	if err.Detail != "" || err.Description != "" {
 		body = append(body, "")
 	}
 
 	title := strings.TrimSpace(err.Title)
-	if len(err.ErrorCode) > 0 {
+	if err.ErrorCode != "" {
 		fragment := "#" + strings.ToLower(err.ErrorCode)
-		link := SNYK_DOCS_URL + SNYK_DOCS_ERROR_CATALOG_PATH + fragment
+		link := SnykDocsURL + SnykDocsErrorCatalogPath + fragment
 		err.Links = append([]string{link}, err.Links...)
-		title = title + fmt.Sprintf(" (%s)", err.ErrorCode)
+		title += fmt.Sprintf(" (%s)", err.ErrorCode)
 	}
 
 	if err.StatusCode > http.StatusOK {
@@ -96,17 +98,17 @@ func RenderError(err snyk_errors.Error, ctx context.Context) string {
 	if len(err.Links) > 0 {
 		link := err.Links[0] + "\n"
 		body = append(body, lipgloss.JoinHorizontal(lipgloss.Top,
-			label.Render("Docs:"),
+			label.Render(docsLabel),
 			value.Render(link),
 		))
 	}
 
 	if v := ctx.Value(networking.InteractionIdKey); v != nil {
-		interactionId, ok := v.(string)
+		interactionID, ok := v.(string)
 		if ok {
 			body = append(body, lipgloss.JoinHorizontal(lipgloss.Top,
 				label.Render("ID:"),
-				value.Render(interactionId),
+				value.Render(interactionID),
 			))
 		}
 	}
@@ -117,26 +119,31 @@ func RenderError(err snyk_errors.Error, ctx context.Context) string {
 		strings.Join(body, "\n")
 }
 
+// RenderLink renders a string as a hyperlink.
 func RenderLink(str string) string {
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color("12")).
 		Render(str)
 }
 
+// RenderDivider renders a horizontal line.
 func RenderDivider() string {
 	return "─────────────────────────────────────────────────────\n"
 }
 
+// RenderTitle renders a string as a title.
 func RenderTitle(str string) string {
 	return fmt.Sprintf("\n%s\n\n", renderBold(str))
 }
 
+// RenderTip renders a string as a tip.
 func RenderTip(str string) string {
 	body := lipgloss.NewStyle().
 		PaddingLeft(3)
 	return fmt.Sprintf("\n💡 Tip\n\n%s", body.Render(str))
 }
 
+// FilterSeverityASC filters a slice of severities based on a minimum level.
 func FilterSeverityASC(original []string, severityMinLevel string) []string {
 	if severityMinLevel == "" {
 		return original

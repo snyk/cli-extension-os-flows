@@ -1,4 +1,5 @@
-package output_workflow
+//nolint:testpackage // to be able to test unexported functions
+package outputworkflow
 
 import (
 	"bytes"
@@ -6,18 +7,18 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
 	pkgMocks "github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 )
 
 func getUnifiedProjectResultsSkeleton(t *testing.T, counts ...int) []*presenters.UnifiedProjectResult {
 	t.Helper()
-	var results []*presenters.UnifiedProjectResult
+	results := make([]*presenters.UnifiedProjectResult, 0, len(counts))
 	for _, count := range counts {
 		summary := &json_schemas.TestSummary{
 			Results: []json_schemas.TestSummaryResult{},
@@ -63,12 +64,12 @@ func Test_getWritersToUse(t *testing.T) {
 		newKey := "somethingNewKey"
 		buffer := &bytes.Buffer{}
 		config := configuration.NewWithOpts()
-		config.Set(OUTPUT_CONFIG_KEY_JSON_FILE, t.TempDir()+"/test.json")
+		config.Set(OutputConfigKeyJSONFile, t.TempDir()+"/test.json")
 		config.Set(newKey, t.TempDir()+"/test.new")
 
-		config.Set(OUTPUT_CONFIG_KEY_FILE_WRITERS, []FileWriter{
+		config.Set(OutputConfigKeyFileWriters, []FileWriter{
 			{
-				OUTPUT_CONFIG_KEY_JSON_FILE,
+				OutputConfigKeyJSONFile,
 				"application/json",
 				[]string{},
 				true,
@@ -103,7 +104,7 @@ func Test_useRendererWithUnifiedModel(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		writer := &WriterEntry{
 			writer:          &newLineCloser{writer: buffer},
-			mimeType:        DEFAULT_MIME_TYPE,
+			mimeType:        DefaultMimeType,
 			templates:       presenters.DefaultTemplateFiles,
 			renderEmptyData: true,
 		}
@@ -116,7 +117,7 @@ func Test_useRendererWithUnifiedModel(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		writer := &WriterEntry{
 			writer:          &newLineCloser{writer: buffer},
-			mimeType:        DEFAULT_MIME_TYPE,
+			mimeType:        DefaultMimeType,
 			templates:       presenters.DefaultTemplateFiles,
 			renderEmptyData: true,
 		}
@@ -129,7 +130,7 @@ func Test_useRendererWithUnifiedModel(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		writer := &WriterEntry{
 			writer:          &newLineCloser{writer: buffer},
-			mimeType:        DEFAULT_MIME_TYPE,
+			mimeType:        DefaultMimeType,
 			templates:       presenters.DefaultTemplateFiles,
 			renderEmptyData: false,
 		}

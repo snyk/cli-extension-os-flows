@@ -47,6 +47,7 @@ func NewSnykClient(c *http.Client, apiBaseURL, orgID string) *Client {
 	}
 }
 
+// createNonRedirectingHTTPClient creates a new HTTP client that doesn't follow redirects.
 func createNonRedirectingHTTPClient(c *http.Client) *http.Client {
 	newClient := http.Client{
 		Transport: c.Transport,

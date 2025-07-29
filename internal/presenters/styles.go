@@ -11,17 +11,28 @@ var boxStyle = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).
 	PaddingLeft(1).
 	PaddingRight(4)
 
+// renderBold renders text in bold style.
 func renderBold(str string) string {
 	return lipgloss.NewStyle().Bold(true).Render(str)
 }
 
-func renderInSeverityColor(severity string, str string) string {
-	severityToColor := map[string]lipgloss.TerminalColor{
-		"CRITICAL": lipgloss.AdaptiveColor{Light: "13", Dark: "5"},
-		"HIGH":     lipgloss.AdaptiveColor{Light: "9", Dark: "1"},
-		"MEDIUM":   lipgloss.AdaptiveColor{Light: "11", Dark: "3"},
-		"LOW":      lipgloss.NoColor{},
+// renderSeverityColor returns the color code for a given severity level.
+func renderSeverityColor(severity string) string {
+	upperSeverity := strings.ToUpper(severity)
+	var style lipgloss.TerminalColor
+	switch {
+	case strings.Contains(upperSeverity, "CRITICAL"):
+		// Purple
+		style = lipgloss.AdaptiveColor{Light: "13", Dark: "5"}
+	case strings.Contains(upperSeverity, "HIGH"):
+		// Red
+		style = lipgloss.AdaptiveColor{Light: "9", Dark: "1"}
+	case strings.Contains(upperSeverity, "MEDIUM"):
+		// Yellow/Orange
+		style = lipgloss.AdaptiveColor{Light: "11", Dark: "3"}
+	default:
+		style = lipgloss.NoColor{}
 	}
-	severityStyle := lipgloss.NewStyle().Foreground(severityToColor[strings.ToUpper(severity)])
-	return severityStyle.Render(str)
+	severityStyle := lipgloss.NewStyle().Foreground(style)
+	return severityStyle.Render(severity)
 }

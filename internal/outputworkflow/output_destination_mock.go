@@ -1,4 +1,4 @@
-package output_workflow
+package outputworkflow
 
 import (
 	"io"
@@ -32,10 +32,12 @@ func (m *MockOutputDestination) EXPECT() *MockOutputDestinationMockRecorder {
 }
 
 // GetWriter mocks base method.
+//
+//nolint:ireturn // expected to return an interface for flexibility
 func (m *MockOutputDestination) GetWriter() io.Writer {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetWriter")
-	ret0, _ := ret[0].(io.Writer)
+	ret0, _ := ret[0].(io.Writer) //nolint:errcheck // Mock code
 	return ret0
 }
 
@@ -49,12 +51,10 @@ func (mr *MockOutputDestinationMockRecorder) GetWriter() *gomock.Call {
 func (m *MockOutputDestination) Println(a ...interface{}) (int, error) {
 	m.ctrl.T.Helper()
 	var varargs []interface{}
-	for _, a_2 := range a {
-		varargs = append(varargs, a_2)
-	}
+	varargs = append(varargs, a...)
 	ret := m.ctrl.Call(m, "Println", varargs...)
-	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(error)
+	ret0, _ := ret[0].(int)   //nolint:errcheck // Mock code
+	ret1, _ := ret[1].(error) //nolint:errcheck // Mock code
 	return ret0, ret1
 }
 
@@ -68,7 +68,7 @@ func (mr *MockOutputDestinationMockRecorder) Println(a ...interface{}) *gomock.C
 func (m *MockOutputDestination) Remove(name string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Remove", name)
-	ret0, _ := ret[0].(error)
+	ret0, _ := ret[0].(error) //nolint:errcheck // Mock code
 	return ret0
 }
 
@@ -82,7 +82,7 @@ func (mr *MockOutputDestinationMockRecorder) Remove(name interface{}) *gomock.Ca
 func (m *MockOutputDestination) WriteFile(filename string, data []byte, perm fs.FileMode) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WriteFile", filename, data, perm)
-	ret0, _ := ret[0].(error)
+	ret0, _ := ret[0].(error) //nolint:errcheck // Mock code
 	return ret0
 }
 

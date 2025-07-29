@@ -1,23 +1,22 @@
-package output_workflow
+package outputworkflow
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
 
-	"golang.org/x/net/context"
-
 	"github.com/rs/zerolog"
-	"golang.org/x/sync/semaphore"
-
-	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
+	"golang.org/x/sync/semaphore"
+
+	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 )
 
-// WriterEntry is an internal structure to handle all template based writers
+// WriterEntry is an internal structure to handle all template based writers.
 type WriterEntry struct {
 	writer          io.WriteCloser
 	mimeType        string
@@ -25,7 +24,7 @@ type WriterEntry struct {
 	renderEmptyData bool
 }
 
-// FileWriter is a public structure used to configure file based rendering
+// FileWriter is a public structure used to configure file based rendering.
 type FileWriter struct {
 	NameConfigKey     string   // defines the configuration key to look up the filename under
 	MimeType          string   // defines the final mime type of the rendering
@@ -49,7 +48,8 @@ func getUnifiedProjectResults(input []workflow.Data, debugLogger *zerolog.Logger
 			continue
 		}
 
-		if strings.HasPrefix(contentType, LOCAL_UNIFIED_FINDING_MODEL) {
+		switch {
+		case strings.HasPrefix(contentType, LocalUnifiedFindingModel):
 			if currentFindingsData != nil {
 				debugLogger.Warn().Msg("Found new findings data before a summary for the previous set. Discarding old findings.")
 			}
@@ -60,7 +60,7 @@ func getUnifiedProjectResults(input []workflow.Data, debugLogger *zerolog.Logger
 			} else {
 				currentFindingsData = &findings
 			}
-		} else if strings.HasPrefix(contentType, LOCAL_UNIFIED_SUMMARY_MODEL) {
+		case strings.HasPrefix(contentType, LocalUnifiedSummaryModel):
 			if currentFindingsData == nil {
 				debugLogger.Warn().Msg("Found summary data without preceding findings data. Ignoring summary.")
 				continue
@@ -80,13 +80,13 @@ func getUnifiedProjectResults(input []workflow.Data, debugLogger *zerolog.Logger
 				PackageManager:    summaryPayload.PackageManager,
 				ProjectName:       summaryPayload.ProjectName,
 				DisplayTargetFile: summaryPayload.DisplayTargetFile,
-				UniqueCount:       summaryPayload.UniqueCount,
+				UniqueCount:       int(summaryPayload.UniqueCount),
 			}
 			projectResults = append(projectResults, projectResult)
 
 			// Reset for the next project
 			currentFindingsData = nil
-		} else {
+		default:
 			remainingData = append(remainingData, data)
 		}
 	}
@@ -117,14 +117,14 @@ func getTotalNumberOfUnifiedFindings(projectResults []*presenters.UnifiedProject
 func getWritersToUse(config configuration.Configuration, outputDestination OutputDestination) map[string]*WriterEntry {
 	// resulting map of writers and their templates
 	writerMap := map[string]*WriterEntry{
-		DEFAULT_WRITER: getDefaultWriter(config, outputDestination),
+		DefaultWriter: getDefaultWriter(config, outputDestination),
 	}
 
 	// default file writers
 	var fileWriters []FileWriter
 
 	// use configured file writers if available
-	if tmp, ok := config.Get(OUTPUT_CONFIG_KEY_FILE_WRITERS).([]FileWriter); ok {
+	if tmp, ok := config.Get(OutputConfigKeyFileWriters).([]FileWriter); ok {
 		fileWriters = tmp
 	}
 
@@ -147,13 +147,13 @@ func getDefaultWriter(config configuration.Configuration, outputDestination Outp
 		writer: &newLineCloser{
 			writer: outputDestination.GetWriter(),
 		},
-		mimeType:        DEFAULT_MIME_TYPE,
+		mimeType:        DefaultMimeType,
 		templates:       presenters.DefaultTemplateFiles,
 		renderEmptyData: true,
 	}
 
-	if config.IsSet(OUTPUT_CONFIG_TEMPLATE_FILE) {
-		writer.templates = []string{config.GetString(OUTPUT_CONFIG_TEMPLATE_FILE)}
+	if config.IsSet(OutputConfigTemplateFile) {
+		writer.templates = []string{config.GetString(OutputConfigTemplateFile)}
 	}
 
 	return writer
@@ -194,6 +194,7 @@ func useRendererWithUnifiedModel(name string, wEntry *WriterEntry, projectResult
 	debugLogger.Info().Msgf("[%s] Rendering done", name)
 }
 
+// HandleContentTypeUnifiedModel handles the unified model content type.
 func HandleContentTypeUnifiedModel(input []workflow.Data, invocation workflow.InvocationContext, outputDestination OutputDestination) ([]workflow.Data, error) {
 	var err error
 	debugLogger := invocation.GetEnhancedLogger()

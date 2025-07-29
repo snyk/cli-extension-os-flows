@@ -9,21 +9,22 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
 )
 
+// add returns the sum of two integers.
 func add(a, b int) int {
 	return a + b
 }
 
+// sub returns the difference of two integers.
 func sub(a, b int) int {
 	return a - b
 }
 
+// hasField returns a function that checks if an object has a field at the given path.
 func hasField(path string) func(obj any) bool {
 	return func(obj any) bool {
 		// Split the path into fields
@@ -91,6 +92,7 @@ func getFieldValueFrom(data interface{}, path string) string {
 	return fmt.Sprint(v.Interface())
 }
 
+// getVulnInfoURL returns the vulnerability information URL for a finding.
 func getVulnInfoURL(finding testapi.FindingData) string {
 	if len(finding.Attributes.Problems) > 0 {
 		problem := finding.Attributes.Problems[0]
@@ -105,6 +107,7 @@ func getVulnInfoURL(finding testapi.FindingData) string {
 	return ""
 }
 
+// getIntroducedThrough returns the dependency path through which the vulnerability was introduced.
 func getIntroducedThrough(finding testapi.FindingData) string {
 	if len(finding.Attributes.Evidence) > 0 {
 		evidence := finding.Attributes.Evidence[0]
@@ -123,6 +126,7 @@ func getIntroducedThrough(finding testapi.FindingData) string {
 	return ""
 }
 
+// getIntroducedBy returns the direct dependency that introduced the vulnerability.
 func getIntroducedBy(finding testapi.FindingData) string {
 	if len(finding.Attributes.Evidence) > 0 {
 		evidence := finding.Attributes.Evidence[0]
@@ -137,6 +141,7 @@ func getIntroducedBy(finding testapi.FindingData) string {
 	return ""
 }
 
+// getFromConfig returns a function that retrieves configuration values.
 func getFromConfig(config configuration.Configuration) func(key string) string {
 	return func(key string) string {
 		if config.GetBool(key) {
@@ -146,37 +151,19 @@ func getFromConfig(config configuration.Configuration) func(key string) string {
 	}
 }
 
+// renderTemplateToString returns a function that renders a template to a string.
 func renderTemplateToString(tmpl *template.Template) func(name string, data interface{}) (string, error) {
 	return func(name string, data interface{}) (string, error) {
 		var buf bytes.Buffer
 		err := tmpl.ExecuteTemplate(&buf, name, data)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to execute template %s: %w", name, err)
 		}
 		return buf.String(), nil
 	}
 }
 
-func renderSeverityColor(severity string) string {
-	upperSeverity := strings.ToUpper(severity)
-	var style lipgloss.TerminalColor
-	switch {
-	case strings.Contains(upperSeverity, "CRITICAL"):
-		// Purple
-		style = lipgloss.AdaptiveColor{Light: "13", Dark: "5"}
-	case strings.Contains(upperSeverity, "HIGH"):
-		// Red
-		style = lipgloss.AdaptiveColor{Light: "9", Dark: "1"}
-	case strings.Contains(upperSeverity, "MEDIUM"):
-		// Yellow/Orange
-		style = lipgloss.AdaptiveColor{Light: "11", Dark: "3"}
-	default:
-		style = lipgloss.NoColor{}
-	}
-	severityStyle := lipgloss.NewStyle().Foreground(style)
-	return severityStyle.Render(severity)
-}
-
+// sortFindingBy sorts findings by a specified field path using the given order.
 func sortFindingBy(path string, order []string, findings []testapi.FindingData) []testapi.FindingData {
 	result := make([]testapi.FindingData, 0, len(findings))
 	result = append(result, findings...)
@@ -194,7 +181,7 @@ func sortFindingBy(path string, order []string, findings []testapi.FindingData) 
 	return result
 }
 
-// filteredFinding takes a filter function and applies it to a list of findings, it will return findings that match the filter function
+// filteredFinding takes a filter function and applies it to a list of findings, it will return findings that match the filter function.
 func filterFinding(cmpFunc func(any) bool, findings []testapi.FindingData) (filteredFindings []testapi.FindingData) {
 	for _, finding := range findings {
 		if cmpFunc(finding) {
@@ -205,6 +192,7 @@ func filterFinding(cmpFunc func(any) bool, findings []testapi.FindingData) (filt
 	return filteredFindings
 }
 
+// isOpenFinding returns a function that checks if a finding is open.
 func isOpenFinding() func(obj any) bool {
 	return func(obj any) bool {
 		finding, ok := obj.(testapi.FindingData)
@@ -217,6 +205,7 @@ func isOpenFinding() func(obj any) bool {
 	}
 }
 
+// isPendingFinding returns a function that checks if a finding is pending.
 func isPendingFinding() func(obj any) bool {
 	return func(obj any) bool {
 		finding, ok := obj.(testapi.FindingData)
@@ -227,6 +216,7 @@ func isPendingFinding() func(obj any) bool {
 	}
 }
 
+// isIgnoredFinding returns a function that checks if a finding is ignored.
 func isIgnoredFinding() func(obj any) bool {
 	return func(obj any) bool {
 		finding, ok := obj.(testapi.FindingData)
@@ -237,6 +227,7 @@ func isIgnoredFinding() func(obj any) bool {
 	}
 }
 
+// hasSuppression checks if a finding has any suppression.
 func hasSuppression(finding testapi.FindingData) bool {
 	if finding.Attributes.Suppression == nil {
 		return false
@@ -246,6 +237,7 @@ func hasSuppression(finding testapi.FindingData) bool {
 	return true
 }
 
+// getCliTemplateFuncMap returns the template function map for CLI rendering.
 func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
 	fnMap := template.FuncMap{}
 	fnMap["box"] = func(s string) string { return boxStyle.Render(s) }
@@ -265,6 +257,7 @@ func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
 	return fnMap
 }
 
+// getDefaultTemplateFuncMap returns the default template function map.
 func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinfo.RuntimeInfo) template.FuncMap {
 	getSourceLocation := func(loc testapi.FindingLocation) *testapi.SourceLocation {
 		if sl, err := loc.AsSourceLocation(); err == nil {
@@ -272,7 +265,7 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 		}
 		return nil
 	}
-	getFindingId := func(finding testapi.FindingData) string {
+	getFindingID := func(finding testapi.FindingData) string {
 		if finding.Id != nil {
 			return finding.Id.String()
 		}
@@ -300,12 +293,13 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 	defaultMap["join"] = strings.Join
 	defaultMap["formatDatetime"] = formatDatetime
 	defaultMap["getSourceLocation"] = getSourceLocation
-	defaultMap["getFindingId"] = getFindingId
+	defaultMap["getFindingId"] = getFindingID
 	defaultMap["hasPrefix"] = strings.HasPrefix
 
 	return defaultMap
 }
 
+// reverse reverses the order of elements in a slice.
 func reverse(v interface{}) []interface{} {
 	l, err := mustReverse(v)
 	if err != nil {
@@ -315,6 +309,7 @@ func reverse(v interface{}) []interface{} {
 	return l
 }
 
+// mustReverse reverses the order of elements in a slice, panicking on error.
 func mustReverse(v interface{}) ([]interface{}, error) {
 	tp := reflect.TypeOf(v).Kind()
 	switch tp {
@@ -334,6 +329,7 @@ func mustReverse(v interface{}) ([]interface{}, error) {
 	}
 }
 
+// getRuntimeInfo returns runtime information for a given key.
 func getRuntimeInfo(key string, ri runtimeinfo.RuntimeInfo) string {
 	if ri == nil {
 		return ""
@@ -349,7 +345,8 @@ func getRuntimeInfo(key string, ri runtimeinfo.RuntimeInfo) string {
 	}
 }
 
-func formatDatetime(input string, inputFormat string, outputFormat string) string {
+// formatDatetime formats a datetime string from one format to another.
+func formatDatetime(input, inputFormat, outputFormat string) string {
 	datetime, err := time.Parse(inputFormat, input)
 	if err != nil {
 		return input

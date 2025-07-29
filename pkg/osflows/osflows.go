@@ -15,7 +15,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
-	"github.com/snyk/cli-extension-os-flows/internal/output_workflow"
+	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 )
 
 // Init registers the "test" workflow.
@@ -24,7 +24,7 @@ func Init(e workflow.Engine) error {
 		return fmt.Errorf("error while registering open source test workflow: %w", err)
 	}
 
-	if err := output_workflow.InitOutputWorkflow(e); err != nil {
+	if err := outputworkflow.InitOutputWorkflow(e); err != nil {
 		return fmt.Errorf("error while registering open source output workflow: %w", err)
 	}
 

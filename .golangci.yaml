@@ -36,10 +36,6 @@ linters-settings:
     enable-all: true
     disable:
       - fieldalignment
-  ireturn:
-    allow:
-      - error
-      - github.com/snyk/go-application-framework/pkg/workflow.Data
   lll:
     line-length: 160
   misspell:
@@ -122,7 +118,8 @@ linters:
     - goprintffuncname
     - gosec
     - interfacebloat
-    - ireturn
+    # TODO(ireturn): revisit in a followup; required for the output workflow
+    #- ireturn
     - lll
     - misspell
     - nakedret
@@ -152,6 +149,11 @@ linters:
 
 issues:
   exclude-rules:
+    - path: internal/legacy/definitions/oapi\.gen\.go
+      linters:
+        - godot
+        - tagliatelle
+        - wrapcheck
     - path: _test\.go
       linters:
         - bodyclose

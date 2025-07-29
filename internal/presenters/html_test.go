@@ -1,4 +1,4 @@
-package presenters
+package presenters_test
 
 import (
 	"testing"
@@ -6,6 +6,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 )
 
 func Test_IsValidHtml(t *testing.T) {
@@ -43,7 +45,7 @@ func Test_IsValidHtml(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			got := IsHtml(tc.html)
+			got := presenters.IsHTML(tc.html)
 			assert.Equal(t, tc.want, got)
 		})
 	}
@@ -70,7 +72,7 @@ func Test_HTMLpresenter_Present(t *testing.T) {
 	testCases := []struct {
 		name           string
 		html           string
-		callback       ElementCallback
+		callback       presenters.ElementCallback
 		expectedOutput string
 	}{
 		{
@@ -100,20 +102,20 @@ func Test_HTMLpresenter_Present(t *testing.T) {
 		{
 			name:           "html-to-ansi - applies styling to the class target",
 			html:           "<div class='prompt-help'>something</div>",
-			callback:       HtmlToAnsi,
+			callback:       presenters.HTMLToAnsi,
 			expectedOutput: faint.Render("something"),
 		},
 		{
 			name:           "html-to-ansi - does not apply styling if the class is not present",
 			html:           "<div>something</div>",
-			callback:       HtmlToAnsi,
+			callback:       presenters.HTMLToAnsi,
 			expectedOutput: "something",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			presenter := NewHTMLPresenter(tc.callback)
+			presenter := presenters.NewHTMLPresenter(tc.callback)
 			got, err := presenter.Present(tc.html)
 
 			assert.NoError(t, err)

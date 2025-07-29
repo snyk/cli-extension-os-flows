@@ -1,4 +1,4 @@
-package output_workflow
+package outputworkflow
 
 import (
 	"encoding/json"
@@ -6,31 +6,34 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog"
-	"github.com/spf13/pflag"
-
-	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
 	"github.com/snyk/go-application-framework/pkg/workflow"
+	"github.com/spf13/pflag"
+
+	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 )
 
-var WORKFLOWID_OUTPUT_WORKFLOW workflow.Identifier = workflow.NewWorkflowIdentifier("osflows_output")
+var workflowIDOutputWorkflow workflow.Identifier = workflow.NewWorkflowIdentifier("osflows_output")
 
-// InitOutputWorkflow initializes the output workflow
-// The output workflow is responsible for handling the output destination of workflow data
-// As part of the localworkflows package, it is registered via the localworkflows.Init method
+// InitOutputWorkflow initializes the output workflow.
+// The output workflow is responsible for handling the output destination of workflow data.
+// As part of the localworkflows package, it is registered via the localworkflows.Init method.
 func InitOutputWorkflow(engine workflow.Engine) error {
 	outputConfig := pflag.NewFlagSet("osflows_output", pflag.ContinueOnError)
 	outputConfig.Bool(configuration.FLAG_INCLUDE_IGNORES, false, "Include ignored findings in the output")
 	outputConfig.String(configuration.FLAG_SEVERITY_THRESHOLD, "low", "Severity threshold for findings to be included in the output")
-	outputConfig.Bool(OUTPUT_CONFIG_KEY_JSON, false, "Output in JSON format.")
-	outputConfig.String(OUTPUT_CONFIG_KEY_JSON_FILE, "", "Write JSON output to a file.")
+	outputConfig.Bool(OutputConfigKeyJSON, false, "Output in JSON format.")
+	outputConfig.String(OutputConfigKeyJSONFile, "", "Write JSON output to a file.")
 
-	entry, err := engine.Register(WORKFLOWID_OUTPUT_WORKFLOW, workflow.ConfigurationOptionsFromFlagset(outputConfig), outputWorkflowEntryPointImpl)
+	entry, err := engine.Register(workflowIDOutputWorkflow, workflow.ConfigurationOptionsFromFlagset(outputConfig), outputWorkflowEntryPointImpl)
 	entry.SetVisibility(false)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to register output workflow: %w", err)
+	}
+	return nil
 }
 
 func filterSummaryOutput(config configuration.Configuration, input workflow.Data, logger *zerolog.Logger) (workflow.Data, error) {
@@ -42,7 +45,7 @@ func filterSummaryOutput(config configuration.Configuration, input workflow.Data
 	}
 	err := json.Unmarshal(payload, &summary)
 	if err != nil {
-		return input, err
+		return input, fmt.Errorf("failed to unmarshal summary payload: %w", err)
 	}
 
 	minSeverity := config.GetString(configuration.FLAG_SEVERITY_THRESHOLD)
@@ -63,23 +66,23 @@ func filterSummaryOutput(config configuration.Configuration, input workflow.Data
 
 	bytes, err := json.Marshal(summary)
 	if err != nil {
-		return input, err
+		return input, fmt.Errorf("failed to marshal summary: %w", err)
 	}
 
-	workflowId := workflow.NewTypeIdentifier(WORKFLOWID_OUTPUT_WORKFLOW, "FilterTestSummary")
-	output := workflow.NewDataFromInput(
-		input,
-		workflowId,
+	workflowID := workflow.NewTypeIdentifier(workflowIDOutputWorkflow, "FilterTestSummary")
+	output := workflow.NewData(
+		workflowID,
 		content_type.TEST_SUMMARY,
 		bytes,
+		workflow.WithInputData(input),
 		workflow.WithLogger(logger))
 
 	return output, nil
 }
 
-// OutputWorkflowEntryPoint defines the output entry point
-// the entry point is called by the engine when the workflow is invoked
-func OutputWorkflowEntryPoint(invocation workflow.InvocationContext, input []workflow.Data, outputDestination OutputDestination) ([]workflow.Data, error) {
+// EntryPoint defines the output entry point.
+// the entry point is called by the engine when the workflow is invoked.
+func EntryPoint(invocation workflow.InvocationContext, input []workflow.Data, outputDestination OutputDestination) ([]workflow.Data, error) {
 	output := []workflow.Data{}
 
 	config := invocation.GetConfiguration()
@@ -105,7 +108,7 @@ func OutputWorkflowEntryPoint(invocation workflow.InvocationContext, input []wor
 		}
 
 		contentLocation := input[i].GetContentLocation()
-		if len(contentLocation) == 0 {
+		if contentLocation == "" {
 			contentLocation = "unknown"
 		}
 
@@ -141,5 +144,5 @@ func handleContentTypeOthers(input []workflow.Data, i int, mimeType string, outp
 
 func outputWorkflowEntryPointImpl(invocation workflow.InvocationContext, input []workflow.Data) (output []workflow.Data, err error) {
 	outputDestination := NewOutputDestination()
-	return OutputWorkflowEntryPoint(invocation, input, outputDestination)
+	return EntryPoint(invocation, input, outputDestination)
 }

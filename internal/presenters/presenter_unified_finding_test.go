@@ -12,7 +12,7 @@ import (
 func TestJsonWriter(t *testing.T) {
 	t.Run("strip whitespaces while writing", func(t *testing.T) {
 		buffer := &bytes.Buffer{}
-		writerUnderTest := presenters.NewJsonWriter(buffer, true)
+		writerUnderTest := presenters.NewJSONWriter(buffer, true)
 
 		input := []byte(`{
 	"name": "myName",
@@ -29,7 +29,7 @@ func TestJsonWriter(t *testing.T) {
 
 	t.Run("Don't strip whitespaces while writing", func(t *testing.T) {
 		buffer := &bytes.Buffer{}
-		writerUnderTest := presenters.NewJsonWriter(buffer, false)
+		writerUnderTest := presenters.NewJSONWriter(buffer, false)
 
 		input := []byte(`{
 	"name": "myName",

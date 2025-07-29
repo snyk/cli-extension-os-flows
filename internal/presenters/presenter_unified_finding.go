@@ -15,14 +15,22 @@ import (
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
 )
 
+// DefaultMimeType is the default mime type for the presenter.
 const DefaultMimeType = "text/cli"
+
+// NoneMimeType is the mime type for when no mime type is specified.
 const NoneMimeType = "unknown"
+
+// ApplicationJSONMimeType is the mime type for application/json.
 const ApplicationJSONMimeType = "application/json"
-const CONFIG_JSON_STRIP_WHITESPACES = "internal_json_no_whitespaces"
+
+// ConfigJSONStripWhitespaces is the configuration key to strip whitespaces from JSON output.
+const ConfigJSONStripWhitespaces = "internal_json_no_whitespaces"
 
 //go:embed templates/*
 var embeddedFiles embed.FS
 
+// TemplateImplFunction is a function that returns a template, a function map, and an error.
 type TemplateImplFunction func() (*template.Template, template.FuncMap, error)
 
 // DefaultTemplateFiles is an instance of TemplatePathsStruct with the template paths.
@@ -49,7 +57,7 @@ type SummaryPayload struct {
 	PackageManager    string                    `json:"packageManager"`
 	ProjectName       string                    `json:"projectName"`
 	DisplayTargetFile string                    `json:"displayTargetFile"`
-	UniqueCount       int                       `json:"uniqueCount"`
+	UniqueCount       int32                     `json:"uniqueCount"`
 }
 
 // UnifiedFindingPresenter is responsible for rendering unified findings data.
@@ -74,7 +82,12 @@ func WithUnifiedRuntimeInfo(ri runtimeinfo.RuntimeInfo) UnifiedFindingPresenterO
 // NewUnifiedFindingsRenderer creates a new presenter for unified findings.
 // Note: This new renderer works directly with the testapi.FindingData model.
 // The templates used will need to be compatible with this data structure.
-func NewUnifiedFindingsRenderer(unifiedFindingsDoc []*UnifiedProjectResult, config configuration.Configuration, writer io.Writer, options ...UnifiedFindingPresenterOptions) *UnifiedFindingPresenter {
+func NewUnifiedFindingsRenderer(
+	unifiedFindingsDoc []*UnifiedProjectResult,
+	config configuration.Configuration,
+	writer io.Writer,
+	options ...UnifiedFindingPresenterOptions,
+) *UnifiedFindingPresenter {
 	p := &UnifiedFindingPresenter{
 		Input:  unifiedFindingsDoc,
 		config: config,
@@ -84,14 +97,14 @@ func NewUnifiedFindingsRenderer(unifiedFindingsDoc []*UnifiedProjectResult, conf
 			NoneMimeType: func() (*template.Template, template.FuncMap, error) {
 				tmpl, err := template.New(NoneMimeType).Parse("")
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, fmt.Errorf("failed to parse template for %s: %w", NoneMimeType, err)
 				}
 				return tmpl, nil, nil
 			},
 			DefaultMimeType: func() (*template.Template, template.FuncMap, error) {
 				tmpl, err := template.New(DefaultMimeType).Parse("")
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, fmt.Errorf("failed to parse template for %s: %w", DefaultMimeType, err)
 				}
 				functionMapMimeType := getCliTemplateFuncMap(tmpl)
 				return tmpl, functionMapMimeType, nil
@@ -106,6 +119,7 @@ func NewUnifiedFindingsRenderer(unifiedFindingsDoc []*UnifiedProjectResult, conf
 	return p
 }
 
+// getImplementationFromMimeType gets the template implementation for a given MIME type.
 func (p *UnifiedFindingPresenter) getImplementationFromMimeType(mimeType string) (*template.Template, error) {
 	functionMapGeneral := getDefaultTemplateFuncMap(p.config, p.runtimeinfo)
 
@@ -126,6 +140,7 @@ func (p *UnifiedFindingPresenter) getImplementationFromMimeType(mimeType string)
 	return tmpl, nil
 }
 
+// RenderTemplate renders the template with the given files and MIME type.
 func (p *UnifiedFindingPresenter) RenderTemplate(templateFiles []string, mimeType string) error {
 	tmpl, err := p.getImplementationFromMimeType(mimeType)
 	if err != nil {
@@ -144,16 +159,21 @@ func (p *UnifiedFindingPresenter) RenderTemplate(templateFiles []string, mimeTyp
 
 	writer := p.writer
 	if strings.Contains(mimeType, "json") {
-		writer = NewJsonWriter(writer, p.config.GetBool(CONFIG_JSON_STRIP_WHITESPACES))
+		writer = NewJSONWriter(writer, p.config.GetBool(ConfigJSONStripWhitespaces))
 	}
 
-	return mainTmpl.Execute(writer, struct {
+	executeErr := mainTmpl.Execute(writer, struct {
 		Results []*UnifiedProjectResult
 	}{
 		Results: p.Input,
 	})
+	if executeErr != nil {
+		return fmt.Errorf("failed to execute template: %w", executeErr)
+	}
+	return nil
 }
 
+// loadTemplates loads template files into the given template.
 func loadTemplates(files []string, tmpl *template.Template) error {
 	if len(files) == 0 {
 		return fmt.Errorf("a template file must be specified")
@@ -169,13 +189,14 @@ func loadTemplates(files []string, tmpl *template.Template) error {
 		}
 		tmpl, err = tmpl.Parse(string(data))
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to parse template file %s: %w", filename, err)
 		}
 	}
 	return nil
 }
 
-func mergeMaps[K comparable, V any](mapA map[K]V, mapB map[K]V) map[K]V {
+// mergeMaps merges two maps, with values from mapB taking precedence over mapA.
+func mergeMaps[K comparable, V any](mapA, mapB map[K]V) map[K]V {
 	result := maps.Clone(mapA)
 
 	for k, v := range mapB {
