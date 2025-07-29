@@ -9,11 +9,13 @@
 			{{- with (getIntroducedThrough .) }}
    Introduced through: {{ . }}
 			{{- end }}
-			{{- $riskScore := getFieldValueFrom . "Attributes.Risk.RiskScore.Value" -}}
-			{{- if $riskScore }}
+			{{- if not (isLicenseFinding .) }}
+				{{- $riskScore := getFieldValueFrom . "Attributes.Risk.RiskScore.Value" -}}
+				{{- if $riskScore }}
    Risk Score: {{ $riskScore }}
-			{{- else }}
-   Risk Score: N/A (Risk score couldn't be computed)
+				{{- else }}
+   Risk Score: N/A
+				{{- end }}
 			{{- end }}
 			{{- $isReachable := getFieldValueFrom . "Attributes.IsReachable" -}}
 			{{- if eq $isReachable "true" }}

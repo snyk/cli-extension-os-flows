@@ -94,14 +94,23 @@ func getFieldValueFrom(data interface{}, path string) string {
 
 // getVulnInfoURL returns the vulnerability information URL for a finding.
 func getVulnInfoURL(finding testapi.FindingData) string {
-	if len(finding.Attributes.Problems) > 0 {
-		problem := finding.Attributes.Problems[0]
-		if p, err := problem.AsSnykVulnProblem(); err == nil {
-			return "https://snyk.io/vuln/" + p.Id
-		}
-		if p, err := problem.AsSnykLicenseProblem(); err == nil {
-			// License issues might have a different URL structure, but for now this is a safe bet.
-			return "https://snyk.io/vuln/" + p.Id
+	if finding.Attributes != nil {
+		for _, problem := range finding.Attributes.Problems {
+			disc, err := problem.Discriminator()
+			if err != nil {
+				continue
+			}
+
+			switch disc {
+			case string(testapi.SnykVuln):
+				if p, err := problem.AsSnykVulnProblem(); err == nil {
+					return "https://snyk.io/vuln/" + p.Id
+				}
+			case string(testapi.SnykLicense):
+				if p, err := problem.AsSnykLicenseProblem(); err == nil {
+					return "https://snyk.io/vuln/" + p.Id
+				}
+			}
 		}
 	}
 	return ""
@@ -250,6 +259,7 @@ func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
 	fnMap["divider"] = RenderDivider
 	fnMap["title"] = RenderTitle
 	fnMap["renderToString"] = renderTemplateToString(tmpl)
+	fnMap["isLicenseFinding"] = isLicenseFinding
 	fnMap["isOpenFinding"] = isOpenFinding
 	fnMap["isPendingFinding"] = isPendingFinding
 	fnMap["isIgnoredFinding"] = isIgnoredFinding
@@ -266,6 +276,27 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 		return nil
 	}
 	getFindingID := func(finding testapi.FindingData) string {
+		if finding.Attributes != nil {
+			for _, problem := range finding.Attributes.Problems {
+				disc, err := problem.Discriminator()
+				if err != nil {
+					continue
+				}
+
+				switch disc {
+				case string(testapi.SnykVuln):
+					if p, err := problem.AsSnykVulnProblem(); err == nil {
+						return p.Id
+					}
+				case string(testapi.SnykLicense):
+					if p, err := problem.AsSnykLicenseProblem(); err == nil {
+						return p.Id
+					}
+				}
+			}
+		}
+
+		// fallback to top-level ID if no problem ID is found
 		if finding.Id != nil {
 			return finding.Id.String()
 		}
@@ -295,8 +326,22 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 	defaultMap["getSourceLocation"] = getSourceLocation
 	defaultMap["getFindingId"] = getFindingID
 	defaultMap["hasPrefix"] = strings.HasPrefix
+	defaultMap["isLicenseFinding"] = isLicenseFinding
 
 	return defaultMap
+}
+
+// isLicenseFinding returns true if the finding is a license finding.
+func isLicenseFinding(finding testapi.FindingData) bool {
+	if finding.Attributes != nil {
+		for _, problem := range finding.Attributes.Problems {
+			disc, err := problem.Discriminator()
+			if err == nil && disc == string(testapi.SnykLicense) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // reverse reverses the order of elements in a slice.
