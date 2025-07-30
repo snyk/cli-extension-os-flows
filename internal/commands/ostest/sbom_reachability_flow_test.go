@@ -37,6 +37,7 @@ func Test_RunSbomReachabilityFlow_Success(t *testing.T) {
 	sbomPath := "./testdata/bom.json"
 	sourceCodePath := "./testdata/test_dir"
 	orgID := "test-org-id"
+	orgSlug := "test-org-slug"
 
 	vulnTime, err := time.Parse(time.RFC3339, "2025-07-28T17:11:43+03:00")
 	require.NoError(t, err)
@@ -156,14 +157,15 @@ func Test_RunSbomReachabilityFlow_Success(t *testing.T) {
 	mockBsClient.EXPECT().UploadSBOM(ctx, sbomPath).Return("test-sbom-hash", nil).Times(1)
 	mockBsClient.EXPECT().UploadSourceCode(ctx, sourceCodePath).Return("test-source-hash", nil).Times(1)
 
-	// Mock Invocation COntext
+	// Mock Invocation Context
 	mockConfig := configuration.New()
 	mockConfig.Set(outputworkflow.OutputConfigKeyJSON, true)
+	mockConfig.Set(configuration.ORGANIZATION_SLUG, orgSlug)
 	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
-	mockIctx.EXPECT().GetConfiguration().Return(mockConfig).Times(1)
+	mockIctx.EXPECT().GetConfiguration().Return(mockConfig).AnyTimes()
 
 	// This should now succeed with proper finding data
-	result, err := ostest.RunSbomReachabilityFlow(ctx, mockIctx, mockTestClient, ef, &logger, sbomPath, sourceCodePath, mockBsClient, orgID)
+	result, err := ostest.RunSbomReachabilityFlow(ctx, mockIctx, mockTestClient, ef, &logger, sbomPath, sourceCodePath, mockBsClient, orgID, orgSlug)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)

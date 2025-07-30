@@ -248,6 +248,7 @@ func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engin
 	mockConfig := configuration.New()
 	mockConfig.Set(configuration.AUTHENTICATION_TOKEN, "<SOME API TOKEN>")
 	mockConfig.Set(configuration.ORGANIZATION, uuid.New().String())
+	mockConfig.Set(configuration.ORGANIZATION_SLUG, "some-org")
 	mockConfig.Set(configuration.API_URL, mockServerURL)
 
 	// Initialize with default values for our flags

@@ -43,6 +43,7 @@ func RunTest(
 	depCount int,
 	displayTargetFile string,
 	orgID string,
+	orgSlugOrID string,
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
@@ -71,6 +72,7 @@ func RunTest(
 	legacyParams := &transform.SnykSchemaToLegacyParams{
 		Findings:          findingsData,
 		TestResult:        finalResult,
+		OrgSlugOrID:       orgSlugOrID,
 		ProjectName:       projectName,
 		PackageManager:    packageManager,
 		CurrentDir:        currentDir,

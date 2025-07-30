@@ -21,7 +21,7 @@
   "severities": null
  },
  "ok": false,
- "org": "",
+ "org": "test-org-slug",
  "packageManager": "",
  "policy": "",
  "projectName": "",
