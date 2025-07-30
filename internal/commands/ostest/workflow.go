@@ -76,6 +76,8 @@ func RegisterWorkflows(e workflow.Engine) error {
 func setupSBOMReachabilityFlow(
 	ctx context.Context,
 	ictx workflow.InvocationContext,
+	testClient testapi.TestClient,
+	orgID string,
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	sbom, sourceDir string,
@@ -102,7 +104,7 @@ func setupSBOMReachabilityFlow(
 	)
 
 	bsClient := bundlestore.NewClient(ictx.GetNetworkAccess().GetHttpClient(), codeScannerConfig, cScanner, logger)
-	return RunSbomReachabilityFlow(ctx, errFactory, logger, sbom, sourceDir, bsClient)
+	return RunSbomReachabilityFlow(ctx, ictx, testClient, errFactory, logger, sbom, sourceDir, bsClient, orgID)
 }
 
 // setupDefaultTestFlow sets up and runs the default test flow with risk score and severity thresholds.
@@ -210,7 +212,7 @@ func OSWorkflow(
 	// Route to the appropriate flow based on flags
 	switch {
 	case sbomReachabilityTest:
-		return setupSBOMReachabilityFlow(ctx, ictx, errFactory, logger, sbom, sourceDir)
+		return setupSBOMReachabilityFlow(ctx, ictx, testClient, orgID, errFactory, logger, sbom, sourceDir)
 	default:
 		return setupDefaultTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, riskScoreThreshold)
 	}

@@ -171,27 +171,56 @@ func TestProcessingEvidenceForFinding(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	// Test reachability evidence for REACHABLE.
+	reachableEv := &testapi.Evidence{}
+	err = reachableEv.FromReachabilityEvidence(testapi.ReachabilityEvidence{
+		Reachability: testapi.ReachabilityTypeFunction,
+		Source:       testapi.Reachability,
+	})
+	require.NoError(t, err)
+
+	// Test reachability evidence for NOT_REACHABLE.
+	notReachableEv := &testapi.Evidence{}
+	err = notReachableEv.FromReachabilityEvidence(testapi.ReachabilityEvidence{
+		Reachability: testapi.ReachabilityTypeNoInfo,
+		Source:       testapi.Reachability,
+	})
+	require.NoError(t, err)
+
 	tests := []struct {
-		ev        *testapi.Evidence
-		results   []string
-		shouldErr bool
+		ev            *testapi.Evidence
+		expectedFrom  []string
+		expectedReach *definitions.Reachability
+		shouldErr     bool
 	}{
-		{&testapi.Evidence{}, nil, true},
-		{emptyDepPathEv, nil, false},
-		{depPathEv, testDepList, false},
-		{execFlowEv, nil, false},  // Exec flow not yet supported.
-		{otherFlowEv, nil, false}, // Other flow not yet supported.
+		{&testapi.Evidence{}, nil, nil, true},
+		{emptyDepPathEv, []string{}, nil, false},
+		{depPathEv, testDepList, nil, false},
+		{execFlowEv, nil, nil, false},  // Exec flow not yet supported.
+		{otherFlowEv, nil, nil, false}, // Other flow not yet supported.
+		{reachableEv, nil, util.Ptr(definitions.REACHABLE), false},
+		{notReachableEv, nil, util.Ptr(definitions.NOTREACHABLE), false},
 	}
 
 	for _, tt := range tests {
-		logger := zerolog.Nop()
-		res, err := transform.ProcessEvidenceForFinding(tt.ev, &logger)
+		vuln := &definitions.Vulnerability{From: []string{}}
+		err := transform.ProcessEvidenceForFinding(vuln, tt.ev)
 		if tt.shouldErr {
 			require.Error(t, err)
 		} else {
 			require.NoError(t, err)
 		}
-		require.EqualValues(t, res, tt.results)
+		if tt.expectedFrom != nil {
+			require.EqualValues(t, vuln.From, tt.expectedFrom)
+		} else {
+			require.Len(t, vuln.From, 0)
+		}
+		if tt.expectedReach != nil {
+			require.NotNil(t, vuln.Reachability)
+			require.Equal(t, *vuln.Reachability, *tt.expectedReach)
+		} else {
+			require.Nil(t, vuln.Reachability)
+		}
 	}
 }
 
@@ -287,7 +316,7 @@ func TestProcessProblemForVuln_License(t *testing.T) {
 	// Case 3: Other Ecosystem (should be ignored)
 	otherEcosystem := testapi.SnykvulndbPackageEcosystem{}
 	err = otherEcosystem.FromSnykvulndbOtherPackageEcosystem(testapi.SnykvulndbOtherPackageEcosystem{
-		Type: testapi.Other,
+		Type: testapi.SnykvulndbOtherPackageEcosystemTypeOther,
 	})
 	require.NoError(t, err)
 

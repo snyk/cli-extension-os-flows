@@ -14,7 +14,7 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/snyk/code-client-go v1.21.3
 	github.com/snyk/error-catalog-golang-public v0.0.0-20250429130542-564b0605020e
-	github.com/snyk/go-application-framework v0.0.0-20250624132329-67306d427077
+	github.com/snyk/go-application-framework v0.0.0-20250716102454-7496bd64ed98
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.38.0

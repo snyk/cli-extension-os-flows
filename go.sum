@@ -236,8 +236,8 @@ github.com/snyk/code-client-go v1.21.3 h1:2+HPXCA9FGn3gaI1Jw1C4Ifn/NRAbSnmohFUvz
 github.com/snyk/code-client-go v1.21.3/go.mod h1:WH6lNkJc785hfXmwhixxWHix3O6z+1zwz40oK8vl/zg=
 github.com/snyk/error-catalog-golang-public v0.0.0-20250429130542-564b0605020e h1:XFGkHDWA8JTPLr82QzoKVqGytofEYBf68VqoUq8yvXk=
 github.com/snyk/error-catalog-golang-public v0.0.0-20250429130542-564b0605020e/go.mod h1:Ytttq7Pw4vOCu9NtRQaOeDU2dhBYUyNBe6kX4+nIIQ4=
-github.com/snyk/go-application-framework v0.0.0-20250624132329-67306d427077 h1:fB9B2evY2+fDpTVz2SeSQsvusFt7sOjGEJNMUfIKliI=
-github.com/snyk/go-application-framework v0.0.0-20250624132329-67306d427077/go.mod h1:4DSu9PL2hypUjZhrT+zaMh3H5stAerMVfUs5XP1ST8U=
+github.com/snyk/go-application-framework v0.0.0-20250716102454-7496bd64ed98 h1:dfmBw/MWCo+OvicB8wYZUHm1V9z9/QtmFI1xwGV8lsE=
+github.com/snyk/go-application-framework v0.0.0-20250716102454-7496bd64ed98/go.mod h1:4DSu9PL2hypUjZhrT+zaMh3H5stAerMVfUs5XP1ST8U=
 github.com/snyk/go-httpauth v0.0.0-20231117135515-eb445fea7530 h1:s9PHNkL6ueYRiAKNfd8OVxlUOqU3qY0VDbgCD1f6WQY=
 github.com/snyk/go-httpauth v0.0.0-20231117135515-eb445fea7530/go.mod h1:88KbbvGYlmLgee4OcQ19yr0bNpXpOr2kciOthaSzCAg=
 github.com/speakeasy-api/jsonpath v0.6.1 h1:FWbuCEPGaJTVB60NZg2orcYHGZlelbNJAcIk/JGnZvo=

@@ -1,0 +1,8 @@
+# Ignore Go checksum file
+go.sum linguist-generated
+
+# Ignore NPM versioning file
+package-lock.json linguist-generated
+
+# Ignore snapshots
+**/testdata/snapshots/** linguist-generated

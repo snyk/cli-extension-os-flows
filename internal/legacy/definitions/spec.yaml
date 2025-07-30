@@ -306,6 +306,11 @@ components:
             type: string
         version:
           type: string
+    Reachability:
+      type: string
+      enum:
+        - REACHABLE
+        - NOT_REACHABLE
     Reference:
       type: object
       required:
@@ -456,6 +461,8 @@ components:
           type: array
           items:
             type: string
+        reachability:
+          $ref: '#/components/schemas/Reachability'
         upgradePath:
           type: array
           items:

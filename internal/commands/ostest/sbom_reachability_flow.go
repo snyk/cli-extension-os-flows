@@ -1,11 +1,14 @@
 package ostest
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
@@ -15,11 +18,14 @@ import (
 // RunSbomReachabilityFlow runs the SBOM reachability flow.
 func RunSbomReachabilityFlow(
 	ctx context.Context,
+	ictx workflow.InvocationContext,
+	testClient testapi.TestClient,
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	sbomPath string,
 	sourceCodePath string,
 	bsClient bundlestore.Client,
+	orgID string,
 ) ([]workflow.Data, error) {
 	if sourceCodePath == "" {
 		sourceCodePath = "."
@@ -44,7 +50,45 @@ func RunSbomReachabilityFlow(
 	}
 	logger.Println("sourceCodeBundleHash", sourceCodeBundleHash)
 
-	return nil, nil // TODO: return something meaningful once this function is complete
+	var subject testapi.TestSubjectCreate
+	err = subject.FromSbomReachabilitySubject(testapi.SbomReachabilitySubject{
+		Type:         testapi.SbomReachability,
+		CodeBundleId: sourceCodeBundleHash,
+		SbomBundleId: sbomBundleHash,
+		Locator: testapi.LocalPathLocator{
+			Paths: []string{
+				sbomPath,
+				sourceCodePath,
+			},
+			Type: testapi.LocalPath,
+		},
+	})
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to create SBOM reachability test subject")
+		return nil, fmt.Errorf("failed to create sbom test reachability subject: %w", err)
+	}
+
+	findings, summary, err := RunTest(ctx, ictx, testClient, subject, "", "", int(0), "", orgID, errFactory, logger, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var finalOutput []workflow.Data
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	err = encoder.Encode(findings)
+	if err != nil {
+		return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshaling to json: %w", err))
+	}
+	// encoder.Encode adds a newline, which we trim to match Marshal's behavior.
+	findingsBytes := bytes.TrimRight(buffer.Bytes(), "\n")
+
+	finalOutput = append(finalOutput, NewWorkflowData(ApplicationJSONContentType, findingsBytes))
+	finalOutput = append(finalOutput, summary...)
+
+	return finalOutput, nil
 }
 
 // validateDirectory checks if the given path exists and contains files.
