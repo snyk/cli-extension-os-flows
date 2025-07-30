@@ -25,7 +25,6 @@ func RunSbomReachabilityFlow(
 	sourceCodePath string,
 	bsClient bundlestore.Client,
 	orgID string,
-	orgSlugOrID string,
 ) ([]workflow.Data, error) {
 	if sourceCodePath == "" {
 		sourceCodePath = "."
@@ -68,7 +67,7 @@ func RunSbomReachabilityFlow(
 		return nil, fmt.Errorf("failed to create sbom test reachability subject: %w", err)
 	}
 
-	findings, summary, err := RunTest(ctx, ictx, testClient, subject, "", "", int(0), sbomPath, orgID, orgSlugOrID, errFactory, logger, nil)
+	findings, summary, err := RunTest(ctx, ictx, testClient, subject, "", "", int(0), sbomPath, orgID, errFactory, logger, nil)
 	if err != nil {
 		return nil, err
 	}

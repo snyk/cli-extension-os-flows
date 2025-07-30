@@ -28,7 +28,7 @@ type SnykSchemaToLegacyParams struct {
 	OrgSlugOrID       string
 	ProjectName       string
 	PackageManager    string
-	CurrentDir        string
+	TargetDir         string
 	UniqueCount       int32
 	DepCount          int
 	DisplayTargetFile string
@@ -398,7 +398,7 @@ func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*defin
 	res := definitions.LegacyVulnerabilityResponse{
 		Org:               params.OrgSlugOrID,
 		ProjectName:       params.ProjectName,
-		Path:              params.CurrentDir,
+		Path:              params.TargetDir,
 		PackageManager:    params.PackageManager,
 		DisplayTargetFile: params.DisplayTargetFile,
 		UniqueCount:       params.UniqueCount,

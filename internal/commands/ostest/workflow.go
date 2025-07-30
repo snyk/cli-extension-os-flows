@@ -78,7 +78,6 @@ func setupSBOMReachabilityFlow(
 	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
 	orgID string,
-	orgSlugOrID string,
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	sbom, sourceDir string,
@@ -105,7 +104,7 @@ func setupSBOMReachabilityFlow(
 	)
 
 	bsClient := bundlestore.NewClient(ictx.GetNetworkAccess().GetHttpClient(), codeScannerConfig, cScanner, logger)
-	return RunSbomReachabilityFlow(ctx, ictx, testClient, errFactory, logger, sbom, sourceDir, bsClient, orgID, orgSlugOrID)
+	return RunSbomReachabilityFlow(ctx, ictx, testClient, errFactory, logger, sbom, sourceDir, bsClient, orgID)
 }
 
 // setupDefaultTestFlow sets up and runs the default test flow with risk score and severity thresholds.
@@ -114,7 +113,6 @@ func setupDefaultTestFlow(
 	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
 	orgID string,
-	orgSlugOrID string,
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	riskScoreThreshold int,
@@ -153,7 +151,7 @@ func setupDefaultTestFlow(
 		severityThresholdPtr = &st
 	}
 
-	return RunUnifiedTestFlow(ctx, ictx, testClient, riskScorePtr, severityThresholdPtr, orgID, orgSlugOrID, errFactory, logger)
+	return RunUnifiedTestFlow(ctx, ictx, testClient, riskScorePtr, severityThresholdPtr, orgID, errFactory, logger)
 }
 
 // OSWorkflow is the entry point for the Open Source Test workflow.
@@ -197,12 +195,6 @@ func OSWorkflow(
 		return nil, errFactory.NewEmptyOrgError()
 	}
 
-	orgSlugOrID := config.GetString(configuration.ORGANIZATION_SLUG)
-	if orgSlugOrID == "" {
-		logger.Info().Msg("No organization slug provided; using organization ID.")
-		orgSlugOrID = orgID
-	}
-
 	// Create Snyk client
 	httpClient := ictx.GetNetworkAccess().GetHttpClient()
 	snykClient := snykclient.NewSnykClient(httpClient, ictx.GetConfiguration().GetString(configuration.API_URL), orgID)
@@ -220,8 +212,8 @@ func OSWorkflow(
 	// Route to the appropriate flow based on flags
 	switch {
 	case sbomReachabilityTest:
-		return setupSBOMReachabilityFlow(ctx, ictx, testClient, orgID, orgSlugOrID, errFactory, logger, sbom, sourceDir)
+		return setupSBOMReachabilityFlow(ctx, ictx, testClient, orgID, errFactory, logger, sbom, sourceDir)
 	default:
-		return setupDefaultTestFlow(ctx, ictx, testClient, orgID, orgSlugOrID, errFactory, logger, riskScoreThreshold)
+		return setupDefaultTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, riskScoreThreshold)
 	}
 }

@@ -39,10 +39,10 @@ func Test_RunSbomReachabilityFlow_JSON(t *testing.T) {
 
 	ctx := context.Background()
 	ef := errors.NewErrorFactory(&nopLogger)
-	mockIctx, mockTestClient, mockBsClient, orgID, orgSlug, sbomPath, sourceCodePath := setupTest(ctx, t, ctrl, true)
+	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(ctx, t, ctrl, true)
 
 	// This should now succeed with proper finding data
-	result, err := ostest.RunSbomReachabilityFlow(ctx, mockIctx, mockTestClient, ef, &nopLogger, sbomPath, sourceCodePath, mockBsClient, orgID, orgSlug)
+	result, err := ostest.RunSbomReachabilityFlow(ctx, mockIctx, mockTestClient, ef, &nopLogger, sbomPath, sourceCodePath, mockBsClient, orgID)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -64,10 +64,10 @@ func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
 
 	ctx := context.Background()
 	ef := errors.NewErrorFactory(&nopLogger)
-	mockIctx, mockTestClient, mockBsClient, orgID, orgSlug, sbomPath, sourceCodePath := setupTest(ctx, t, ctrl, false)
+	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(ctx, t, ctrl, false)
 
 	// This should now succeed with proper finding data
-	result, err := ostest.RunSbomReachabilityFlow(ctx, mockIctx, mockTestClient, ef, &nopLogger, sbomPath, sourceCodePath, mockBsClient, orgID, orgSlug)
+	result, err := ostest.RunSbomReachabilityFlow(ctx, mockIctx, mockTestClient, ef, &nopLogger, sbomPath, sourceCodePath, mockBsClient, orgID)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -84,7 +84,6 @@ func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonO
 	workflow.InvocationContext,
 	testapi.TestClient,
 	bundlestore.Client,
-	string,
 	string,
 	string,
 	string,
@@ -222,5 +221,5 @@ func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonO
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&nopLogger).AnyTimes()
 	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
 
-	return mockIctx, mockTestClient, mockBsClient, orgID, orgSlug, sbomPath, sourceCodePath
+	return mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath
 }

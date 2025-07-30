@@ -66,15 +66,16 @@
 {{- end}}{{/* end "details" */}}
 
 {{define "header" }}
-{{ print "Testing " .Summary.Path  " ..." | bold }}
+{{ $displayPath := constructDisplayPath .DisplayTargetFile -}}
+{{ print "Testing " $displayPath " ..." | bold }}
 {{end }}
 
 {{- define "summary"}}{{ "Test Summary" | bold }}
 
   Organization:      {{ getValueFromConfig "internal_org_slug" }}
   Test type:         {{ if eq .Summary.Type "sast" }}Static code analysis{{else}}{{ .Summary.Type }}{{ end}}
-  Project path:      {{ .Summary.Path }}
-
+  Project path:      {{ getValueFromConfig "targetDirectory" }}
+  
   {{- $total := 0 }}{{- $open := 0 }}{{- $ignored := 0 }}
   {{- range $res := .Summary.Results }}
       {{- $total = add $total $res.Total }}
