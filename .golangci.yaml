@@ -160,6 +160,7 @@ issues:
         - forcetypeassert
         - goconst
         - ireturn
+        - wrapcheck
     - path: internal/view/(.+)_test\.go
       linters:
         - testpackage
