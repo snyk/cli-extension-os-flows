@@ -1,0 +1,79 @@
+
+[Test_RunSbomReachabilityFlow_Success - 1]
+{
+ "dependencyCount": 0,
+ "displayTargetFile": "",
+ "filesystemPolicy": false,
+ "filtered": {
+  "ignore": [],
+  "patch": []
+ },
+ "hasUnknownVersions": false,
+ "ignoreSettings": {
+  "adminOnly": false,
+  "autoApproveIgnores": false,
+  "disregardFilesystemIgnores": false,
+  "reasonRequired": false
+ },
+ "isPrivate": false,
+ "licensesPolicy": {
+  "orgLicenseRules": null,
+  "severities": null
+ },
+ "ok": false,
+ "org": "",
+ "packageManager": "",
+ "policy": "",
+ "projectName": "",
+ "summary": "",
+ "uniqueCount": 1,
+ "vulnerabilities": [
+  {
+   "creationTime": "2025-07-28T17:11:43.000000Z",
+   "cvssScore": 0,
+   "description": "Test vulnerability description",
+   "disclosureTime": "2025-07-28T17:11:43.000000Z",
+   "epssDetails": null,
+   "from": [],
+   "id": "snyk-vuln-123",
+   "isPatchable": false,
+   "isUpgradable": false,
+   "language": "js",
+   "malicious": true,
+   "modificationTime": "2025-07-28T17:11:43.000000Z",
+   "name": "foo",
+   "packageManager": "npm",
+   "packageName": "foo",
+   "publicationTime": "2025-07-28T17:11:43.000000Z",
+   "reachability": "REACHABLE",
+   "riskScore": 80,
+   "severity": "high",
+   "socialTrendAlert": false,
+   "title": "Test High Severity Finding",
+   "upgradePath": null,
+   "version": "0.0.0"
+  }
+ ]
+}
+---
+
+[Test_RunSbomReachabilityFlow_Success - 2]
+{
+ "artifacts": 0,
+ "results": [
+  {
+   "ignored": 0,
+   "open": 1,
+   "severity": "high",
+   "total": 1
+  }
+ ],
+ "severity_order_asc": [
+  "low",
+  "medium",
+  "high",
+  "critical"
+ ],
+ "type": "open-source"
+}
+---

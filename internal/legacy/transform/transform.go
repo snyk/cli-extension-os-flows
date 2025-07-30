@@ -270,25 +270,38 @@ func ProcessLocationForVuln(
 
 // ProcessEvidenceForFinding extracts the dependency lineage for the vulnerability
 // from the evidence provided in the finding and returns an ordered list.
-func ProcessEvidenceForFinding(ev *testapi.Evidence, logger *zerolog.Logger) ([]string, error) {
+func ProcessEvidenceForFinding(vuln *definitions.Vulnerability, ev *testapi.Evidence) error {
 	var dependencyPath []string
 	evDisc, err := ev.Discriminator()
 	if err != nil {
-		return nil, fmt.Errorf("getting evidence discriminator: %w", err)
+		return fmt.Errorf("getting evidence discriminator: %w", err)
 	}
+
 	switch evDisc {
 	case string(testapi.DependencyPath):
 		depPathEvidence, err := ev.AsDependencyPathEvidence()
 		if err != nil {
-			return nil, fmt.Errorf("converting evidence to dependency path evidence: %w", err)
+			return fmt.Errorf("converting evidence to dependency path evidence: %w", err)
 		}
 		for _, dep := range depPathEvidence.Path {
 			dependencyPath = append(dependencyPath, fmt.Sprintf("%s@%s", dep.Name, dep.Version))
 		}
-	default:
-		logger.Warn().Str(logFieldDiscriminator, evDisc).Msg("unsupported evidence type")
+		vuln.From = append(vuln.From, dependencyPath...)
+	case string(testapi.Reachability):
+		reachEvidence, err := ev.AsReachabilityEvidence()
+		if err != nil {
+			return fmt.Errorf("converting evidence to reachability evidence: %w", err)
+		}
+		switch reachEvidence.Reachability {
+		case testapi.ReachabilityTypeFunction:
+			vuln.Reachability = util.Ptr(definitions.REACHABLE)
+		case testapi.ReachabilityTypeNoInfo:
+			vuln.Reachability = util.Ptr(definitions.NOTREACHABLE)
+		case testapi.ReachabilityTypeNotApplicable, testapi.ReachabilityTypeNone:
+			// No reachability value set for these types
+		}
 	}
-	return dependencyPath, nil
+	return nil
 }
 
 // FindingToLegacyVuln is the beginning of the workflow in converting a snyk schema finding into
@@ -310,12 +323,12 @@ func FindingToLegacyVuln(finding *testapi.FindingData, logger *zerolog.Logger) (
 	}
 
 	vuln.From = []string{}
-	for _, evidence := range finding.Attributes.Evidence {
-		depPath, err := ProcessEvidenceForFinding(&evidence, logger)
+
+	for _, ev := range finding.Attributes.Evidence {
+		err := ProcessEvidenceForFinding(&vuln, &ev)
 		if err != nil {
 			return nil, fmt.Errorf("processing evidence for finding: %w", err)
 		}
-		vuln.From = append(vuln.From, depPath...)
 	}
 	vuln.Title = finding.Attributes.Title
 	vuln.Severity = definitions.VulnerabilitySeverity(string(finding.Attributes.Rating.Severity))
