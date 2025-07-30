@@ -24,6 +24,7 @@ const (
 type SnykSchemaToLegacyParams struct {
 	Findings          []testapi.FindingData
 	TestResult        testapi.TestResult
+	OrgSlugOrID       string
 	ProjectName       string
 	PackageManager    string
 	CurrentDir        string
@@ -348,6 +349,7 @@ func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*defin
 	}
 
 	res := definitions.LegacyVulnerabilityResponse{
+		Org:               params.OrgSlugOrID,
 		ProjectName:       params.ProjectName,
 		Path:              params.CurrentDir,
 		PackageManager:    params.PackageManager,
