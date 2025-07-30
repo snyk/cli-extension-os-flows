@@ -114,7 +114,11 @@
     {{- $vulnerablePaths := len .Findings }}
 
     {{- if gt .DependencyCount 0 -}}
-        {{- printf "\nTested %d dependencies for known issues, found %d issues, %d vulnerable paths.\n" .DependencyCount $totalIssues $vulnerablePaths -}}
+        {{- if eq $totalIssues 0 -}}
+            {{- printf "\n✔ Tested %d dependencies for known issues, no vulnerable paths found.\n" .DependencyCount | renderGreen -}}
+        {{- else -}}
+            {{- printf "\nTested %d dependencies for known issues, found %d issues, %d vulnerable paths.\n" .DependencyCount $totalIssues $vulnerablePaths -}}
+        {{- end -}}
     {{- end }}
 
     {{- template "details" . }}
