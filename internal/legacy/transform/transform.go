@@ -15,8 +15,9 @@ const (
 	cvssVer3     = "3.1"
 	snykAssigner = "Snyk"
 
-	legacyTimeFormat      = "2006-01-02T15:04:05.000000Z"
-	logFieldDiscriminator = "discriminator"
+	legacyTimeFormat                = "2006-01-02T15:04:05.000000Z"
+	logFieldDiscriminator           = "discriminator"
+	errProcessEvidenceForFindingStr = "processing evidence for finding: %w"
 )
 
 // SnykSchemaToLegacyParams is a struct to encapsulate necessary values to the
@@ -305,39 +306,85 @@ func ProcessEvidenceForFinding(vuln *definitions.Vulnerability, ev *testapi.Evid
 	return nil
 }
 
-// FindingToLegacyVuln is the beginning of the workflow in converting a snyk schema finding into
+// FindingToLegacyVulns is the beginning of the workflow in converting a snyk schema finding into
 // a legacy vulnerability to provide legacy json outputs.
-func FindingToLegacyVuln(finding *testapi.FindingData, logger *zerolog.Logger) (*definitions.Vulnerability, error) {
-	vuln := definitions.Vulnerability{Description: finding.Attributes.Description}
+func FindingToLegacyVulns(
+	finding *testapi.FindingData,
+	logger *zerolog.Logger,
+) ([]definitions.Vulnerability, error) {
+	baseVuln := definitions.Vulnerability{Description: finding.Attributes.Description}
 	for _, problem := range finding.Attributes.Problems {
-		err := ProcessProblemForVuln(&vuln, &problem, logger)
+		err := ProcessProblemForVuln(&baseVuln, &problem, logger)
 		if err != nil {
 			return nil, fmt.Errorf("handling problem for finding: %w", err)
 		}
 	}
 
 	for _, location := range finding.Attributes.Locations {
-		err := ProcessLocationForVuln(&vuln, &location, logger)
+		err := ProcessLocationForVuln(&baseVuln, &location, logger)
 		if err != nil {
 			return nil, fmt.Errorf("processing location for finding: %w", err)
 		}
 	}
 
-	vuln.From = []string{}
+	baseVuln.Title = finding.Attributes.Title
+	baseVuln.Severity = definitions.VulnerabilitySeverity(string(finding.Attributes.Rating.Severity))
+	if finding.Attributes.Risk.RiskScore != nil {
+		baseVuln.RiskScore = &finding.Attributes.Risk.RiskScore.Value
+	}
 
+	return processEvidences(finding, &baseVuln)
+}
+
+func processEvidences(
+	finding *testapi.FindingData,
+	baseVuln *definitions.Vulnerability,
+) ([]definitions.Vulnerability, error) {
+	var depPathEvidences []testapi.Evidence
+	var otherEvidences []testapi.Evidence
 	for _, ev := range finding.Attributes.Evidence {
-		err := ProcessEvidenceForFinding(&vuln, &ev)
+		evDisc, err := ev.Discriminator()
 		if err != nil {
-			return nil, fmt.Errorf("processing evidence for finding: %w", err)
+			return nil, fmt.Errorf("getting evidence discriminator: %w", err)
+		}
+		if evDisc == string(testapi.DependencyPath) {
+			depPathEvidences = append(depPathEvidences, ev)
+		} else {
+			otherEvidences = append(otherEvidences, ev)
 		}
 	}
-	vuln.Title = finding.Attributes.Title
-	vuln.Severity = definitions.VulnerabilitySeverity(string(finding.Attributes.Rating.Severity))
-	if finding.Attributes.Risk.RiskScore != nil {
-		vuln.RiskScore = &finding.Attributes.Risk.RiskScore.Value
+
+	var vulns []definitions.Vulnerability
+	if len(depPathEvidences) > 0 {
+		// Create a new legacy vulnerability for each dependency path evidence.
+		for _, depPathEv := range depPathEvidences {
+			vuln := *baseVuln
+			vuln.From = []string{}
+			err := ProcessEvidenceForFinding(&vuln, &depPathEv)
+			if err != nil {
+				return nil, fmt.Errorf(errProcessEvidenceForFindingStr, err)
+			}
+			for _, otherEv := range otherEvidences {
+				err := ProcessEvidenceForFinding(&vuln, &otherEv)
+				if err != nil {
+					return nil, fmt.Errorf(errProcessEvidenceForFindingStr, err)
+				}
+			}
+			vulns = append(vulns, vuln)
+		}
+	} else {
+		vuln := *baseVuln
+		vuln.From = []string{}
+		for _, ev := range finding.Attributes.Evidence {
+			err := ProcessEvidenceForFinding(&vuln, &ev)
+			if err != nil {
+				return nil, fmt.Errorf(errProcessEvidenceForFindingStr, err)
+			}
+		}
+		vulns = append(vulns, vuln)
 	}
 
-	return &vuln, nil
+	return vulns, nil
 }
 
 // ConvertSnykSchemaFindingsToLegacy is a function that converts snyk schema findings into
@@ -365,17 +412,19 @@ func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*defin
 	}
 
 	for _, finding := range params.Findings {
-		vuln, err := FindingToLegacyVuln(&finding, params.Logger)
+		vulns, err := FindingToLegacyVulns(&finding, params.Logger)
 		if err != nil {
 			return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting finding to legacy vuln: %w", err))
 		}
 
-		// The package manager can be specific to the vulnerability. If it's not set,
-		// fall back to the one from the root of the dependency graph.
-		if vuln.PackageManager == nil {
-			vuln.PackageManager = &params.PackageManager
+		for i := range vulns {
+			// The package manager can be specific to the vulnerability. If it's not set,
+			// fall back to the one from the root of the dependency graph.
+			if vulns[i].PackageManager == nil {
+				vulns[i].PackageManager = &params.PackageManager
+			}
+			res.Vulnerabilities = append(res.Vulnerabilities, vulns[i])
 		}
-		res.Vulnerabilities = append(res.Vulnerabilities, *vuln)
 	}
 
 	return &res, nil
