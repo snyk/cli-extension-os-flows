@@ -36,3 +36,9 @@ func renderSeverityColor(severity string) string {
 	severityStyle := lipgloss.NewStyle().Foreground(style)
 	return severityStyle.Render(severity)
 }
+
+// renderGreen renders text in green.
+func renderGreen(str string) string {
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	return style.Render(str)
+}
