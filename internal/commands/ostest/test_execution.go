@@ -6,12 +6,12 @@ import (
 	std_errors "errors"
 	"fmt"
 	"math"
-	"os"
 	"sort"
 	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
+	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
 	"github.com/snyk/go-application-framework/pkg/workflow"
@@ -43,7 +43,6 @@ func RunTest(
 	depCount int,
 	displayTargetFile string,
 	orgID string,
-	orgSlugOrID string,
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
@@ -53,17 +52,19 @@ func RunTest(
 		return nil, nil, err
 	}
 
-	// path should be the current working directory
-	currentDir, wdErr := os.Getwd()
-	if wdErr != nil {
-		logger.Error().Err(wdErr).Msg("Failed to get current working directory")
-		return nil, nil, fmt.Errorf("failed to get current working directory: %w", wdErr)
+	config := ictx.GetConfiguration()
+	targetDir := config.GetString(configuration.INPUT_DIRECTORY)
+
+	orgSlugOrID := config.GetString(configuration.ORGANIZATION_SLUG)
+	if orgSlugOrID == "" {
+		logger.Info().Msg("No organization slug provided; using organization ID.")
+		orgSlugOrID = orgID
 	}
 
 	uniqueCount := calculateUniqueIssueCount(findingsData)
 
 	// The summary is always needed for the exit code calculation.
-	standardSummary, summaryData, summaryErr := NewSummaryData(finalResult, logger, currentDir)
+	standardSummary, summaryData, summaryErr := NewSummaryData(finalResult, logger, targetDir)
 	if summaryErr != nil && !std_errors.Is(summaryErr, ErrNoSummaryData) {
 		// Log the error but continue, as this is not fatal.
 		logger.Warn().Err(summaryErr).Msg("Failed to create test summary for exit code handling")
@@ -75,7 +76,7 @@ func RunTest(
 		OrgSlugOrID:       orgSlugOrID,
 		ProjectName:       projectName,
 		PackageManager:    packageManager,
-		CurrentDir:        currentDir,
+		TargetDir:         targetDir,
 		UniqueCount:       uniqueCount,
 		DepCount:          depCount,
 		DisplayTargetFile: displayTargetFile,

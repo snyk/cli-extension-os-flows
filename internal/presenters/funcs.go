@@ -361,6 +361,7 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 	defaultMap["getFindingId"] = getFindingID
 	defaultMap["hasPrefix"] = strings.HasPrefix
 	defaultMap["isLicenseFinding"] = isLicenseFinding
+	defaultMap["constructDisplayPath"] = constructDisplayPath(config)
 
 	return defaultMap
 }
@@ -432,4 +433,15 @@ func formatDatetime(input, inputFormat, outputFormat string) string {
 	}
 
 	return datetime.Format(outputFormat)
+}
+
+// constructDisplayPath constructs the display path from the summary path and display target file.
+func constructDisplayPath(config configuration.Configuration) func(displayTargetFile string) string {
+	return func(displayTargetFile string) string {
+		summaryPath := config.GetString(configuration.INPUT_DIRECTORY)
+		if displayTargetFile == "" {
+			return summaryPath
+		}
+		return fmt.Sprintf("%s (%s)", summaryPath, displayTargetFile)
+	}
 }

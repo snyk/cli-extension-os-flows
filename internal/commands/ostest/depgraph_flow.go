@@ -28,7 +28,6 @@ func RunUnifiedTestFlow(
 	riskScoreThreshold *uint16,
 	severityThreshold *testapi.Severity,
 	orgID string,
-	orgSlugOrID string,
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 ) ([]workflow.Data, error) {
@@ -47,7 +46,6 @@ func RunUnifiedTestFlow(
 		ictx,
 		testClient,
 		orgID,
-		orgSlugOrID,
 		errFactory,
 		logger,
 		localPolicy,
@@ -67,7 +65,6 @@ func testAllDepGraphs(
 	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
 	orgID string,
-	orgSlugOrID string,
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
@@ -95,7 +92,7 @@ func testAllDepGraphs(
 		// Run the test with the depgraph subject
 		legacyFinding, outputData, err := RunTest(
 			ctx, ictx, testClient, subject, projectName, packageManager, depCount,
-			displayTargetFile, orgID, orgSlugOrID, errFactory, logger, localPolicy)
+			displayTargetFile, orgID, errFactory, logger, localPolicy)
 		if err != nil {
 			return nil, nil, err
 		}
