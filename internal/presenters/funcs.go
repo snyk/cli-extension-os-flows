@@ -14,6 +14,8 @@ import (
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
 )
 
+const notApplicable = "N/A"
+
 // add returns the sum of two integers.
 func add(a, b int) int {
 	return a + b
@@ -148,6 +150,36 @@ func getIntroducedBy(finding testapi.FindingData) string {
 		}
 	}
 	return ""
+}
+
+// getReachability returns the reachability status for a finding.
+func getReachability(finding testapi.FindingData) string {
+	if finding.Attributes == nil || len(finding.Attributes.Evidence) == 0 {
+		return notApplicable
+	}
+	for _, evidence := range finding.Attributes.Evidence {
+		evDisc, err := evidence.Discriminator()
+		if err != nil {
+			continue
+		}
+
+		if evDisc == string(testapi.Reachability) {
+			reachEvidence, err := evidence.AsReachabilityEvidence()
+			if err != nil {
+				continue
+			}
+
+			switch reachEvidence.Reachability {
+			case testapi.ReachabilityTypeFunction:
+				return "Reachable"
+			case testapi.ReachabilityTypeNoInfo:
+				return "No reachable path found"
+			case testapi.ReachabilityTypeNotApplicable, testapi.ReachabilityTypeNone:
+				return notApplicable
+			}
+		}
+	}
+	return notApplicable
 }
 
 // getFromConfig returns a function that retrieves configuration values.
@@ -300,7 +332,7 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 		if finding.Id != nil {
 			return finding.Id.String()
 		}
-		return "N/A"
+		return notApplicable
 	}
 
 	defaultMap := template.FuncMap{}
@@ -311,6 +343,7 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 	defaultMap["getVulnInfoURL"] = getVulnInfoURL
 	defaultMap["getIntroducedThrough"] = getIntroducedThrough
 	defaultMap["getIntroducedBy"] = getIntroducedBy
+	defaultMap["getReachability"] = getReachability
 	defaultMap["filterFinding"] = filterFinding
 	defaultMap["hasField"] = hasField
 	defaultMap["notHasField"] = func(path string) func(obj any) bool {
