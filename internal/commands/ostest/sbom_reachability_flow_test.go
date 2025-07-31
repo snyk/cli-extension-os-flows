@@ -42,7 +42,7 @@ func Test_RunSbomReachabilityFlow_JSON(t *testing.T) {
 	mockIctx, mockTestClient, mockBsClient, orgID, orgSlug, sbomPath, sourceCodePath := setupTest(ctx, t, ctrl, true)
 
 	// This should now succeed with proper finding data
-	result, err := ostest.RunSbomReachabilityFlow(ctx, mockIctx, mockTestClient, ef, &nopLogger, sbomPath, sourceCodePath, mockBsClient, orgID, orgSlug, nil)
+	result, err := ostest.RunSbomReachabilityFlow(ctx, mockIctx, mockTestClient, ef, &nopLogger, sbomPath, sourceCodePath, mockBsClient, orgID, orgSlug)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -67,7 +67,7 @@ func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
 	mockIctx, mockTestClient, mockBsClient, orgID, orgSlug, sbomPath, sourceCodePath := setupTest(ctx, t, ctrl, false)
 
 	// This should now succeed with proper finding data
-	result, err := ostest.RunSbomReachabilityFlow(ctx, mockIctx, mockTestClient, ef, &nopLogger, sbomPath, sourceCodePath, mockBsClient, orgID, orgSlug, nil)
+	result, err := ostest.RunSbomReachabilityFlow(ctx, mockIctx, mockTestClient, ef, &nopLogger, sbomPath, sourceCodePath, mockBsClient, orgID, orgSlug)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
