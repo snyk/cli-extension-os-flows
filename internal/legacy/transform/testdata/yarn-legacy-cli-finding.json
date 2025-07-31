@@ -1,0 +1,170 @@
+{
+  "attributes": {
+    "cause_of_failure": false,
+    "description": "## Overview\n[tar-fs](https://www.npmjs.com/package/tar-fs) is a filesystem bindings for tar-stream.\n\nAffected versions of this package are vulnerable to Improper Link Resolution Before File Access ('Link Following') through the `exports.extract` function. An attacker can manipulate the path of extracted files to write outside the intended directory by crafting a malicious tarball.\r\n\r\n## Workaround \r\nThis vulnerability can be mitigated by using the ignore option to ignore paths like symlinks that are not files/directories.\r\n```js\r\n  ignore (_, header) {\r\n    // pass files & directories, ignore e.g. symlinks\r\n    return header.type !== 'file' && header.type !== 'directory'\r\n  }\r\n```\n\n## Details\n\nA Directory Traversal attack (also known as path traversal) aims to access files and directories that are stored outside the intended folder. By manipulating files with \"dot-dot-slash (../)\" sequences and its variations, or by using absolute file paths, it may be possible to access arbitrary files and directories stored on file system, including application source code, configuration, and other critical system files.\n\nDirectory Traversal vulnerabilities can be generally divided into two types:\n\n- **Information Disclosure**: Allows the attacker to gain information about the folder structure or read the contents of sensitive files on the system.\n\n`st` is a module for serving static files on web pages, and contains a [vulnerability of this type](https://snyk.io/vuln/npm:st:20140206). In our example, we will serve files from the `public` route.\n\nIf an attacker requests the following URL from our server, it will in turn leak the sensitive private key of the root user.\n\n```\ncurl http://localhost:8080/public/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/root/.ssh/id_rsa\n```\n**Note** `%2e` is the URL encoded version of `.` (dot).\n\n- **Writing arbitrary files**: Allows the attacker to create or replace existing files. This type of vulnerability is also known as `Zip-Slip`. \n\nOne way to achieve this is by using a malicious `zip` archive that holds path traversal filenames. When each filename in the zip archive gets concatenated to the target extraction folder, without validation, the final path ends up outside of the target folder. If an executable or a configuration file is overwritten with a file containing malicious code, the problem can turn into an arbitrary code execution issue quite easily.\n\nThe following is an example of a `zip` archive with one benign file and one malicious file. Extracting the malicious file will result in traversing out of the target folder, ending up in `/root/.ssh/` overwriting the `authorized_keys` file:\n\n```\n2018-04-15 22:04:29 .....           19           19  good.txt\n2018-04-15 22:04:42 .....           20           20  ../../../../../../root/.ssh/authorized_keys\n```\n\n## Remediation\nUpgrade `tar-fs` to version 1.16.5, 2.1.3, 3.0.9 or higher.\n## References\n- [GitHub Commit](https://github.com/mafintosh/tar-fs/commit/647447b572bc135c41035e82ca7b894f02b17f0f)\n- [Red Hat Bugzilla Bug](https://bugzilla.redhat.com/show_bug.cgi?id=2369875)\n",
+    "evidence": [
+      {
+        "path": [
+          {
+            "name": "v2",
+            "version": "*"
+          },
+          {
+            "name": "@yao-pkg/pkg",
+            "version": "6.5.0"
+          },
+          {
+            "name": "prebuild-install",
+            "version": "7.1.3"
+          },
+          {
+            "name": "tar-fs",
+            "version": "2.1.2"
+          }
+        ],
+        "source": "dependency_path"
+      },
+      {
+        "path": [
+          {
+            "name": "v2",
+            "version": ""
+          },
+          {
+            "name": "@yao-pkg/pkg",
+            "version": "6.5.0"
+          },
+          {
+            "name": "@yao-pkg/pkg-fetch",
+            "version": "3.5.22"
+          },
+          {
+            "name": "tar-fs",
+            "version": "2.1.2"
+          }
+        ],
+        "source": "dependency_path"
+      }
+    ],
+    "finding_type": "sca",
+    "key": "redacted",
+    "locations": [
+      {
+        "package": {
+          "name": "tar-fs",
+          "version": "2.1.2"
+        },
+        "type": "package"
+      }
+    ],
+    "policy_modifications": [],
+    "problems": [
+      {
+        "id": "CVE-2025-48387",
+        "source": "cve"
+      },
+      {
+        "affected_hash_ranges": [],
+        "affected_hashes": [],
+        "affected_versions": [
+          "<1.16.5",
+          ">=2.0.0 <2.1.3",
+          ">=3.0.0 <3.0.9"
+        ],
+        "created_at": "2025-06-03T07:41:24Z",
+        "credits": [
+          "Caleb Brown"
+        ],
+        "cvss_base_score": 8.7,
+        "cvss_sources": [
+          {
+            "assigner": "Snyk",
+            "base_score": 8.7,
+            "cvss_version": "4.0",
+            "modified_at": "2025-06-03T10:14:39.305713Z",
+            "severity": "high",
+            "type": "primary",
+            "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N"
+          },
+          {
+            "assigner": "Snyk",
+            "base_score": 7.5,
+            "cvss_version": "3.1",
+            "modified_at": "2025-06-03T10:14:39.305713Z",
+            "severity": "high",
+            "type": "secondary",
+            "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          }
+        ],
+        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N",
+        "disclosed_at": "2025-06-02T19:43:25Z",
+        "ecosystem": {
+          "language": "js",
+          "package_manager": "npm",
+          "type": "build"
+        },
+        "exploit_details": {
+          "maturity_levels": [
+            {
+              "format": "",
+              "level": "",
+              "type": "secondary"
+            },
+            {
+              "format": "CVSSv4",
+              "level": "not defined",
+              "type": "primary"
+            }
+          ],
+          "sources": []
+        },
+        "id": "SNYK-JS-TARFS-10293725",
+        "initially_fixed_in_versions": [
+          "1.16.5",
+          "2.1.3",
+          "3.0.9"
+        ],
+        "is_fixable": true,
+        "is_malicious": false,
+        "is_social_media_trending": false,
+        "modified_at": "2025-06-03T10:14:39Z",
+        "package_name": "tar-fs",
+        "package_version": "",
+        "published_at": "2025-06-03T10:14:39Z",
+        "references": [
+          {
+            "title": "GitHub Commit",
+            "url": "https://github.com/mafintosh/tar-fs/commit/647447b572bc135c41035e82ca7b894f02b17f0f"
+          },
+          {
+            "title": "Red Hat Bugzilla Bug",
+            "url": "https://bugzilla.redhat.com/show_bug.cgi?id=2369875"
+          }
+        ],
+        "severity": "high",
+        "source": "snyk_vuln"
+      },
+      {
+        "id": "CWE-59",
+        "source": "cwe"
+      },
+      {
+        "id": "CWE-22",
+        "source": "cwe"
+      }
+    ],
+    "rating": {
+      "severity": "high"
+    },
+    "risk": {
+      "risk_score": {
+        "value": 124
+      }
+    },
+    "title": "Improper Link Resolution Before File Access ('Link Following')"
+  },
+  "id": "d94fa3b8-d0ef-4030-a8aa-874781e9b0b6",
+  "links": {},
+  "relationships": {},
+  "type": "findings"
+}

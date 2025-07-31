@@ -1,10 +1,13 @@
 package transform_test
 
 import (
+	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/gkampitakis/go-snaps/snaps"
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/stretchr/testify/assert"
@@ -376,4 +379,21 @@ func TestProcessProblemForVuln_License(t *testing.T) {
 			require.Equal(t, tt.expectedLanguage, tt.vuln.Language)
 		})
 	}
+}
+
+func TestFindingToLegacyVulns(t *testing.T) {
+	buf, err := os.ReadFile("testdata/yarn-legacy-cli-finding.json")
+	require.NoError(t, err)
+
+	var finding testapi.FindingData
+	err = json.Unmarshal(buf, &finding)
+	require.NoError(t, err)
+
+	logger := zerolog.Nop()
+	vulns, err := transform.FindingToLegacyVulns(
+		&finding,
+		&logger,
+	)
+	require.NoError(t, err)
+	snaps.MatchStandaloneSnapshot(t, vulns)
 }

@@ -273,7 +273,6 @@ func ProcessLocationForVuln(
 // ProcessEvidenceForFinding extracts the dependency lineage for the vulnerability
 // from the evidence provided in the finding and returns an ordered list.
 func ProcessEvidenceForFinding(vuln *definitions.Vulnerability, ev *testapi.Evidence) error {
-	var dependencyPath []string
 	evDisc, err := ev.Discriminator()
 	if err != nil {
 		return fmt.Errorf("getting evidence discriminator: %w", err)
@@ -285,10 +284,11 @@ func ProcessEvidenceForFinding(vuln *definitions.Vulnerability, ev *testapi.Evid
 		if err != nil {
 			return fmt.Errorf("converting evidence to dependency path evidence: %w", err)
 		}
+		from := make([]string, 0, len(depPathEvidence.Path))
 		for _, dep := range depPathEvidence.Path {
-			dependencyPath = append(dependencyPath, fmt.Sprintf("%s@%s", dep.Name, dep.Version))
+			from = append(from, fmt.Sprintf("%s@%s", dep.Name, dep.Version))
 		}
-		vuln.From = append(vuln.From, dependencyPath...)
+		vuln.From = from
 	case string(testapi.Reachability):
 		reachEvidence, err := ev.AsReachabilityEvidence()
 		if err != nil {
