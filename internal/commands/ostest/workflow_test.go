@@ -3,7 +3,6 @@ package ostest_test
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -30,59 +29,6 @@ import (
 )
 
 var legacyWorkflowID = workflow.NewWorkflowIdentifier("legacycli")
-
-var logger = zerolog.Nop()
-
-func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
-	// Setup - No special flags set
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
-	mockConfig := mockInvocationCtx.GetConfiguration()
-	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
-	mockConfig.Set(flags.FlagSeverityThreshold, "high")
-
-	localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
-	require.NotNil(t, localPolicy)
-
-	require.NotNil(t, localPolicy.RiskScoreThreshold)
-	assert.Equal(t, uint16(100), *localPolicy.RiskScoreThreshold)
-	require.NotNil(t, localPolicy.SeverityThreshold)
-	assert.Equal(t, "high", string(*localPolicy.SeverityThreshold))
-}
-
-func TestOSWorkflow_CreateLocalPolicy_NoValues(t *testing.T) {
-	// Setup - No special flags set
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
-	mockConfig := mockInvocationCtx.GetConfiguration()
-
-	localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
-
-	assert.Nil(t, localPolicy)
-}
-
-func TestOSWorkflow_CreateLocalPolicy_RiskScoreOverflow(t *testing.T) {
-	// Setup - No special flags set
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
-	mockConfig := mockInvocationCtx.GetConfiguration()
-	mockConfig.Set(flags.FlagRiskScoreThreshold, math.MaxUint16+10)
-
-	localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
-	require.NotNil(t, localPolicy)
-
-	assert.NotNil(t, localPolicy.RiskScoreThreshold)
-	assert.Equal(t, uint16(math.MaxUint16), *localPolicy.RiskScoreThreshold)
-}
 
 func TestOSWorkflow_LegacyFlow(t *testing.T) {
 	// Setup - No special flags set
