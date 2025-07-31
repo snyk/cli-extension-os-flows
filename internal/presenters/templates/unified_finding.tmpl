@@ -17,11 +17,11 @@
    Risk Score: N/A
 				{{- end }}
 			{{- end }}
-			{{- $isReachable := getFieldValueFrom . "Attributes.IsReachable" -}}
-			{{- if eq $isReachable "true" }}
-   Reachable: YES
+			{{- $reachability := getReachability . -}}
+			{{- if ne $reachability "N/A" }}
+   Reachability: {{ $reachability }}
 			{{- end }}
- 
+
 {{end}}
 
 {{- define "details" -}}
@@ -74,14 +74,14 @@
   Organization:      {{ getValueFromConfig "internal_org_slug" }}
   Test type:         {{ if eq .Summary.Type "sast" }}Static code analysis{{else}}{{ .Summary.Type }}{{ end}}
   Project path:      {{ .Summary.Path }}
-  
+
   {{- $total := 0 }}{{- $open := 0 }}{{- $ignored := 0 }}
   {{- range $res := .Summary.Results }}
       {{- $total = add $total $res.Total }}
       {{- $open = add $open $res.Open }}
       {{- $ignored = add $ignored $res.Ignored }}
   {{- end }}
-  
+
   Total issues:   {{ $total }}
   {{- if gt $total 0}}
   Ignored issues: {{ print $ignored | bold }} [

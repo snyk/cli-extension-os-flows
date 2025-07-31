@@ -1,8 +1,8 @@
 
-[Test_RunSbomReachabilityFlow_Success - 1]
+[Test_RunSbomReachabilityFlow_JSON - 1]
 {
  "dependencyCount": 0,
- "displayTargetFile": "",
+ "displayTargetFile": "./testdata/bom.json",
  "filesystemPolicy": false,
  "filtered": {
   "ignore": [],
@@ -57,7 +57,28 @@
 }
 ---
 
-[Test_RunSbomReachabilityFlow_Success - 2]
+[Test_RunSbomReachabilityFlow_JSON - 2]
+{
+ "artifacts": 0,
+ "results": [
+  {
+   "ignored": 0,
+   "open": 1,
+   "severity": "high",
+   "total": 1
+  }
+ ],
+ "severity_order_asc": [
+  "low",
+  "medium",
+  "high",
+  "critical"
+ ],
+ "type": "open-source"
+}
+---
+
+[Test_RunSbomReachabilityFlow_HumanReadable - 1]
 {
  "artifacts": 0,
  "results": [

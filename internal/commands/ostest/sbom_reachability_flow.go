@@ -1,9 +1,7 @@
 package ostest
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -13,6 +11,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 )
 
 // RunSbomReachabilityFlow runs the SBOM reachability flow.
@@ -69,27 +68,18 @@ func RunSbomReachabilityFlow(
 		return nil, fmt.Errorf("failed to create sbom test reachability subject: %w", err)
 	}
 
-	findings, summary, err := RunTest(ctx, ictx, testClient, subject, "", "", int(0), "", orgID, orgSlugOrID, errFactory, logger, nil)
+	findings, summary, err := RunTest(ctx, ictx, testClient, subject, "", "", int(0), sbomPath, orgID, orgSlugOrID, errFactory, logger, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var finalOutput []workflow.Data
-	var buffer bytes.Buffer
-	encoder := json.NewEncoder(&buffer)
-	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "  ")
-	err = encoder.Encode(findings)
-	if err != nil {
-		return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshaling to json: %w", err))
+	var allLegacyFindings []definitions.LegacyVulnerabilityResponse
+	if findings != nil {
+		allLegacyFindings = append(allLegacyFindings, *findings)
 	}
-	// encoder.Encode adds a newline, which we trim to match Marshal's behavior.
-	findingsBytes := bytes.TrimRight(buffer.Bytes(), "\n")
 
-	finalOutput = append(finalOutput, NewWorkflowData(ApplicationJSONContentType, findingsBytes))
-	finalOutput = append(finalOutput, summary...)
-
-	return finalOutput, nil
+	//nolint:contextcheck // The handleOutput call chain is not context-aware
+	return handleOutput(ictx, allLegacyFindings, summary, errFactory)
 }
 
 // validateDirectory checks if the given path exists and contains files.
