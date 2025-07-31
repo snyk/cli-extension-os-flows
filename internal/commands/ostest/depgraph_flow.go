@@ -25,12 +25,11 @@ func RunUnifiedTestFlow(
 	ctx context.Context,
 	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
-	riskScoreThreshold *uint16,
-	severityThreshold *testapi.Severity,
 	orgID string,
 	orgSlugOrID string,
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
+	localPolicy *testapi.LocalPolicy,
 ) ([]workflow.Data, error) {
 	logger.Info().Msg("Starting open source test")
 
@@ -39,8 +38,6 @@ func RunUnifiedTestFlow(
 	if err != nil {
 		return nil, err
 	}
-
-	localPolicy := createLocalPolicy(riskScoreThreshold, severityThreshold)
 
 	allLegacyFindings, allOutputData, err := testAllDepGraphs(
 		ctx,
@@ -228,18 +225,6 @@ func prepareJSONOutput(
 	}
 	// encoder.Encode adds a newline, which we trim to match Marshal's behavior.
 	return bytes.TrimRight(buffer.Bytes(), "\n"), nil
-}
-
-// Create local policy only if risk score or severity threshold are specified.
-func createLocalPolicy(riskScoreThreshold *uint16, severityThreshold *testapi.Severity) *testapi.LocalPolicy {
-	if riskScoreThreshold == nil && severityThreshold == nil {
-		return nil
-	}
-
-	return &testapi.LocalPolicy{
-		RiskScoreThreshold: riskScoreThreshold,
-		SeverityThreshold:  severityThreshold,
-	}
 }
 
 // createDepGraphs creates depgraphs from the file parameter in the context.
