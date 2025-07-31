@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	std_errors "errors"
 	"fmt"
-	"math"
 	"sort"
 	"strings"
 
@@ -61,17 +60,33 @@ func RunTest(
 		orgSlugOrID = orgID
 	}
 
-	uniqueCount := calculateUniqueIssueCount(findingsData)
+	allFindingsData := findingsData
+	vulnerablePathsCount := calculateVulnerablePathsCount(allFindingsData)
+
+	// Deep copy findings for consolidation to avoid modifying the original slice,
+	// which would affect the JSON output.
+	b, err := json.Marshal(allFindingsData)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to marshal findings for deep copy: %w", err)
+	}
+	var findingsForConsolidation []testapi.FindingData
+	if err := json.Unmarshal(b, &findingsForConsolidation); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal findings for deep copy: %w", err)
+	}
+
+	consolidatedFindings := consolidateFindings(findingsForConsolidation, logger)
+	//nolint:gosec // G115: integer overflow is not a concern here
+	uniqueCount := int32(len(consolidatedFindings))
 
 	// The summary is always needed for the exit code calculation.
-	standardSummary, summaryData, summaryErr := NewSummaryData(finalResult, logger, targetDir)
-	if summaryErr != nil && !std_errors.Is(summaryErr, ErrNoSummaryData) {
-		// Log the error but continue, as this is not fatal.
+	standardSummary, summaryData, summaryErr := NewSummaryDataFromFindings(consolidatedFindings, logger, targetDir)
+	if summaryErr != nil {
+		// Log other errors but continue, as this is not fatal.
 		logger.Warn().Err(summaryErr).Msg("Failed to create test summary for exit code handling")
 	}
 
 	legacyParams := &transform.SnykSchemaToLegacyParams{
-		Findings:          findingsData,
+		Findings:          allFindingsData,
 		TestResult:        finalResult,
 		OrgSlugOrID:       orgSlugOrID,
 		ProjectName:       projectName,
@@ -84,7 +99,7 @@ func RunTest(
 		Logger:            logger,
 	}
 
-	return prepareOutput(ictx, findingsData, standardSummary, summaryData, legacyParams)
+	return prepareOutput(ictx, consolidatedFindings, standardSummary, summaryData, legacyParams, vulnerablePathsCount)
 }
 
 // executeTest runs the test and returns the results.
@@ -147,6 +162,7 @@ func prepareOutput(
 	standardSummary *json_schemas.TestSummary,
 	summaryData workflow.Data,
 	params *transform.SnykSchemaToLegacyParams,
+	vulnerablePathsCount int,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	config := ictx.GetConfiguration()
 	var outputData []workflow.Data
@@ -180,12 +196,13 @@ func prepareOutput(
 
 		if standardSummary != nil {
 			extendedPayload := presenters.SummaryPayload{
-				Summary:           standardSummary,
-				DependencyCount:   params.DepCount,
-				PackageManager:    params.PackageManager,
-				ProjectName:       params.ProjectName,
-				DisplayTargetFile: params.DisplayTargetFile,
-				UniqueCount:       params.UniqueCount,
+				Summary:              standardSummary,
+				DependencyCount:      params.DepCount,
+				PackageManager:       params.PackageManager,
+				ProjectName:          params.ProjectName,
+				DisplayTargetFile:    params.DisplayTargetFile,
+				UniqueCount:          params.UniqueCount,
+				VulnerablePathsCount: vulnerablePathsCount,
 			}
 
 			extendedPayloadBytes, marshalErr := json.Marshal(extendedPayload)
@@ -198,62 +215,42 @@ func prepareOutput(
 	return legacyVulnResponse, outputData, nil
 }
 
-// getSeverityCount safely retrieves the count for a given severity from a summary.
-func getSeverityCount(summary *testapi.FindingSummary, severity string) uint32 {
-	if summary == nil || summary.CountBy == nil {
-		return 0
-	}
-	if severityCounts, ok := (*summary.CountBy)["severity"]; ok {
-		return severityCounts[severity]
-	}
-	return 0
-}
-
-// extractSeverityKeys returns a map of severity keys present in the summaries.
-func extractSeverityKeys(summaries ...*testapi.FindingSummary) map[string]bool {
-	keys := make(map[string]bool)
-	for _, summary := range summaries {
-		if summary != nil && summary.CountBy != nil {
-			if severityCounts, ok := (*summary.CountBy)["severity"]; ok {
-				for severity := range severityCounts {
-					keys[severity] = true
-				}
-			}
-		}
-	}
-	return keys
-}
-
-// NewSummaryData creates a workflow.Data object containing a json_schemas.TestSummary
-// from a testapi.TestResult. This is used for downstream processing, like determining
+// NewSummaryDataFromFindings creates a workflow.Data object containing a json_schemas.TestSummary
+// from a list of findings. This is used for downstream processing, like determining
 // the CLI exit code.
-func NewSummaryData(testResult testapi.TestResult, _ *zerolog.Logger, path string) (*json_schemas.TestSummary, workflow.Data, error) {
-	rawSummary := testResult.GetRawSummary()
-	effectiveSummary := testResult.GetEffectiveSummary()
-
-	if rawSummary == nil || effectiveSummary == nil {
-		return nil, nil, fmt.Errorf("test result missing summary information")
+func NewSummaryDataFromFindings(
+	findings []testapi.FindingData,
+	_ *zerolog.Logger,
+	path string,
+) (*json_schemas.TestSummary, workflow.Data, error) {
+	if len(findings) == 0 {
+		testSummary := json_schemas.NewTestSummary("open-source", path)
+		testSummary.Results = []json_schemas.TestSummaryResult{}
+		testSummary.SeverityOrderAsc = []string{"low", "medium", "high", "critical"}
+		summaryBytes, err := json.Marshal(testSummary)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to marshal empty test summary: %w", err)
+		}
+		return testSummary, NewWorkflowData(content_type.TEST_SUMMARY, summaryBytes), nil
 	}
 
-	severityKeys := extractSeverityKeys(rawSummary, effectiveSummary)
-
-	var summaryResults []json_schemas.TestSummaryResult
-	for severity := range severityKeys {
-		total := getSeverityCount(rawSummary, severity)
-		open := getSeverityCount(effectiveSummary, severity)
-
-		if total > 0 || open > 0 {
-			ignored := 0
-			if total > open {
-				ignored = int(total - open)
-			}
-			summaryResults = append(summaryResults, json_schemas.TestSummaryResult{
-				Severity: severity,
-				Total:    int(total),
-				Open:     int(open),
-				Ignored:  ignored,
-			})
+	severityCounts := make(map[string]int)
+	for _, finding := range findings {
+		if finding.Attributes == nil {
+			continue
 		}
+		severity := string(finding.Attributes.Rating.Severity)
+		severityCounts[severity]++
+	}
+
+	summaryResults := make([]json_schemas.TestSummaryResult, 0, len(severityCounts))
+	for severity, count := range severityCounts {
+		summaryResults = append(summaryResults, json_schemas.TestSummaryResult{
+			Severity: severity,
+			Total:    count,
+			Open:     count, // For this summary, all found issues are considered open.
+			Ignored:  0,
+		})
 	}
 
 	// Sort results for consistent output, matching the standard CLI order.
@@ -275,40 +272,92 @@ func NewSummaryData(testResult testapi.TestResult, _ *zerolog.Logger, path strin
 	return testSummary, summaryWorkflowData, nil
 }
 
-// calculateUniqueIssueCount iterates through findings to determine the number of unique issues.
-// A unique issue is identified by its Snyk ID (e.g., SNYK-JS-LODASH-12345).
-func calculateUniqueIssueCount(findings []testapi.FindingData) int32 {
-	issueIDs := make(map[string]bool)
-	for _, finding := range findings {
-		var snykID string
-		// A finding can have multiple problems (e.g., a CVE and a Snyk ID).
-		// We iterate through them to find the canonical Snyk ID for uniqueness.
-		for _, problem := range finding.Attributes.Problems {
-			var id string
+// consolidateFindings consolidates findings with the same Snyk ID into a single finding
+// with all the evidence and locations from the original findings.
+func consolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger) []testapi.FindingData {
+	consolidatedFindings := make(map[string]testapi.FindingData)
+	var orderedKeys []string
 
-			// The problem is a union type, so we need to check which type it is.
+	for _, finding := range findings {
+		snykID := getSnykID(finding)
+		if snykID == "" {
+			// If a finding has no Snyk ID, treat it as unique.
+			if finding.Id == nil {
+				logger.Error().Msg("finding is missing an ID")
+				continue
+			}
+			snykID = finding.Id.String()
+		}
+
+		if existingFinding, exists := consolidatedFindings[snykID]; !exists {
+			consolidatedFindings[snykID] = finding
+			orderedKeys = append(orderedKeys, snykID)
+		} else {
+			// Deep copy to avoid modifying the map's shared object directly
+			newFinding := existingFinding
+			if newFinding.Attributes == nil && finding.Attributes != nil {
+				newFinding.Attributes = &testapi.FindingAttributes{}
+			}
+
+			if finding.Attributes != nil {
+				newFinding.Attributes.Evidence = append(newFinding.Attributes.Evidence, finding.Attributes.Evidence...)
+				newFinding.Attributes.Locations = append(newFinding.Attributes.Locations, finding.Attributes.Locations...)
+			}
+			consolidatedFindings[snykID] = newFinding
+		}
+	}
+
+	result := make([]testapi.FindingData, len(orderedKeys))
+	for i, key := range orderedKeys {
+		result[i] = consolidatedFindings[key]
+	}
+	return result
+}
+
+// getSnykID extracts the canonical Snyk ID from a finding.
+// TODO This needs to use attributes.Key.
+func getSnykID(finding testapi.FindingData) string {
+	if finding.Attributes == nil || len(finding.Attributes.Problems) == 0 {
+		return ""
+	}
+
+	for _, problem := range finding.Attributes.Problems {
+		var id string
+		disc, err := problem.Discriminator()
+		if err != nil {
+			continue
+		}
+
+		if disc == string(testapi.SnykVuln) {
 			if p, err := problem.AsSnykVulnProblem(); err == nil {
 				id = p.Id
-			} else if p, err := problem.AsSnykLicenseProblem(); err == nil {
+			}
+		} else if disc == string(testapi.SnykLicense) {
+			if p, err := problem.AsSnykLicenseProblem(); err == nil {
 				id = p.Id
 			}
+		}
 
-			if id != "" {
-				snykID = id
-				break // Found a Snyk ID, we can stop searching for this finding.
+		if id != "" {
+			return id
+		}
+	}
+	return ""
+}
+
+func calculateVulnerablePathsCount(findings []testapi.FindingData) int {
+	var count int
+	for _, finding := range findings {
+		if finding.Attributes == nil {
+			continue
+		}
+		for _, evidence := range finding.Attributes.Evidence {
+			if disc, err := evidence.Discriminator(); err == nil && disc == string(testapi.DependencyPath) {
+				count++
 			}
 		}
-
-		if snykID != "" {
-			issueIDs[snykID] = true
-		}
 	}
-
-	count := len(issueIDs)
-	if count > math.MaxInt32 {
-		return math.MaxInt32
-	}
-	return int32(count)
+	return count
 }
 
 // NewWorkflowData creates a workflow.Data object with the given content type and data.
