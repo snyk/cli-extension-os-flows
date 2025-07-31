@@ -41,23 +41,25 @@ var DefaultTemplateFiles = []string{
 
 // UnifiedProjectResult holds the findings and summary for a single project from the unified flow.
 type UnifiedProjectResult struct {
-	Findings          []testapi.FindingData
-	Summary           *json_schemas.TestSummary
-	DependencyCount   int
-	PackageManager    string
-	ProjectName       string
-	DisplayTargetFile string
-	UniqueCount       int
+	Findings             []testapi.FindingData
+	Summary              *json_schemas.TestSummary
+	DependencyCount      int
+	PackageManager       string
+	ProjectName          string
+	DisplayTargetFile    string
+	UniqueCount          int
+	VulnerablePathsCount int
 }
 
 // SummaryPayload is a wrapper for the test summary and additional metadata needed for the unified output.
 type SummaryPayload struct {
-	Summary           *json_schemas.TestSummary `json:"summary"`
-	DependencyCount   int                       `json:"dependencyCount"`
-	PackageManager    string                    `json:"packageManager"`
-	ProjectName       string                    `json:"projectName"`
-	DisplayTargetFile string                    `json:"displayTargetFile"`
-	UniqueCount       int32                     `json:"uniqueCount"`
+	Summary              *json_schemas.TestSummary `json:"summary"`
+	DependencyCount      int                       `json:"dependencyCount"`
+	PackageManager       string                    `json:"packageManager"`
+	ProjectName          string                    `json:"projectName"`
+	DisplayTargetFile    string                    `json:"displayTargetFile"`
+	UniqueCount          int32                     `json:"uniqueCount"`
+	VulnerablePathsCount int                       `json:"vulnerablePathsCount"`
 }
 
 // UnifiedFindingPresenter is responsible for rendering unified findings data.
