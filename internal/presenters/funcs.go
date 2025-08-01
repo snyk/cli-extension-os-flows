@@ -120,9 +120,11 @@ func getVulnInfoURL(finding testapi.FindingData) string {
 
 // getIntroducedThrough returns the dependency path through which the vulnerability was introduced.
 func getIntroducedThrough(finding testapi.FindingData) string {
-	if len(finding.Attributes.Evidence) > 0 {
-		evidence := finding.Attributes.Evidence[0]
+	if finding.Attributes == nil || len(finding.Attributes.Evidence) == 0 {
+		return ""
+	}
 
+	for _, evidence := range finding.Attributes.Evidence {
 		// An evidence object is a union type. We need to check if it's a DependencyPathEvidence.
 		if depPathEvidence, err := evidence.AsDependencyPathEvidence(); err == nil {
 			var pathParts []string
@@ -134,13 +136,17 @@ func getIntroducedThrough(finding testapi.FindingData) string {
 			}
 		}
 	}
+
 	return ""
 }
 
 // getIntroducedBy returns the direct dependency that introduced the vulnerability.
 func getIntroducedBy(finding testapi.FindingData) string {
-	if len(finding.Attributes.Evidence) > 0 {
-		evidence := finding.Attributes.Evidence[0]
+	if finding.Attributes == nil || len(finding.Attributes.Evidence) == 0 {
+		return ""
+	}
+
+	for _, evidence := range finding.Attributes.Evidence {
 		if depPathEvidence, err := evidence.AsDependencyPathEvidence(); err == nil {
 			if len(depPathEvidence.Path) > 0 {
 				// The first element in the path is the direct dependency from the root.
@@ -149,6 +155,7 @@ func getIntroducedBy(finding testapi.FindingData) string {
 			}
 		}
 	}
+
 	return ""
 }
 
