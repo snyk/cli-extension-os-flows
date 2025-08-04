@@ -81,6 +81,7 @@ func setupSBOMReachabilityFlow(
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	sbom, sourceDir string,
+	localPolicy *testapi.LocalPolicy,
 ) ([]workflow.Data, error) {
 	config := ictx.GetConfiguration()
 
@@ -104,54 +105,38 @@ func setupSBOMReachabilityFlow(
 	)
 
 	bsClient := bundlestore.NewClient(ictx.GetNetworkAccess().GetHttpClient(), codeScannerConfig, cScanner, logger)
-	return RunSbomReachabilityFlow(ctx, ictx, testClient, errFactory, logger, sbom, sourceDir, bsClient, orgID)
+	return RunSbomReachabilityFlow(ctx, ictx, testClient, errFactory, logger, sbom, sourceDir, bsClient, orgID, localPolicy)
 }
 
-// setupDefaultTestFlow sets up and runs the default test flow with risk score and severity thresholds.
-func setupDefaultTestFlow(
-	ctx context.Context,
-	ictx workflow.InvocationContext,
-	testClient testapi.TestClient,
-	orgID string,
-	errFactory *errors.ErrorFactory,
-	logger *zerolog.Logger,
-	riskScoreThreshold int,
-) ([]workflow.Data, error) {
-	config := ictx.GetConfiguration()
-
-	// Risk Score FFs
-	ffRiskScore := config.GetBool(FeatureFlagRiskScore)
-	ffRiskScoreInCLI := config.GetBool(FeatureFlagRiskScoreInCLI)
-	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
-
-	if riskScoreThreshold != -1 && !riskScoreFFsEnabled {
-		// The user tried to use a risk score threshold without the required feature flags.
-		// Return a specific error for the first missing flag found.
-		if !ffRiskScore {
-			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScore)
-		}
-		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
-	}
-
-	var riskScorePtr *uint16
-	if riskScoreThreshold >= math.MaxUint16 {
+// CreateLocalPolicy will create a local policy only if risk score or severity threshold are specified in the config.
+func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logger) *testapi.LocalPolicy {
+	var riskScoreThreshold *uint16
+	riskScoreThresholdInt := config.GetInt(flags.FlagRiskScoreThreshold)
+	if riskScoreThresholdInt >= math.MaxUint16 {
 		// the API will enforce a range from the test spec
-		logger.Warn().Msgf("Risk score threshold %d exceeds maximum uint16 value. Setting to maximum.", riskScoreThreshold)
+		logger.Warn().Msgf("Risk score threshold %d exceeds maximum uint16 value. Setting to maximum.", riskScoreThresholdInt)
 		maxVal := uint16(math.MaxUint16)
-		riskScorePtr = &maxVal
-	} else if riskScoreThreshold >= 0 {
-		rs := uint16(riskScoreThreshold)
-		riskScorePtr = &rs
+		riskScoreThreshold = &maxVal
+	} else if riskScoreThresholdInt >= 0 {
+		rs := uint16(riskScoreThresholdInt)
+		riskScoreThreshold = &rs
 	}
 
-	var severityThresholdPtr *testapi.Severity
+	var severityThreshold *testapi.Severity
 	severityThresholdStr := config.GetString(flags.FlagSeverityThreshold)
 	if severityThresholdStr != "" {
 		st := testapi.Severity(severityThresholdStr)
-		severityThresholdPtr = &st
+		severityThreshold = &st
 	}
 
-	return RunUnifiedTestFlow(ctx, ictx, testClient, riskScorePtr, severityThresholdPtr, orgID, errFactory, logger)
+	if riskScoreThreshold == nil && severityThreshold == nil {
+		return nil
+	}
+
+	return &testapi.LocalPolicy{
+		RiskScoreThreshold: riskScoreThreshold,
+		SeverityThreshold:  severityThreshold,
+	}
 }
 
 // OSWorkflow is the entry point for the Open Source Test workflow.
@@ -195,6 +180,17 @@ func OSWorkflow(
 		return nil, errFactory.NewEmptyOrgError()
 	}
 
+	if riskScoreThreshold != -1 && !riskScoreFFsEnabled {
+		// The user tried to use a risk score threshold without the required feature flags.
+		// Return a specific error for the first missing flag found.
+		if !ffRiskScore {
+			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScore)
+		}
+		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
+	}
+
+	localPolicy := CreateLocalPolicy(config, logger)
+
 	// Create Snyk client
 	httpClient := ictx.GetNetworkAccess().GetHttpClient()
 	snykClient := snykclient.NewSnykClient(httpClient, ictx.GetConfiguration().GetString(configuration.API_URL), orgID)
@@ -212,8 +208,8 @@ func OSWorkflow(
 	// Route to the appropriate flow based on flags
 	switch {
 	case sbomReachabilityTest:
-		return setupSBOMReachabilityFlow(ctx, ictx, testClient, orgID, errFactory, logger, sbom, sourceDir)
+		return setupSBOMReachabilityFlow(ctx, ictx, testClient, orgID, errFactory, logger, sbom, sourceDir, localPolicy)
 	default:
-		return setupDefaultTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, riskScoreThreshold)
+		return RunUnifiedTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, localPolicy)
 	}
 }
