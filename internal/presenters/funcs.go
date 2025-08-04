@@ -275,6 +275,42 @@ func isIgnoredFinding() func(obj any) bool {
 	}
 }
 
+// isLicenseFinding returns true if the finding is a license finding.
+func isLicenseFinding(finding testapi.FindingData) bool {
+	if finding.Attributes != nil {
+		for _, problem := range finding.Attributes.Problems {
+			disc, err := problem.Discriminator()
+			if err == nil && disc == string(testapi.SnykLicense) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isLicenseFindingFilter returns a filter function that checks if a finding is a license finding.
+func isLicenseFindingFilter() func(obj any) bool {
+	return func(obj any) bool {
+		finding, ok := obj.(testapi.FindingData)
+		if !ok {
+			return false
+		}
+		return isLicenseFinding(finding)
+	}
+}
+
+// isNotLicenseFindingFilter returns a function that checks if a finding is not a license finding.
+func isNotLicenseFindingFilter() func(obj any) bool {
+	return func(obj any) bool {
+		finding, ok := obj.(testapi.FindingData)
+		if !ok {
+			return true
+		}
+		isLicense := isLicenseFinding(finding)
+		return !isLicense
+	}
+}
+
 // hasSuppression checks if a finding has any suppression.
 func hasSuppression(finding testapi.FindingData) bool {
 	if finding.Attributes.Suppression == nil {
@@ -299,7 +335,8 @@ func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
 	fnMap["divider"] = RenderDivider
 	fnMap["title"] = RenderTitle
 	fnMap["renderToString"] = renderTemplateToString(tmpl)
-	fnMap["isLicenseFinding"] = isLicenseFinding
+	fnMap["isLicenseFindingFilter"] = isLicenseFindingFilter
+	fnMap["isNotLicenseFindingFilter"] = isNotLicenseFindingFilter
 	fnMap["isOpenFinding"] = isOpenFinding
 	fnMap["isPendingFinding"] = isPendingFinding
 	fnMap["isIgnoredFinding"] = isIgnoredFinding
@@ -366,24 +403,11 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 	defaultMap["formatDatetime"] = formatDatetime
 	defaultMap["getSourceLocation"] = getSourceLocation
 	defaultMap["getFindingId"] = getFindingID
-	defaultMap["hasPrefix"] = strings.HasPrefix
 	defaultMap["isLicenseFinding"] = isLicenseFinding
+	defaultMap["hasPrefix"] = strings.HasPrefix
 	defaultMap["constructDisplayPath"] = constructDisplayPath(config)
 
 	return defaultMap
-}
-
-// isLicenseFinding returns true if the finding is a license finding.
-func isLicenseFinding(finding testapi.FindingData) bool {
-	if finding.Attributes != nil {
-		for _, problem := range finding.Attributes.Problems {
-			disc, err := problem.Discriminator()
-			if err == nil && disc == string(testapi.SnykLicense) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // reverse reverses the order of elements in a slice.
