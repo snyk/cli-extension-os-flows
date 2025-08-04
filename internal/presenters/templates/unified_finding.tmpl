@@ -9,14 +9,16 @@
 			{{- with (getIntroducedThrough .) }}
    Introduced through: {{ . }}
 			{{- end }}
+
 			{{- if not (isLicenseFinding .) }}
-				{{- $riskScore := getFieldValueFrom . "Attributes.Risk.RiskScore.Value" -}}
+                {{- $riskScore := getFieldValueFrom . "Attributes.Risk.RiskScore.Value" }}
 				{{- if $riskScore }}
    Risk Score: {{ $riskScore }}
 				{{- else }}
    Risk Score: N/A
 				{{- end }}
 			{{- end }}
+
 			{{- $reachability := getReachability . -}}
 			{{- if ne $reachability "N/A" }}
    Reachability: {{ $reachability }}
@@ -26,14 +28,27 @@
 
 {{- define "details" -}}
     {{- $sortedFindings := .Findings | sortFindingBy "Attributes.Rating.Severity" .Summary.SeverityOrderAsc }}
-    {{- $openFindings :=  $sortedFindings | filterFinding (isOpenFinding) }}
+    {{- $allOpenFindings := $sortedFindings | filterFinding (isOpenFinding) }}
+    {{- $openFindings := $allOpenFindings | filterFinding (isNotLicenseFindingFilter) }}
+    {{- $licenseFindings := $allOpenFindings | filterFinding (isLicenseFindingFilter) }}
     {{- $pendingIgnoreFindings := $sortedFindings | filterFinding (isPendingFinding) }}
     {{- $ignoredFindings := $sortedFindings | filterFinding (isIgnoredFinding) }}
     {{- $hasOpenFindings := gt (len $openFindings) 0 }}
+    {{- $hasLicenseFindings := gt (len $licenseFindings) 0 }}
     {{- $hasPendingIgnoreFindings := gt (len $pendingIgnoreFindings) 0 }}
     {{- $hasIgnoredFindings := gt (len $ignoredFindings) 0 }}
-    {{- if $hasOpenFindings }}{{ "Open Issues" | title }}
+
+    {{- if $hasOpenFindings }}{{ printf "Open issues: %d" (len $openFindings) | title }}
 		{{- range $finding := $openFindings }}
+			{{- $severity := getFieldValueFrom $finding "Attributes.Rating.Severity" -}}
+			{{- $title := getFieldValueFrom $finding "Attributes.Title" -}}
+			{{- printf " ✗ %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- template "finding_details" $finding -}}
+		{{- end }}
+    {{- end }}
+
+    {{- if $hasLicenseFindings }}{{ printf "License issues: %d" (len $licenseFindings) | title }}
+		{{- range $finding := $licenseFindings }}
 			{{- $severity := getFieldValueFrom $finding "Attributes.Rating.Severity" -}}
 			{{- $title := getFieldValueFrom $finding "Attributes.Title" -}}
 			{{- printf " ✗ %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
