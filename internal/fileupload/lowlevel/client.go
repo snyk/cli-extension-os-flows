@@ -44,16 +44,19 @@ const FileSizeLimit = 50_000_000 // arbitrary number, chosen to support max size
 // FileCountLimit specifies the maximum number of files allowed in a single upload.
 const FileCountLimit = 100 // arbitrary number, will need to be re-evaluated
 
-// ContentType is the HTTP header name for content type.
-const ContentType = "Content-Type"
-
 // NewClient creates a new file upload client with the given configuration and options.
 func NewClient(cfg Config, opts ...Opt) *HTTPClient {
-	c := HTTPClient{cfg, http.DefaultClient}
+	httpClient := &http.Client{
+		Transport: http.DefaultTransport,
+	}
+	c := HTTPClient{cfg, httpClient}
 
 	for _, opt := range opts {
 		opt(&c)
 	}
+
+	crt := NewCompressionRoundTripper(c.httpClient.Transport)
+	c.httpClient.Transport = crt
 
 	return &c
 }
@@ -80,7 +83,7 @@ func (c *HTTPClient) CreateRevision(ctx context.Context, orgID OrgID) (*UploadRe
 	url := fmt.Sprintf("%s/hidden/orgs/%s/upload_revisions?version=%s", c.cfg.BaseURL, orgID, APIVersion)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, buff)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request body: %w", err)
+		return nil, fmt.Errorf("failed to create revision request: %w", err)
 	}
 	req.Header.Set(ContentType, "application/vnd.api+json")
 
@@ -91,7 +94,7 @@ func (c *HTTPClient) CreateRevision(ctx context.Context, orgID OrgID) (*UploadRe
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusCreated {
-		return nil, c.handleUnexpectedStatusCodes(res.Body, res.StatusCode, res.Status, "create upload revision")
+		return nil, handleUnexpectedStatusCodes(res.Body, res.StatusCode, res.Status, "create upload revision")
 	}
 
 	var respBody UploadRevisionResponseBody
@@ -112,6 +115,65 @@ func (c *HTTPClient) UploadFiles(ctx context.Context, orgID OrgID, revisionID Re
 		return ErrEmptyRevisionID
 	}
 
+	if err := validateFiles(files); err != nil {
+		return err
+	}
+
+	// Create pipe for multipart data
+	pipeReader, pipeWriter := io.Pipe()
+	defer pipeReader.Close()
+
+	mpartWriter := multipart.NewWriter(pipeWriter)
+
+	go streamFilesToPipe(pipeWriter, mpartWriter, files)
+
+	url := fmt.Sprintf("%s/hidden/orgs/%s/upload_revisions/%s/files?version=%s", c.cfg.BaseURL, orgID, revisionID, APIVersion)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, pipeReader)
+	if err != nil {
+		return fmt.Errorf("failed to create upload files request: %w", err)
+	}
+	req.Header.Set(ContentType, mpartWriter.FormDataContentType())
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("error making upload files request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		return handleUnexpectedStatusCodes(res.Body, res.StatusCode, res.Status, "upload files")
+	}
+
+	return nil
+}
+
+// streamFilesToPipe writes files to the multipart form.
+func streamFilesToPipe(pipeWriter *io.PipeWriter, mpartWriter *multipart.Writer, files []UploadFile) {
+	var streamError error
+	defer func() {
+		if closeErr := mpartWriter.Close(); closeErr != nil && streamError == nil {
+			streamError = closeErr
+		}
+		pipeWriter.CloseWithError(streamError)
+	}()
+
+	for _, file := range files {
+		// Create form file part
+		part, err := mpartWriter.CreateFormFile(file.Path, file.Path)
+		if err != nil {
+			streamError = NewMultipartError(file.Path, err)
+			return
+		}
+
+		if _, err := io.Copy(part, file.File); err != nil {
+			streamError = fmt.Errorf("failed to copy file content for %s: %w", file.Path, err)
+			return
+		}
+	}
+}
+
+// validateFiles validates the files before upload.
+func validateFiles(files []UploadFile) error {
 	if len(files) > FileCountLimit {
 		return NewFileCountLimitError(len(files), FileCountLimit)
 	}
@@ -135,57 +197,7 @@ func (c *HTTPClient) UploadFiles(ctx context.Context, orgID OrgID, revisionID Re
 		}
 	}
 
-	// Create pipe for streaming multipart data
-	pReader, pWriter := io.Pipe()
-	mpartWriter := multipart.NewWriter(pWriter)
-
-	// Start goroutine to write multipart data
-	go c.streamFilesToPipe(pWriter, mpartWriter, files)
-
-	// Create HTTP request with streaming body
-	url := fmt.Sprintf("%s/hidden/orgs/%s/upload_revisions/%s/files?version=%s", c.cfg.BaseURL, orgID, revisionID, APIVersion)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, pReader)
-	if err != nil {
-		pReader.Close()
-		return fmt.Errorf("failed to create upload files request: %w", err)
-	}
-
-	req.Header.Set(ContentType, mpartWriter.FormDataContentType())
-
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("error making upload files request: %w", err)
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusNoContent {
-		return c.handleUnexpectedStatusCodes(res.Body, res.StatusCode, res.Status, "upload files")
-	}
-
 	return nil
-}
-
-func (c *HTTPClient) streamFilesToPipe(pWriter *io.PipeWriter, mpartWriter *multipart.Writer, files []UploadFile) {
-	var streamError error
-	defer func() {
-		pWriter.CloseWithError(streamError)
-	}()
-	defer mpartWriter.Close()
-
-	for _, file := range files {
-		// Create form file part
-		part, err := mpartWriter.CreateFormFile(file.Path, file.Path)
-		if err != nil {
-			streamError = NewMultipartError(file.Path, err)
-			return
-		}
-
-		_, err = io.Copy(part, file.File)
-		if err != nil {
-			streamError = fmt.Errorf("failed to copy file content for %s: %w", file.Path, err)
-			return
-		}
-	}
 }
 
 // SealRevision seals the specified upload revision, marking it as complete.
@@ -215,7 +227,7 @@ func (c *HTTPClient) SealRevision(ctx context.Context, orgID OrgID, revisionID R
 	url := fmt.Sprintf("%s/hidden/orgs/%s/upload_revisions/%s?version=%s", c.cfg.BaseURL, orgID, revisionID, APIVersion)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, buff)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request body: %w", err)
+		return nil, fmt.Errorf("failed to create seal request: %w", err)
 	}
 	req.Header.Set(ContentType, "application/vnd.api+json")
 
@@ -226,7 +238,7 @@ func (c *HTTPClient) SealRevision(ctx context.Context, orgID OrgID, revisionID R
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, c.handleUnexpectedStatusCodes(res.Body, res.StatusCode, res.Status, "seal upload revision")
+		return nil, handleUnexpectedStatusCodes(res.Body, res.StatusCode, res.Status, "seal upload revision")
 	}
 
 	var respBody SealUploadRevisionResponseBody
@@ -237,7 +249,7 @@ func (c *HTTPClient) SealRevision(ctx context.Context, orgID OrgID, revisionID R
 	return &respBody, nil
 }
 
-func (c *HTTPClient) handleUnexpectedStatusCodes(body io.ReadCloser, statusCode int, status, operation string) error {
+func handleUnexpectedStatusCodes(body io.ReadCloser, statusCode int, status, operation string) error {
 	bts, err := io.ReadAll(body)
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %w", err)

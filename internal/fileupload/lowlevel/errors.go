@@ -14,13 +14,13 @@ var (
 
 // FileSizeLimitError indicates a file exceeds the maximum allowed size.
 type FileSizeLimitError struct {
-	FileName string
+	FilePath string
 	FileSize int64
 	Limit    int64
 }
 
 func (e *FileSizeLimitError) Error() string {
-	return fmt.Sprintf("file %s size %d exceeds limit of %d bytes", e.FileName, e.FileSize, e.Limit)
+	return fmt.Sprintf("file %s size %d exceeds limit of %d bytes", e.FilePath, e.FileSize, e.Limit)
 }
 
 // FileCountLimitError indicates too many files were provided.
@@ -35,12 +35,12 @@ func (e *FileCountLimitError) Error() string {
 
 // FileAccessError indicates a file cannot be accessed or read.
 type FileAccessError struct {
-	FileName string
+	FilePath string
 	Err      error
 }
 
 func (e *FileAccessError) Error() string {
-	return fmt.Sprintf("file %s cannot be accessed: %v", e.FileName, e.Err)
+	return fmt.Sprintf("file %s cannot be accessed: %v", e.FilePath, e.Err)
 }
 
 func (e *FileAccessError) Unwrap() error {
@@ -70,12 +70,12 @@ func (e *HTTPError) Error() string {
 
 // MultipartError indicates an error creating multipart form data.
 type MultipartError struct {
-	FileName string
+	FilePath string
 	Err      error
 }
 
 func (e *MultipartError) Error() string {
-	return fmt.Sprintf("failed to create multipart form for %s: %v", e.FileName, e.Err)
+	return fmt.Sprintf("failed to create multipart form for %s: %v", e.FilePath, e.Err)
 }
 
 func (e *MultipartError) Unwrap() error {
@@ -83,9 +83,9 @@ func (e *MultipartError) Unwrap() error {
 }
 
 // NewFileSizeLimitError creates a new FileSizeLimitError with the given parameters.
-func NewFileSizeLimitError(fileName string, fileSize, limit int64) *FileSizeLimitError {
+func NewFileSizeLimitError(filePath string, fileSize, limit int64) *FileSizeLimitError {
 	return &FileSizeLimitError{
-		FileName: fileName,
+		FilePath: filePath,
 		FileSize: fileSize,
 		Limit:    limit,
 	}
@@ -100,9 +100,9 @@ func NewFileCountLimitError(count, limit int) *FileCountLimitError {
 }
 
 // NewFileAccessError creates a new FileAccessError with the given parameters.
-func NewFileAccessError(fileName string, err error) *FileAccessError {
+func NewFileAccessError(filePath string, err error) *FileAccessError {
 	return &FileAccessError{
-		FileName: fileName,
+		FilePath: filePath,
 		Err:      err,
 	}
 }
@@ -125,9 +125,9 @@ func NewHTTPError(statusCode int, status, operation string, body []byte) *HTTPEr
 }
 
 // NewMultipartError creates a new MultipartError with the given parameters.
-func NewMultipartError(fileName string, err error) *MultipartError {
+func NewMultipartError(filePath string, err error) *MultipartError {
 	return &MultipartError{
-		FileName: fileName,
+		FilePath: filePath,
 		Err:      err,
 	}
 }
