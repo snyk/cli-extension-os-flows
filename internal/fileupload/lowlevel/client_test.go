@@ -1,6 +1,7 @@
 package lowlevel_fileupload_test
 
 import (
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ func TestClient_CreateRevision(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "application/vnd.api+json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "gzip", r.Header.Get("Content-Encoding"))
 		assert.Equal(t, fmt.Sprintf("/hidden/orgs/%s/upload_revisions", orgID), r.URL.Path)
 		assert.Equal(t, "2024-10-15", r.URL.Query().Get("version"))
 
@@ -88,6 +90,7 @@ func TestClient_UploadFiles(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
+		assert.Equal(t, "gzip", r.Header.Get("Content-Encoding"))
 		assert.Equal(t, fmt.Sprintf("/hidden/orgs/%s/upload_revisions/%s/files", orgID, revID), r.URL.Path)
 		assert.Equal(t, "2024-10-15", r.URL.Query().Get("version"))
 
@@ -98,7 +101,9 @@ func TestClient_UploadFiles(t *testing.T) {
 		boundary := params["boundary"]
 		require.NotEmpty(t, boundary, "multipart boundary should be present")
 
-		reader := multipart.NewReader(r.Body, boundary)
+		gzipReader, err := gzip.NewReader(r.Body)
+		require.NoError(t, err)
+		reader := multipart.NewReader(gzipReader, boundary)
 
 		// Read the first (and should be only) part
 		part, err := reader.NextPart()
@@ -152,6 +157,7 @@ func TestClient_UploadFiles_MultipleFiles(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
+		assert.Equal(t, "gzip", r.Header.Get("Content-Encoding"))
 		assert.Equal(t, fmt.Sprintf("/hidden/orgs/%s/upload_revisions/%s/files", orgID, revID), r.URL.Path)
 		assert.Equal(t, "2024-10-15", r.URL.Query().Get("version"))
 
@@ -162,7 +168,9 @@ func TestClient_UploadFiles_MultipleFiles(t *testing.T) {
 		boundary := params["boundary"]
 		require.NotEmpty(t, boundary, "multipart boundary should be present")
 
-		reader := multipart.NewReader(r.Body, boundary)
+		gzipReader, err := gzip.NewReader(r.Body)
+		require.NoError(t, err)
+		reader := multipart.NewReader(gzipReader, boundary)
 		filesReceived := make(map[string]string)
 
 		// Read all parts
@@ -287,7 +295,7 @@ func TestClient_UploadFiles_FileSizeLimit(t *testing.T) {
 	assert.Error(t, err)
 	var fileSizeErr *lowlevel_fileupload.FileSizeLimitError
 	assert.ErrorAs(t, err, &fileSizeErr)
-	assert.Equal(t, "large_file.txt", fileSizeErr.FileName)
+	assert.Equal(t, "large_file.txt", fileSizeErr.FilePath)
 	assert.Equal(t, int64(lowlevel_fileupload.FileSizeLimit+1), fileSizeErr.FileSize)
 	assert.Equal(t, int64(lowlevel_fileupload.FileSizeLimit), fileSizeErr.Limit)
 }
@@ -375,6 +383,7 @@ func TestClient_SealRevision(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPatch, r.Method)
 		assert.Equal(t, "application/vnd.api+json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "gzip", r.Header.Get("Content-Encoding"))
 		assert.Equal(t, fmt.Sprintf("/hidden/orgs/%s/upload_revisions/%s", orgID, revID), r.URL.Path)
 		assert.Equal(t, "2024-10-15", r.URL.Query().Get("version"))
 

@@ -115,3 +115,10 @@ type UploadFile struct {
 	Path string // The name to use for the file in the upload
 	File fs.File
 }
+
+const (
+	// ContentType is the HTTP header name for content type.
+	ContentType = "Content-Type"
+	// ContentEncoding is the HTTP header name for content encoding.
+	ContentEncoding = "Content-Encoding"
+)
