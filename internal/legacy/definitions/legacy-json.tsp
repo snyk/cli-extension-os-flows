@@ -83,7 +83,7 @@ model Vulnerability {
   cvssScore?: float32;
   cvssSources?: CVSSSource[];
   disclosureTime?: string;
-  epssDetails?: EPSDetails | null;
+  epssDetails?: EPSSDetails | null;
   exploit?: string;
   exploitDetails?: ExploitDetails;
   fixedIn?: string[];
@@ -148,7 +148,7 @@ model Identifiers {
   SNYK?: string[];
 }
 
-model EPSDetails {
+model EPSSDetails {
   modelVersion?: string;
   percentile?: string;
   probability?: string;

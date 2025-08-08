@@ -50,8 +50,8 @@ type CVSSSource struct {
 	Vector           *string  `json:"vector,omitempty"`
 }
 
-// EPSDetails defines model for EPSDetails.
-type EPSDetails struct {
+// EPSSDetails defines model for EPSSDetails.
+type EPSSDetails struct {
 	ModelVersion *string `json:"modelVersion,omitempty"`
 	Percentile   *string `json:"percentile,omitempty"`
 	Probability  *string `json:"probability,omitempty"`
@@ -229,7 +229,7 @@ type Vulnerability struct {
 	CvssSources           *[]CVSSSource                    `json:"cvssSources,omitempty"`
 	Description           string                           `json:"description"`
 	DisclosureTime        *string                          `json:"disclosureTime,omitempty"`
-	EpssDetails           *EPSDetails                      `json:"epssDetails"`
+	EpssDetails           *EPSSDetails                     `json:"epssDetails"`
 	Exploit               *string                          `json:"exploit,omitempty"`
 	ExploitDetails        *ExploitDetails                  `json:"exploitDetails,omitempty"`
 	Filtered              *VulnFiltered                    `json:"filtered,omitempty"`

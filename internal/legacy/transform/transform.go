@@ -76,6 +76,7 @@ func processSnykVulnProblem(vuln *definitions.Vulnerability, prob *testapi.Probl
 	setEcosystem(vuln, &snykProblemVuln.Ecosystem, logger)
 	setVulnCvssInfo(vuln, &snykProblemVuln)
 	setVulnExploitDetails(vuln, &snykProblemVuln.ExploitDetails)
+	setVulnEpssDetails(vuln, snykProblemVuln.EpssDetails)
 	return nil
 }
 
@@ -230,6 +231,18 @@ func setVulnExploitDetails(vuln *definitions.Vulnerability, snykExploitDetails *
 		details.MaturityLevels = maturityLevels
 	}
 	vuln.ExploitDetails = details
+}
+
+func setVulnEpssDetails(vuln *definitions.Vulnerability, snykEpssDetails *testapi.SnykvulndbEpssDetails) {
+	if snykEpssDetails == nil {
+		return
+	}
+
+	vuln.EpssDetails = &definitions.EPSSDetails{
+		ModelVersion: util.Ptr(snykEpssDetails.ModelVersion),
+		Percentile:   util.Ptr(snykEpssDetails.Percentile),
+		Probability:  util.Ptr(snykEpssDetails.Probability),
+	}
 }
 
 // ProcessLocationForVuln is responsible for decorating the legacy vulnerability
