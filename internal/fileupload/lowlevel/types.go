@@ -9,7 +9,6 @@ import (
 // OrgID represents an organization identifier.
 type OrgID = uuid.UUID
 
-// RevisionID represents a revision identifier.
 type RevisionID = uuid.UUID
 
 // RevisionType represents the type of revision being created.
