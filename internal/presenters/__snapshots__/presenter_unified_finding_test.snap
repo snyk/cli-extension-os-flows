@@ -1,0 +1,36 @@
+[TestUnifiedFindingPresenter_CliOutput/snapshot_test_of_human-readable_output - 1]
+
+Testing  ...
+
+Open issues: 1
+
+ ✗ [HIGH] High severity vulnerability
+   Finding ID: SNYK-JS-VM2-5537100
+   Info: https://snyk.io/vuln/SNYK-JS-VM2-5537100
+   Risk Score: 780
+
+
+License issues: 1
+
+ ✗ [MEDIUM] LGPL-3.0 license
+   Finding ID: snyk:lic:npm:web3-core:LGPL-3.0
+   Info: https://snyk.io/vuln/snyk:lic:npm:web3-core:LGPL-3.0
+
+
+╭────────────────────────────────────────────────────────────────╮
+│ Test Summary                                                   │
+│                                                                │
+│   Organization:                                                │
+│   Test type:         open-source                               │
+│   Project path:                                                │
+│                                                                │
+│   Total issues:   2                                            │
+│   Ignored issues: 0 [ 0 CRITICAL  0 HIGH  0 MEDIUM  0 LOW ]    │
+│   Open issues:    2 [ 0 CRITICAL  1 HIGH  1 MEDIUM  0 LOW ]    │
+╰────────────────────────────────────────────────────────────────╯
+💡 Tip
+
+   To view ignored issues, use the --include-ignores option.
+                                                            
+
+---
