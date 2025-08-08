@@ -164,6 +164,11 @@ issues:
     - path: internal/view/(.+)_test\.go
       linters:
         - testpackage
+    - path: fake_(.+)\.go
+      linters:
+        - revive
+        - goconst
+        - wrapcheck
   include:
     - EXC0012
     - EXC0014
