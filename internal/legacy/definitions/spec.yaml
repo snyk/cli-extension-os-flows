@@ -40,7 +40,7 @@ components:
           type: string
         vector:
           type: string
-    EPSDetails:
+    EPSSDetails:
       type: object
       properties:
         modelVersion:
@@ -507,7 +507,7 @@ components:
         epssDetails:
           type: object
           allOf:
-            - $ref: '#/components/schemas/EPSDetails'
+            - $ref: '#/components/schemas/EPSSDetails'
           nullable: true
         exploit:
           type: string

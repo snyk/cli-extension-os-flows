@@ -103,6 +103,11 @@
           "package_manager": "npm",
           "type": "build"
         },
+        "epss_details": {
+          "model_version": "v2025.03.14",
+          "percentile": "0.30483",
+          "probability": "0.00112"
+        },
         "exploit_details": {
           "maturity_levels": [
             {
