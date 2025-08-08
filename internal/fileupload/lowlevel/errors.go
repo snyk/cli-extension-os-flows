@@ -1,4 +1,4 @@
-package lowlevel_fileupload //nolint:revive // underscore naming is intentional for this internal package
+package lowlevel
 
 import (
 	"errors"

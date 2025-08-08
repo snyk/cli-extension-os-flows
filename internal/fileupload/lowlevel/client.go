@@ -1,4 +1,4 @@
-package lowlevel_fileupload //nolint:revive // underscore naming is intentional for this internal package
+package lowlevel
 
 import (
 	"bytes"
@@ -14,23 +14,25 @@ import (
 	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 )
 
-// Client defines the interface for file upload API operations.
-type Client interface {
+// SealableClient defines the interface for file upload API operations.
+type SealableClient interface {
 	CreateRevision(ctx context.Context, orgID OrgID) (*UploadRevisionResponseBody, error)
 	UploadFiles(ctx context.Context, orgID OrgID, revisionID RevisionID, files []UploadFile) error
 	SealRevision(ctx context.Context, orgID OrgID, revisionID RevisionID) (*SealUploadRevisionResponseBody, error)
+
+	GetLimits() Limits
 }
 
 // This will force go to complain if the type doesn't satisfy the interface.
-var _ Client = (*HTTPClient)(nil)
+var _ SealableClient = (*HTTPSealableClient)(nil)
 
 // Config contains configuration for the file upload client.
 type Config struct {
 	BaseURL string
 }
 
-// HTTPClient implements the Client interface for file upload operations via HTTP API.
-type HTTPClient struct {
+// HTTPSealableClient implements the SealableClient interface for file upload operations via HTTP API.
+type HTTPSealableClient struct {
 	cfg        Config
 	httpClient *http.Client
 }
@@ -38,18 +40,17 @@ type HTTPClient struct {
 // APIVersion specifies the API version to use for requests.
 const APIVersion = "2024-10-15"
 
-// FileSizeLimit specifies the maximum allowed file size in bytes.
-const FileSizeLimit = 50_000_000 // arbitrary number, chosen to support max size of SBOMs
-
-// FileCountLimit specifies the maximum number of files allowed in a single upload.
-const FileCountLimit = 100 // arbitrary number, will need to be re-evaluated
+const (
+	fileSizeLimit  = 50_000_000 // arbitrary number, chosen to support max size of SBOMs
+	fileCountLimit = 100        // arbitrary number, will need to be re-evaluated
+)
 
 // NewClient creates a new file upload client with the given configuration and options.
-func NewClient(cfg Config, opts ...Opt) *HTTPClient {
+func NewClient(cfg Config, opts ...Opt) *HTTPSealableClient {
 	httpClient := &http.Client{
 		Transport: http.DefaultTransport,
 	}
-	c := HTTPClient{cfg, httpClient}
+	c := HTTPSealableClient{cfg, httpClient}
 
 	for _, opt := range opts {
 		opt(&c)
@@ -62,7 +63,7 @@ func NewClient(cfg Config, opts ...Opt) *HTTPClient {
 }
 
 // CreateRevision creates a new upload revision for the specified organization.
-func (c *HTTPClient) CreateRevision(ctx context.Context, orgID OrgID) (*UploadRevisionResponseBody, error) {
+func (c *HTTPSealableClient) CreateRevision(ctx context.Context, orgID OrgID) (*UploadRevisionResponseBody, error) {
 	if orgID == uuid.Nil {
 		return nil, ErrEmptyOrgID
 	}
@@ -106,7 +107,7 @@ func (c *HTTPClient) CreateRevision(ctx context.Context, orgID OrgID) (*UploadRe
 }
 
 // UploadFiles uploads the provided files to the specified revision. It will not close the file descriptors.
-func (c *HTTPClient) UploadFiles(ctx context.Context, orgID OrgID, revisionID RevisionID, files []UploadFile) error {
+func (c *HTTPSealableClient) UploadFiles(ctx context.Context, orgID OrgID, revisionID RevisionID, files []UploadFile) error {
 	if orgID == uuid.Nil {
 		return ErrEmptyOrgID
 	}
@@ -174,8 +175,8 @@ func streamFilesToPipe(pipeWriter *io.PipeWriter, mpartWriter *multipart.Writer,
 
 // validateFiles validates the files before upload.
 func validateFiles(files []UploadFile) error {
-	if len(files) > FileCountLimit {
-		return NewFileCountLimitError(len(files), FileCountLimit)
+	if len(files) > fileCountLimit {
+		return NewFileCountLimitError(len(files), fileCountLimit)
 	}
 
 	if len(files) == 0 {
@@ -192,8 +193,8 @@ func validateFiles(files []UploadFile) error {
 			return NewDirectoryError(file.Path)
 		}
 
-		if fileInfo.Size() > FileSizeLimit {
-			return NewFileSizeLimitError(file.Path, fileInfo.Size(), FileSizeLimit)
+		if fileInfo.Size() > fileSizeLimit {
+			return NewFileSizeLimitError(file.Path, fileInfo.Size(), fileSizeLimit)
 		}
 	}
 
@@ -201,7 +202,7 @@ func validateFiles(files []UploadFile) error {
 }
 
 // SealRevision seals the specified upload revision, marking it as complete.
-func (c *HTTPClient) SealRevision(ctx context.Context, orgID OrgID, revisionID RevisionID) (*SealUploadRevisionResponseBody, error) {
+func (c *HTTPSealableClient) SealRevision(ctx context.Context, orgID OrgID, revisionID RevisionID) (*SealUploadRevisionResponseBody, error) {
 	if orgID == uuid.Nil {
 		return nil, ErrEmptyOrgID
 	}
@@ -267,4 +268,12 @@ func handleUnexpectedStatusCodes(body io.ReadCloser, statusCode int, status, ope
 	}
 
 	return NewHTTPError(statusCode, status, operation, bts)
+}
+
+// GetLimits returns the upload Limits defined in the low level client.
+func (c *HTTPSealableClient) GetLimits() Limits {
+	return Limits{
+		FileCountLimit: fileCountLimit,
+		FileSizeLimit:  fileSizeLimit,
+	}
 }

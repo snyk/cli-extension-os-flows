@@ -1,4 +1,4 @@
-package lowlevel_fileupload //nolint:revive // underscore naming is intentional for this internal package
+package lowlevel
 
 import (
 	"io/fs"
@@ -122,3 +122,11 @@ const (
 	// ContentEncoding is the HTTP header name for content encoding.
 	ContentEncoding = "Content-Encoding"
 )
+
+// Limits contains the limits enforced by the low level client.
+type Limits struct {
+	// FileCountLimit specifies the maximum number of files allowed in a single upload.
+	FileCountLimit int
+	// FileSizeLimit specifies the maximum allowed file size in bytes.
+	FileSizeLimit int64
+}

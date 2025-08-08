@@ -1,4 +1,4 @@
-package lowlevel_fileupload_test
+package lowlevel_test
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	lowlevel_fileupload "github.com/snyk/cli-extension-os-flows/internal/fileupload/lowlevel"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload/lowlevel"
 )
 
 type CustomRoundTripper struct{}
@@ -26,7 +26,7 @@ func Test_WithHTTPClient(t *testing.T) {
 		fooValue := r.Header.Get("foo")
 		assert.Equal(t, "bar", fooValue)
 
-		resp, err := json.Marshal(lowlevel_fileupload.UploadRevisionResponseBody{})
+		resp, err := json.Marshal(lowlevel.UploadRevisionResponseBody{})
 		require.NoError(t, err)
 
 		w.WriteHeader(http.StatusCreated)
@@ -37,9 +37,9 @@ func Test_WithHTTPClient(t *testing.T) {
 	customClient := srv.Client()
 	customClient.Transport = &CustomRoundTripper{}
 
-	llc := lowlevel_fileupload.NewClient(lowlevel_fileupload.Config{
+	llc := lowlevel.NewClient(lowlevel.Config{
 		BaseURL: srv.URL,
-	}, lowlevel_fileupload.WithHTTPClient(customClient))
+	}, lowlevel.WithHTTPClient(customClient))
 
 	_, err := llc.CreateRevision(context.Background(), uuid.New())
 
