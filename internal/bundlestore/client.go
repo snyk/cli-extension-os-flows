@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	codeclient "github.com/snyk/code-client-go"
-	codeclientscan "github.com/snyk/code-client-go/scan"
 
 	listsources "github.com/snyk/cli-extension-os-flows/internal/files"
 )
@@ -205,17 +204,12 @@ func (c *HTTPClient) UploadSourceCode(ctx context.Context, sourceCodePath string
 	numThreads := runtime.NumCPU()
 	filesChan, err := listsources.ForPath(sourceCodePath, c.logger, numThreads)
 	if err != nil {
-		c.logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("failed to list files in directory") //nolint:goconst // repeated sourceCodePath is fine
+		c.logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("failed to list files in directory")
 		return "", fmt.Errorf("failed to list files in directory")
 	}
 
-	target, err := codeclientscan.NewRepositoryTarget(sourceCodePath)
-	if err != nil {
-		c.logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("failed to initialize target")
-		return "", fmt.Errorf("failed to initialize target")
-	}
-
 	requestID := uuid.New().String()
+	target := LocalTarget{sourceCodePath}
 	bundle, err := c.codeScanner.Upload(ctx, requestID, target, filesChan, make(map[string]bool))
 	if err != nil {
 		c.logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("failed to upload source code")
