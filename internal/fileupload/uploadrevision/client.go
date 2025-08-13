@@ -1,4 +1,4 @@
-package lowlevel
+package uploadrevision
 
 import (
 	"bytes"
@@ -16,9 +16,9 @@ import (
 
 // SealableClient defines the interface for file upload API operations.
 type SealableClient interface {
-	CreateRevision(ctx context.Context, orgID OrgID) (*UploadRevisionResponseBody, error)
+	CreateRevision(ctx context.Context, orgID OrgID) (*ResponseBody, error)
 	UploadFiles(ctx context.Context, orgID OrgID, revisionID RevisionID, files []UploadFile) error
-	SealRevision(ctx context.Context, orgID OrgID, revisionID RevisionID) (*SealUploadRevisionResponseBody, error)
+	SealRevision(ctx context.Context, orgID OrgID, revisionID RevisionID) (*SealResponseBody, error)
 
 	GetLimits() Limits
 }
@@ -26,7 +26,7 @@ type SealableClient interface {
 // This will force go to complain if the type doesn't satisfy the interface.
 var _ SealableClient = (*HTTPSealableClient)(nil)
 
-// Config contains configuration for the file upload client.
+// Config contains the configuration for the file upload client.
 type Config struct {
 	BaseURL string
 }
@@ -37,8 +37,8 @@ type HTTPSealableClient struct {
 	httpClient *http.Client
 }
 
-// APIVersion specifies the API version to use for requests.
-const APIVersion = "2024-10-15"
+// apiVersion specifies the API version to use for requests.
+const apiVersion = "2024-10-15"
 
 const (
 	fileSizeLimit  = 50_000_000 // arbitrary number, chosen to support max size of SBOMs
@@ -63,14 +63,14 @@ func NewClient(cfg Config, opts ...Opt) *HTTPSealableClient {
 }
 
 // CreateRevision creates a new upload revision for the specified organization.
-func (c *HTTPSealableClient) CreateRevision(ctx context.Context, orgID OrgID) (*UploadRevisionResponseBody, error) {
+func (c *HTTPSealableClient) CreateRevision(ctx context.Context, orgID OrgID) (*ResponseBody, error) {
 	if orgID == uuid.Nil {
 		return nil, ErrEmptyOrgID
 	}
 
-	body := UploadRevisionRequestBody{
-		Data: UploadRevisionRequestData{
-			Attributes: UploadRevisionRequestAttributes{
+	body := RequestBody{
+		Data: RequestData{
+			Attributes: RequestAttributes{
 				RevisionType: RevisionTypeSnapshot,
 			},
 			Type: ResourceTypeUploadRevision,
@@ -81,7 +81,7 @@ func (c *HTTPSealableClient) CreateRevision(ctx context.Context, orgID OrgID) (*
 		return nil, fmt.Errorf("failed to encode request body: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/hidden/orgs/%s/upload_revisions?version=%s", c.cfg.BaseURL, orgID, APIVersion)
+	url := fmt.Sprintf("%s/hidden/orgs/%s/upload_revisions?version=%s", c.cfg.BaseURL, orgID, apiVersion)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, buff)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create revision request: %w", err)
@@ -98,7 +98,7 @@ func (c *HTTPSealableClient) CreateRevision(ctx context.Context, orgID OrgID) (*
 		return nil, handleUnexpectedStatusCodes(res.Body, res.StatusCode, res.Status, "create upload revision")
 	}
 
-	var respBody UploadRevisionResponseBody
+	var respBody ResponseBody
 	if err := json.NewDecoder(res.Body).Decode(&respBody); err != nil {
 		return nil, fmt.Errorf("failed to decode upload revision response: %w", err)
 	}
@@ -128,7 +128,7 @@ func (c *HTTPSealableClient) UploadFiles(ctx context.Context, orgID OrgID, revis
 
 	go streamFilesToPipe(pipeWriter, mpartWriter, files)
 
-	url := fmt.Sprintf("%s/hidden/orgs/%s/upload_revisions/%s/files?version=%s", c.cfg.BaseURL, orgID, revisionID, APIVersion)
+	url := fmt.Sprintf("%s/hidden/orgs/%s/upload_revisions/%s/files?version=%s", c.cfg.BaseURL, orgID, revisionID, apiVersion)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, pipeReader)
 	if err != nil {
 		return fmt.Errorf("failed to create upload files request: %w", err)
@@ -202,7 +202,7 @@ func validateFiles(files []UploadFile) error {
 }
 
 // SealRevision seals the specified upload revision, marking it as complete.
-func (c *HTTPSealableClient) SealRevision(ctx context.Context, orgID OrgID, revisionID RevisionID) (*SealUploadRevisionResponseBody, error) {
+func (c *HTTPSealableClient) SealRevision(ctx context.Context, orgID OrgID, revisionID RevisionID) (*SealResponseBody, error) {
 	if orgID == uuid.Nil {
 		return nil, ErrEmptyOrgID
 	}
@@ -211,10 +211,10 @@ func (c *HTTPSealableClient) SealRevision(ctx context.Context, orgID OrgID, revi
 		return nil, ErrEmptyRevisionID
 	}
 
-	body := SealUploadRevisionRequestBody{
-		Data: SealUploadRevisionRequestData{
+	body := SealRequestBody{
+		Data: SealRequestData{
 			ID: revisionID,
-			Attributes: SealUploadRevisionRequestAttributes{
+			Attributes: SealRequestAttributes{
 				Sealed: true,
 			},
 			Type: ResourceTypeUploadRevision,
@@ -225,7 +225,7 @@ func (c *HTTPSealableClient) SealRevision(ctx context.Context, orgID OrgID, revi
 		return nil, fmt.Errorf("failed to encode request body: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/hidden/orgs/%s/upload_revisions/%s?version=%s", c.cfg.BaseURL, orgID, revisionID, APIVersion)
+	url := fmt.Sprintf("%s/hidden/orgs/%s/upload_revisions/%s?version=%s", c.cfg.BaseURL, orgID, revisionID, apiVersion)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, buff)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create seal request: %w", err)
@@ -242,7 +242,7 @@ func (c *HTTPSealableClient) SealRevision(ctx context.Context, orgID OrgID, revi
 		return nil, handleUnexpectedStatusCodes(res.Body, res.StatusCode, res.Status, "seal upload revision")
 	}
 
-	var respBody SealUploadRevisionResponseBody
+	var respBody SealResponseBody
 	if err := json.NewDecoder(res.Body).Decode(&respBody); err != nil {
 		return nil, fmt.Errorf("failed to decode upload revision response: %w", err)
 	}

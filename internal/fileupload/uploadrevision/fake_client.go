@@ -1,4 +1,4 @@
-package lowlevel
+package uploadrevision
 
 import (
 	"context"
@@ -39,15 +39,15 @@ func NewFakeSealableClient(cfg FakeClientConfig) *FakeSealableClient {
 	}
 }
 
-func (f *FakeSealableClient) CreateRevision(_ context.Context, orgID OrgID) (*UploadRevisionResponseBody, error) {
+func (f *FakeSealableClient) CreateRevision(_ context.Context, orgID OrgID) (*ResponseBody, error) {
 	newRevisionID := uuid.New()
 	f.revisions[newRevisionID] = &revisionState{
 		orgID:  orgID,
 		sealed: false,
 	}
 
-	return &UploadRevisionResponseBody{
-		Data: UploadRevisionResponseData{
+	return &ResponseBody{
+		Data: ResponseData{
 			ID: newRevisionID,
 		},
 	}, nil
@@ -103,7 +103,7 @@ func (f *FakeSealableClient) UploadFiles(_ context.Context, orgID OrgID, revisio
 	return nil
 }
 
-func (f *FakeSealableClient) SealRevision(_ context.Context, orgID OrgID, revisionID RevisionID) (*SealUploadRevisionResponseBody, error) {
+func (f *FakeSealableClient) SealRevision(_ context.Context, orgID OrgID, revisionID RevisionID) (*SealResponseBody, error) {
 	rev, ok := f.revisions[revisionID]
 	if !ok {
 		return nil, fmt.Errorf("revision %s not found", revisionID)
@@ -114,7 +114,7 @@ func (f *FakeSealableClient) SealRevision(_ context.Context, orgID OrgID, revisi
 	}
 
 	rev.sealed = true
-	return &SealUploadRevisionResponseBody{}, nil
+	return &SealResponseBody{}, nil
 }
 
 // GetSealedRevisionFiles is a test helper to retrieve files for a sealed revision.

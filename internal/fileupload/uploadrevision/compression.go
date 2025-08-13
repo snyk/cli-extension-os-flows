@@ -1,4 +1,4 @@
-package lowlevel
+package uploadrevision
 
 import (
 	"compress/gzip"
@@ -59,7 +59,7 @@ func (crt *CompressionRoundTripper) RoundTrip(r *http.Request) (*http.Response, 
 
 	r.Body = compressedBody
 	r.Header.Set(ContentEncoding, "gzip")
-	r.Header.Del("Content-Length")
+	r.Header.Del(ContentLength)
 	r.ContentLength = -1 // Let Go calculate the length
 
 	//nolint:wrapcheck // No need to wrap the error here.
