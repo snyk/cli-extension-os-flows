@@ -1,4 +1,4 @@
-package lowlevel_test
+package uploadrevision_test
 
 import (
 	"compress/gzip"
@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/snyk/cli-extension-os-flows/internal/fileupload/lowlevel"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload/uploadrevision"
 )
 
 func TestCompressionRoundTripper_RoundTrip(t *testing.T) {
@@ -25,7 +25,7 @@ func TestCompressionRoundTripper_RoundTrip(t *testing.T) {
 		}))
 		defer server.Close()
 
-		crt := lowlevel.NewCompressionRoundTripper(http.DefaultTransport)
+		crt := uploadrevision.NewCompressionRoundTripper(http.DefaultTransport)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, http.NoBody)
 		require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestCompressionRoundTripper_RoundTrip(t *testing.T) {
 		}))
 		defer server.Close()
 
-		crt := lowlevel.NewCompressionRoundTripper(http.DefaultTransport)
+		crt := uploadrevision.NewCompressionRoundTripper(http.DefaultTransport)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, server.URL, strings.NewReader(originalBody))
 		require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestCompressionRoundTripper_RoundTrip(t *testing.T) {
 		}))
 		defer server.Close()
 
-		crt := lowlevel.NewCompressionRoundTripper(http.DefaultTransport)
+		crt := uploadrevision.NewCompressionRoundTripper(http.DefaultTransport)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, server.URL, strings.NewReader(`{"key":"value"}`))
 		require.NoError(t, err)
@@ -99,7 +99,7 @@ func TestCompressionRoundTripper_RoundTrip(t *testing.T) {
 	t.Run("wraps underlying transport errors", func(t *testing.T) {
 		ctx := context.Background()
 		failingTransport := &failingRoundTripper{err: assert.AnError}
-		crt := lowlevel.NewCompressionRoundTripper(failingTransport)
+		crt := uploadrevision.NewCompressionRoundTripper(failingTransport)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://example.com", strings.NewReader("test"))
 		require.NoError(t, err)

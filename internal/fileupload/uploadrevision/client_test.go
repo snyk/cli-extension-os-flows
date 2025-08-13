@@ -1,4 +1,4 @@
-package lowlevel_test
+package uploadrevision_test
 
 import (
 	"compress/gzip"
@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/snyk/cli-extension-os-flows/internal/fileupload/lowlevel"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload/uploadrevision"
 )
 
 func TestClient_CreateRevision(t *testing.T) {
@@ -43,7 +43,7 @@ func TestClient_CreateRevision(t *testing.T) {
 			}
 		}`))
 	}))
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: srv.URL,
 	})
 
@@ -55,7 +55,7 @@ func TestClient_CreateRevision(t *testing.T) {
 }
 
 func TestClient_CreateRevision_EmptyOrgID(t *testing.T) {
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: "http://example.com",
 	})
 
@@ -63,7 +63,7 @@ func TestClient_CreateRevision_EmptyOrgID(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, resp)
-	assert.ErrorIs(t, err, lowlevel.ErrEmptyOrgID)
+	assert.ErrorIs(t, err, uploadrevision.ErrEmptyOrgID)
 }
 
 func TestClient_CreateRevision_ServerError(t *testing.T) {
@@ -71,14 +71,14 @@ func TestClient_CreateRevision_ServerError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: srv.URL,
 	})
 
 	resp, err := c.CreateRevision(context.Background(), orgID)
 
 	assert.Nil(t, resp)
-	var httpErr *lowlevel.HTTPError
+	var httpErr *uploadrevision.HTTPError
 	assert.ErrorAs(t, err, &httpErr)
 	assert.Equal(t, http.StatusInternalServerError, httpErr.StatusCode)
 	assert.Equal(t, "create upload revision", httpErr.Operation)
@@ -126,7 +126,7 @@ func TestClient_UploadFiles(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: srv.URL,
 	})
 
@@ -139,7 +139,7 @@ func TestClient_UploadFiles(t *testing.T) {
 	err = c.UploadFiles(context.Background(),
 		orgID,
 		revID,
-		[]lowlevel.UploadFile{
+		[]uploadrevision.UploadFile{
 			{Path: "foo/bar", File: fd},
 		})
 
@@ -196,7 +196,7 @@ func TestClient_UploadFiles_MultipleFiles(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: srv.URL,
 	})
 
@@ -213,7 +213,7 @@ func TestClient_UploadFiles_MultipleFiles(t *testing.T) {
 	err = c.UploadFiles(context.Background(),
 		orgID,
 		revID,
-		[]lowlevel.UploadFile{
+		[]uploadrevision.UploadFile{
 			{Path: "file1.txt", File: file1},
 			{Path: "file2.json", File: file2},
 		})
@@ -224,7 +224,7 @@ func TestClient_UploadFiles_MultipleFiles(t *testing.T) {
 func TestClient_UploadFiles_EmptyOrgID(t *testing.T) {
 	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
 
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: "http://example.com",
 	})
 
@@ -237,18 +237,18 @@ func TestClient_UploadFiles_EmptyOrgID(t *testing.T) {
 	err = c.UploadFiles(context.Background(),
 		uuid.Nil, // empty orgID
 		revID,
-		[]lowlevel.UploadFile{
+		[]uploadrevision.UploadFile{
 			{Path: "test.txt", File: file},
 		})
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, lowlevel.ErrEmptyOrgID)
+	assert.ErrorIs(t, err, uploadrevision.ErrEmptyOrgID)
 }
 
 func TestClient_UploadFiles_EmptyRevisionID(t *testing.T) {
 	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
 
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: "http://example.com",
 	})
 
@@ -261,19 +261,19 @@ func TestClient_UploadFiles_EmptyRevisionID(t *testing.T) {
 	err = c.UploadFiles(context.Background(),
 		orgID,
 		uuid.Nil, // empty revisionID
-		[]lowlevel.UploadFile{
+		[]uploadrevision.UploadFile{
 			{Path: "test.txt", File: file},
 		})
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, lowlevel.ErrEmptyRevisionID)
+	assert.ErrorIs(t, err, uploadrevision.ErrEmptyRevisionID)
 }
 
 func TestClient_UploadFiles_FileSizeLimit(t *testing.T) {
 	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
 	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
 
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: "http://example.com",
 	})
 
@@ -288,12 +288,12 @@ func TestClient_UploadFiles_FileSizeLimit(t *testing.T) {
 	err = c.UploadFiles(context.Background(),
 		orgID,
 		revID,
-		[]lowlevel.UploadFile{
+		[]uploadrevision.UploadFile{
 			{Path: "large_file.txt", File: file},
 		})
 
 	assert.Error(t, err)
-	var fileSizeErr *lowlevel.FileSizeLimitError
+	var fileSizeErr *uploadrevision.FileSizeLimitError
 	assert.ErrorAs(t, err, &fileSizeErr)
 	assert.Equal(t, "large_file.txt", fileSizeErr.FilePath)
 	assert.Equal(t, c.GetLimits().FileSizeLimit+1, fileSizeErr.FileSize)
@@ -304,11 +304,11 @@ func TestClient_UploadFiles_FileCountLimit(t *testing.T) {
 	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
 	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
 
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: "http://example.com",
 	})
 
-	files := make([]lowlevel.UploadFile, c.GetLimits().FileCountLimit+1)
+	files := make([]uploadrevision.UploadFile, c.GetLimits().FileCountLimit+1)
 	mockFS := fstest.MapFS{}
 
 	for i := range c.GetLimits().FileCountLimit + 1 {
@@ -318,7 +318,7 @@ func TestClient_UploadFiles_FileCountLimit(t *testing.T) {
 		file, err := mockFS.Open(filename)
 		require.NoError(t, err)
 
-		files[i] = lowlevel.UploadFile{
+		files[i] = uploadrevision.UploadFile{
 			Path: filename,
 			File: file,
 		}
@@ -327,7 +327,7 @@ func TestClient_UploadFiles_FileCountLimit(t *testing.T) {
 	err := c.UploadFiles(context.Background(), orgID, revID, files)
 
 	assert.Error(t, err)
-	var fileCountErr *lowlevel.FileCountLimitError
+	var fileCountErr *uploadrevision.FileCountLimitError
 	assert.ErrorAs(t, err, &fileCountErr)
 	assert.Equal(t, c.GetLimits().FileCountLimit+1, fileCountErr.Count)
 	assert.Equal(t, c.GetLimits().FileCountLimit, fileCountErr.Limit)
@@ -337,7 +337,7 @@ func TestClient_UploadFiles_DirectoryError(t *testing.T) {
 	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
 	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
 
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: "http://example.com",
 	})
 
@@ -353,12 +353,12 @@ func TestClient_UploadFiles_DirectoryError(t *testing.T) {
 	err = c.UploadFiles(context.Background(),
 		orgID,
 		revID,
-		[]lowlevel.UploadFile{
+		[]uploadrevision.UploadFile{
 			{Path: "test-directory", File: dirFile},
 		})
 
 	assert.Error(t, err)
-	var dirErr *lowlevel.DirectoryError
+	var dirErr *uploadrevision.DirectoryError
 	assert.ErrorAs(t, err, &dirErr)
 	assert.Equal(t, "test-directory", dirErr.Path)
 }
@@ -367,14 +367,14 @@ func TestClient_UploadFiles_EmptyFileList(t *testing.T) {
 	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
 	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
 
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: "http://example.com",
 	})
 
-	err := c.UploadFiles(context.Background(), orgID, revID, []lowlevel.UploadFile{})
+	err := c.UploadFiles(context.Background(), orgID, revID, []uploadrevision.UploadFile{})
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, lowlevel.ErrNoFilesProvided)
+	assert.ErrorIs(t, err, uploadrevision.ErrNoFilesProvided)
 }
 
 func TestClient_SealRevision(t *testing.T) {
@@ -400,7 +400,7 @@ func TestClient_SealRevision(t *testing.T) {
 			}
 		}`))
 	}))
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: srv.URL,
 	})
 
@@ -414,7 +414,7 @@ func TestClient_SealRevision(t *testing.T) {
 func TestClient_SealRevision_EmptyOrgID(t *testing.T) {
 	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
 
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: "http://example.com",
 	})
 
@@ -424,14 +424,14 @@ func TestClient_SealRevision_EmptyOrgID(t *testing.T) {
 	)
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, lowlevel.ErrEmptyOrgID)
+	assert.ErrorIs(t, err, uploadrevision.ErrEmptyOrgID)
 	assert.Nil(t, resp)
 }
 
 func TestClient_SealRevision_EmptyRevisionID(t *testing.T) {
 	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
 
-	c := lowlevel.NewClient(lowlevel.Config{
+	c := uploadrevision.NewClient(uploadrevision.Config{
 		BaseURL: "http://example.com",
 	})
 
@@ -441,6 +441,6 @@ func TestClient_SealRevision_EmptyRevisionID(t *testing.T) {
 	)
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, lowlevel.ErrEmptyRevisionID)
+	assert.ErrorIs(t, err, uploadrevision.ErrEmptyRevisionID)
 	assert.Nil(t, resp)
 }
