@@ -11,6 +11,7 @@ import (
 
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
 )
 
@@ -406,8 +407,106 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 	defaultMap["isLicenseFinding"] = isLicenseFinding
 	defaultMap["hasPrefix"] = strings.HasPrefix
 	defaultMap["constructDisplayPath"] = constructDisplayPath(config)
+	defaultMap["filterByIssueType"] = filterByIssueType
+	defaultMap["getSummaryResultsByIssueType"] = getSummaryResultsByIssueType
+	defaultMap["getIssueCountsTotal"] = getIssueCountsTotal
+	defaultMap["getIssueCountsOpen"] = getIssueCountsOpen
+	defaultMap["getIssueCountsIgnored"] = getIssueCountsIgnored
 
 	return defaultMap
+}
+
+func getIssueCountsTotal(results []json_schemas.TestSummaryResult) (total int) {
+	for _, res := range results {
+		total += res.Total
+	}
+	return total
+}
+
+func getIssueCountsOpen(results []json_schemas.TestSummaryResult) (open int) {
+	for _, res := range results {
+		open += res.Open
+	}
+	return open
+}
+
+func getIssueCountsIgnored(results []json_schemas.TestSummaryResult) (ignored int) {
+	for _, res := range results {
+		ignored += res.Ignored
+	}
+	return ignored
+}
+
+// filterByIssueType filters a list of finding summary results by issue type.
+func filterByIssueType(issueType string, summary *json_schemas.TestSummary) []json_schemas.TestSummaryResult {
+	if summary.Type == issueType {
+		return summary.Results
+	}
+	return []json_schemas.TestSummaryResult{}
+}
+
+// getSummaryResultsByIssueType computes summary results for a specific issue type from findings.
+// issueType can be "vulnerability" or "license".
+func getSummaryResultsByIssueType(issueType string, findings []testapi.FindingData, orderAsc []string) []json_schemas.TestSummaryResult {
+	if len(findings) == 0 {
+		return []json_schemas.TestSummaryResult{}
+	}
+
+	// Prepare counters by severity
+	totalBySeverity := map[string]int{}
+	openBySeverity := map[string]int{}
+	ignoredBySeverity := map[string]int{}
+
+	for _, f := range findings {
+		// Determine category membership
+		isLicense := isLicenseFinding(f)
+		if issueType == "license" && !isLicense {
+			continue
+		}
+		if issueType == "vulnerability" && isLicense {
+			continue
+		}
+
+		severity := getFieldValueFrom(f, "Attributes.Rating.Severity")
+		if severity == "" {
+			// Skip if we cannot determine severity
+			continue
+		}
+
+		totalBySeverity[severity]++
+
+		// Determine suppression state
+		isIgnored := false
+		isOpen := true
+		if f.Attributes != nil && f.Attributes.Suppression != nil {
+			isOpen = false
+			isIgnored = f.Attributes.Suppression.Status == testapi.SuppressionStatusIgnored
+		}
+
+		if isOpen {
+			openBySeverity[severity]++
+		}
+		if isIgnored {
+			ignoredBySeverity[severity]++
+		}
+	}
+
+	// Build results in the provided order, but only include severities that appeared
+	results := make([]json_schemas.TestSummaryResult, 0, len(totalBySeverity))
+	for _, sev := range orderAsc {
+		total := totalBySeverity[sev]
+		if total == 0 {
+			continue
+		}
+		results = append(results, json_schemas.TestSummaryResult{
+			Severity: sev,
+			Total:    total,
+			Open:     openBySeverity[sev],
+			Ignored:  ignoredBySeverity[sev],
+		})
+	}
+
+	return results
 }
 
 // reverse reverses the order of elements in a slice.

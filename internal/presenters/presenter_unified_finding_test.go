@@ -248,4 +248,87 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 		assert.NoError(t, err)
 		snaps.MatchSnapshot(t, buffer.String())
 	})
+
+	// summary shows security only when there are vulnerability findings and no license findings
+	t.Run("summary shows only security when no license issues", func(t *testing.T) {
+		config := configuration.New()
+		buffer := &bytes.Buffer{}
+
+		vulnFinding := testapi.FindingData{
+			Id:   util.Ptr(uuid.New()),
+			Type: util.Ptr(testapi.Findings),
+			Attributes: &testapi.FindingAttributes{
+				Title:  "High severity vulnerability",
+				Rating: testapi.Rating{Severity: testapi.Severity("high")},
+			},
+		}
+
+		projectResult := &presenters.UnifiedProjectResult{
+			Findings: []testapi.FindingData{vulnFinding},
+			Summary: &json_schemas.TestSummary{
+				Type:             "open-source",
+				Path:             "test/path",
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+				Results:          []json_schemas.TestSummaryResult{{Severity: "high", Open: 1, Total: 1}},
+			},
+		}
+
+		presenter := presenters.NewUnifiedFindingsRenderer(
+			[]*presenters.UnifiedProjectResult{projectResult},
+			config,
+			buffer,
+		)
+
+		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		assert.NoError(t, err)
+
+		out := buffer.String()
+		assert.Contains(t, out, "Total security issues: 1")
+		assert.NotContains(t, out, "Total license issues")
+	})
+
+	// summary shows license only when there are license findings and no vulnerability findings
+	t.Run("summary shows only license when no security issues", func(t *testing.T) {
+		config := configuration.New()
+		buffer := &bytes.Buffer{}
+
+		problemID := uuid.New().String()
+		licenseFinding := testapi.FindingData{
+			Id:   util.Ptr(uuid.New()),
+			Type: util.Ptr(testapi.Findings),
+			Attributes: &testapi.FindingAttributes{
+				Title:  "LGPL-3.0 license",
+				Rating: testapi.Rating{Severity: testapi.Severity("medium")},
+				Problems: func() []testapi.Problem {
+					var p testapi.Problem
+					err := p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{Id: problemID, License: string(testapi.SnykLicense)})
+					assert.NoError(t, err)
+					return []testapi.Problem{p}
+				}(),
+			},
+		}
+
+		projectResult := &presenters.UnifiedProjectResult{
+			Findings: []testapi.FindingData{licenseFinding},
+			Summary: &json_schemas.TestSummary{
+				Type:             "open-source",
+				Path:             "test/path",
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+				Results:          []json_schemas.TestSummaryResult{{Severity: "medium", Open: 1, Total: 1}},
+			},
+		}
+
+		presenter := presenters.NewUnifiedFindingsRenderer(
+			[]*presenters.UnifiedProjectResult{projectResult},
+			config,
+			buffer,
+		)
+
+		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		assert.NoError(t, err)
+
+		out := buffer.String()
+		assert.Contains(t, out, "Total license issues: 1")
+		assert.NotContains(t, out, "Total security issues")
+	})
 }
