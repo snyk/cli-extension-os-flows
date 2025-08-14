@@ -2,7 +2,7 @@
 
 Testing  ...
 
-Open issues: 1
+Security issues: 1
 
  ✗ [HIGH] High severity vulnerability
    Finding ID: SNYK-JS-VM2-5537100
@@ -17,17 +17,21 @@ License issues: 1
    Info: https://snyk.io/vuln/snyk:lic:npm:web3-core:LGPL-3.0
 
 
-╭────────────────────────────────────────────────────────────────╮
-│ Test Summary                                                   │
-│                                                                │
-│   Organization:                                                │
-│   Test type:         open-source                               │
-│   Project path:                                                │
-│                                                                │
-│   Total issues:   2                                            │
-│   Ignored issues: 0 [ 0 CRITICAL  0 HIGH  0 MEDIUM  0 LOW ]    │
-│   Open issues:    2 [ 0 CRITICAL  1 HIGH  1 MEDIUM  0 LOW ]    │
-╰────────────────────────────────────────────────────────────────╯
+╭─────────────────────────────────────────────────────────╮
+│ Test Summary                                            │
+│                                                         │
+│   Organization:                                         │
+│   Test type:         open-source                        │
+│   Project path:                                         │
+│                                                         │
+│   Total security issues: 1                              │
+│   Ignored: 0 [ 0 CRITICAL  0 HIGH  0 MEDIUM  0 LOW ]    │
+│   Open   : 1 [ 0 CRITICAL  1 HIGH  0 MEDIUM  0 LOW ]    │
+│                                                         │
+│   Total license issues: 1                               │
+│   Ignored: 0 [ 0 CRITICAL  0 HIGH  0 MEDIUM  0 LOW ]    │
+│   Open   : 1 [ 0 CRITICAL  0 HIGH  1 MEDIUM  0 LOW ]    │
+╰─────────────────────────────────────────────────────────╯
 💡 Tip
 
    To view ignored issues, use the --include-ignores option.
