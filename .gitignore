@@ -4,5 +4,6 @@
 ### Local development ###
 # Local build system configuration
 /local.mk
+.idea
 
 node_modules

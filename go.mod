@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/muesli/termenv v0.15.2
 	github.com/oapi-codegen/runtime v1.1.1
+	github.com/puzpuzpuz/xsync v1.5.2
 	github.com/rs/zerolog v1.34.0
 	github.com/snyk/code-client-go v1.21.3
 	github.com/snyk/error-catalog-golang-public v0.0.0-20250625135845-2d6f9a31f318
@@ -81,7 +82,6 @@ require (
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/puzpuzpuz/xsync v1.5.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
