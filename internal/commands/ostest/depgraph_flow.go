@@ -103,11 +103,11 @@ func testAllDepGraphs(
 	return allLegacyFindings, allOutputData, nil
 }
 
+// createTestSubject creates a test subject from a depGraph and display target file.
 func createTestSubject(
 	depGraph *testapi.IoSnykApiV1testdepgraphRequestDepGraph,
 	displayTargetFile string,
 ) (testapi.TestSubjectCreate, error) {
-	// Create depgraph subject
 	depGraphSubject := testapi.DepGraphSubjectCreate{
 		Type:     testapi.DepGraphSubjectCreateTypeDepGraph,
 		DepGraph: *depGraph,
@@ -117,7 +117,6 @@ func createTestSubject(
 		},
 	}
 
-	// Create test subject with depgraph
 	var subject testapi.TestSubjectCreate
 	err := subject.FromDepGraphSubjectCreate(depGraphSubject)
 	if err != nil {
@@ -140,6 +139,10 @@ func getProjectName(
 	return projectName
 }
 
+// handleOutput processes both legacy JSON and human-readable findings into their respective outputs.
+// Human-readable output is processed by the local template renderer.
+// JSON file output is written to file here, while JSON stdout is added to the output workflow.
+// Summary data is added to the output workflow for exit code calculation.
 func handleOutput(
 	ictx workflow.InvocationContext,
 	allLegacyFindings []definitions.LegacyVulnerabilityResponse,
@@ -198,6 +201,7 @@ func handleOutput(
 	return finalOutput, nil
 }
 
+// prepareJSONOutput prepares legacy JSON output from findings.
 func prepareJSONOutput(
 	allLegacyFindings []definitions.LegacyVulnerabilityResponse,
 	errFactory *errors.ErrorFactory,
