@@ -50,6 +50,24 @@ func TestUploadDirectoryIntegration(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, fileuploadRevisionID)
 }
 
+func TestUploadLargeFileIntegration(t *testing.T) {
+	fileUploadClient := setupFileUploadClient(t)
+
+	content := generateFileOfSizeMegabytes(t, 30)
+	files := []uploadrevision.LoadedFile{
+		{Path: "src/main.go", Content: content},
+	}
+
+	dir, dirCleanup := createDirWithFiles(t, files)
+	defer dirCleanup()
+
+	fileuploadRevisionID, err := fileUploadClient.CreateRevisionFromFile(t.Context(), filepath.Join(dir.Name(), files[0].Path), fileupload.UploadOptions{})
+	if err != nil {
+		t.Errorf("failed to create fileupload revision: %s", err.Error())
+	}
+	assert.NotEqual(t, uuid.Nil, fileuploadRevisionID)
+}
+
 func setupFileUploadClient(t *testing.T) fileupload.Client {
 	t.Helper()
 
@@ -71,6 +89,12 @@ func setupFileUploadClient(t *testing.T) fileupload.Client {
 			OrgID:   envvars.OrgID,
 		},
 	)
+}
+
+func generateFileOfSizeMegabytes(t *testing.T, megabytes int) string {
+	t.Helper()
+	content := make([]byte, megabytes*1024*1024)
+	return string(content)
 }
 
 type testConfig struct {
