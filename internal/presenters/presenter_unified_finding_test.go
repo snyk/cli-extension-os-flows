@@ -332,3 +332,78 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 		assert.NotContains(t, out, "Total security issues")
 	})
 }
+
+// TestUnifiedFindingPresenter_PendingIgnore_ShownAsOpenWithLabelAndBang verifies that pending ignores are shown as open with a label and ! marker.
+func TestUnifiedFindingPresenter_PendingIgnore_ShownAsOpenWithLabelAndBang(t *testing.T) {
+	config := configuration.New()
+	buffer := &bytes.Buffer{}
+	// Use ASCII to avoid color codes in assertions
+	lipgloss.SetColorProfile(termenv.Ascii)
+
+	pendingFinding := testapi.FindingData{
+		Id:   util.Ptr(uuid.New()),
+		Type: util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{
+			Title:       "Pending Suppression Finding",
+			Rating:      testapi.Rating{Severity: testapi.Severity("low")},
+			Suppression: &testapi.Suppression{Status: testapi.SuppressionStatusPendingIgnoreApproval},
+		},
+	}
+
+	projectResult := &presenters.UnifiedProjectResult{
+		Findings: []testapi.FindingData{pendingFinding},
+		Summary: &json_schemas.TestSummary{
+			Type:             "open-source",
+			Path:             "test/path",
+			SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+			Results:          []json_schemas.TestSummaryResult{{Severity: "low", Open: 1, Total: 1}},
+		},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer([]*presenters.UnifiedProjectResult{projectResult}, config, buffer)
+	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	assert.NoError(t, err)
+
+	out := buffer.String()
+	// Label should be inline on the issue line (after the title) with a preceding space
+	assert.Contains(t, out, " ! [LOW] Pending Suppression Finding [ PENDING IGNORE... ]")
+}
+
+// TestUnifiedFindingPresenter_Ignored_ShownInIgnoredSectionWithBang verifies that ignored findings are shown in the ignored section with a ! marker.
+func TestUnifiedFindingPresenter_Ignored_ShownInIgnoredSectionWithBang(t *testing.T) {
+	config := configuration.New()
+	buffer := &bytes.Buffer{}
+	// Ensure ignored section is rendered
+	config.Set("include-ignores", true)
+	// Use ASCII to avoid color codes in assertions
+	lipgloss.SetColorProfile(termenv.Ascii)
+
+	ignoredFinding := testapi.FindingData{
+		Id:   util.Ptr(uuid.New()),
+		Type: util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{
+			Title:       "Ignored Suppression Finding",
+			Rating:      testapi.Rating{Severity: testapi.Severity("medium")},
+			Suppression: &testapi.Suppression{Status: testapi.SuppressionStatusIgnored},
+		},
+	}
+
+	projectResult := &presenters.UnifiedProjectResult{
+		Findings: []testapi.FindingData{ignoredFinding},
+		Summary: &json_schemas.TestSummary{
+			Type:             "open-source",
+			Path:             "test/path",
+			SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+			Results:          []json_schemas.TestSummaryResult{{Severity: "medium", Ignored: 1, Total: 1}},
+		},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer([]*presenters.UnifiedProjectResult{projectResult}, config, buffer)
+	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	assert.NoError(t, err)
+
+	out := buffer.String()
+	assert.Contains(t, out, "Ignored Issues")
+	// Ignored entries appear with ! and IGNORED label
+	assert.Contains(t, out, " ! [IGNORED] [MEDIUM] Ignored Suppression Finding")
+}

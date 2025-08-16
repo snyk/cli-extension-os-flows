@@ -248,9 +248,12 @@ func isOpenFinding() func(obj any) bool {
 		if !ok {
 			return false
 		}
-		// A finding is considered "open" if it has no suppression information.
-		// A rejected suppression is not represented as a status, but by the absence of a suppression object.
-		return finding.Attributes.Suppression == nil
+		// Treat findings as open unless they are explicitly ignored.
+		// Pending ignore approvals and other statuses remain visible as open issues.
+		if finding.Attributes == nil || finding.Attributes.Suppression == nil {
+			return true
+		}
+		return finding.Attributes.Suppression.Status != testapi.SuppressionStatusIgnored
 	}
 }
 
@@ -314,12 +317,12 @@ func isNotLicenseFindingFilter() func(obj any) bool {
 
 // hasSuppression checks if a finding has any suppression.
 func hasSuppression(finding testapi.FindingData) bool {
-	if finding.Attributes.Suppression == nil {
+	if finding.Attributes == nil || finding.Attributes.Suppression == nil {
 		return false
 	}
 
-	// If a suppression object exists, the finding is considered suppressed (either ignored or pending).
-	return true
+	// Treat as suppressed unless the suppression status is "other" (treating as rejected).
+	return finding.Attributes.Suppression.Status != testapi.SuppressionStatusOther
 }
 
 // getCliTemplateFuncMap returns the template function map for CLI rendering.
@@ -475,12 +478,12 @@ func getSummaryResultsByIssueType(issueType string, findings []testapi.FindingDa
 
 		totalBySeverity[severity]++
 
-		// Determine suppression state
+		// Determine suppression state: only explicit "ignored" should reduce open counts.
 		isIgnored := false
 		isOpen := true
 		if f.Attributes != nil && f.Attributes.Suppression != nil {
-			isOpen = false
 			isIgnored = f.Attributes.Suppression.Status == testapi.SuppressionStatusIgnored
+			isOpen = !isIgnored
 		}
 
 		if isOpen {

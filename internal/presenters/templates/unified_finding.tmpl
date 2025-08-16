@@ -42,7 +42,12 @@
 		{{- range $finding := $openFindings }}
 			{{- $severity := getFieldValueFrom $finding "Attributes.Rating.Severity" -}}
 			{{- $title := getFieldValueFrom $finding "Attributes.Title" -}}
-			{{- printf " ✗ %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- if not (hasSuppression $finding) -}}
+				{{- printf " ✗ %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- else -}}
+				{{- printf " ! %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- end -}}
+			{{- template "suppression_label" $finding -}}
 			{{- template "finding_details" $finding -}}
 		{{- end }}
     {{- end }}
@@ -51,15 +56,12 @@
 		{{- range $finding := $licenseFindings }}
 			{{- $severity := getFieldValueFrom $finding "Attributes.Rating.Severity" -}}
 			{{- $title := getFieldValueFrom $finding "Attributes.Title" -}}
-			{{- printf " ✗ %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
-			{{- template "finding_details" $finding -}}
-		{{- end }}
-    {{- end }}
-    {{- if $hasPendingIgnoreFindings }}
-		{{- range $finding := $pendingIgnoreFindings }}
-			{{- $severity := getFieldValueFrom $finding "Attributes.Rating.Severity" -}}
-			{{- $title := getFieldValueFrom $finding "Attributes.Title" -}}
-			{{- printf " ! [PENDING] %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- if not (hasSuppression $finding) -}}
+				{{- printf " ✗ %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- else -}}
+				{{- printf " ! %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- end -}}
+			{{- template "suppression_label" $finding -}}
 			{{- template "finding_details" $finding -}}
 		{{- end }}
     {{- end }}
