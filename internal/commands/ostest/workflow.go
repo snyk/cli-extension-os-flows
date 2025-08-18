@@ -129,13 +129,16 @@ func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logge
 		severityThreshold = &st
 	}
 
-	if riskScoreThreshold == nil && severityThreshold == nil {
+	suppressPendingIgnores := config.GetBool(flags.FlagSuppressPendingIgnores)
+
+	if riskScoreThreshold == nil && severityThreshold == nil && !suppressPendingIgnores {
 		return nil
 	}
 
 	return &testapi.LocalPolicy{
-		RiskScoreThreshold: riskScoreThreshold,
-		SeverityThreshold:  severityThreshold,
+		RiskScoreThreshold:     riskScoreThreshold,
+		SeverityThreshold:      severityThreshold,
+		SuppressPendingIgnores: suppressPendingIgnores,
 	}
 }
 
