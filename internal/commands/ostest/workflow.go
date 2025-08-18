@@ -176,7 +176,8 @@ func handleDepgraphReachabilityFlow(
 	return RunUnifiedTestFlow(ctx, ictx, testClient, orgUUID.String(), errFactory, logger, localPolicy, &scanID)
 }
 
-// CreateLocalPolicy will create a local policy only if risk score or severity threshold are specified in the config.
+// CreateLocalPolicy will create a local policy only if risk score, severity threshold,
+// or suppress pending ignores are specified in the config.
 func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logger) *testapi.LocalPolicy {
 	var riskScoreThreshold *uint16
 	riskScoreThresholdInt := config.GetInt(flags.FlagRiskScoreThreshold)
@@ -197,13 +198,16 @@ func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logge
 		severityThreshold = &st
 	}
 
-	if riskScoreThreshold == nil && severityThreshold == nil {
+	suppressPendingIgnores := config.GetBool(flags.FlagSuppressPendingIgnores)
+
+	if riskScoreThreshold == nil && severityThreshold == nil && !suppressPendingIgnores {
 		return nil
 	}
 
 	return &testapi.LocalPolicy{
-		RiskScoreThreshold: riskScoreThreshold,
-		SeverityThreshold:  severityThreshold,
+		RiskScoreThreshold:     riskScoreThreshold,
+		SeverityThreshold:      severityThreshold,
+		SuppressPendingIgnores: suppressPendingIgnores,
 	}
 }
 

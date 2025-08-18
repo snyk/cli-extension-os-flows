@@ -43,6 +43,7 @@ func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
 	mockConfig := mockInvocationCtx.GetConfiguration()
 	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
 	mockConfig.Set(flags.FlagSeverityThreshold, "high")
+	mockConfig.Set(flags.FlagSuppressPendingIgnores, true)
 
 	localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
 	require.NotNil(t, localPolicy)
@@ -51,6 +52,7 @@ func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
 	assert.Equal(t, uint16(100), *localPolicy.RiskScoreThreshold)
 	require.NotNil(t, localPolicy.SeverityThreshold)
 	assert.Equal(t, "high", string(*localPolicy.SeverityThreshold))
+	assert.True(t, localPolicy.SuppressPendingIgnores)
 }
 
 func TestOSWorkflow_CreateLocalPolicy_NoValues(t *testing.T) {

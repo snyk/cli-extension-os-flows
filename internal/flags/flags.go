@@ -5,11 +5,14 @@ import "github.com/spf13/pflag"
 
 // Defines the command-line flags used in the OS-Flows CLI extension.
 const (
+	// Local policy.
+	FlagRiskScoreThreshold     = "risk-score-threshold"
+	FlagSeverityThreshold      = "severity-threshold"
+	FlagSuppressPendingIgnores = "suppress-pending-ignores"
+
 	// Open Source.
-	FlagFile               = "file"
-	FlagProjectName        = "project-name"
-	FlagRiskScoreThreshold = "risk-score-threshold"
-	FlagSeverityThreshold  = "severity-threshold"
+	FlagFile        = "file"
+	FlagProjectName = "project-name"
 
 	// SBOM reachability.
 	FlagReachability = "reachability"
@@ -70,12 +73,14 @@ const (
 func OSTestFlagSet() *pflag.FlagSet {
 	flagSet := pflag.NewFlagSet("snyk-cli-extension-os-flows", pflag.ExitOnError)
 
+	// Local policy
+	flagSet.Int(FlagRiskScoreThreshold, -1, "Include findings at or over this risk score threshold.")
+	flagSet.String(FlagSeverityThreshold, "", "Report only findings at the specified level or higher.")
+	flagSet.Bool(FlagSuppressPendingIgnores, false, "Suppress ignores pending approval, so that they do not fail the test.")
+
 	// Open Source
 	flagSet.String(FlagFile, "", "Specify a package file.")
 	flagSet.String(FlagProjectName, "", "Specify a name for the project.")
-
-	flagSet.Int(FlagRiskScoreThreshold, -1, "Include findings at or over this risk score threshold.")
-	flagSet.String(FlagSeverityThreshold, "", "Report only findings at the specified level or higher.")
 
 	// Reachability
 	flagSet.Bool(FlagReachability, false, "Run reachability analysis on source code.")
