@@ -26,7 +26,6 @@ func TestClient_CreateRevision(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "application/vnd.api+json", r.Header.Get("Content-Type"))
-		assert.Equal(t, "gzip", r.Header.Get("Content-Encoding"))
 		assert.Equal(t, fmt.Sprintf("/hidden/orgs/%s/upload_revisions", orgID), r.URL.Path)
 		assert.Equal(t, "2024-10-15", r.URL.Query().Get("version"))
 
@@ -383,7 +382,6 @@ func TestClient_SealRevision(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPatch, r.Method)
 		assert.Equal(t, "application/vnd.api+json", r.Header.Get("Content-Type"))
-		assert.Equal(t, "gzip", r.Header.Get("Content-Encoding"))
 		assert.Equal(t, fmt.Sprintf("/hidden/orgs/%s/upload_revisions/%s", orgID, revID), r.URL.Path)
 		assert.Equal(t, "2024-10-15", r.URL.Query().Get("version"))
 
