@@ -222,7 +222,7 @@ func (c *HTTPClient) CreateRevisionFromPaths(ctx context.Context, paths []string
 	for _, pth := range paths {
 		info, err := os.Stat(pth)
 		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to stat path %s: %w", pth, err)
+			return uuid.Nil, uploadrevision.NewFileAccessError(pth, err)
 		}
 
 		if info.IsDir() {
@@ -244,13 +244,31 @@ func (c *HTTPClient) CreateRevisionFromPaths(ctx context.Context, paths []string
 }
 
 // CreateRevisionFromDir uploads a directory and all its contents, returning a revision ID.
-// This is a convenience method equivalent to CreateRevisionFromPaths with a single directory.
+// This is a convenience method for validating the directory path and calling CreateRevisionFromPaths with a single directory path.
 func (c *HTTPClient) CreateRevisionFromDir(ctx context.Context, dirPath string, opts UploadOptions) (RevisionID, error) {
+	info, err := os.Stat(dirPath)
+	if err != nil {
+		return uuid.Nil, uploadrevision.NewFileAccessError(dirPath, err)
+	}
+
+	if !info.IsDir() {
+		return uuid.Nil, fmt.Errorf("the provided path is not a directory: %s", dirPath)
+	}
+
 	return c.CreateRevisionFromPaths(ctx, []string{dirPath}, opts)
 }
 
 // CreateRevisionFromFile uploads a single file, returning a revision ID.
-// This is a convenience method equivalent to CreateRevisionFromPaths with a single file.
+// This is a convenience method for validating the file path and calling CreateRevisionFromPaths with a single file path.
 func (c *HTTPClient) CreateRevisionFromFile(ctx context.Context, filePath string, opts UploadOptions) (RevisionID, error) {
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return uuid.Nil, uploadrevision.NewFileAccessError(filePath, err)
+	}
+
+	if !info.Mode().IsRegular() {
+		return uuid.Nil, fmt.Errorf("the provided path is not a regular file: %s", filePath)
+	}
+
 	return c.CreateRevisionFromPaths(ctx, []string{filePath}, opts)
 }
