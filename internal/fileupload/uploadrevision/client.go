@@ -56,9 +56,6 @@ func NewClient(cfg Config, opts ...Opt) *HTTPSealableClient {
 		opt(&c)
 	}
 
-	crt := NewCompressionRoundTripper(c.httpClient.Transport)
-	c.httpClient.Transport = crt
-
 	return &c
 }
 
@@ -127,13 +124,22 @@ func (c *HTTPSealableClient) UploadFiles(ctx context.Context, orgID OrgID, revis
 	mpartWriter := multipart.NewWriter(pipeWriter)
 
 	go streamFilesToPipe(pipeWriter, mpartWriter, files)
+	body := compressRequestBody(pipeReader)
+
+	// Load body bytes into memmory so go can determine the Content-Length
+	// and not send the request chunked
+	bts, err := io.ReadAll(body)
+	if err != nil {
+		return fmt.Errorf("failed to create upload files request: %w", err)
+	}
 
 	url := fmt.Sprintf("%s/hidden/orgs/%s/upload_revisions/%s/files?version=%s", c.cfg.BaseURL, orgID, revisionID, apiVersion)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, pipeReader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(bts))
 	if err != nil {
 		return fmt.Errorf("failed to create upload files request: %w", err)
 	}
 	req.Header.Set(ContentType, mpartWriter.FormDataContentType())
+	req.Header.Set(ContentEncoding, "gzip")
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
