@@ -32,6 +32,7 @@ const LogFieldCount = "count"
 var ErrNoSummaryData = std_errors.New("no summary data to create")
 
 // RunTest executes the common test flow with the provided test subject.
+// Returns legacy JSON and/or human-readable workflow data, depending on parameters.
 func RunTest(
 	ctx context.Context,
 	ictx workflow.InvocationContext,
@@ -155,7 +156,10 @@ func executeTest(
 	return finalResult, findingsData, nil
 }
 
-// prepareOutput prepares the workflow data for output.
+// prepareOutput prepares raw test result findings into data for the output workflow.
+// If JSON is requested (either to file or stdout), it generates legacy JSON findings.
+// If JSON-stdout is not requested, then human-readable findings are added to the output workflow.
+// Human-readable stdout with JSON file output is a valid combination and returns both human-readable and legacy JSON types.
 func prepareOutput(
 	ictx workflow.InvocationContext,
 	findingsData []testapi.FindingData,
