@@ -11,6 +11,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
+	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"golang.org/x/sync/errgroup"
@@ -22,8 +23,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 )
 
-// maxConcurrency is the maximum concurrent depGraph tests to run.
-const maxConcurrency = 5
+const maxConcurrentTests = 5
 
 // RunUnifiedTestFlow handles the unified test API flow.
 func RunUnifiedTestFlow(
@@ -110,7 +110,14 @@ func testAllDepGraphs(
 	var allOutputData []workflow.Data
 
 	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(maxConcurrency)
+
+	config := ictx.GetConfiguration()
+	numThreads := maxConcurrentTests
+	maxThreads := config.GetInt(configuration.MAX_THREADS)
+	if maxThreads > 0 {
+		numThreads = min(maxThreads, maxConcurrentTests)
+	}
+	g.SetLimit(numThreads)
 
 	var mu sync.Mutex
 	processor := &testProcessor{

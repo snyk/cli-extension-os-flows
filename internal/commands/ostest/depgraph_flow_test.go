@@ -23,6 +23,40 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 )
 
+// mockConcurrentStartTest sets up a mock TestClient whose Wait calls simulate concurrency
+// and record the peak concurrency observed. Extracted to avoid duplication across tests.
+func mockConcurrentStartTest(ctrl *gomock.Controller, n int, current, peak *atomic.Int32) *gafclientmocks.MockTestClient {
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, _ testapi.StartTestParams) (testapi.TestHandle, error) {
+		handle := gafclientmocks.NewMockTestHandle(ctrl)
+		// Wait: bump concurrency, sleep, then decrement
+		handle.EXPECT().Wait(gomock.Any()).DoAndReturn(func(_ context.Context) error {
+			c := current.Add(1)
+			for {
+				m := peak.Load()
+				if c > m {
+					if peak.CompareAndSwap(m, c) {
+						break
+					}
+					continue
+				}
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+			current.Add(-1)
+			return nil
+		}).Times(1)
+
+		// Result: minimal finished result with empty findings
+		result := gafclientmocks.NewMockTestResult(ctrl)
+		result.EXPECT().GetExecutionState().Return(testapi.Finished).AnyTimes()
+		result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
+		handle.EXPECT().Result().Return(result).Times(1)
+		return handle, nil
+	}).Times(n)
+	return mockTestClient
+}
+
 // Test_RunUnifiedTestFlow_ConcurrencyLimit verifies that at most 5 depgraph tests run concurrently.
 func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	t.Parallel()
@@ -38,6 +72,8 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	cfg.Set(ostest.FeatureFlagRiskScore, true)
 	cfg.Set(ostest.FeatureFlagRiskScoreInCLI, true)
 	cfg.Set(flags.FlagAllProjects, true)
+	// Ensure the effective limit is the default (5)
+	cfg.Set(configuration.MAX_THREADS, 99)
 
 	logger := zerolog.Nop()
 
@@ -73,34 +109,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 
 	// Mock TestClient to track concurrency in their Wait calls.
 	var current, peak atomic.Int32
-	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
-	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, _ testapi.StartTestParams) (testapi.TestHandle, error) {
-		handle := gafclientmocks.NewMockTestHandle(ctrl)
-		// Wait: bump concurrency, sleep, then decrement
-		handle.EXPECT().Wait(gomock.Any()).DoAndReturn(func(_ context.Context) error {
-			c := current.Add(1)
-			for {
-				m := peak.Load()
-				if c > m {
-					if peak.CompareAndSwap(m, c) {
-						break
-					}
-					continue
-				}
-				break
-			}
-			time.Sleep(50 * time.Millisecond)
-			current.Add(-1)
-			return nil
-		}).Times(1)
-
-		// Result: minimal finished result with empty findings
-		result := gafclientmocks.NewMockTestResult(ctrl)
-		result.EXPECT().GetExecutionState().Return(testapi.Finished).AnyTimes()
-		result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
-		handle.EXPECT().Result().Return(result).Times(1)
-		return handle, nil
-	}).Times(n)
+	mockTestClient := mockConcurrentStartTest(ctrl, n, &current, &peak)
 
 	// Run
 	ctx := context.Background()
@@ -114,6 +123,71 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	if peak.Load() > 5 {
 		observed := peak.Load()
 		t.Fatalf("observed concurrency %d exceeds limit 5", observed)
+	}
+}
+
+// Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads verifies that when MAX_THREADS is set lower than
+// the default, it is respected as the upper bound for concurrent tests.
+func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockEngine := gafmocks.NewMockEngine(ctrl)
+	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
+
+	cfg := configuration.New()
+	// Ensure a predictable bound lower than the default 5
+	cfg.Set(configuration.MAX_THREADS, 3)
+	cfg.Set(ostest.FeatureFlagRiskScore, true)
+	cfg.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+	cfg.Set(flags.FlagAllProjects, true)
+
+	logger := zerolog.Nop()
+
+	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
+	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
+	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
+	mockIctx.EXPECT().GetEngine().Return(mockEngine).AnyTimes()
+
+	const n = 10
+	depGraphDatas := make([]workflow.Data, 0, n)
+	for i := 0; i < n; i++ {
+		dg := testapi.IoSnykApiV1testdepgraphRequestDepGraph{
+			SchemaVersion: "1.2.0",
+			PkgManager:    testapi.IoSnykApiV1testdepgraphRequestPackageManager{Name: "npm"},
+			Pkgs: []testapi.IoSnykApiV1testdepgraphRequestPackage{
+				{Id: "proj@1.0.0", Info: testapi.IoSnykApiV1testdepgraphRequestPackageInfo{Name: "proj", Version: "1.0.0"}},
+			},
+			Graph: testapi.IoSnykApiV1testdepgraphRequestGraph{RootNodeId: "root"},
+		}
+		bytes, err := json.Marshal(dg)
+		if err != nil {
+			t.Fatalf("marshal depgraph: %v", err)
+		}
+		d := gafmocks.NewMockData(ctrl)
+		d.EXPECT().GetPayload().Return(bytes).AnyTimes()
+		d.EXPECT().GetMetaData(common.ContentLocationKey).Return("proj/package.json", nil).AnyTimes()
+		depGraphDatas = append(depGraphDatas, d)
+	}
+	mockEngine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return(depGraphDatas, nil).Times(1)
+
+	var current, peak atomic.Int32
+	mockTestClient := mockConcurrentStartTest(ctrl, n, &current, &peak)
+
+	// Run
+	ctx := context.Background()
+	ef := errors.NewErrorFactory(&logger)
+	orgID := "org-123"
+	_, err := ostest.RunUnifiedTestFlow(ctx, mockIctx, mockTestClient, orgID, ef, &logger, nil)
+	if err != nil {
+		t.Fatalf("RunUnifiedTestFlow error: %v", err)
+	}
+
+	if peak.Load() > 3 {
+		observed := peak.Load()
+		t.Fatalf("observed concurrency %d exceeds limit 3", observed)
 	}
 }
 
