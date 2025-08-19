@@ -81,8 +81,8 @@ func (f *FakeSealableClient) UploadFiles(_ context.Context, orgID OrgID, revisio
 			return NewFileAccessError(file.Path, err)
 		}
 
-		if fileInfo.IsDir() {
-			return NewDirectoryError(file.Path)
+		if !fileInfo.Mode().IsRegular() {
+			return NewSpecialFileError(file.Path, fileInfo.Mode())
 		}
 
 		if fileInfo.Size() > f.cfg.FileSizeLimit {

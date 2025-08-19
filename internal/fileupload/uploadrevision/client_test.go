@@ -11,6 +11,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path"
 	"testing"
 	"testing/fstest"
 
@@ -21,30 +23,14 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/uploadrevision"
 )
 
-func TestClient_CreateRevision(t *testing.T) {
-	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, "application/vnd.api+json", r.Header.Get("Content-Type"))
-		assert.Equal(t, fmt.Sprintf("/hidden/orgs/%s/upload_revisions", orgID), r.URL.Path)
-		assert.Equal(t, "2024-10-15", r.URL.Query().Get("version"))
+var (
+	orgID = uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
+	revID = uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
+)
 
-		w.WriteHeader(http.StatusCreated)
-		//nolint:errcheck // Not needed in test.
-		w.Write([]byte(`{
-			"data": {
-				"attributes": {
-					"revision_type": "snapshot",
-					"sealed": false
-				},
-				"id": "a7d975fb-2076-49b7-bc1f-31c395c3ce93",
-				"type": "upload_revision"
-			}
-		}`))
-	}))
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: srv.URL,
-	})
+func TestClient_CreateRevision(t *testing.T) {
+	srv, c := setupTestServer(t)
+	defer srv.Close()
 
 	resp, err := c.CreateRevision(context.Background(), orgID)
 
@@ -54,9 +40,7 @@ func TestClient_CreateRevision(t *testing.T) {
 }
 
 func TestClient_CreateRevision_EmptyOrgID(t *testing.T) {
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: "http://example.com",
-	})
+	c := uploadrevision.NewClient(uploadrevision.Config{})
 
 	resp, err := c.CreateRevision(context.Background(), uuid.Nil)
 
@@ -66,7 +50,6 @@ func TestClient_CreateRevision_EmptyOrgID(t *testing.T) {
 }
 
 func TestClient_CreateRevision_ServerError(t *testing.T) {
-	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -84,50 +67,8 @@ func TestClient_CreateRevision_ServerError(t *testing.T) {
 }
 
 func TestClient_UploadFiles(t *testing.T) {
-	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
-	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
-		assert.Equal(t, "gzip", r.Header.Get("Content-Encoding"))
-		assert.Equal(t, fmt.Sprintf("/hidden/orgs/%s/upload_revisions/%s/files", orgID, revID), r.URL.Path)
-		assert.Equal(t, "2024-10-15", r.URL.Query().Get("version"))
-
-		// Parse multipart form data
-		contentType := r.Header.Get("Content-Type")
-		_, params, err := mime.ParseMediaType(contentType)
-		require.NoError(t, err)
-		boundary := params["boundary"]
-		require.NotEmpty(t, boundary, "multipart boundary should be present")
-
-		gzipReader, err := gzip.NewReader(r.Body)
-		require.NoError(t, err)
-		reader := multipart.NewReader(gzipReader, boundary)
-
-		// Read the first (and should be only) part
-		part, err := reader.NextPart()
-		require.NoError(t, err)
-
-		// Validate form field name and filename
-		assert.Equal(t, "foo/bar", part.FormName())
-		assert.Equal(t, "bar", part.FileName()) // filename is just the base name
-
-		// Read and validate file content
-		content, err := io.ReadAll(part)
-		require.NoError(t, err)
-		assert.Equal(t, "asdf", string(content))
-
-		// Ensure no more parts
-		_, err = reader.NextPart()
-		assert.Equal(t, io.EOF, err)
-
-		w.WriteHeader(http.StatusNoContent)
-	}))
+	srv, c := setupTestServer(t)
 	defer srv.Close()
-
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: srv.URL,
-	})
 
 	mockFS := fstest.MapFS{
 		"foo/bar": {Data: []byte("asdf")},
@@ -146,58 +87,8 @@ func TestClient_UploadFiles(t *testing.T) {
 }
 
 func TestClient_UploadFiles_MultipleFiles(t *testing.T) {
-	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
-	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
-	expectedFiles := map[string]string{
-		"file1.txt":  "content1",
-		"file2.json": "content2",
-	}
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
-		assert.Equal(t, "gzip", r.Header.Get("Content-Encoding"))
-		assert.Equal(t, fmt.Sprintf("/hidden/orgs/%s/upload_revisions/%s/files", orgID, revID), r.URL.Path)
-		assert.Equal(t, "2024-10-15", r.URL.Query().Get("version"))
-
-		// Parse multipart form data
-		contentType := r.Header.Get("Content-Type")
-		_, params, err := mime.ParseMediaType(contentType)
-		require.NoError(t, err)
-		boundary := params["boundary"]
-		require.NotEmpty(t, boundary, "multipart boundary should be present")
-
-		gzipReader, err := gzip.NewReader(r.Body)
-		require.NoError(t, err)
-		reader := multipart.NewReader(gzipReader, boundary)
-		filesReceived := make(map[string]string)
-
-		// Read all parts
-		for {
-			part, err := reader.NextPart()
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			require.NoError(t, err)
-
-			// Read content
-			content, err := io.ReadAll(part)
-			require.NoError(t, err)
-
-			// Store for validation (use form name which is the full path)
-			filesReceived[part.FormName()] = string(content)
-		}
-
-		// Validate all expected files were received
-		assert.Equal(t, expectedFiles, filesReceived)
-
-		w.WriteHeader(http.StatusNoContent)
-	}))
+	srv, c := setupTestServer(t)
 	defer srv.Close()
-
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: srv.URL,
-	})
 
 	mockFS := fstest.MapFS{
 		"file1.txt":  {Data: []byte("content1")},
@@ -221,11 +112,7 @@ func TestClient_UploadFiles_MultipleFiles(t *testing.T) {
 }
 
 func TestClient_UploadFiles_EmptyOrgID(t *testing.T) {
-	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
-
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: "http://example.com",
-	})
+	c := uploadrevision.NewClient(uploadrevision.Config{})
 
 	mockFS := fstest.MapFS{
 		"test.txt": {Data: []byte("content")},
@@ -245,11 +132,7 @@ func TestClient_UploadFiles_EmptyOrgID(t *testing.T) {
 }
 
 func TestClient_UploadFiles_EmptyRevisionID(t *testing.T) {
-	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
-
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: "http://example.com",
-	})
+	c := uploadrevision.NewClient(uploadrevision.Config{})
 
 	mockFS := fstest.MapFS{
 		"test.txt": {Data: []byte("content")},
@@ -269,12 +152,7 @@ func TestClient_UploadFiles_EmptyRevisionID(t *testing.T) {
 }
 
 func TestClient_UploadFiles_FileSizeLimit(t *testing.T) {
-	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
-	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
-
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: "http://example.com",
-	})
+	c := uploadrevision.NewClient(uploadrevision.Config{})
 
 	largeContent := make([]byte, c.GetLimits().FileSizeLimit+1)
 	mockFS := fstest.MapFS{
@@ -300,12 +178,7 @@ func TestClient_UploadFiles_FileSizeLimit(t *testing.T) {
 }
 
 func TestClient_UploadFiles_FileCountLimit(t *testing.T) {
-	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
-	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
-
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: "http://example.com",
-	})
+	c := uploadrevision.NewClient(uploadrevision.Config{})
 
 	files := make([]uploadrevision.UploadFile, c.GetLimits().FileCountLimit+1)
 	mockFS := fstest.MapFS{}
@@ -332,43 +205,98 @@ func TestClient_UploadFiles_FileCountLimit(t *testing.T) {
 	assert.Equal(t, c.GetLimits().FileCountLimit, fileCountErr.Limit)
 }
 
-func TestClient_UploadFiles_DirectoryError(t *testing.T) {
-	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
-	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
+func TestClient_UploadFiles_SpecialFileError(t *testing.T) {
+	c := uploadrevision.NewClient(uploadrevision.Config{})
 
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: "http://example.com",
-	})
-
-	mockFS := fstest.MapFS{
-		"test-directory": &fstest.MapFile{
-			Mode: fs.ModeDir,
+	tests := []struct {
+		name          string
+		setupFS       func() (fstest.MapFS, string)
+		setupRealFile func() string
+	}{
+		{
+			name: "directory file",
+			setupFS: func() (fstest.MapFS, string) {
+				return fstest.MapFS{
+					"test-directory": &fstest.MapFile{
+						Mode: fs.ModeDir,
+					},
+				}, "test-directory"
+			},
+		},
+		{
+			name: "device file",
+			setupRealFile: func() string {
+				return "/dev/null"
+			},
 		},
 	}
 
-	dirFile, err := mockFS.Open("test-directory")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var file fs.File
+			var filePath string
+			var err error
+
+			if tt.setupFS != nil {
+				mockFS, path := tt.setupFS()
+				filePath = path
+				file, err = mockFS.Open(path)
+				require.NoError(t, err)
+			} else if tt.setupRealFile != nil {
+				filePath = tt.setupRealFile()
+
+				realFile, openErr := os.Open(filePath)
+				require.NoError(t, openErr)
+				defer realFile.Close()
+				file = realFile
+			}
+
+			err = c.UploadFiles(context.Background(),
+				orgID,
+				revID,
+				[]uploadrevision.UploadFile{
+					{Path: filePath, File: file},
+				})
+
+			assert.Error(t, err)
+
+			var sfe *uploadrevision.SpecialFileError
+			assert.ErrorAs(t, err, &sfe)
+			assert.Equal(t, filePath, sfe.Path)
+		})
+	}
+}
+
+func TestClient_UploadFiles_Symlink(t *testing.T) {
+	srv, c := setupTestServer(t)
+	defer srv.Close()
+
+	tmpDir := t.TempDir()
+	tmpFile := path.Join(tmpDir, "temp-regular-file")
+
+	err := os.WriteFile(tmpFile, []byte("foo bar"), 0o600)
 	require.NoError(t, err)
+
+	tmpSlnPth := path.Join(tmpDir, "temp-symlink")
+	err = os.Symlink(tmpFile, tmpSlnPth)
+	require.NoError(t, err)
+
+	tmpSln, err := os.Open(tmpSlnPth)
+	require.NoError(t, err)
+	defer tmpSln.Close()
 
 	err = c.UploadFiles(context.Background(),
 		orgID,
 		revID,
 		[]uploadrevision.UploadFile{
-			{Path: "test-directory", File: dirFile},
+			{Path: tmpSlnPth, File: tmpSln},
 		})
 
-	assert.Error(t, err)
-	var dirErr *uploadrevision.DirectoryError
-	assert.ErrorAs(t, err, &dirErr)
-	assert.Equal(t, "test-directory", dirErr.Path)
+	assert.NoError(t, err)
 }
 
 func TestClient_UploadFiles_EmptyFileList(t *testing.T) {
-	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
-	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
-
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: "http://example.com",
-	})
+	c := uploadrevision.NewClient(uploadrevision.Config{})
 
 	err := c.UploadFiles(context.Background(), orgID, revID, []uploadrevision.UploadFile{})
 
@@ -377,30 +305,8 @@ func TestClient_UploadFiles_EmptyFileList(t *testing.T) {
 }
 
 func TestClient_SealRevision(t *testing.T) {
-	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
-	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPatch, r.Method)
-		assert.Equal(t, "application/vnd.api+json", r.Header.Get("Content-Type"))
-		assert.Equal(t, fmt.Sprintf("/hidden/orgs/%s/upload_revisions/%s", orgID, revID), r.URL.Path)
-		assert.Equal(t, "2024-10-15", r.URL.Query().Get("version"))
-
-		w.WriteHeader(http.StatusOK)
-		//nolint:errcheck // Not needed in test.
-		w.Write([]byte(`{
-			"data": {
-				"attributes": {
-					"revision_type": "snapshot",
-					"sealed": true
-				},
-				"id": "ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f",
-				"type": "upload_revision"
-			}
-		}`))
-	}))
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: srv.URL,
-	})
+	srv, c := setupTestServer(t)
+	defer srv.Close()
 
 	resp, err := c.SealRevision(context.Background(), orgID, revID)
 
@@ -410,11 +316,7 @@ func TestClient_SealRevision(t *testing.T) {
 }
 
 func TestClient_SealRevision_EmptyOrgID(t *testing.T) {
-	revID := uuid.MustParse("ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f")
-
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: "http://example.com",
-	})
+	c := uploadrevision.NewClient(uploadrevision.Config{})
 
 	resp, err := c.SealRevision(context.Background(),
 		uuid.Nil, // empty orgID
@@ -427,11 +329,7 @@ func TestClient_SealRevision_EmptyOrgID(t *testing.T) {
 }
 
 func TestClient_SealRevision_EmptyRevisionID(t *testing.T) {
-	orgID := uuid.MustParse("9102b78b-c28d-4392-a39f-08dd26fd9622")
-
-	c := uploadrevision.NewClient(uploadrevision.Config{
-		BaseURL: "http://example.com",
-	})
+	c := uploadrevision.NewClient(uploadrevision.Config{})
 
 	resp, err := c.SealRevision(context.Background(),
 		orgID,
@@ -441,4 +339,88 @@ func TestClient_SealRevision_EmptyRevisionID(t *testing.T) {
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, uploadrevision.ErrEmptyRevisionID)
 	assert.Nil(t, resp)
+}
+
+func setupTestServer(t *testing.T) (*httptest.Server, *uploadrevision.HTTPSealableClient) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "2024-10-15", r.URL.Query().Get("version"))
+
+		switch {
+		// Create revision
+		case r.Method == http.MethodPost &&
+			r.URL.Path == "/hidden/orgs/9102b78b-c28d-4392-a39f-08dd26fd9622/upload_revisions":
+
+			assert.Equal(t, "application/vnd.api+json", r.Header.Get("Content-Type"))
+
+			w.WriteHeader(http.StatusCreated)
+			//nolint:errcheck // Not needed in test.
+			w.Write([]byte(`{
+				"data": {
+					"attributes": {
+						"revision_type": "snapshot",
+						"sealed": false
+					},
+					"id": "a7d975fb-2076-49b7-bc1f-31c395c3ce93",
+					"type": "upload_revision"
+				}
+			}`))
+
+		// Upload files
+		case r.Method == http.MethodPost &&
+			r.URL.Path == "/hidden/orgs/9102b78b-c28d-4392-a39f-08dd26fd9622/upload_revisions/ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f/files":
+
+			assert.Equal(t, "gzip", r.Header.Get("Content-Encoding"))
+			assert.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
+
+			contentType := r.Header.Get("Content-Type")
+			_, params, err := mime.ParseMediaType(contentType)
+			require.NoError(t, err)
+			boundary := params["boundary"]
+			require.NotEmpty(t, boundary, "multipart boundary should be present")
+
+			gzipReader, err := gzip.NewReader(r.Body)
+			require.NoError(t, err)
+			reader := multipart.NewReader(gzipReader, boundary)
+
+			for {
+				_, err := reader.NextPart()
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				require.NoError(t, err)
+			}
+
+			w.WriteHeader(http.StatusNoContent)
+
+		// Seal revision
+		case r.Method == http.MethodPatch &&
+			r.URL.Path == "/hidden/orgs/9102b78b-c28d-4392-a39f-08dd26fd9622/upload_revisions/ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f":
+
+			assert.Equal(t, "application/vnd.api+json", r.Header.Get("Content-Type"))
+
+			w.WriteHeader(http.StatusOK)
+			//nolint:errcheck // Not needed in test.
+			w.Write([]byte(`{
+				"data": {
+					"attributes": {
+						"revision_type": "snapshot",
+						"sealed": true
+					},
+					"id": "ff1bd2c6-7a5f-48fb-9a5b-52d711c8b47f",
+					"type": "upload_revision"
+				}
+			}`))
+
+		default:
+			t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+
+	client := uploadrevision.NewClient(uploadrevision.Config{
+		BaseURL: srv.URL,
+	})
+
+	return srv, client
 }

@@ -195,8 +195,8 @@ func validateFiles(files []UploadFile) error {
 			return NewFileAccessError(file.Path, err)
 		}
 
-		if fileInfo.IsDir() {
-			return NewDirectoryError(file.Path)
+		if !fileInfo.Mode().IsRegular() {
+			return NewSpecialFileError(file.Path, fileInfo.Mode())
 		}
 
 		if fileInfo.Size() > fileSizeLimit {
