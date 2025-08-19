@@ -94,8 +94,10 @@ func Test_CreateRevisionFromPaths(t *testing.T) {
 
 		_, err := client.CreateRevisionFromPaths(ctx, paths, fileupload.UploadOptions{})
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to stat path")
-		assert.Contains(t, err.Error(), "/nonexistent/file.go") // Should include the specific path
+		var fileAccessErr *uploadrevision.FileAccessError
+		assert.ErrorAs(t, err, &fileAccessErr)
+		assert.Equal(t, "/nonexistent/file.go", fileAccessErr.FilePath)
+		assert.ErrorContains(t, fileAccessErr.Err, "no such file or directory")
 	})
 }
 
