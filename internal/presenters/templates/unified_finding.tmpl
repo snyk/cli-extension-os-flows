@@ -96,6 +96,11 @@
   {{- $vulnResults := getSummaryResultsByIssueType "vulnerability" .Findings .Summary.SeverityOrderAsc }}
   {{- $licenseResults := getSummaryResultsByIssueType "license" .Findings .Summary.SeverityOrderAsc }}
 
+  {{- if and (eq (len $vulnResults) 0) (eq (len $licenseResults) 0) }}
+  {{- "\n" }}
+  Total issues: 0
+  {{- end }}
+
   {{- if gt (len $vulnResults) 0 }}
 
   Total security issues: {{ getIssueCountsTotal $vulnResults }}
