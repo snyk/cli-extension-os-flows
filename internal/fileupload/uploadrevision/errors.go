@@ -3,6 +3,7 @@ package uploadrevision
 import (
 	"errors"
 	"fmt"
+	"os"
 )
 
 // Sentinel errors for common conditions.
@@ -47,15 +48,6 @@ func (e *FileAccessError) Unwrap() error {
 	return e.Err
 }
 
-// DirectoryError indicates a path points to a directory instead of a file.
-type DirectoryError struct {
-	Path string
-}
-
-func (e *DirectoryError) Error() string {
-	return fmt.Sprintf("path %s is a directory, not a file", e.Path)
-}
-
 // HTTPError represents an HTTP error response.
 type HTTPError struct {
 	StatusCode int
@@ -80,6 +72,16 @@ func (e *MultipartError) Error() string {
 
 func (e *MultipartError) Unwrap() error {
 	return e.Err
+}
+
+// SpecialFileError indicates a path points to a special file (device, pipe, socket, etc.) instead of a regular file.
+type SpecialFileError struct {
+	Path string
+	Mode os.FileMode
+}
+
+func (e *SpecialFileError) Error() string {
+	return fmt.Sprintf("path %s is not a regular file (mode: %s)", e.Path, e.Mode)
 }
 
 // NewFileSizeLimitError creates a new FileSizeLimitError with the given parameters.
@@ -107,13 +109,6 @@ func NewFileAccessError(filePath string, err error) *FileAccessError {
 	}
 }
 
-// NewDirectoryError creates a new DirectoryError with the given path.
-func NewDirectoryError(path string) *DirectoryError {
-	return &DirectoryError{
-		Path: path,
-	}
-}
-
 // NewHTTPError creates a new HTTPError with the given parameters.
 func NewHTTPError(statusCode int, status, operation string, body []byte) *HTTPError {
 	return &HTTPError{
@@ -129,5 +124,13 @@ func NewMultipartError(filePath string, err error) *MultipartError {
 	return &MultipartError{
 		FilePath: filePath,
 		Err:      err,
+	}
+}
+
+// NewSpecialFileError creates a new SpecialFileError with the given path and mode.
+func NewSpecialFileError(path string, mode os.FileMode) *SpecialFileError {
+	return &SpecialFileError{
+		Path: path,
+		Mode: mode,
 	}
 }

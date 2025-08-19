@@ -20,8 +20,8 @@ type FileCountLimitError = uploadrevision.FileCountLimitError
 // FileAccessError indicates a file access permission issue.
 type FileAccessError = uploadrevision.FileAccessError
 
-// DirectoryError indicates an issue with directory operations.
-type DirectoryError = uploadrevision.DirectoryError
+// SpecialFileError indicates a path points to a special file (device, pipe, socket, etc.) instead of a regular file.
+type SpecialFileError = uploadrevision.SpecialFileError
 
 // HTTPError indicates an HTTP request/response error.
 type HTTPError = uploadrevision.HTTPError
