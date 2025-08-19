@@ -1,8 +1,6 @@
 {{define "finding"}}
 {{- (renderToString "severity" . | toUpperCase | renderInSeverityColor )}} {{print .Attributes.Title | bold}}
-{{- if .Attributes.Suppression }}{{if eq .Attributes.Suppression.Status "ignored" }} [ IGNORED ]
-{{- else if eq .Attributes.Suppression.Status "pending_ignore_approval" }} [ PENDING IGNORE... ] {{- else}}{{end -}}
-{{- else}}{{end}}
+{{- template "suppression_label" . -}}
 
    Finding ID: {{ getFindingId . }}
 {{- range $location := .Attributes.Locations}}
@@ -27,3 +25,11 @@
   {{- if not (hasSuppression .) }} ✗ {{ else }} ! {{ end -}}
   [{{.Attributes.Rating.Severity}}]
 {{- end}}
+
+{{- define "suppression_label" -}}
+  {{- if .Attributes.Suppression -}}
+    {{- if eq .Attributes.Suppression.Status "ignored" }} [ IGNORED ]
+    {{- else if eq .Attributes.Suppression.Status "pending_ignore_approval" }} [ PENDING IGNORE... ]
+    {{- else }}{{- end -}}
+  {{- end -}}
+{{- end -}}

@@ -9,14 +9,16 @@
 			{{- with (getIntroducedThrough .) }}
    Introduced through: {{ . }}
 			{{- end }}
+
 			{{- if not (isLicenseFinding .) }}
-				{{- $riskScore := getFieldValueFrom . "Attributes.Risk.RiskScore.Value" -}}
+                {{- $riskScore := getFieldValueFrom . "Attributes.Risk.RiskScore.Value" }}
 				{{- if $riskScore }}
    Risk Score: {{ $riskScore }}
 				{{- else }}
    Risk Score: N/A
 				{{- end }}
 			{{- end }}
+
 			{{- $reachability := getReachability . -}}
 			{{- if ne $reachability "N/A" }}
    Reachability: {{ $reachability }}
@@ -26,25 +28,40 @@
 
 {{- define "details" -}}
     {{- $sortedFindings := .Findings | sortFindingBy "Attributes.Rating.Severity" .Summary.SeverityOrderAsc }}
-    {{- $openFindings :=  $sortedFindings | filterFinding (isOpenFinding) }}
+    {{- $allOpenFindings := $sortedFindings | filterFinding (isOpenFinding) }}
+    {{- $openFindings := $allOpenFindings | filterFinding (isNotLicenseFindingFilter) }}
+    {{- $licenseFindings := $allOpenFindings | filterFinding (isLicenseFindingFilter) }}
     {{- $pendingIgnoreFindings := $sortedFindings | filterFinding (isPendingFinding) }}
     {{- $ignoredFindings := $sortedFindings | filterFinding (isIgnoredFinding) }}
     {{- $hasOpenFindings := gt (len $openFindings) 0 }}
+    {{- $hasLicenseFindings := gt (len $licenseFindings) 0 }}
     {{- $hasPendingIgnoreFindings := gt (len $pendingIgnoreFindings) 0 }}
     {{- $hasIgnoredFindings := gt (len $ignoredFindings) 0 }}
-    {{- if $hasOpenFindings }}{{ "Open Issues" | title }}
+
+    {{- if $hasOpenFindings }}{{ printf "Security issues: %d" (len $openFindings) | title }}
 		{{- range $finding := $openFindings }}
 			{{- $severity := getFieldValueFrom $finding "Attributes.Rating.Severity" -}}
 			{{- $title := getFieldValueFrom $finding "Attributes.Title" -}}
-			{{- printf " ✗ %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- if not (hasSuppression $finding) -}}
+				{{- printf " ✗ %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- else -}}
+				{{- printf " ! %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- end -}}
+			{{- template "suppression_label" $finding -}}
 			{{- template "finding_details" $finding -}}
 		{{- end }}
     {{- end }}
-    {{- if $hasPendingIgnoreFindings }}
-		{{- range $finding := $pendingIgnoreFindings }}
+
+    {{- if $hasLicenseFindings }}{{ printf "License issues: %d" (len $licenseFindings) | title }}
+		{{- range $finding := $licenseFindings }}
 			{{- $severity := getFieldValueFrom $finding "Attributes.Rating.Severity" -}}
 			{{- $title := getFieldValueFrom $finding "Attributes.Title" -}}
-			{{- printf " ! [PENDING] %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- if not (hasSuppression $finding) -}}
+				{{- printf " ✗ %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- else -}}
+				{{- printf " ! %s %s" (printf "[%s]" ($severity | toUpperCase) | renderInSeverityColor) ($title | bold) -}}
+			{{- end -}}
+			{{- template "suppression_label" $finding -}}
 			{{- template "finding_details" $finding -}}
 		{{- end }}
     {{- end }}
@@ -76,35 +93,64 @@
   Test type:         {{ if eq .Summary.Type "sast" }}Static code analysis{{else}}{{ .Summary.Type }}{{ end}}
   Project path:      {{ getValueFromConfig "targetDirectory" }}
   
-  {{- $total := 0 }}{{- $open := 0 }}{{- $ignored := 0 }}
-  {{- range $res := .Summary.Results }}
-      {{- $total = add $total $res.Total }}
-      {{- $open = add $open $res.Open }}
-      {{- $ignored = add $ignored $res.Ignored }}
+  {{- $vulnResults := getSummaryResultsByIssueType "vulnerability" .Findings .Summary.SeverityOrderAsc }}
+  {{- $licenseResults := getSummaryResultsByIssueType "license" .Findings .Summary.SeverityOrderAsc }}
+
+  {{- if gt (len $vulnResults) 0 }}
+
+  Total security issues: {{ getIssueCountsTotal $vulnResults }}
+  {{- $total := getIssueCountsTotal $vulnResults }}
+  {{- $open := getIssueCountsOpen $vulnResults }}
+  {{- $ignored := getIssueCountsIgnored $vulnResults }}
+  Ignored: {{ $ignored }} [
+  {{- range $severity := .Summary.SeverityOrderAsc | reverse }}
+      {{- $count := 0 }}
+      {{- range $res := $vulnResults }}
+          {{- if eq $res.Severity $severity }}
+              {{- $count = $res.Ignored }}
+          {{- end }}
+      {{- end }}
+      {{- print " " $count " " $severity " " | toUpperCase | renderInSeverityColor }}
+  {{- end}}]
+  Open   : {{ $open }} [
+  {{- range $severity := .Summary.SeverityOrderAsc | reverse }}
+      {{- $count := 0 }}
+      {{- range $res := $vulnResults }}
+          {{- if eq $res.Severity $severity }}
+              {{- $count = $res.Open }}
+          {{- end }}
+      {{- end }}
+      {{- print " " $count " " $severity " " | toUpperCase | renderInSeverityColor }}
+  {{- end}}]
   {{- end }}
 
-  Total issues:   {{ $total }}
-  {{- if gt $total 0}}
-  Ignored issues: {{ print $ignored | bold }} [
+  {{- if gt (len $licenseResults) 0 }}
+
+  Total license issues: {{ getIssueCountsTotal $licenseResults }}
+  {{- $total := getIssueCountsTotal $licenseResults }}
+  {{- $open := getIssueCountsOpen $licenseResults }}
+  {{- $ignored := getIssueCountsIgnored $licenseResults }}
+  Ignored: {{ $ignored }} [
   {{- range $severity := .Summary.SeverityOrderAsc | reverse }}
-      {{- $countFound := 0 }}
-          {{- range $res := $.Summary.Results }}
-              {{- if eq $res.Severity $severity }}
-                  {{- $countFound = $res.Ignored }}
-              {{- end }}
-          {{- end}}
-      {{- print " " $countFound " " $severity " " | toUpperCase | renderInSeverityColor }}
+      {{- $count := 0 }}
+      {{- range $res := $licenseResults }}
+          {{- if eq $res.Severity $severity }}
+              {{- $count = $res.Ignored }}
+          {{- end }}
+      {{- end }}
+      {{- print " " $count " " $severity " " | toUpperCase | renderInSeverityColor }}
   {{- end}}]
-  Open issues:    {{ print $open | bold }} [
+  Open   : {{ $open }} [
   {{- range $severity := .Summary.SeverityOrderAsc | reverse }}
-      {{- $countFound := 0 }}
-          {{- range $res := $.Summary.Results }}
-              {{- if eq $res.Severity $severity }}
-                  {{- $countFound = $res.Open }}
-              {{- end }}
-          {{- end}}
-      {{- print " " $countFound " " $severity " " | toUpperCase | renderInSeverityColor }}
-  {{- end}}]{{- end}}
+      {{- $count := 0 }}
+      {{- range $res := $licenseResults }}
+          {{- if eq $res.Severity $severity }}
+              {{- $count = $res.Open }}
+          {{- end }}
+      {{- end }}
+      {{- print " " $count " " $severity " " | toUpperCase | renderInSeverityColor }}
+  {{- end}}]
+  {{- end }}
 {{- end }} {{/* end summary */}}
 
 {{- define "main" }}

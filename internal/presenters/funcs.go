@@ -11,6 +11,7 @@ import (
 
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
 )
 
@@ -247,9 +248,12 @@ func isOpenFinding() func(obj any) bool {
 		if !ok {
 			return false
 		}
-		// A finding is considered "open" if it has no suppression information.
-		// A rejected suppression is not represented as a status, but by the absence of a suppression object.
-		return finding.Attributes.Suppression == nil
+		// Treat findings as open unless they are explicitly ignored.
+		// Pending ignore approvals and other statuses remain visible as open issues.
+		if finding.Attributes == nil || finding.Attributes.Suppression == nil {
+			return true
+		}
+		return finding.Attributes.Suppression.Status != testapi.SuppressionStatusIgnored
 	}
 }
 
@@ -275,14 +279,50 @@ func isIgnoredFinding() func(obj any) bool {
 	}
 }
 
+// isLicenseFinding returns true if the finding is a license finding.
+func isLicenseFinding(finding testapi.FindingData) bool {
+	if finding.Attributes != nil {
+		for _, problem := range finding.Attributes.Problems {
+			disc, err := problem.Discriminator()
+			if err == nil && disc == string(testapi.SnykLicense) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isLicenseFindingFilter returns a filter function that checks if a finding is a license finding.
+func isLicenseFindingFilter() func(obj any) bool {
+	return func(obj any) bool {
+		finding, ok := obj.(testapi.FindingData)
+		if !ok {
+			return false
+		}
+		return isLicenseFinding(finding)
+	}
+}
+
+// isNotLicenseFindingFilter returns a function that checks if a finding is not a license finding.
+func isNotLicenseFindingFilter() func(obj any) bool {
+	return func(obj any) bool {
+		finding, ok := obj.(testapi.FindingData)
+		if !ok {
+			return true
+		}
+		isLicense := isLicenseFinding(finding)
+		return !isLicense
+	}
+}
+
 // hasSuppression checks if a finding has any suppression.
 func hasSuppression(finding testapi.FindingData) bool {
-	if finding.Attributes.Suppression == nil {
+	if finding.Attributes == nil || finding.Attributes.Suppression == nil {
 		return false
 	}
 
-	// If a suppression object exists, the finding is considered suppressed (either ignored or pending).
-	return true
+	// Treat as suppressed unless the suppression status is "other" (treating as rejected).
+	return finding.Attributes.Suppression.Status != testapi.SuppressionStatusOther
 }
 
 // getCliTemplateFuncMap returns the template function map for CLI rendering.
@@ -299,7 +339,8 @@ func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
 	fnMap["divider"] = RenderDivider
 	fnMap["title"] = RenderTitle
 	fnMap["renderToString"] = renderTemplateToString(tmpl)
-	fnMap["isLicenseFinding"] = isLicenseFinding
+	fnMap["isLicenseFindingFilter"] = isLicenseFindingFilter
+	fnMap["isNotLicenseFindingFilter"] = isNotLicenseFindingFilter
 	fnMap["isOpenFinding"] = isOpenFinding
 	fnMap["isPendingFinding"] = isPendingFinding
 	fnMap["isIgnoredFinding"] = isIgnoredFinding
@@ -366,24 +407,109 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 	defaultMap["formatDatetime"] = formatDatetime
 	defaultMap["getSourceLocation"] = getSourceLocation
 	defaultMap["getFindingId"] = getFindingID
-	defaultMap["hasPrefix"] = strings.HasPrefix
 	defaultMap["isLicenseFinding"] = isLicenseFinding
+	defaultMap["hasPrefix"] = strings.HasPrefix
 	defaultMap["constructDisplayPath"] = constructDisplayPath(config)
+	defaultMap["filterByIssueType"] = filterByIssueType
+	defaultMap["getSummaryResultsByIssueType"] = getSummaryResultsByIssueType
+	defaultMap["getIssueCountsTotal"] = getIssueCountsTotal
+	defaultMap["getIssueCountsOpen"] = getIssueCountsOpen
+	defaultMap["getIssueCountsIgnored"] = getIssueCountsIgnored
 
 	return defaultMap
 }
 
-// isLicenseFinding returns true if the finding is a license finding.
-func isLicenseFinding(finding testapi.FindingData) bool {
-	if finding.Attributes != nil {
-		for _, problem := range finding.Attributes.Problems {
-			disc, err := problem.Discriminator()
-			if err == nil && disc == string(testapi.SnykLicense) {
-				return true
-			}
+func getIssueCountsTotal(results []json_schemas.TestSummaryResult) (total int) {
+	for _, res := range results {
+		total += res.Total
+	}
+	return total
+}
+
+func getIssueCountsOpen(results []json_schemas.TestSummaryResult) (open int) {
+	for _, res := range results {
+		open += res.Open
+	}
+	return open
+}
+
+func getIssueCountsIgnored(results []json_schemas.TestSummaryResult) (ignored int) {
+	for _, res := range results {
+		ignored += res.Ignored
+	}
+	return ignored
+}
+
+// filterByIssueType filters a list of finding summary results by issue type.
+func filterByIssueType(issueType string, summary *json_schemas.TestSummary) []json_schemas.TestSummaryResult {
+	if summary.Type == issueType {
+		return summary.Results
+	}
+	return []json_schemas.TestSummaryResult{}
+}
+
+// getSummaryResultsByIssueType computes summary results for a specific issue type from findings.
+// issueType can be "vulnerability" or "license".
+func getSummaryResultsByIssueType(issueType string, findings []testapi.FindingData, orderAsc []string) []json_schemas.TestSummaryResult {
+	if len(findings) == 0 {
+		return []json_schemas.TestSummaryResult{}
+	}
+
+	// Prepare counters by severity
+	totalBySeverity := map[string]int{}
+	openBySeverity := map[string]int{}
+	ignoredBySeverity := map[string]int{}
+
+	for _, f := range findings {
+		// Determine category membership
+		isLicense := isLicenseFinding(f)
+		if issueType == "license" && !isLicense {
+			continue
+		}
+		if issueType == "vulnerability" && isLicense {
+			continue
+		}
+
+		severity := getFieldValueFrom(f, "Attributes.Rating.Severity")
+		if severity == "" {
+			// Skip if we cannot determine severity
+			continue
+		}
+
+		totalBySeverity[severity]++
+
+		// Determine suppression state: only explicit "ignored" should reduce open counts.
+		isIgnored := false
+		isOpen := true
+		if f.Attributes != nil && f.Attributes.Suppression != nil {
+			isIgnored = f.Attributes.Suppression.Status == testapi.SuppressionStatusIgnored
+			isOpen = !isIgnored
+		}
+
+		if isOpen {
+			openBySeverity[severity]++
+		}
+		if isIgnored {
+			ignoredBySeverity[severity]++
 		}
 	}
-	return false
+
+	// Build results in the provided order, but only include severities that appeared
+	results := make([]json_schemas.TestSummaryResult, 0, len(totalBySeverity))
+	for _, sev := range orderAsc {
+		total := totalBySeverity[sev]
+		if total == 0 {
+			continue
+		}
+		results = append(results, json_schemas.TestSummaryResult{
+			Severity: sev,
+			Total:    total,
+			Open:     openBySeverity[sev],
+			Ignored:  ignoredBySeverity[sev],
+		})
+	}
+
+	return results
 }
 
 // reverse reverses the order of elements in a slice.
