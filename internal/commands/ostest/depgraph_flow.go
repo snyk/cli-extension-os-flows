@@ -7,11 +7,14 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
+	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/workflow"
+	"golang.org/x/sync/errgroup"
 
 	service "github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -19,6 +22,8 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 )
+
+const maxConcurrentTests = 5
 
 // RunUnifiedTestFlow handles the unified test API flow.
 func RunUnifiedTestFlow(
@@ -57,6 +62,39 @@ func RunUnifiedTestFlow(
 	return handleOutput(ictx, allLegacyFindings, allOutputData, errFactory)
 }
 
+// testProcessor contains the context and dependencies for running a depGraph test.
+type testProcessor struct {
+	ictx        workflow.InvocationContext
+	testClient  testapi.TestClient
+	orgID       string
+	errFactory  *errors.ErrorFactory
+	logger      *zerolog.Logger
+	localPolicy *testapi.LocalPolicy
+}
+
+// runDepGraphTest runs a test for a single depGraph.
+func (p *testProcessor) runDepGraphTest(
+	ctx context.Context,
+	depGraph *testapi.IoSnykApiV1testdepgraphRequestDepGraph,
+	displayTargetFile string,
+) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	subject, err := createTestSubject(depGraph, displayTargetFile)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	projectName := getProjectName(p.ictx, depGraph)
+	packageManager := depGraph.PkgManager.Name
+	depCount := max(0, len(depGraph.Pkgs)-1)
+
+	return RunTest(
+		ctx, p.ictx, p.testClient, subject, projectName, packageManager, depCount,
+		displayTargetFile, p.orgID, p.errFactory, p.logger, p.localPolicy,
+	)
+}
+
+// testAllDepGraphs tests depGraphs in parallel, up to maxConcurrency at a time, until completion or error.
+// Returns legacy JSON and/or human-readable workflow data, depending on parameters.
 func testAllDepGraphs(
 	ctx context.Context,
 	ictx workflow.InvocationContext,
@@ -71,33 +109,51 @@ func testAllDepGraphs(
 	var allLegacyFindings []definitions.LegacyVulnerabilityResponse
 	var allOutputData []workflow.Data
 
-	for i, depGraph := range depGraphs {
-		displayTargetFile := ""
-		if i < len(displayTargetFiles) {
-			displayTargetFile = displayTargetFiles[i]
-		}
+	g, gctx := errgroup.WithContext(ctx)
 
-		subject, err := createTestSubject(depGraph, displayTargetFile)
-		if err != nil {
-			return nil, nil, err
-		}
+	config := ictx.GetConfiguration()
+	numThreads := maxConcurrentTests
+	maxThreads := config.GetInt(configuration.MAX_THREADS)
+	if maxThreads > 0 {
+		numThreads = min(maxThreads, maxConcurrentTests)
+	}
+	g.SetLimit(numThreads)
 
-		projectName := getProjectName(ictx, depGraph)
-		packageManager := depGraph.PkgManager.Name
-		depCount := max(0, len(depGraph.Pkgs)-1)
+	var mu sync.Mutex
+	processor := &testProcessor{
+		ictx:        ictx,
+		testClient:  testClient,
+		orgID:       orgID,
+		errFactory:  errFactory,
+		logger:      logger,
+		localPolicy: localPolicy,
+	}
 
-		// Run the test with the depgraph subject
-		legacyFinding, outputData, err := RunTest(
-			ctx, ictx, testClient, subject, projectName, packageManager, depCount,
-			displayTargetFile, orgID, errFactory, logger, localPolicy)
-		if err != nil {
-			return nil, nil, err
-		}
+	for i := range depGraphs {
+		g.Go(func() error {
+			depGraph := depGraphs[i]
+			displayTargetFile := ""
+			if i < len(displayTargetFiles) {
+				displayTargetFile = displayTargetFiles[i]
+			}
 
-		if legacyFinding != nil {
-			allLegacyFindings = append(allLegacyFindings, *legacyFinding)
-		}
-		allOutputData = append(allOutputData, outputData...)
+			legacyFinding, outputData, err := processor.runDepGraphTest(gctx, depGraph, displayTargetFile)
+			if err != nil {
+				return err
+			}
+
+			mu.Lock()
+			if legacyFinding != nil {
+				allLegacyFindings = append(allLegacyFindings, *legacyFinding)
+			}
+			allOutputData = append(allOutputData, outputData...)
+			mu.Unlock()
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, nil, fmt.Errorf("testing depgraphs: %w", err)
 	}
 
 	return allLegacyFindings, allOutputData, nil
