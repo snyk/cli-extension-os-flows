@@ -269,7 +269,7 @@ func handleUnexpectedStatusCodes(body io.ReadCloser, statusCode int, status, ope
 			for i := range snykErrorList {
 				errsToJoin = append(errsToJoin, snykErrorList[i])
 			}
-			return fmt.Errorf("API error during %s: %w", operation, errors.Join(errsToJoin...))
+			return fmt.Errorf("api error during %s: %w", operation, errors.Join(errsToJoin...))
 		}
 	}
 

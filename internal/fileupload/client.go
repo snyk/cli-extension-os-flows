@@ -18,8 +18,9 @@ import (
 
 // Config contains configuration for the file upload client.
 type Config struct {
-	BaseURL string
-	OrgID   OrgID
+	BaseURL   string
+	OrgID     OrgID
+	IsFedRamp bool
 }
 
 // HTTPClient provides high-level file upload functionality.
@@ -59,7 +60,8 @@ func NewClient(httpClient *http.Client, cfg Config, opts ...Option) *HTTPClient 
 
 	if client.filtersClient == nil {
 		client.filtersClient = filters.NewDeeproxyClient(filters.Config{
-			BaseURL: cfg.BaseURL,
+			BaseURL:   cfg.BaseURL,
+			IsFedRamp: cfg.IsFedRamp,
 		}, filters.WithHTTPClient(httpClient))
 	}
 
