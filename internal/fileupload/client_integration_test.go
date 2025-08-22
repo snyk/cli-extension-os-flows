@@ -1,9 +1,8 @@
+//go:build integration
+
 package fileupload_test
 
 import (
-	"fmt"
-	"net/http"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -12,17 +11,18 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/uploadrevision"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 func TestUploadFileIntegration(t *testing.T) {
-	fileUploadClient := setupFileUploadClient(t)
+	setup := util.NewIntegrationTestSetup(t)
+	fileUploadClient := newFileUploadClient(setup)
 
 	files := []uploadrevision.LoadedFile{
 		{Path: "src/main.go", Content: "package main"},
 	}
 
-	dir, dirCleanup := createDirWithFiles(t, files)
-	defer dirCleanup()
+	dir := util.CreateTmpFiles(t, files)
 
 	fileuploadRevisionID, err := fileUploadClient.CreateRevisionFromFile(t.Context(), filepath.Join(dir.Name(), files[0].Path), fileupload.UploadOptions{})
 	if err != nil {
@@ -32,7 +32,8 @@ func TestUploadFileIntegration(t *testing.T) {
 }
 
 func TestUploadDirectoryIntegration(t *testing.T) {
-	fileUploadClient := setupFileUploadClient(t)
+	setup := util.NewIntegrationTestSetup(t)
+	fileUploadClient := newFileUploadClient(setup)
 
 	files := []uploadrevision.LoadedFile{
 		{Path: "src/main.go", Content: "package main"},
@@ -40,8 +41,7 @@ func TestUploadDirectoryIntegration(t *testing.T) {
 		{Path: "README.md", Content: "# Project"},
 	}
 
-	dir, dirCleanup := createDirWithFiles(t, files)
-	defer dirCleanup()
+	dir := util.CreateTmpFiles(t, files)
 
 	fileuploadRevisionID, err := fileUploadClient.CreateRevisionFromDir(t.Context(), dir.Name(), fileupload.UploadOptions{})
 	if err != nil {
@@ -51,15 +51,15 @@ func TestUploadDirectoryIntegration(t *testing.T) {
 }
 
 func TestUploadLargeFileIntegration(t *testing.T) {
-	fileUploadClient := setupFileUploadClient(t)
+	setup := util.NewIntegrationTestSetup(t)
+	fileUploadClient := newFileUploadClient(setup)
 
 	content := generateFileOfSizeMegabytes(t, 30)
 	files := []uploadrevision.LoadedFile{
 		{Path: "src/main.go", Content: content},
 	}
 
-	dir, dirCleanup := createDirWithFiles(t, files)
-	defer dirCleanup()
+	dir := util.CreateTmpFiles(t, files)
 
 	fileuploadRevisionID, err := fileUploadClient.CreateRevisionFromFile(t.Context(), filepath.Join(dir.Name(), files[0].Path), fileupload.UploadOptions{})
 	if err != nil {
@@ -68,25 +68,12 @@ func TestUploadLargeFileIntegration(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, fileuploadRevisionID)
 }
 
-func setupFileUploadClient(t *testing.T) fileupload.Client {
-	t.Helper()
-
-	if os.Getenv("INTEGRATION") == "" {
-		t.Skip("skipping integration test; set INTEGRATION=1 to run")
-	}
-
-	envvars := extractEnvVariables(t)
-	httpclient := &http.Client{
-		Transport: &CustomRoundTripper{
-			token: envvars.APIToken,
-		},
-	}
-
+func newFileUploadClient(setup *util.IntegrationTestSetup) fileupload.Client {
 	return fileupload.NewClient(
-		httpclient,
+		setup.Client,
 		fileupload.Config{
-			BaseURL: envvars.BaseURL,
-			OrgID:   envvars.OrgID,
+			BaseURL: setup.Config.BaseURL,
+			OrgID:   setup.Config.OrgID,
 		},
 	)
 }
@@ -95,43 +82,4 @@ func generateFileOfSizeMegabytes(t *testing.T, megabytes int) string {
 	t.Helper()
 	content := make([]byte, megabytes*1024*1024)
 	return string(content)
-}
-
-type testConfig struct {
-	BaseURL  string
-	OrgID    uuid.UUID
-	APIToken string
-}
-
-func readEnvVar(t *testing.T, name string) string {
-	t.Helper()
-	value, exists := os.LookupEnv(name)
-	if !exists {
-		t.Errorf("%v is not set", name)
-		t.Fail()
-	}
-	return value
-}
-
-func extractEnvVariables(t *testing.T) testConfig {
-	t.Helper()
-
-	baseURL := readEnvVar(t, "SNYK_API_BASE_URL")
-	snykAPIToken := readEnvVar(t, "SNYK_API_TOKEN")
-	orgID := readEnvVar(t, "SNYK_ORG_ID")
-
-	return testConfig{
-		BaseURL:  baseURL,
-		OrgID:    uuid.MustParse(orgID),
-		APIToken: snykAPIToken,
-	}
-}
-
-type CustomRoundTripper struct {
-	token string
-}
-
-func (crt *CustomRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
-	r.Header.Set("Authorization", fmt.Sprintf("token %s", crt.token))
-	return http.DefaultTransport.RoundTrip(r)
 }
