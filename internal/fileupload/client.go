@@ -38,6 +38,8 @@ type Client interface {
 	CreateRevisionFromFile(ctx context.Context, filePath string, opts UploadOptions) (RevisionID, error)
 }
 
+var _ Client = (*HTTPClient)(nil)
+
 // NewClient creates a new high-level file upload client.
 func NewClient(httpClient *http.Client, cfg Config, opts ...Option) *HTTPClient {
 	client := &HTTPClient{

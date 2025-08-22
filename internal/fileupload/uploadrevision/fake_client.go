@@ -31,6 +31,8 @@ type FakeClientConfig struct {
 	Limits
 }
 
+var _ SealableClient = (*FakeSealableClient)(nil)
+
 // NewFakeSealableClient creates a new instance of the fake client.
 func NewFakeSealableClient(cfg FakeClientConfig) *FakeSealableClient {
 	return &FakeSealableClient{
