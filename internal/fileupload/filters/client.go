@@ -32,6 +32,8 @@ type Config struct {
 	IsFedRamp bool
 }
 
+var _ Client = (*DeeproxyClient)(nil)
+
 // NewDeeproxyClient creates a new DeeproxyClient with the given configuration and options.
 func NewDeeproxyClient(cfg Config, opts ...Opt) *DeeproxyClient {
 	c := &DeeproxyClient{
