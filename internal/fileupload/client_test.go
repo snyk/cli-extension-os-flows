@@ -16,6 +16,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/filters"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/uploadrevision"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 func Test_CreateRevisionFromPaths(t *testing.T) {
@@ -39,8 +40,7 @@ func Test_CreateRevisionFromPaths(t *testing.T) {
 			{Path: "README.md", Content: "# Project"},
 		}
 
-		ctx, fakeSealableClient, client, dir, cleanup := setupTest(t, llcfg, allFiles, allowList, nil)
-		defer cleanup()
+		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, allFiles, allowList, nil)
 
 		paths := []string{
 			filepath.Join(dir.Name(), "src"),       // Directory
@@ -71,8 +71,7 @@ func Test_CreateRevisionFromPaths(t *testing.T) {
 			{Path: "README.md", Content: "# Project"},
 		}
 
-		ctx, _, client, dir, cleanup := setupTest(t, llcfg, allFiles, filters.AllowList{}, assert.AnError)
-		defer cleanup()
+		ctx, _, client, dir := setupTest(t, llcfg, allFiles, filters.AllowList{}, assert.AnError)
 
 		paths := []string{
 			filepath.Join(dir.Name(), "src"),       // Directory
@@ -84,8 +83,7 @@ func Test_CreateRevisionFromPaths(t *testing.T) {
 	})
 
 	t.Run("error handling with better context", func(t *testing.T) {
-		ctx, _, client, _, cleanup := setupTest(t, llcfg, []uploadrevision.LoadedFile{}, allowList, nil)
-		defer cleanup()
+		ctx, _, client, _ := setupTest(t, llcfg, []uploadrevision.LoadedFile{}, allowList, nil)
 
 		paths := []string{
 			"/nonexistent/file.go",
@@ -125,8 +123,7 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 				Content: "content2",
 			},
 		}
-		ctx, fakeSealableClient, client, dir, cleanup := setupTest(t, llcfg, expectedFiles, allowList, nil)
-		defer cleanup()
+		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, expectedFiles, allowList, nil)
 
 		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 
@@ -147,8 +144,7 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 				Content: "package utils\n\nfunc Helper() {}",
 			},
 		}
-		ctx, fakeSealableClient, client, dir, cleanup := setupTest(t, llcfg, expectedFiles, allowList, nil)
-		defer cleanup()
+		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, expectedFiles, allowList, nil)
 
 		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 
@@ -181,8 +177,7 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 				Content: "foo bar",
 			},
 		}
-		ctx, fakeSealableClient, client, dir, cleanup := setupTest(t, llcfg, expectedFiles, allowList, nil)
-		defer cleanup()
+		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, expectedFiles, allowList, nil)
 
 		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
@@ -209,13 +204,12 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 		allFiles := make([]uploadrevision.LoadedFile, 0, 2)
 		allFiles = append(allFiles, expectedFiles...)
 		allFiles = append(allFiles, additionalFiles...)
-		ctx, fakeSealableClient, client, dir, cleanup := setupTest(t, uploadrevision.FakeClientConfig{
+		ctx, fakeSealableClient, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
 			Limits: uploadrevision.Limits{
 				FileCountLimit: 2,
 				FileSizeLimit:  6,
 			},
 		}, allFiles, allowList, nil)
-		defer cleanup()
 
 		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
@@ -253,8 +247,7 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 		//nolint:gocritic // Not an issue for tests.
 		allFiles := append(expectedFiles, additionalFiles...)
 
-		ctx, fakeSealableClient, client, dir, cleanup := setupTest(t, llcfg, allFiles, allowList, nil)
-		defer cleanup()
+		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, allFiles, allowList, nil)
 
 		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
@@ -288,8 +281,7 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 			},
 		}
 
-		ctx, fakeSealableClient, client, dir, cleanup := setupTest(t, llcfg, allFiles, allowList, nil)
-		defer cleanup()
+		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, allFiles, allowList, nil)
 
 		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{SkipFiltering: true})
 		require.NoError(t, err)
@@ -320,8 +312,7 @@ func Test_CreateRevisionFromFile(t *testing.T) {
 				Content: "content1",
 			},
 		}
-		ctx, fakeSealableClient, client, dir, cleanup := setupTest(t, llcfg, expectedFiles, allowList, nil)
-		defer cleanup()
+		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, expectedFiles, allowList, nil)
 
 		revID, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "file1.txt"), fileupload.UploadOptions{})
 
@@ -338,13 +329,12 @@ func Test_CreateRevisionFromFile(t *testing.T) {
 				Content: "foo bar",
 			},
 		}
-		ctx, _, client, dir, cleanup := setupTest(t, uploadrevision.FakeClientConfig{
+		ctx, _, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
 			Limits: uploadrevision.Limits{
 				FileCountLimit: 1,
 				FileSizeLimit:  6,
 			},
 		}, expectedFiles, allowList, nil)
-		defer cleanup()
 
 		_, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "file1.txt"), fileupload.UploadOptions{})
 
@@ -359,8 +349,7 @@ func Test_CreateRevisionFromFile(t *testing.T) {
 			},
 		}
 
-		ctx, fakeSealableClient, client, dir, cleanup := setupTest(t, llcfg, allFiles, allowList, nil)
-		defer cleanup()
+		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, allFiles, allowList, nil)
 
 		revID, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "script.js"), fileupload.UploadOptions{})
 		require.NoError(t, err)
@@ -378,8 +367,7 @@ func Test_CreateRevisionFromFile(t *testing.T) {
 			},
 		}
 
-		ctx, fakeSealableClient, client, dir, cleanup := setupTest(t, llcfg, expectedFiles, allowList, nil)
-		defer cleanup()
+		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, expectedFiles, allowList, nil)
 
 		revID, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "script.js"), fileupload.UploadOptions{SkipFiltering: true})
 		require.NoError(t, err)
@@ -409,58 +397,13 @@ func expectEqualFiles(t *testing.T, expectedFiles, uploadedFiles []uploadrevisio
 	}
 }
 
-func createDirWithFiles(t *testing.T, files []uploadrevision.LoadedFile) (dir *os.File, cleanup func()) {
-	t.Helper()
-
-	tempDir, err := os.MkdirTemp("", "cliuploadtest*")
-	if err != nil {
-		panic(err)
-	}
-
-	dir, err = os.Open(tempDir)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, file := range files {
-		fullPath := filepath.Join(tempDir, file.Path)
-
-		parentDir := filepath.Dir(fullPath)
-		if err := os.MkdirAll(parentDir, 0o755); err != nil {
-			panic(err)
-		}
-
-		f, err := os.Create(fullPath)
-		if err != nil {
-			panic(err)
-		}
-
-		if _, err := f.WriteString(file.Content); err != nil {
-			f.Close()
-			panic(err)
-		}
-		f.Close()
-	}
-
-	cleanup = func() {
-		if dir != nil {
-			dir.Close()
-		}
-		if err := os.RemoveAll(tempDir); err != nil {
-			t.Logf("failed to cleanup temp directory: %s\n", err.Error())
-		}
-	}
-
-	return dir, cleanup
-}
-
 func setupTest(
 	t *testing.T,
 	llcfg uploadrevision.FakeClientConfig,
 	files []uploadrevision.LoadedFile,
 	allowList filters.AllowList,
 	filtersErr error,
-) (context.Context, *uploadrevision.FakeSealableClient, *fileupload.HTTPClient, *os.File, func()) {
+) (context.Context, *uploadrevision.FakeSealableClient, *fileupload.HTTPClient, *os.File) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -477,9 +420,7 @@ func setupTest(
 		fileupload.WithFiltersClient(fakeFiltersClient),
 	)
 
-	dir, dirCleanup := createDirWithFiles(t, files)
+	dir := util.CreateTmpFiles(t, files)
 
-	return ctx, fakeSealeableClient, client, dir, func() {
-		dirCleanup()
-	}
+	return ctx, fakeSealeableClient, client, dir
 }
