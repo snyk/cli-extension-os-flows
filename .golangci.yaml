@@ -161,6 +161,7 @@ issues:
         - goconst
         - ireturn
         - wrapcheck
+        - errcheck
     - path: internal/view/(.+)_test\.go
       linters:
         - testpackage

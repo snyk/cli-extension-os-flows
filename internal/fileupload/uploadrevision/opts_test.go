@@ -30,7 +30,6 @@ func Test_WithHTTPClient(t *testing.T) {
 		require.NoError(t, err)
 
 		w.WriteHeader(http.StatusCreated)
-		//nolint:errcheck // Not needed in test.
 		w.Write(resp)
 	}))
 	defer srv.Close()
