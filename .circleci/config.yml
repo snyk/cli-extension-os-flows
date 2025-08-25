@@ -31,7 +31,7 @@ jobs:
       - run:
           name: Run Integration Tests
           command: |
-            go test ./... -v -tags integration -run="Integration"
+            go test ./... -v -tags integration -run Integration
   lint:
     docker:
       - image: golangci/golangci-lint:v1.64.6-alpine
