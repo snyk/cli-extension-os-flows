@@ -354,7 +354,6 @@ func setupTestServer(t *testing.T) (*httptest.Server, *uploadrevision.HTTPSealab
 			assert.Equal(t, "application/vnd.api+json", r.Header.Get("Content-Type"))
 
 			w.WriteHeader(http.StatusCreated)
-			//nolint:errcheck // Not needed in test.
 			w.Write([]byte(`{
 				"data": {
 					"attributes": {
@@ -400,7 +399,6 @@ func setupTestServer(t *testing.T) (*httptest.Server, *uploadrevision.HTTPSealab
 			assert.Equal(t, "application/vnd.api+json", r.Header.Get("Content-Type"))
 
 			w.WriteHeader(http.StatusOK)
-			//nolint:errcheck // Not needed in test.
 			w.Write([]byte(`{
 				"data": {
 					"attributes": {
