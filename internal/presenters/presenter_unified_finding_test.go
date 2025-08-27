@@ -331,6 +331,36 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 		assert.Contains(t, out, "Total license issues: 1")
 		assert.NotContains(t, out, "Total security issues")
 	})
+
+	// summary shows Total issues: 0 when no findings of any kind are present
+	t.Run("summary shows Total issues: 0 when no issues", func(t *testing.T) {
+		config := configuration.New()
+		buffer := &bytes.Buffer{}
+
+		projectResult := &presenters.UnifiedProjectResult{
+			Findings: []testapi.FindingData{},
+			Summary: &json_schemas.TestSummary{
+				Type:             "open-source",
+				Path:             "test/path",
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+				Results:          []json_schemas.TestSummaryResult{},
+			},
+		}
+
+		presenter := presenters.NewUnifiedFindingsRenderer(
+			[]*presenters.UnifiedProjectResult{projectResult},
+			config,
+			buffer,
+		)
+
+		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		assert.NoError(t, err)
+
+		out := buffer.String()
+		assert.Contains(t, out, "Total issues: 0")
+		assert.NotContains(t, out, "Total security issues")
+		assert.NotContains(t, out, "Total license issues")
+	})
 }
 
 // TestUnifiedFindingPresenter_PendingIgnore_ShownAsOpenWithLabelAndBang verifies that pending ignores are shown as open with a label and ! marker.
