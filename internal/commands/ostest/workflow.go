@@ -183,37 +183,71 @@ func OSWorkflow(
 	ictx workflow.InvocationContext,
 	_ []workflow.Data,
 ) ([]workflow.Data, error) {
+	executionPath, err := routeWorkflow(ictx)
+	if err != nil {
+		return nil, err
+	}
+
+	return executeWorkflow(executionPath, ictx)
+}
+
+type WorkflowExecutionPath string
+
+const (
+	SBOM_REACHABILITY_TEST       WorkflowExecutionPath = "SBOM_REACHABILITY_TEST"
+	LEGACY_DEPGRAPH_REACHABILITY WorkflowExecutionPath = "LEGACY_DEPGRAPH_REACHABILITY"
+	UNIFIED_TEST_FLOW            WorkflowExecutionPath = "UNIFIED_TEST_FLOW"
+	LEGACY_TEST                  WorkflowExecutionPath = "LEGACY_TEST"
+)
+
+func routeWorkflow(ictx workflow.InvocationContext) (WorkflowExecutionPath, error) {
 	config := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
-	ctx := context.Background()
 
-	// Reachability
-	sourceDir := config.GetString(flags.FlagSourceDir)
+	riskScoreThreshold := config.GetInt(flags.FlagRiskScoreThreshold)
+	if riskScoreThreshold != -1 {
+		if !config.GetBool(FeatureFlagRiskScore) {
+			return "", errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScore)
+		}
+		if !config.GetBool(FeatureFlagRiskScoreInCLI) {
+			return "", errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
+		}
+		return "", nil
+	}
+
 	reachability := config.GetBool(flags.FlagReachability)
-
-	// SBOM Test w/ Reachability
 	sbom := config.GetString(flags.FlagSBOM)
 	sbomReachabilityTest := reachability && sbom != ""
 
-	// Risk Score
-	ffRiskScore := config.GetBool(FeatureFlagRiskScore)
-	ffRiskScoreInCLI := config.GetBool(FeatureFlagRiskScoreInCLI)
-	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
-	riskScoreThreshold := config.GetInt(flags.FlagRiskScoreThreshold)
-	riskScoreTest := riskScoreFFsEnabled || riskScoreThreshold != -1
-
 	forceLegacyTest := config.GetBool(ForceLegacyCLIEnvVar)
-	// Legacy test fallthrough
-	if forceLegacyTest || (!sbomReachabilityTest && !riskScoreTest && !reachability) {
+
+	if sbomReachabilityTest {
+		return SBOM_REACHABILITY_TEST, nil
+	}
+
+	if reachability {
+		return LEGACY_DEPGRAPH_REACHABILITY, nil
+	}
+
+	if forceLegacyTest {
 		logger.Debug().Msgf(
-			"Using legacy flow. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %t.",
+			"Using legacy flow. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %d.",
 			forceLegacyTest,
 			sbomReachabilityTest,
-			riskScoreTest,
+			riskScoreThreshold,
 		)
-		return code_workflow.EntryPointLegacy(ictx)
+		return LEGACY_TEST, nil
 	}
+
+	return UNIFIED_TEST_FLOW, nil
+}
+
+func executeWorkflow(executionPath WorkflowExecutionPath, ictx workflow.InvocationContext) ([]workflow.Data, error) {
+	config := ictx.GetConfiguration()
+	ctx := context.Background()
+	logger := ictx.GetEnhancedLogger()
+	errFactory := errors.NewErrorFactory(logger)
 
 	logger.Info().Msg("Getting preferred organization ID")
 	orgID := config.GetString(configuration.ORGANIZATION)
@@ -222,14 +256,8 @@ func OSWorkflow(
 		return nil, errFactory.NewEmptyOrgError()
 	}
 
-	if riskScoreThreshold != -1 && !riskScoreFFsEnabled {
-		// The user tried to use a risk score threshold without the required feature flags.
-		// Return a specific error for the first missing flag found.
-		if !ffRiskScore {
-			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScore)
-		}
-		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
-	}
+	// Reachability
+	sourceDir := config.GetString(flags.FlagSourceDir)
 
 	localPolicy := CreateLocalPolicy(config, logger)
 
@@ -247,13 +275,17 @@ func OSWorkflow(
 		return nil, fmt.Errorf("failed to create test client: %w", err)
 	}
 
-	// Route to the appropriate flow based on flags
-	switch {
-	case sbomReachabilityTest:
+	switch executionPath {
+	case SBOM_REACHABILITY_TEST:
+		sbom := config.GetString(flags.FlagSBOM)
 		return setupSBOMReachabilityFlow(ctx, ictx, testClient, orgID, errFactory, logger, sbom, sourceDir, localPolicy)
-	case reachability:
+	case LEGACY_DEPGRAPH_REACHABILITY:
 		return setupDepgraphReachabilityFlow(ctx, ictx, testClient, orgID, sourceDir, errFactory, logger, localPolicy)
-	default:
+	case UNIFIED_TEST_FLOW:
 		return RunUnifiedTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, localPolicy)
+	case LEGACY_TEST:
+		return code_workflow.EntryPointLegacy(ictx)
+	default:
+		return nil, fmt.Errorf("unknown execution path: %s", executionPath)
 	}
 }
