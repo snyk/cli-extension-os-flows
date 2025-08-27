@@ -271,12 +271,8 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				config.Set(ostest.FeatureFlagReachabilityForCLI, true)
 				config.Set(flags.FlagReachability, true)
-				mockEngine.EXPECT().
-					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
-					Return(nil, assert.AnError).
-					Times(1) // Expect once if this path is taken
 			},
-			expectedError: "failed to get dependency graph",
+			expectedError: "failed to upload source code",
 		},
 		{
 			name: "Reachability set, CLI Reachability FF disabled",

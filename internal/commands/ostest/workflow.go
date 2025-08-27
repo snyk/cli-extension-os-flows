@@ -141,7 +141,7 @@ func setupDepgraphReachabilityFlow(ctx context.Context, ictx workflow.Invocation
 
 	_, err = reachability.GetReachabilityID(ctx, orgUUID, sourceDir, rc, bsClient)
 	if err != nil {
-		return nil, fmt.Errorf("failed to analyise source code: %w", err)
+		return nil, fmt.Errorf("failed to analyse source code: %w", err)
 	}
 
 	return RunUnifiedTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, localPolicy)

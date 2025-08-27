@@ -91,7 +91,7 @@ func OSWorkflow(
 
 		scanID, err := reachability.GetReachabilityID(ctx, orgID, sourceDir, rc, bc)
 		if err != nil {
-			return nil, fmt.Errorf("failed to analyise source code: %w", err)
+			return nil, fmt.Errorf("failed to analyse source code: %w", err)
 		}
 
 		cfg.Set(flags.FlagReachabilityID, scanID)
