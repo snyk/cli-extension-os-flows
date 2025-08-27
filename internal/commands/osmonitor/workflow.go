@@ -43,38 +43,6 @@ func RegisterWorkflows(e workflow.Engine) error {
 	return nil
 }
 
-// GetReachabilityID will upload the source code directory, kick off a reachability scan, wait for the scan to complete and return the scan ID.
-func GetReachabilityID(ctx context.Context, ictx workflow.InvocationContext, bsClient bundlestore.Client, rc reachability.Client) (reachability.ID, error) {
-	cfg := ictx.GetConfiguration()
-
-	sourceDir := cfg.GetString(flags.FlagSourceDir)
-	if sourceDir == "" {
-		sourceDir = "."
-	}
-
-	orgID, err := uuid.Parse(cfg.GetString(configuration.ORGANIZATION))
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("orgID is invalid: %w", err)
-	}
-
-	hash, err := bsClient.UploadSourceCode(ctx, sourceDir)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to upload source code: %w", err)
-	}
-
-	scanID, err := rc.StartReachabilityAnalysis(ctx, orgID, hash)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to start reachability analysis: %w", err)
-	}
-
-	err = rc.WaitForReachabilityAnalysis(ctx, orgID, scanID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed waiting for reachability analysis results: %w", err)
-	}
-
-	return scanID, nil
-}
-
 // OSWorkflow is the entry point for the Open Source Monitor workflow.
 func OSWorkflow(
 	ictx workflow.InvocationContext,
@@ -94,6 +62,12 @@ func OSWorkflow(
 			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagReachabilityForCLI)
 		}
 
+		sourceDir := cfg.GetString(flags.FlagSourceDir)
+		orgID, err := uuid.Parse(cfg.GetString(configuration.ORGANIZATION))
+		if err != nil {
+			return nil, fmt.Errorf("orgID is invalid: %w", err)
+		}
+
 		httpCodeClient := codeclienthttp.NewHTTPClient(
 			ictx.GetNetworkAccess().GetHttpClient,
 			codeclienthttp.WithLogger(logger),
@@ -109,13 +83,13 @@ func OSWorkflow(
 			codeclient.WithLogger(logger),
 		)
 
-		bsClient := bundlestore.NewClient(ictx.GetNetworkAccess().GetHttpClient(), codeScannerConfig, cScanner, logger)
+		bc := bundlestore.NewClient(ictx.GetNetworkAccess().GetHttpClient(), codeScannerConfig, cScanner, logger)
 
-		sec := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
+		rc := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
 			BaseURL: cfg.GetString(configuration.API_URL),
 		})
 
-		scanID, err := GetReachabilityID(ctx, ictx, bsClient, sec)
+		scanID, err := reachability.GetReachabilityID(ctx, orgID, sourceDir, rc, bc)
 		if err != nil {
 			return nil, fmt.Errorf("failed to analyise source code: %w", err)
 		}

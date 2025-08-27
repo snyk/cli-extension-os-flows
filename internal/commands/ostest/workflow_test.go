@@ -266,6 +266,25 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			},
 			expectedError: "", // No error, should succeed via legacy path
 		},
+		{
+			name: "CLI Reachability FF enabled, expects unified flow (depgraph error)",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(ostest.FeatureFlagReachabilityForCLI, true)
+				config.Set(flags.FlagReachability, true)
+				mockEngine.EXPECT().
+					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
+					Return(nil, assert.AnError).
+					Times(1) // Expect once if this path is taken
+			},
+			expectedError: "failed to get dependency graph",
+		},
+		{
+			name: "Reachability set, CLI Reachability FF disabled",
+			setup: func(config configuration.Configuration, _ *mocks.MockEngine) {
+				config.Set(flags.FlagReachability, true)
+			},
+			expectedError: "The feature you are trying to use is not available for your organization",
+		},
 	}
 
 	for _, test := range tests {

@@ -11,12 +11,9 @@ import (
 	"github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/networking"
 	"github.com/snyk/go-application-framework/pkg/workflow"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/osmonitor"
-	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 )
 
 func TestRegisterWorkflows(t *testing.T) {
@@ -37,73 +34,6 @@ func TestRegisterWorkflows(t *testing.T) {
 
 	err := osmonitor.RegisterWorkflows(mockEngine)
 	require.NoError(t, err)
-}
-
-func Test_GetReachabilityID(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mockEngine := mocks.NewMockEngine(ctrl)
-	expectedReachabilityID := uuid.New()
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
-	fbsc := bundlestore.NewFakeClient()
-	frc := reachability.NewFakeClient(expectedReachabilityID)
-
-	reachID, err := osmonitor.GetReachabilityID(t.Context(), mockInvocationCtx, fbsc, frc)
-	require.NoError(t, err)
-
-	assert.Equal(t, expectedReachabilityID, reachID)
-	assert.Equal(t, 1, fbsc.GetUploadCount())
-}
-
-func Test_GetReachabilityID_FailedUploadingSourceCode(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mockEngine := mocks.NewMockEngine(ctrl)
-	expectedReachabilityID := uuid.New()
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
-	fbsc := bundlestore.NewFakeClient()
-	fbsc.WithError(assert.AnError)
-	frc := reachability.NewFakeClient(expectedReachabilityID)
-
-	_, err := osmonitor.GetReachabilityID(t.Context(), mockInvocationCtx, fbsc, frc)
-
-	assert.ErrorContains(t, err, "failed to upload source code")
-	assert.ErrorIs(t, err, assert.AnError)
-	assert.Equal(t, 0, fbsc.GetUploadCount())
-}
-
-func Test_GetReachabilityID_FailedToStartReachabilityAnalysis(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mockEngine := mocks.NewMockEngine(ctrl)
-	expectedReachabilityID := uuid.New()
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
-	fbsc := bundlestore.NewFakeClient()
-	frc := reachability.NewFakeClient(expectedReachabilityID)
-	frc.WithStartErr(assert.AnError)
-
-	_, err := osmonitor.GetReachabilityID(t.Context(), mockInvocationCtx, fbsc, frc)
-
-	assert.ErrorContains(t, err, "failed to start reachability analysis")
-	assert.ErrorIs(t, err, assert.AnError)
-	assert.Equal(t, 1, fbsc.GetUploadCount())
-}
-
-func Test_GetReachabilityID_FailedToAwaitReachabilityAnalysis(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mockEngine := mocks.NewMockEngine(ctrl)
-	expectedReachabilityID := uuid.New()
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
-	fbsc := bundlestore.NewFakeClient()
-	frc := reachability.NewFakeClient(expectedReachabilityID)
-	frc.WithWaitErr(assert.AnError)
-
-	_, err := osmonitor.GetReachabilityID(t.Context(), mockInvocationCtx, fbsc, frc)
-
-	assert.ErrorContains(t, err, "failed waiting for reachability analysis results")
-	assert.ErrorIs(t, err, assert.AnError)
-	assert.Equal(t, 1, fbsc.GetUploadCount())
 }
 
 //nolint:unparam // The mock server url will be passed eventually.
