@@ -131,6 +131,7 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 	flagSet := pflag.NewFlagSet("snyk-cli-extension-os-flows", pflag.ExitOnError)
 
 	flagSet.Bool(FlagReachability, false, "Run reachability analysis on source code.")
+	flagSet.String(FlagSourceDir, "", "Path of the directory containing the source code.")
 
 	// Open Source
 	flagSet.String(FlagFile, "", "Specify a package file.")
