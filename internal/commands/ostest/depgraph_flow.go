@@ -18,7 +18,20 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
+	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 )
+
+const scanIDField = "reachabilityScanId"
+
+func enrichWithScanID(depgraphs []*testapi.IoSnykApiV1testdepgraphRequestDepGraph, reachabilityScanID *reachability.ID) {
+	if reachabilityScanID == nil {
+		return
+	}
+
+	for _, dg := range depgraphs {
+		dg.Set(scanIDField, reachabilityScanID.String())
+	}
+}
 
 // RunUnifiedTestFlow handles the unified test API flow.
 func RunUnifiedTestFlow(
@@ -29,6 +42,7 @@ func RunUnifiedTestFlow(
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
+	reachabilityScanID *reachability.ID,
 ) ([]workflow.Data, error) {
 	logger.Info().Msg("Starting open source test")
 
@@ -37,6 +51,8 @@ func RunUnifiedTestFlow(
 	if err != nil {
 		return nil, err
 	}
+
+	enrichWithScanID(depGraphs, reachabilityScanID)
 
 	allLegacyFindings, allOutputData, err := testAllDepGraphs(
 		ctx,

@@ -14,6 +14,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	codeclient "github.com/snyk/code-client-go"
 	codeclienthttp "github.com/snyk/code-client-go/http"
@@ -26,11 +27,15 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
+	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
 )
 
 // WorkflowID is the identifier for the Open Source Test workflow.
 var WorkflowID = workflow.NewWorkflowIdentifier("test")
+
+// FeatureFlagReachabilityForCLI is used to gate the legacy monitor reachability feature.
+const FeatureFlagReachabilityForCLI = "feature_flag_monitor_reachability"
 
 // FeatureFlagSBOMTestReachability is used to gate the sbom test reachability feature.
 const FeatureFlagSBOMTestReachability = "feature_flag_sbom_test_reachability"
@@ -63,6 +68,7 @@ func RegisterWorkflows(e workflow.Engine) error {
 	}
 
 	// Reachability FF.
+	config_utils.AddFeatureFlagToConfig(e, FeatureFlagReachabilityForCLI, "reachabilityForCli")
 	config_utils.AddFeatureFlagToConfig(e, FeatureFlagSBOMTestReachability, "sbomTestReachability")
 
 	// Risk score FFs.
@@ -72,22 +78,25 @@ func RegisterWorkflows(e workflow.Engine) error {
 	return nil
 }
 
-// setupSBOMReachabilityFlow sets up and runs the SBOM reachability flow.
-func setupSBOMReachabilityFlow(
-	ctx context.Context,
-	ictx workflow.InvocationContext,
-	testClient testapi.TestClient,
-	orgID string,
-	errFactory *errors.ErrorFactory,
-	logger *zerolog.Logger,
-	sbom, sourceDir string,
-	localPolicy *testapi.LocalPolicy,
-) ([]workflow.Data, error) {
+func setupTestClient(ictx workflow.InvocationContext) (testapi.TestClient, error) {
 	config := ictx.GetConfiguration()
+	httpClient := ictx.GetNetworkAccess().GetHttpClient()
+	snykClient := snykclient.NewSnykClient(httpClient, config.GetString(configuration.API_URL), config.GetString(configuration.ORGANIZATION))
 
-	if !config.GetBool(FeatureFlagSBOMTestReachability) {
-		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagSBOMTestReachability)
+	testClient, err := testapi.NewTestClient(
+		snykClient.GetAPIBaseURL(),
+		testapi.WithPollInterval(PollInterval),
+		testapi.WithCustomHTTPClient(snykClient.GetClient()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create test client: %w", err)
 	}
+
+	return testClient, nil
+}
+
+func setupBundlestoreClient(ictx workflow.InvocationContext, logger *zerolog.Logger) bundlestore.Client {
+	config := ictx.GetConfiguration()
 
 	httpCodeClient := codeclienthttp.NewHTTPClient(
 		ictx.GetNetworkAccess().GetHttpClient,
@@ -105,7 +114,61 @@ func setupSBOMReachabilityFlow(
 	)
 
 	bsClient := bundlestore.NewClient(ictx.GetNetworkAccess().GetHttpClient(), codeScannerConfig, cScanner, logger)
+
+	return bsClient
+}
+
+// handleSBOMReachabilityFlow sets up and runs the SBOM reachability flow.
+func handleSBOMReachabilityFlow(
+	ctx context.Context,
+	ictx workflow.InvocationContext,
+	testClient testapi.TestClient,
+	orgID, sbom, sourceDir string,
+	errFactory *errors.ErrorFactory,
+	logger *zerolog.Logger,
+	localPolicy *testapi.LocalPolicy,
+) ([]workflow.Data, error) {
+	config := ictx.GetConfiguration()
+
+	if !config.GetBool(FeatureFlagSBOMTestReachability) {
+		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagSBOMTestReachability)
+	}
+
+	bsClient := setupBundlestoreClient(ictx, logger)
 	return RunSbomReachabilityFlow(ctx, ictx, testClient, errFactory, logger, sbom, sourceDir, bsClient, orgID, localPolicy)
+}
+
+func handleDepgraphReachabilityFlow(
+	ctx context.Context,
+	ictx workflow.InvocationContext,
+	testClient testapi.TestClient,
+	orgID, sourceDir string,
+	errFactory *errors.ErrorFactory,
+	logger *zerolog.Logger,
+	localPolicy *testapi.LocalPolicy,
+) ([]workflow.Data, error) {
+	config := ictx.GetConfiguration()
+
+	if !config.GetBool(FeatureFlagReachabilityForCLI) {
+		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagReachabilityForCLI)
+	}
+
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		return nil, fmt.Errorf("orgID is invalid: %w", err)
+	}
+
+	bsClient := setupBundlestoreClient(ictx, logger)
+	rc := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
+		BaseURL: config.GetString(configuration.API_URL),
+	})
+
+	scanID, err := reachability.GetReachabilityID(ctx, orgUUID, sourceDir, rc, bsClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to analyze source code: %w", err)
+	}
+
+	return RunUnifiedTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, localPolicy, &scanID)
 }
 
 // CreateLocalPolicy will create a local policy only if risk score or severity threshold are specified in the config.
@@ -140,7 +203,7 @@ func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logge
 }
 
 // OSWorkflow is the entry point for the Open Source Test workflow.
-func OSWorkflow(
+func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 	ictx workflow.InvocationContext,
 	_ []workflow.Data,
 ) ([]workflow.Data, error) {
@@ -149,10 +212,16 @@ func OSWorkflow(
 	errFactory := errors.NewErrorFactory(logger)
 	ctx := context.Background()
 
+	// Reachability
+	reachability := config.GetBool(flags.FlagReachability)
+	sourceDir := config.GetString(flags.FlagSourceDir)
+	if sourceDir == "" {
+		sourceDir = "."
+	}
+
 	// SBOM Test w/ Reachability
 	sbom := config.GetString(flags.FlagSBOM)
-	sourceDir := config.GetString(flags.FlagSourceDir)
-	sbomReachabilityTest := config.GetBool(flags.FlagReachability) && sbom != ""
+	sbomReachabilityTest := reachability && sbom != ""
 
 	// Risk Score
 	ffRiskScore := config.GetBool(FeatureFlagRiskScore)
@@ -163,7 +232,7 @@ func OSWorkflow(
 
 	forceLegacyTest := config.GetBool(ForceLegacyCLIEnvVar)
 	// Legacy test fallthrough
-	if forceLegacyTest || (!sbomReachabilityTest && !riskScoreTest) {
+	if forceLegacyTest || (!sbomReachabilityTest && !riskScoreTest && !reachability) {
 		logger.Debug().Msgf(
 			"Using legacy flow. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %t.",
 			forceLegacyTest,
@@ -191,25 +260,18 @@ func OSWorkflow(
 
 	localPolicy := CreateLocalPolicy(config, logger)
 
-	// Create Snyk client
-	httpClient := ictx.GetNetworkAccess().GetHttpClient()
-	snykClient := snykclient.NewSnykClient(httpClient, ictx.GetConfiguration().GetString(configuration.API_URL), orgID)
-
-	// Create test client
-	testClient, err := testapi.NewTestClient(
-		snykClient.GetAPIBaseURL(),
-		testapi.WithPollInterval(PollInterval),
-		testapi.WithCustomHTTPClient(snykClient.GetClient()),
-	)
+	testClient, err := setupTestClient(ictx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create test client: %w", err)
+		return nil, err
 	}
 
 	// Route to the appropriate flow based on flags
 	switch {
 	case sbomReachabilityTest:
-		return setupSBOMReachabilityFlow(ctx, ictx, testClient, orgID, errFactory, logger, sbom, sourceDir, localPolicy)
+		return handleSBOMReachabilityFlow(ctx, ictx, testClient, orgID, sbom, sourceDir, errFactory, logger, localPolicy)
+	case reachability:
+		return handleDepgraphReachabilityFlow(ctx, ictx, testClient, orgID, sourceDir, errFactory, logger, localPolicy)
 	default:
-		return RunUnifiedTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, localPolicy)
+		return RunUnifiedTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, localPolicy, nil)
 	}
 }

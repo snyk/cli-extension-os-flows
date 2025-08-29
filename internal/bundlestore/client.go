@@ -213,7 +213,7 @@ func (c *HTTPClient) UploadSourceCode(ctx context.Context, sourceCodePath string
 	bundle, err := c.codeScanner.Upload(ctx, requestID, target, filesChan, make(map[string]bool))
 	if err != nil {
 		c.logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("failed to upload source code")
-		return "", fmt.Errorf("failed to upload source code")
+		return "", fmt.Errorf("failed to upload source code: %w", err)
 	}
 
 	return bundle.GetBundleHash(), nil

@@ -27,10 +27,6 @@ func RunSbomReachabilityFlow(
 	orgID string,
 	localPolicy *testapi.LocalPolicy,
 ) ([]workflow.Data, error) {
-	if sourceCodePath == "" {
-		sourceCodePath = "."
-	}
-
 	if err := validateDirectory(sourceCodePath, logger, errFactory); err != nil {
 		return nil, err
 	}
