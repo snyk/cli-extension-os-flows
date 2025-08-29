@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/puzpuzpuz/xsync"
+	"github.com/rs/zerolog"
 
 	listsources "github.com/snyk/cli-extension-os-flows/internal/files"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/filters"
@@ -29,6 +30,7 @@ type HTTPClient struct {
 	filtersClient                filters.Client
 	cfg                          Config
 	filters                      Filters
+	logger                       *zerolog.Logger
 }
 
 // Client defines the interface for the high level file upload client.
@@ -42,12 +44,14 @@ var _ Client = (*HTTPClient)(nil)
 
 // NewClient creates a new high-level file upload client.
 func NewClient(httpClient *http.Client, cfg Config, opts ...Option) *HTTPClient {
+	nopLogger := zerolog.Nop()
 	client := &HTTPClient{
 		cfg: cfg,
 		filters: Filters{
 			supportedExtensions:  xsync.NewMapOf[bool](),
 			supportedConfigFiles: xsync.NewMapOf[bool](),
 		},
+		logger: &nopLogger,
 	}
 
 	for _, opt := range opts {
@@ -108,7 +112,8 @@ func (c *HTTPClient) createFileFilter(ctx context.Context) (func(string) bool, e
 	}, nil
 }
 
-func (c *HTTPClient) uploadPaths(ctx context.Context, revID RevisionID, rootPath string, paths []string) error {
+func (c *HTTPClient) uploadPaths(ctx context.Context, revID RevisionID, rootPath string, paths []string, opts UploadOptions) error {
+	fileSizeLimit := c.uploadRevisionSealableClient.GetLimits().FileSizeLimit
 	files := make([]uploadrevision.UploadFile, 0, c.uploadRevisionSealableClient.GetLimits().FileCountLimit)
 	defer func() {
 		for _, file := range files {
@@ -132,11 +137,15 @@ func (c *HTTPClient) uploadPaths(ctx context.Context, revID RevisionID, rootPath
 			return fmt.Errorf("failed to stat file %s: %w", pth, err)
 		}
 
-		// TODO: This behavior should be configurable through options.
-		if fstat.Size() > c.uploadRevisionSealableClient.GetLimits().FileSizeLimit {
+		fileSize := fstat.Size()
+		if opts.SkipOversizedFiles && fileSize > fileSizeLimit {
 			f.Close()
-			//nolint:forbidigo // Temporarily use fmt to print warning.
-			fmt.Printf("skipping file exceeding size limit %s\n", pth)
+			c.logger.
+				Info().
+				Str("filePath", pth).
+				Int64("fileSize", fileSize).
+				Int64("fileSizeLimit", fileSizeLimit).
+				Msg("File was skipped because it exceeds size limit")
 			continue
 		}
 
@@ -169,7 +178,7 @@ func (c *HTTPClient) addPathsToRevision(ctx context.Context, revisionID Revision
 	}
 
 	for chunk := range chunks {
-		err := c.uploadPaths(ctx, revisionID, rootPath, chunk)
+		err := c.uploadPaths(ctx, revisionID, rootPath, chunk, opts)
 		if err != nil {
 			return err
 		}

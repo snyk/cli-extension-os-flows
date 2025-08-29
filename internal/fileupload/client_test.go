@@ -204,6 +204,40 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 		allFiles := make([]uploadrevision.LoadedFile, 0, 2)
 		allFiles = append(allFiles, expectedFiles...)
 		allFiles = append(allFiles, additionalFiles...)
+		ctx, _, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
+			Limits: uploadrevision.Limits{
+				FileCountLimit: 2,
+				FileSizeLimit:  6,
+			},
+		}, allFiles, allowList, nil)
+
+		_, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+
+		assert.Error(t, err)
+		var fileSizeErr *uploadrevision.FileSizeLimitError
+		assert.ErrorAs(t, err, &fileSizeErr)
+		assert.Equal(t, "file1.txt", fileSizeErr.FilePath)
+		assert.Equal(t, int64(7), fileSizeErr.FileSize)
+		assert.Equal(t, int64(6), fileSizeErr.Limit)
+	})
+
+	t.Run("uploading a directory and skipping oversized files", func(t *testing.T) {
+		expectedFiles := []uploadrevision.LoadedFile{
+			{
+				Path:    "file2.txt",
+				Content: "foo",
+			},
+		}
+		additionalFiles := []uploadrevision.LoadedFile{
+			{
+				Path:    "file1.txt",
+				Content: "foo bar",
+			},
+		}
+
+		allFiles := make([]uploadrevision.LoadedFile, 0, 2)
+		allFiles = append(allFiles, expectedFiles...)
+		allFiles = append(allFiles, additionalFiles...)
 		ctx, fakeSealableClient, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
 			Limits: uploadrevision.Limits{
 				FileCountLimit: 2,
@@ -211,7 +245,7 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 			},
 		}, allFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{SkipOversizedFiles: true})
 		require.NoError(t, err)
 
 		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
@@ -338,7 +372,31 @@ func Test_CreateRevisionFromFile(t *testing.T) {
 
 		_, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "file1.txt"), fileupload.UploadOptions{})
 
-		require.ErrorIs(t, err, uploadrevision.ErrNoFilesProvided)
+		assert.Error(t, err)
+		var fileSizeErr *uploadrevision.FileSizeLimitError
+		assert.ErrorAs(t, err, &fileSizeErr)
+		assert.Equal(t, "file1.txt", fileSizeErr.FilePath)
+		assert.Equal(t, int64(7), fileSizeErr.FileSize)
+		assert.Equal(t, int64(6), fileSizeErr.Limit)
+	})
+
+	t.Run("uploading a file and skipping it if oversized", func(t *testing.T) {
+		expectedFiles := []uploadrevision.LoadedFile{
+			{
+				Path:    "file1.txt",
+				Content: "foo bar",
+			},
+		}
+		ctx, _, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
+			Limits: uploadrevision.Limits{
+				FileCountLimit: 1,
+				FileSizeLimit:  6,
+			},
+		}, expectedFiles, allowList, nil)
+
+		_, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "file1.txt"), fileupload.UploadOptions{SkipOversizedFiles: true})
+
+		assert.ErrorIs(t, err, uploadrevision.ErrNoFilesProvided)
 	})
 
 	t.Run("uploading a file applies filtering", func(t *testing.T) {

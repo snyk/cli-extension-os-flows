@@ -24,5 +24,6 @@ type Filters struct {
 
 // UploadOptions configures the behavior of file upload operations.
 type UploadOptions struct {
-	SkipFiltering bool
+	SkipFiltering      bool
+	SkipOversizedFiles bool
 }
