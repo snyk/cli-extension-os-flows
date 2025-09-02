@@ -152,6 +152,15 @@ func executeTest(
 		if !complete && len(findingsData) > 0 {
 			logger.Warn().Int(LogFieldCount, len(findingsData)).Msg("Partial findings retrieved as an error occurred")
 		}
+		return finalResult, findingsData, errFactory.NewTestExecutionError(
+			fmt.Sprintf("test completed but findings could not be retrieved: %v", err),
+		)
+	}
+	if !complete {
+		if len(findingsData) > 0 {
+			logger.Warn().Int(LogFieldCount, len(findingsData)).Msg("Partial findings retrieved; findings retrieval incomplete")
+		}
+		return finalResult, findingsData, errFactory.NewTestExecutionError("test completed but findings could not be retrieved")
 	}
 	return finalResult, findingsData, nil
 }
