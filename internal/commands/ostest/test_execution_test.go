@@ -1,17 +1,22 @@
 package ostest_test
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
+	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
+	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
+	xerrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 )
 
 func Test_NewSummaryDataFromFindings(t *testing.T) {
@@ -138,4 +143,61 @@ func Test_NewSummaryDataFromFindings(t *testing.T) {
 		assert.Equal(t, content_type.TEST_SUMMARY, summaryWorkflowData.GetContentType())
 		assert.Equal(t, summaryData, summaryWorkflowData.GetPayload())
 	})
+}
+
+// Test_RunTest_ErrorsWhenFindingsError verifies an error is returned when the Test passes but the Findings returns an error.
+func Test_RunTest_ErrorsWhenFindingsError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockHandle := gafclientmocks.NewMockTestHandle(ctrl)
+	mockResult := gafclientmocks.NewMockTestResult(ctrl)
+
+	// StartTest returns handle
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Return(mockHandle, nil)
+	// Wait succeeds
+	mockHandle.EXPECT().Wait(gomock.Any()).Return(nil)
+	// Result reports Finished
+	mockResult.EXPECT().GetExecutionState().Return(testapi.Finished).AnyTimes()
+	// Findings returns error (complete value doesn't matter for this case)
+	mockResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{{}}, true, assert.AnError)
+	mockHandle.EXPECT().Result().Return(mockResult)
+
+	var ictx workflow.InvocationContext = nil
+	logger := zerolog.Nop()
+	ef := xerrors.NewErrorFactory(&logger)
+
+	var subject testapi.TestSubjectCreate
+	_ = subject.FromDepGraphSubjectCreate(testapi.DepGraphSubjectCreate{Type: testapi.DepGraphSubjectCreateTypeDepGraph})
+
+	_, _, err := ostest.RunTest(context.Background(), ictx, mockTestClient, subject, "", "", 0, "", "org", ef, &logger, nil)
+	require.Error(t, err)
+}
+
+// Test_RunTest_ErrorsWhenFindingsIncomplete verifies an error is returned when the Test passes but the Findings returns incomplete.
+func Test_RunTest_ErrorsWhenFindingsIncomplete(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockHandle := gafclientmocks.NewMockTestHandle(ctrl)
+	mockResult := gafclientmocks.NewMockTestResult(ctrl)
+
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Return(mockHandle, nil)
+	mockHandle.EXPECT().Wait(gomock.Any()).Return(nil)
+	mockResult.EXPECT().GetExecutionState().Return(testapi.Finished).AnyTimes()
+	// Findings incomplete without error
+	mockResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{{}}, false, nil)
+	mockHandle.EXPECT().Result().Return(mockResult)
+
+	var ictx workflow.InvocationContext = nil
+	logger := zerolog.Nop()
+	ef := xerrors.NewErrorFactory(&logger)
+
+	var subject testapi.TestSubjectCreate
+	_ = subject.FromDepGraphSubjectCreate(testapi.DepGraphSubjectCreate{Type: testapi.DepGraphSubjectCreateTypeDepGraph})
+
+	_, _, err := ostest.RunTest(context.Background(), ictx, mockTestClient, subject, "", "", 0, "", "org", ef, &logger, nil)
+	require.Error(t, err)
 }
