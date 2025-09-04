@@ -8,6 +8,7 @@ Security issues: 1
    Finding ID: SNYK-JS-VM2-5537100
    Info: https://snyk.io/vuln/SNYK-JS-VM2-5537100
    Risk Score: 780
+   Reachability: Not Applicable
 
 
 License issues: 1
@@ -15,6 +16,7 @@ License issues: 1
  ✗ [MEDIUM] LGPL-3.0 license
    Finding ID: snyk:lic:npm:web3-core:LGPL-3.0
    Info: https://snyk.io/vuln/snyk:lic:npm:web3-core:LGPL-3.0
+   Reachability: Not Applicable
 
 
 ╭─────────────────────────────────────────────────────────╮

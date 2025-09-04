@@ -45,7 +45,7 @@
    "packageManager": "npm",
    "packageName": "foo",
    "publicationTime": "2025-07-28T17:11:43.000000Z",
-   "reachability": "REACHABLE",
+   "reachability": "function",
    "riskScore": 80,
    "severity": "high",
    "socialTrendAlert": false,
