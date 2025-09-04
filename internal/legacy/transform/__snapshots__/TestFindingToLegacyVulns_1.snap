@@ -76,6 +76,7 @@
         Proprietary:           (*bool)(nil),
         PublicationTime:       &"2025-06-03T10:14:39.000000Z",
         Reachability:          (*definitions.Reachability)(nil),
+        ReachablePaths:        (*definitions.ReachablePaths)(nil),
         References:            &[]definitions.Reference{
             {Title:"GitHub Commit", Url:"https://github.com/mafintosh/tar-fs/commit/647447b572bc135c41035e82ca7b894f02b17f0f"},
             {Title:"Red Hat Bugzilla Bug", Url:"https://bugzilla.redhat.com/show_bug.cgi?id=2369875"},
@@ -171,6 +172,7 @@
         Proprietary:           (*bool)(nil),
         PublicationTime:       &"2025-06-03T10:14:39.000000Z",
         Reachability:          (*definitions.Reachability)(nil),
+        ReachablePaths:        (*definitions.ReachablePaths)(nil),
         References:            &[]definitions.Reference{
             {Title:"GitHub Commit", Url:"https://github.com/mafintosh/tar-fs/commit/647447b572bc135c41035e82ca7b894f02b17f0f"},
             {Title:"Red Hat Bugzilla Bug", Url:"https://bugzilla.redhat.com/show_bug.cgi?id=2369875"},
