@@ -21,8 +21,8 @@ type Config struct {
 	PollTimeout  time.Duration
 }
 
-// SCAEngineClient provides functionality for interacting with the SCA Engine reachability API.
-type SCAEngineClient struct {
+// HTTPClient provides functionality for interacting with the reachability API.
+type HTTPClient struct {
 	httpClient *http.Client
 	cfg        Config
 }
@@ -41,11 +41,11 @@ type Client interface {
 	WaitForReachabilityAnalysis(ctx context.Context, orgID OrgID, reachabilityID ID) error
 }
 
-var _ Client = (*SCAEngineClient)(nil)
+var _ Client = (*HTTPClient)(nil)
 
-// NewClient creates a new SCA Engine client with the provided HTTP client and configuration.
+// NewClient creates a new Scan client with the provided HTTP client and configuration.
 // It applies default values for PollInterval and PollTimeout if not specified, and enforces minimum bounds.
-func NewClient(httpClient *http.Client, cfg Config) *SCAEngineClient {
+func NewClient(httpClient *http.Client, cfg Config) *HTTPClient {
 	if cfg.PollInterval <= 0 {
 		cfg.PollInterval = defaultPollInterval
 	}
@@ -56,11 +56,11 @@ func NewClient(httpClient *http.Client, cfg Config) *SCAEngineClient {
 
 	cfg.PollInterval = max(minPollInteval, cfg.PollInterval)
 
-	return &SCAEngineClient{httpClient, cfg}
+	return &HTTPClient{httpClient, cfg}
 }
 
 // StartReachabilityAnalysis initiates a reachability analysis for the given bundle and returns the analysis ID.
-func (sec *SCAEngineClient) StartReachabilityAnalysis(ctx context.Context, orgID OrgID, bundleID BundleHash) (ID, error) {
+func (sec *HTTPClient) StartReachabilityAnalysis(ctx context.Context, orgID OrgID, bundleID BundleHash) (ID, error) {
 	if orgID == uuid.Nil {
 		return uuid.Nil, ErrEmptyOrgID
 	}
@@ -106,7 +106,7 @@ func (sec *SCAEngineClient) StartReachabilityAnalysis(ctx context.Context, orgID
 
 // WaitForReachabilityAnalysis polls for the completion of a reachability analysis until it finishes, fails, or times out.
 // It returns nil when the analysis completes successfully, or an appropriate error for other outcomes.
-func (sec *SCAEngineClient) WaitForReachabilityAnalysis(ctx context.Context, orgID OrgID, reachabilityID ID) error {
+func (sec *HTTPClient) WaitForReachabilityAnalysis(ctx context.Context, orgID OrgID, reachabilityID ID) error {
 	timeout := time.After(sec.cfg.PollTimeout)
 	t := time.NewTicker(sec.cfg.PollInterval)
 	defer t.Stop()
@@ -142,7 +142,7 @@ func (sec *SCAEngineClient) WaitForReachabilityAnalysis(ctx context.Context, org
 	}
 }
 
-func (sec *SCAEngineClient) getReachabilityAnalysisStatus(ctx context.Context, orgID OrgID, reachabilityID ID) (ScanStatus, error) {
+func (sec *HTTPClient) getReachabilityAnalysisStatus(ctx context.Context, orgID OrgID, reachabilityID ID) (ScanStatus, error) {
 	if orgID == uuid.Nil {
 		return "", ErrEmptyOrgID
 	}
