@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog"
 	codeclient "github.com/snyk/code-client-go"
 	codeclienthttp "github.com/snyk/code-client-go/http"
+	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/code_workflow"
@@ -28,6 +29,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
+	"github.com/snyk/cli-extension-os-flows/internal/settings"
 	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
 )
 
@@ -95,6 +97,13 @@ func setupTestClient(ictx workflow.InvocationContext) (testapi.TestClient, error
 	return testClient, nil
 }
 
+func setupSettingsClient(ictx workflow.InvocationContext) settings.Client {
+	config := ictx.GetConfiguration()
+	sc := settings.NewClient(ictx.GetNetworkAccess().GetHttpClient(), settings.Config{BaseURL: config.GetString(configuration.API_URL)})
+
+	return sc
+}
+
 func setupBundlestoreClient(ictx workflow.InvocationContext, logger *zerolog.Logger) bundlestore.Client {
 	config := ictx.GetConfiguration()
 
@@ -142,7 +151,8 @@ func handleDepgraphReachabilityFlow(
 	ctx context.Context,
 	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
-	orgID, sourceDir string,
+	orgUUID uuid.UUID,
+	sourceDir string,
 	errFactory *errors.ErrorFactory,
 	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
@@ -151,11 +161,6 @@ func handleDepgraphReachabilityFlow(
 
 	if !config.GetBool(FeatureFlagReachabilityForCLI) {
 		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagReachabilityForCLI)
-	}
-
-	orgUUID, err := uuid.Parse(orgID)
-	if err != nil {
-		return nil, fmt.Errorf("orgID is invalid: %w", err)
 	}
 
 	bsClient := setupBundlestoreClient(ictx, logger)
@@ -168,7 +173,7 @@ func handleDepgraphReachabilityFlow(
 		return nil, fmt.Errorf("failed to analyze source code: %w", err)
 	}
 
-	return RunUnifiedTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, localPolicy, &scanID)
+	return RunUnifiedTestFlow(ctx, ictx, testClient, orgUUID.String(), errFactory, logger, localPolicy, &scanID)
 }
 
 // CreateLocalPolicy will create a local policy only if risk score or severity threshold are specified in the config.
@@ -249,6 +254,26 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 		return nil, errFactory.NewEmptyOrgError()
 	}
 
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		return nil, fmt.Errorf("orgID is not a valid UUID: %w", err)
+	}
+
+	sc := setupSettingsClient(ictx)
+	if reachability {
+		//nolint:govet // Shadowing err is not an issue here.
+		isReachEnabled, err := sc.IsReachabilityEnabled(ctx, orgUUID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check reachability settings: %w", err)
+		}
+
+		if !isReachEnabled {
+			return nil, ecosystems.NewReachabilitySettingDisabledError(
+				"In order to run the `test` command with `--reachability`, the reachability settings must be enabled.",
+			)
+		}
+	}
+
 	if riskScoreThreshold != -1 && !riskScoreFFsEnabled {
 		// The user tried to use a risk score threshold without the required feature flags.
 		// Return a specific error for the first missing flag found.
@@ -270,7 +295,7 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 	case sbomReachabilityTest:
 		return handleSBOMReachabilityFlow(ctx, ictx, testClient, orgID, sbom, sourceDir, errFactory, logger, localPolicy)
 	case reachability:
-		return handleDepgraphReachabilityFlow(ctx, ictx, testClient, orgID, sourceDir, errFactory, logger, localPolicy)
+		return handleDepgraphReachabilityFlow(ctx, ictx, testClient, orgUUID, sourceDir, errFactory, logger, localPolicy)
 	default:
 		return RunUnifiedTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, localPolicy, nil)
 	}
