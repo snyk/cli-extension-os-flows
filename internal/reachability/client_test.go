@@ -33,7 +33,7 @@ type TestServerConfig struct {
 	ResponseBodies     []string // Cycles through these responses for polling scenarios
 }
 
-func setupTest(t *testing.T, serverConfig *TestServerConfig, clientConfig ...reachability.Config) (rc *reachability.SCAEngineClient, cc *int32) {
+func setupTest(t *testing.T, serverConfig *TestServerConfig, clientConfig ...reachability.Config) (rc *reachability.HTTPClient, cc *int32) {
 	t.Helper()
 
 	var callCount int32
