@@ -200,10 +200,15 @@ model RemediationUpgradeInfo {
   vulns: string[];
 }
 
+model PinRemediation {
+  isTransitive: boolean;
+  vulns: string[];
+  upgradeTo: string;
+}
+
 model Remediation {
   ignore: Record<string>;
-  patch: Record<string>;
-  pin: Record<string>;
+  pin: Record<PinRemediation>;
   unresolved: Vulnerability[];
   upgrade: Record<RemediationUpgradeInfo>;
 }

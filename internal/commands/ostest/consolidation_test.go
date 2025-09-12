@@ -48,7 +48,8 @@ func Test_consolidateFindings(t *testing.T) {
 			},
 		}
 
-		consolidated := ostest.ConsolidateFindings(findings, &logger)
+		consolidated, err := ostest.ConsolidateFindings(findings, &logger)
+		require.NoError(t, err)
 		require.Len(t, consolidated, 1)
 
 		// The highest risk score (900) should be preserved
@@ -84,7 +85,8 @@ func Test_consolidateFindings(t *testing.T) {
 			},
 		}
 
-		consolidated := ostest.ConsolidateFindings(findings, &logger)
+		consolidated, err := ostest.ConsolidateFindings(findings, &logger)
+		require.NoError(t, err)
 		require.Len(t, consolidated, 1)
 
 		// The highest severity (critical) should be preserved
@@ -123,7 +125,8 @@ func Test_consolidateFindings(t *testing.T) {
 			},
 		}
 
-		consolidated := ostest.ConsolidateFindings(findings, &logger)
+		consolidated, err := ostest.ConsolidateFindings(findings, &logger)
+		require.NoError(t, err)
 		require.Len(t, consolidated, 1)
 
 		// Both the highest risk score (950) and highest severity (critical) should be preserved
@@ -154,7 +157,8 @@ func Test_consolidateFindings(t *testing.T) {
 			},
 		}
 
-		consolidated := ostest.ConsolidateFindings(findings, &logger)
+		consolidated, err := ostest.ConsolidateFindings(findings, &logger)
+		require.NoError(t, err)
 		require.Len(t, consolidated, 1)
 
 		// Should preserve the risk score from the second finding

@@ -1,3 +1,4 @@
+//nolint:revive // Interferes with inline types from testapi.
 package ostest
 
 import (
@@ -8,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
@@ -20,6 +22,8 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
+	"github.com/snyk/cli-extension-os-flows/internal/remediation"
+	"github.com/snyk/cli-extension-os-flows/pkg/semver"
 )
 
 // ApplicationJSONContentType matches the content type for legacy JSON findings records.
@@ -64,7 +68,10 @@ func RunTest(
 	allFindingsData := findingsData
 	vulnerablePathsCount := calculateVulnerablePathsCount(allFindingsData)
 
-	consolidatedFindings := ConsolidateFindings(allFindingsData, logger)
+	consolidatedFindings, err := ConsolidateFindings(allFindingsData, logger)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to consolidate findings: %w", err)
+	}
 	//nolint:gosec // G115: integer overflow is not a concern here
 	uniqueCount := int32(len(consolidatedFindings))
 
@@ -75,18 +82,29 @@ func RunTest(
 		logger.Warn().Err(summaryErr).Msg("Failed to create test summary for exit code handling")
 	}
 
+	remFindings, err := remediation.ShimFindingsToRemediationFindings(consolidatedFindings)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to convert to remediation findings: %w", err)
+	}
+
+	remSummary, err := remediation.FindingsToRemediationSummary(remFindings)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to compute remediation summary: %w", err)
+	}
+
 	legacyParams := &transform.SnykSchemaToLegacyParams{
-		Findings:          allFindingsData,
-		TestResult:        finalResult,
-		OrgSlugOrID:       orgSlugOrID,
-		ProjectName:       projectName,
-		PackageManager:    packageManager,
-		TargetDir:         targetDir,
-		UniqueCount:       uniqueCount,
-		DepCount:          depCount,
-		DisplayTargetFile: displayTargetFile,
-		ErrFactory:        errFactory,
-		Logger:            logger,
+		Findings:           allFindingsData,
+		RemediationSummary: remSummary,
+		TestResult:         finalResult,
+		OrgSlugOrID:        orgSlugOrID,
+		ProjectName:        projectName,
+		PackageManager:     packageManager,
+		TargetDir:          targetDir,
+		UniqueCount:        uniqueCount,
+		DepCount:           depCount,
+		DisplayTargetFile:  displayTargetFile,
+		ErrFactory:         errFactory,
+		Logger:             logger,
 	}
 
 	return prepareOutput(ictx, consolidatedFindings, standardSummary, summaryData, legacyParams, vulnerablePathsCount)
@@ -275,9 +293,9 @@ func NewSummaryDataFromFindings(
 }
 
 // ConsolidateFindings consolidates findings with the same Snyk ID into a single finding
-// with all the evidence and locations from the original findings.
+// with all the evidence, locations and fixes from the original findings.
 // It preserves the highest risk score and severity rating.
-func ConsolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger) []testapi.FindingData {
+func ConsolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger) ([]testapi.FindingData, error) {
 	consolidatedFindings := make(map[string]testapi.FindingData)
 	var orderedKeys []string
 
@@ -285,21 +303,29 @@ func ConsolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger)
 	severityOrder := map[string]int{"critical": 4, "high": 3, "medium": 2, "low": 1}
 
 	for _, finding := range findings {
-		snykID := getSnykID(finding)
-		if snykID == "" {
+		info, err := getIssueInfoFromFinding(finding)
+		if err != nil {
+			return nil, err
+		}
+		if info.ID == "" {
 			// If a finding has no Snyk ID, treat it as unique.
 			if finding.Id == nil {
 				logger.Error().Msg("finding is missing an ID")
 				continue
 			}
-			snykID = finding.Id.String()
+			info.ID = finding.Id.String()
 		}
 
-		if existingFinding, exists := consolidatedFindings[snykID]; !exists {
-			consolidatedFindings[snykID] = finding
-			orderedKeys = append(orderedKeys, snykID)
+		if existingFinding, exists := consolidatedFindings[info.ID]; !exists {
+			consolidatedFindings[info.ID] = finding
+			orderedKeys = append(orderedKeys, info.ID)
 		} else {
-			consolidatedFindings[snykID] = consolidateFindingAttributes(existingFinding, finding, severityOrder)
+			consolidatedFindingWithAttributes := consolidateFindingAttributes(existingFinding, finding, severityOrder)
+			consolidatedFindingWithFix, err := consolidateFindingFix(consolidatedFindingWithAttributes, finding, info.PackageManager)
+			if err != nil {
+				return nil, fmt.Errorf("failed to consolidate finding fix: %w", err)
+			}
+			consolidatedFindings[info.ID] = *consolidatedFindingWithFix
 		}
 	}
 
@@ -307,7 +333,146 @@ func ConsolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger)
 	for i, key := range orderedKeys {
 		result[i] = consolidatedFindings[key]
 	}
-	return result
+	return result, nil
+}
+
+func consolidateFindingFix(existing, additional testapi.FindingData, pkgManager string) (*testapi.FindingData, error) {
+	if additional.Relationships == nil {
+		return &existing, nil
+	}
+	if existing.Relationships == nil {
+		existing.Relationships = &struct {
+			Asset *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+			} "json:\"asset,omitempty\""
+			Fix *struct {
+				Data *struct {
+					Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+					Id         uuid.UUID              "json:\"id\""
+					Type       string                 "json:\"type\""
+				} "json:\"data,omitempty\""
+			} "json:\"fix,omitempty\""
+			Org *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+			} "json:\"org,omitempty\""
+			Policy *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+			} "json:\"policy,omitempty\""
+			Test *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+			} "json:\"test,omitempty\""
+		}{}
+	}
+
+	if existing.Relationships.Fix == nil {
+		existing.Relationships.Fix = additional.Relationships.Fix
+	} else {
+		efAction := existing.Relationships.Fix.Data.Attributes.Actions
+		afAction := additional.Relationships.Fix.Data.Attributes.Actions
+
+		action, err := mergeFixActions(efAction, afAction, pkgManager)
+		if err != nil {
+			return nil, fmt.Errorf("failed to merge findings fix actions: %w", err)
+		}
+
+		existing.Relationships.Fix.Data.Attributes.Outcome = mergeUpgradeOutcome(
+			existing.Relationships.Fix.Data.Attributes.Outcome,
+			additional.Relationships.Fix.Data.Attributes.Outcome,
+		)
+		existing.Relationships.Fix.Data.Attributes.Actions = action
+	}
+
+	return &existing, nil
+}
+
+func mergeFixActions(a1, a2 *testapi.Action, pkgManager string) (*testapi.Action, error) {
+	a1Type, err := a1.Discriminator()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get action discriminator: %w", err)
+	}
+
+	a2Type, err := a2.Discriminator()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get action discriminator: %w", err)
+	}
+
+	if a1Type != a2Type {
+		return nil, fmt.Errorf("can not merge findings with different types: %s != %s", a1Type, a2Type)
+	}
+
+	switch a1Type {
+	case string(testapi.UpgradePackage):
+		a1UpgradeAction, err := a1.AsUpgradePackageAction()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert finding action to upgrade action: %w", err)
+		}
+
+		a2UpgradeAction, err := a2.AsUpgradePackageAction()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert finding action to upgrade action: %w", err)
+		}
+
+		a1UpgradeAction.UpgradePaths = append(a1UpgradeAction.UpgradePaths, a2UpgradeAction.UpgradePaths...)
+		action := &testapi.Action{}
+		err = action.FromUpgradePackageAction(a1UpgradeAction)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert upgrade action to finding action: %w", err)
+		}
+		return action, nil
+	case string(testapi.PinPackage):
+		a1PinAction, err := a1.AsPinPackageAction()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert finding action to pin action: %w", err)
+		}
+
+		a2PinAction, err := a2.AsPinPackageAction()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert finding action to pin action: %w", err)
+		}
+
+		maxVersion, err := getMaxVersion(pkgManager, a1PinAction.PinVersion, a2PinAction.PinVersion)
+		if err != nil {
+			return nil, fmt.Errorf("failed to determine maximum pin version: %w", err)
+		}
+		a1PinAction.PinVersion = maxVersion
+		action := &testapi.Action{}
+		err = action.FromPinPackageAction(a1PinAction)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert pin action to finding action: %w", err)
+		}
+		return action, nil
+	default:
+		return nil, fmt.Errorf("uknown action type: %s", a1Type)
+	}
+}
+
+func mergeUpgradeOutcome(o1, o2 testapi.FixAppliedOutcome) testapi.FixAppliedOutcome {
+	//nolint:gocritic // If-else is clearer than switch in this case.
+	if o1 == testapi.FullyResolved && o2 == testapi.FullyResolved {
+		return testapi.FullyResolved
+	} else if o1 == testapi.Unresolved && o2 == testapi.Unresolved {
+		return testapi.Unresolved
+	} else {
+		return testapi.PartiallyResolved
+	}
 }
 
 // consolidateFindingAttributes consolidates attributes from two findings, preserving the highest risk score and severity.
@@ -387,34 +552,91 @@ func consolidatePolicyModifications(result, additional *testapi.FindingAttribute
 }
 
 // getSnykID extracts the canonical Snyk ID from a finding.
+func getMaxVersion(packageManager, v1, v2 string) (string, error) {
+	semverResolver, err := semver.GetSemver(packageManager)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve semver library: %w", err)
+	}
+	var version string
+	compare, err := semverResolver.Compare(v1, v2)
+	if err != nil {
+		return "", fmt.Errorf("failed to compare package versions: %w", err)
+	}
+	if compare >= 0 {
+		version = v1
+	} else {
+		version = v2
+	}
+	return version, nil
+}
+
+type IssueInfo struct {
+	ID             string
+	PackageManager string
+}
+
+// getIssueInfoFromFinding extracts the canonical Snyk ID and it's package manager from a finding.
 // TODO This needs to use attributes.Key.
-func getSnykID(finding testapi.FindingData) string {
+func getIssueInfoFromFinding(finding testapi.FindingData) (IssueInfo, error) {
 	if finding.Attributes == nil || len(finding.Attributes.Problems) == 0 {
-		return ""
+		return IssueInfo{}, nil
 	}
 
 	for _, problem := range finding.Attributes.Problems {
-		var id string
-		disc, err := problem.Discriminator()
+		info, err := getIssueInfoFromProblem(problem)
 		if err != nil {
-			continue
+			return IssueInfo{}, fmt.Errorf("failed to get issue info from problem: %w", err)
 		}
 
-		if disc == string(testapi.SnykVuln) {
-			if p, err := problem.AsSnykVulnProblem(); err == nil {
-				id = p.Id
-			}
-		} else if disc == string(testapi.SnykLicense) {
-			if p, err := problem.AsSnykLicenseProblem(); err == nil {
-				id = p.Id
-			}
-		}
-
-		if id != "" {
-			return id
+		if info != nil {
+			return *info, nil
 		}
 	}
-	return ""
+
+	return IssueInfo{}, nil
+}
+
+func getIssueInfoFromProblem(p testapi.Problem) (*IssueInfo, error) {
+	disc, err := p.Discriminator()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get problem discriminator: %w", err)
+	}
+
+	switch disc {
+	case string(testapi.SnykVuln):
+		vuln, err := p.AsSnykVulnProblem()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert problem to snyk vuln: %w", err)
+		}
+
+		eco, err := vuln.Ecosystem.AsSnykvulndbBuildPackageEcosystem()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert ecosystem to build package ecosystem: %w", err)
+		}
+
+		return &IssueInfo{
+			ID:             vuln.Id,
+			PackageManager: eco.PackageManager,
+		}, nil
+	case string(testapi.SnykLicense):
+		p, err := p.AsSnykLicenseProblem()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert problem to snyk license issue: %w", err)
+		}
+
+		eco, err := p.Ecosystem.AsSnykvulndbBuildPackageEcosystem()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert ecosystem to build package ecosystem: %w", err)
+		}
+
+		return &IssueInfo{
+			ID:             p.Id,
+			PackageManager: eco.PackageManager,
+		}, nil
+	default:
+		//nolint:nilnil // nil is a valid response in this case.
+		return nil, nil
+	}
 }
 
 func calculateVulnerablePathsCount(findings []testapi.FindingData) int {

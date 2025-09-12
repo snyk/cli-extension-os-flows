@@ -135,9 +135,25 @@ func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonO
 	require.NoError(t, err)
 
 	// Create mock evidence
-	ev := testapi.Evidence{}
-	err = ev.FromReachabilityEvidence(testapi.ReachabilityEvidence{
+	reachEv := testapi.Evidence{}
+	err = reachEv.FromReachabilityEvidence(testapi.ReachabilityEvidence{
 		Reachability: testapi.ReachabilityTypeFunction,
+	})
+	require.NoError(t, err)
+
+	depPathEv := testapi.Evidence{}
+	err = depPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path: []testapi.Package{
+			{
+				Name:    "root",
+				Version: "1.0.0",
+			},
+			{
+				Name:    "foo",
+				Version: "0.0.0",
+			},
+		},
+		Source: testapi.DependencyPath,
 	})
 	require.NoError(t, err)
 
@@ -145,7 +161,7 @@ func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonO
 	findingAttrs := testapi.FindingAttributes{
 		CauseOfFailure: false,
 		Description:    "Test vulnerability description",
-		Evidence:       []testapi.Evidence{ev},
+		Evidence:       []testapi.Evidence{reachEv, depPathEv},
 		FindingType:    testapi.FindingTypeSca,
 		Key:            "TEST-FINDING-KEY",
 		Locations:      []testapi.FindingLocation{location},

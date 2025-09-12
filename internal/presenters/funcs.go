@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -13,6 +14,10 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
+	"github.com/snyk/cli-extension-os-flows/internal/remediation"
 )
 
 const notApplicable = "N/A"
@@ -158,6 +163,35 @@ func GetIntroducedThroughWithCount(finding testapi.FindingData) string {
 		return fmt.Sprintf("%s and 1 other path", dependencyPaths[0])
 	}
 	return fmt.Sprintf("%s and %d other paths", dependencyPaths[0], additionalCount)
+}
+
+func getRemediationIntroducedByWithCount(vip *remediation.VulnerabilityInPackage) string {
+	var dependencyPaths []string
+	for _, path := range vip.IntroducedThrough {
+		var pathParts []string
+		for _, pkg := range path {
+			pathParts = append(pathParts, fmt.Sprintf("%s@%s", pkg.Name, pkg.Version))
+		}
+
+		if len(pathParts) > 0 {
+			dependencyPaths = append(dependencyPaths, strings.Join(pathParts, " > "))
+		}
+	}
+
+	if len(dependencyPaths) == 0 {
+		return ""
+	}
+
+	if len(dependencyPaths) == 1 {
+		return dependencyPaths[0]
+	}
+
+	// If there are multiple paths, show the first one and count the rest
+	additionalCount := len(dependencyPaths) - 1
+	if additionalCount == 1 {
+		return fmt.Sprintf("%s and %s other path", dependencyPaths[0], pathCountStyle.Render("1"))
+	}
+	return fmt.Sprintf("%s and %s other paths", dependencyPaths[0], pathCountStyle.Render(strconv.Itoa(additionalCount)))
 }
 
 // getIntroducedBy returns the direct dependency that introduced the vulnerability.
@@ -348,9 +382,24 @@ func hasSuppression(finding testapi.FindingData) bool {
 func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
 	fnMap := template.FuncMap{}
 	fnMap["box"] = func(s string) string { return boxStyle.Render(s) }
-	fnMap["toUpperCase"] = strings.ToUpper
-	fnMap["renderInSeverityColor"] = renderSeverityColor
+	fnMap["toUpperCase"] = func(obj any) string {
+		if reflect.TypeOf(obj).Kind() == reflect.String {
+			stringObj := reflect.ValueOf(obj).String()
+			return strings.ToUpper(stringObj)
+		}
+		panic("invalid type in toUpperCase call")
+	}
+	fnMap["capitalize"] = func(obj any) string {
+		if reflect.TypeOf(obj).Kind() == reflect.String {
+			stringObj := reflect.ValueOf(obj).String()
+			caser := cases.Title(language.English)
+			return caser.String(stringObj)
+		}
+		panic("invalid type in capitalize call")
+	}
+	fnMap["renderInSeverityColor"] = renderInSeverityColor
 	fnMap["renderGreen"] = renderGreen
+	fnMap["renderGray"] = renderGray
 	fnMap["bold"] = renderBold
 	fnMap["tip"] = func(s string) string {
 		return RenderTip(s + "\n")
@@ -435,6 +484,21 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 	defaultMap["getIssueCountsOpen"] = getIssueCountsOpen
 	defaultMap["getIssueCountsIgnored"] = getIssueCountsIgnored
 
+	// This will compute the OS specific remediation summary
+	defaultMap["getRemediationIntroducedByWithCount"] = getRemediationIntroducedByWithCount
+	defaultMap["getRemediationSummary"] = func(findings []testapi.FindingData) remediation.Summary {
+		remFindings, err := remediation.ShimFindingsToRemediationFindings(findings)
+		if err != nil {
+			panic(err)
+		}
+
+		summary, err := remediation.FindingsToRemediationSummary(remFindings)
+		if err != nil {
+			panic(err)
+		}
+
+		return summary
+	}
 	return defaultMap
 }
 

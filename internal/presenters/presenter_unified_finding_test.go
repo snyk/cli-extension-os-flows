@@ -166,6 +166,30 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		lipgloss.SetColorProfile(termenv.Ascii)
 
+		loc := testapi.FindingLocation{}
+		loc.FromPackageLocation(testapi.PackageLocation{
+			Package: testapi.Package{
+				Name:    "foo",
+				Version: "1.0.0",
+			},
+			Type: testapi.PackageLocationTypePackage,
+		})
+
+		depPathEv := testapi.Evidence{}
+		depPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+			Path: []testapi.Package{
+				{
+					Name:    "root",
+					Version: "0.0.0",
+				},
+				{
+					Name:    "foo",
+					Version: "1.0.0",
+				},
+			},
+			Source: testapi.DependencyPath,
+		})
+
 		riskScore := uint16(780)
 		problemID := "SNYK-JS-VM2-5537100"
 		vulnFinding := testapi.FindingData{
@@ -181,6 +205,8 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 				Rating: testapi.Rating{
 					Severity: testapi.Severity("high"),
 				},
+				Evidence:  []testapi.Evidence{depPathEv},
+				Locations: []testapi.FindingLocation{loc},
 				Problems: func() []testapi.Problem {
 					var p testapi.Problem
 					err := p.FromSnykVulnProblem(testapi.SnykVulnProblem{
