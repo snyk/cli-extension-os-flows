@@ -164,3 +164,48 @@ func ProcessRemediationForFinding(
 	}
 	return nil
 }
+
+func findUnfixableIssues(vulns []definitions.Vulnerability, pkgManager string) map[string]struct{} {
+	unfixableIssues := make(map[string]struct{})
+	if pkgManager == "rubygems" {
+		for _, vuln := range vulns {
+			if !vuln.IsUpgradable && len(vuln.From) > 1 {
+				unfixableIssues[fmt.Sprintf("%s:%s", vuln.Id, vuln.From[1])] = struct{}{}
+			}
+		}
+	}
+	return unfixableIssues
+}
+
+func isVulnUnfixable(vuln definitions.Vulnerability, unfixableIssues map[string]struct{}) bool {
+	if len(vuln.From) <= 1 {
+		return false
+	}
+	_, isUnfixable := unfixableIssues[fmt.Sprintf("%s:%s", vuln.Id, vuln.From[1])]
+	return isUnfixable
+}
+
+func canBeUpgraded(vuln definitions.Vulnerability) bool {
+	up, err := vuln.UpgradePath[1].AsVulnerabilityUpgradePath0()
+	if err != nil {
+		panic(err)
+	}
+
+	isOutdated := len(vuln.From) > 1 && vuln.From[1] == up
+	canFixOutdated := vuln.PackageManager != nil && *vuln.PackageManager == "rubygems"
+
+	vulnIsUpgradable := vuln.IsUpgradable && !isOutdated
+	if canFixOutdated {
+		vulnIsUpgradable = vuln.IsUpgradable
+	}
+	return vulnIsUpgradable
+}
+
+func upgrades(vulns []definitions.Vulnerability, semver shared.Runtime) (map[string]definitions.RemediationUpgradeInfo, error) {
+	unfixableIssues := findUnfixableIssues(vulns, "")
+	for _, vuln := range vulns {
+		if !isVulnUnfixable(vuln, unfixableIssues) {
+		}
+	}
+	return nil
+}
