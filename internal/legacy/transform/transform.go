@@ -8,6 +8,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
+	"github.com/snyk/cli-extension-os-flows/internal/semver"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
@@ -445,6 +446,22 @@ func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*defin
 			}
 			res.Vulnerabilities = append(res.Vulnerabilities, vulns[i])
 		}
+	}
+
+	if semver, err := semver.GetSemver(params.PackageManager); err == nil {
+		pin, err := CalculatePin(res.Vulnerabilities, semver)
+		if err != nil {
+			return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("calculating pin remediation: %w", err))
+		}
+		res.Remediation = &definitions.Remediation{Pin: pin}
+	} else {
+		// This will be the case for the sbom test as long
+		// as long as we don't get the package manager back from the server
+		params.
+			Logger.
+			Warn().
+			Str("package manager", params.PackageManager).
+			Msg("skipping remediation computation as no semver runtime could be retrieved for the package manager")
 	}
 
 	return &res, nil
