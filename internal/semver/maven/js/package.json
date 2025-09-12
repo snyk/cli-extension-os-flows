@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "@snyk/maven-semver": "^4"
+  },
+  "devDependencies": {
+    "esbuild": "^0"
+  },
+  "main": "build/index.js",
+  "name": "maven-semver",
+  "scripts": {
+    "build": "esbuild index.js --bundle --minify --outfile=build/index.js --platform=node --packages=bundle"
+  },
+  "type": "commonjs",
+  "version": "0.0.1"
+}
