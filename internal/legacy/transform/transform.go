@@ -346,12 +346,13 @@ func FindingToLegacyVulns(
 		baseVuln.RiskScore = &finding.Attributes.Risk.RiskScore.Value
 	}
 
-	return processEvidences(finding, &baseVuln)
+	return processEvidencesAndRemediation(finding, &baseVuln, logger)
 }
 
-func processEvidences(
+func processEvidencesAndRemediation(
 	finding *testapi.FindingData,
 	baseVuln *definitions.Vulnerability,
+	logger *zerolog.Logger,
 ) ([]definitions.Vulnerability, error) {
 	var depPathEvidences []testapi.Evidence
 	var otherEvidences []testapi.Evidence
@@ -383,6 +384,9 @@ func processEvidences(
 					return nil, fmt.Errorf(errProcessEvidenceForFindingStr, err)
 				}
 			}
+			if err := ProcessRemediationForFinding(&vuln, finding, logger); err != nil {
+				return nil, err
+			}
 			vulns = append(vulns, vuln)
 		}
 	} else {
@@ -393,6 +397,9 @@ func processEvidences(
 			if err != nil {
 				return nil, fmt.Errorf(errProcessEvidenceForFindingStr, err)
 			}
+		}
+		if err := ProcessRemediationForFinding(&vuln, finding, logger); err != nil {
+			return nil, err
 		}
 		vulns = append(vulns, vuln)
 	}
