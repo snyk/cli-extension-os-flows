@@ -288,8 +288,11 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
+			mockAPI := newMockAPIState(t)
+			defer mockAPI.Close()
+
 			mockEngine := mocks.NewMockEngine(ctrl)
-			mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+			mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockAPI.URL())
 
 			// Setup test case
 			test.setup(mockInvocationCtx.GetConfiguration(), mockEngine)
@@ -397,9 +400,29 @@ func (s *mockAPIState) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.handleGetTestResult(w, r)
 	case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/findings"):
 		s.handleGetFindings(w, r)
+	case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/settings/opensource"):
+		s.handleGetSettings(w, r)
 	default:
 		http.Error(w, "unhandled request: "+r.Method+" "+r.URL.Path, http.StatusNotFound)
 	}
+}
+
+func (s *mockAPIState) handleGetSettings(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(http.StatusOK)
+	respBody := `{
+			"jsonapi": {"version": "1.0"},
+			"data": {
+				"type": "opensource_settings",
+				"attributes": {
+					"reachability": {
+						"enabled": true
+					}
+				}
+			}
+		}`
+	_, err := w.Write([]byte(respBody))
+	require.NoError(s.t, err)
 }
 
 func (s *mockAPIState) handleCreateTest(w http.ResponseWriter, _ *http.Request) {

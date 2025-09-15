@@ -14,7 +14,7 @@ require (
 	github.com/puzpuzpuz/xsync v1.5.2
 	github.com/rs/zerolog v1.34.0
 	github.com/snyk/code-client-go v1.21.3
-	github.com/snyk/error-catalog-golang-public v0.0.0-20250625135845-2d6f9a31f318
+	github.com/snyk/error-catalog-golang-public v0.0.0-20250912144134-a308b7983895
 	github.com/snyk/go-application-framework v0.0.0-20250808141236-a26581814257
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
