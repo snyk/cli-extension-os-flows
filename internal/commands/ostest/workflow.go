@@ -259,8 +259,8 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 		return nil, fmt.Errorf("orgID is not a valid UUID: %w", err)
 	}
 
-	sc := setupSettingsClient(ictx)
 	if reachability {
+		sc := setupSettingsClient(ictx)
 		//nolint:govet // Shadowing err is not an issue here.
 		isReachEnabled, err := sc.IsReachabilityEnabled(ctx, orgUUID)
 		if err != nil {
