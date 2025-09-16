@@ -3,6 +3,7 @@ package osmonitor
 import (
 	"context"
 	"fmt"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/code_workflow"
 	"os"
 
 	"github.com/google/uuid"
@@ -136,9 +137,5 @@ func OSWorkflow(
 		legacyArgs = append(legacyArgs, fmt.Sprintf("--reachability-id=%s", scanID))
 	}
 
-	engine := ictx.GetEngine()
-	cfg.Set(configuration.WORKFLOW_USE_STDIO, true)
-	cfg.Set(configuration.RAW_CMD_ARGS, legacyArgs)
-	//nolint:wrapcheck // No need to wrap the error since the legacy CLI will be invoked.
-	return engine.InvokeWithConfig(workflow.NewWorkflowIdentifier("legacycli"), cfg)
+	return code_workflow.EntryPointLegacy(ictx)
 }
