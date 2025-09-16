@@ -306,6 +306,21 @@ components:
             type: string
         version:
           type: string
+    PinRemediation:
+      type: object
+      required:
+        - isTransitive
+        - vulns
+        - upgradeTo
+      properties:
+        isTransitive:
+          type: boolean
+        vulns:
+          type: array
+          items:
+            type: string
+        upgradeTo:
+          type: string
     Reachability:
       type: string
       enum:
@@ -341,7 +356,7 @@ components:
         pin:
           type: object
           additionalProperties:
-            type: string
+            $ref: '#/components/schemas/PinRemediation'
         unresolved:
           type: array
           items:
