@@ -28,6 +28,7 @@ const FeatureFlagReachabilityForCLI = "feature_flag_monitor_reachability"
 
 // RegisterWorkflows registers the "monitor" workflow.
 func RegisterWorkflows(e workflow.Engine) error {
+	println("RegisterWorkflows")
 	// Check if workflow already exists
 	if _, ok := e.GetWorkflow(WorkflowID); ok {
 		return fmt.Errorf("workflow with ID %s already exists", WorkflowID)
@@ -49,6 +50,7 @@ func runReachabilityScan(
 	ctx context.Context,
 	ictx workflow.InvocationContext,
 ) (uuid.UUID, error) {
+	println("runReachabilityScan")
 	cfg := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
@@ -116,6 +118,10 @@ func OSWorkflow(
 	ictx workflow.InvocationContext,
 	_ []workflow.Data,
 ) ([]workflow.Data, error) {
+	println("OS workflow")
+	if 2+2 == 4 {
+		return nil, fmt.Errorf("error from OS workflow")
+	}
 	ctx := context.Background()
 	cfg := ictx.GetConfiguration()
 	legacyArgs := os.Args[1:]

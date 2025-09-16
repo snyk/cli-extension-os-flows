@@ -214,11 +214,13 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 ) ([]workflow.Data, error) {
 	config := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
+	logger.Info().Msg("in the OSWorkflow extension")
 	errFactory := errors.NewErrorFactory(logger)
 	ctx := context.Background()
 
 	// Reachability
-	reachability := config.GetBool(flags.FlagReachability)
+	reachabilityEnabled := config.GetBool(flags.FlagReachability)
+	logger.Info().Msg(fmt.Sprintf("reachabilityEnabled %v", reachabilityEnabled))
 	sourceDir := config.GetString(flags.FlagSourceDir)
 	if sourceDir == "" {
 		sourceDir = "."
@@ -226,7 +228,7 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 
 	// SBOM Test w/ Reachability
 	sbom := config.GetString(flags.FlagSBOM)
-	sbomReachabilityTest := reachability && sbom != ""
+	sbomReachabilityTest := reachabilityEnabled && sbom != ""
 
 	// Risk Score
 	ffRiskScore := config.GetBool(FeatureFlagRiskScore)
@@ -237,8 +239,8 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 
 	forceLegacyTest := config.GetBool(ForceLegacyCLIEnvVar)
 	// Legacy test fallthrough
-	if forceLegacyTest || (!sbomReachabilityTest && !riskScoreTest && !reachability) {
-		logger.Debug().Msgf(
+	if forceLegacyTest || (!sbomReachabilityTest && !riskScoreTest && !reachabilityEnabled) {
+		logger.Info().Msgf(
 			"Using legacy flow. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %t.",
 			forceLegacyTest,
 			sbomReachabilityTest,
@@ -259,7 +261,7 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 		return nil, fmt.Errorf("orgID is not a valid UUID: %w", err)
 	}
 
-	if reachability {
+	if reachabilityEnabled {
 		sc := setupSettingsClient(ictx)
 		//nolint:govet // Shadowing err is not an issue here.
 		isReachEnabled, err := sc.IsReachabilityEnabled(ctx, orgUUID)
@@ -287,6 +289,7 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 
 	testClient, err := setupTestClient(ictx)
 	if err != nil {
+		logger.Info().Msg("Failed to setup test client")
 		return nil, err
 	}
 
@@ -294,9 +297,10 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 	switch {
 	case sbomReachabilityTest:
 		return handleSBOMReachabilityFlow(ctx, ictx, testClient, orgID, sbom, sourceDir, errFactory, logger, localPolicy)
-	case reachability:
+	case reachabilityEnabled:
 		return handleDepgraphReachabilityFlow(ctx, ictx, testClient, orgUUID, sourceDir, errFactory, logger, localPolicy)
 	default:
+		logger.Info().Msg("Running unified test flow")
 		return RunUnifiedTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, localPolicy, nil)
 	}
 }
