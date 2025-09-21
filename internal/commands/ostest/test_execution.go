@@ -75,7 +75,7 @@ func RunTest(
 		return nil, nil, fmt.Errorf("failed to unmarshal findings for deep copy: %w", err)
 	}
 
-	consolidatedFindings := consolidateFindings(findingsForConsolidation, logger)
+	consolidatedFindings := ConsolidateFindings(findingsForConsolidation, logger)
 	//nolint:gosec // G115: integer overflow is not a concern here
 	uniqueCount := int32(len(consolidatedFindings))
 
@@ -285,11 +285,15 @@ func NewSummaryDataFromFindings(
 	return testSummary, summaryWorkflowData, nil
 }
 
-// consolidateFindings consolidates findings with the same Snyk ID into a single finding
+// ConsolidateFindings consolidates findings with the same Snyk ID into a single finding
 // with all the evidence and locations from the original findings.
-func consolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger) []testapi.FindingData {
+// It preserves the highest risk score and severity rating.
+func ConsolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger) []testapi.FindingData {
 	consolidatedFindings := make(map[string]testapi.FindingData)
 	var orderedKeys []string
+
+	// Severity order for comparison (higher index = higher severity)
+	severityOrder := map[string]int{"critical": 4, "high": 3, "medium": 2, "low": 1}
 
 	for _, finding := range findings {
 		snykID := getSnykID(finding)
@@ -306,23 +310,43 @@ func consolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger)
 			consolidatedFindings[snykID] = finding
 			orderedKeys = append(orderedKeys, snykID)
 		} else {
-			// Deep copy to avoid modifying the map's shared object directly
-			newFinding := existingFinding
-			if newFinding.Attributes == nil && finding.Attributes != nil {
-				newFinding.Attributes = &testapi.FindingAttributes{}
-			}
-
-			if finding.Attributes != nil {
-				newFinding.Attributes.Evidence = append(newFinding.Attributes.Evidence, finding.Attributes.Evidence...)
-				newFinding.Attributes.Locations = append(newFinding.Attributes.Locations, finding.Attributes.Locations...)
-			}
-			consolidatedFindings[snykID] = newFinding
+			consolidatedFindings[snykID] = consolidateFindingAttributes(existingFinding, finding, severityOrder)
 		}
 	}
 
 	result := make([]testapi.FindingData, len(orderedKeys))
 	for i, key := range orderedKeys {
 		result[i] = consolidatedFindings[key]
+	}
+	return result
+}
+
+// consolidateFindingAttributes consolidates attributes from two findings, preserving the highest risk score and severity.
+func consolidateFindingAttributes(existing, additional testapi.FindingData, severityOrder map[string]int) testapi.FindingData {
+	// Deep copy to avoid modifying the map's shared object directly
+	result := existing
+	if result.Attributes == nil && additional.Attributes != nil {
+		result.Attributes = &testapi.FindingAttributes{}
+	}
+
+	if additional.Attributes != nil {
+		result.Attributes.Evidence = append(result.Attributes.Evidence, additional.Attributes.Evidence...)
+		result.Attributes.Locations = append(result.Attributes.Locations, additional.Attributes.Locations...)
+
+		// Preserve the highest risk score
+		if additional.Attributes.Risk.RiskScore != nil {
+			if result.Attributes.Risk.RiskScore == nil ||
+				additional.Attributes.Risk.RiskScore.Value > result.Attributes.Risk.RiskScore.Value {
+				result.Attributes.Risk.RiskScore = additional.Attributes.Risk.RiskScore
+			}
+		}
+
+		// Preserve the highest severity rating
+		currentSeverity := string(result.Attributes.Rating.Severity)
+		newSeverity := string(additional.Attributes.Rating.Severity)
+		if severityOrder[newSeverity] > severityOrder[currentSeverity] {
+			result.Attributes.Rating.Severity = additional.Attributes.Rating.Severity
+		}
 	}
 	return result
 }
