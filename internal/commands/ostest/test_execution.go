@@ -64,18 +64,7 @@ func RunTest(
 	allFindingsData := findingsData
 	vulnerablePathsCount := calculateVulnerablePathsCount(allFindingsData)
 
-	// Deep copy findings for consolidation to avoid modifying the original slice,
-	// which would affect the JSON output.
-	b, err := json.Marshal(allFindingsData)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to marshal findings for deep copy: %w", err)
-	}
-	var findingsForConsolidation []testapi.FindingData
-	if err := json.Unmarshal(b, &findingsForConsolidation); err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal findings for deep copy: %w", err)
-	}
-
-	consolidatedFindings := consolidateFindings(findingsForConsolidation, logger)
+	consolidatedFindings := ConsolidateFindings(allFindingsData, logger)
 	//nolint:gosec // G115: integer overflow is not a concern here
 	uniqueCount := int32(len(consolidatedFindings))
 
@@ -285,11 +274,15 @@ func NewSummaryDataFromFindings(
 	return testSummary, summaryWorkflowData, nil
 }
 
-// consolidateFindings consolidates findings with the same Snyk ID into a single finding
+// ConsolidateFindings consolidates findings with the same Snyk ID into a single finding
 // with all the evidence and locations from the original findings.
-func consolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger) []testapi.FindingData {
+// It preserves the highest risk score and severity rating.
+func ConsolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger) []testapi.FindingData {
 	consolidatedFindings := make(map[string]testapi.FindingData)
 	var orderedKeys []string
+
+	// Severity order for comparison (higher index = higher severity)
+	severityOrder := map[string]int{"critical": 4, "high": 3, "medium": 2, "low": 1}
 
 	for _, finding := range findings {
 		snykID := getSnykID(finding)
@@ -306,17 +299,7 @@ func consolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger)
 			consolidatedFindings[snykID] = finding
 			orderedKeys = append(orderedKeys, snykID)
 		} else {
-			// Deep copy to avoid modifying the map's shared object directly
-			newFinding := existingFinding
-			if newFinding.Attributes == nil && finding.Attributes != nil {
-				newFinding.Attributes = &testapi.FindingAttributes{}
-			}
-
-			if finding.Attributes != nil {
-				newFinding.Attributes.Evidence = append(newFinding.Attributes.Evidence, finding.Attributes.Evidence...)
-				newFinding.Attributes.Locations = append(newFinding.Attributes.Locations, finding.Attributes.Locations...)
-			}
-			consolidatedFindings[snykID] = newFinding
+			consolidatedFindings[snykID] = consolidateFindingAttributes(existingFinding, finding, severityOrder)
 		}
 	}
 
@@ -325,6 +308,82 @@ func consolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger)
 		result[i] = consolidatedFindings[key]
 	}
 	return result
+}
+
+// consolidateFindingAttributes consolidates attributes from two findings, preserving the highest risk score and severity.
+func consolidateFindingAttributes(existing, additional testapi.FindingData, severityOrder map[string]int) testapi.FindingData {
+	// deep copy the Attributes field to avoid modifying shared data
+	result := existing
+	if result.Attributes == nil && additional.Attributes != nil {
+		result.Attributes = &testapi.FindingAttributes{}
+	} else if result.Attributes != nil {
+		result.Attributes = &testapi.FindingAttributes{
+			CauseOfFailure: result.Attributes.CauseOfFailure,
+			Description:    result.Attributes.Description,
+			Evidence:       make([]testapi.Evidence, len(result.Attributes.Evidence)),
+			FindingType:    result.Attributes.FindingType,
+			Key:            result.Attributes.Key,
+			Locations:      make([]testapi.FindingLocation, len(result.Attributes.Locations)),
+			Problems:       make([]testapi.Problem, len(result.Attributes.Problems)),
+			Rating:         result.Attributes.Rating,
+			Risk:           result.Attributes.Risk,
+			Suppression:    result.Attributes.Suppression,
+			Title:          result.Attributes.Title,
+		}
+		// Copy slices
+		copy(result.Attributes.Evidence, existing.Attributes.Evidence)
+		copy(result.Attributes.Locations, existing.Attributes.Locations)
+		copy(result.Attributes.Problems, existing.Attributes.Problems)
+
+		// Deep copy PolicyModifications if it exists on existing
+		if existing.Attributes != nil && existing.Attributes.PolicyModifications != nil {
+			policyMods := make([]testapi.PolicyModification, len(*existing.Attributes.PolicyModifications))
+			copy(policyMods, *existing.Attributes.PolicyModifications)
+			result.Attributes.PolicyModifications = &policyMods
+		}
+	}
+
+	if additional.Attributes != nil {
+		result.Attributes.Evidence = append(result.Attributes.Evidence, additional.Attributes.Evidence...)
+		result.Attributes.Locations = append(result.Attributes.Locations, additional.Attributes.Locations...)
+		result.Attributes.Problems = append(result.Attributes.Problems, additional.Attributes.Problems...)
+
+		// Consolidate PolicyModifications
+		consolidatePolicyModifications(result.Attributes, additional.Attributes)
+
+		// Preserve the highest risk score
+		if additional.Attributes.Risk.RiskScore != nil {
+			if result.Attributes.Risk.RiskScore == nil ||
+				additional.Attributes.Risk.RiskScore.Value > result.Attributes.Risk.RiskScore.Value {
+				result.Attributes.Risk.RiskScore = additional.Attributes.Risk.RiskScore
+			}
+		}
+
+		// Preserve the highest severity rating
+		currentSeverity := string(result.Attributes.Rating.Severity)
+		newSeverity := string(additional.Attributes.Rating.Severity)
+		if severityOrder[newSeverity] > severityOrder[currentSeverity] {
+			result.Attributes.Rating.Severity = additional.Attributes.Rating.Severity
+		}
+	}
+	return result
+}
+
+// consolidatePolicyModifications consolidates PolicyModifications from additional finding into result.
+func consolidatePolicyModifications(result, additional *testapi.FindingAttributes) {
+	if additional.PolicyModifications == nil {
+		return
+	}
+
+	if result.PolicyModifications == nil {
+		// Deep copy the additional PolicyModifications
+		policyMods := make([]testapi.PolicyModification, len(*additional.PolicyModifications))
+		copy(policyMods, *additional.PolicyModifications)
+		result.PolicyModifications = &policyMods
+	} else {
+		// Append to existing PolicyModifications (already deep copied)
+		*result.PolicyModifications = append(*result.PolicyModifications, *additional.PolicyModifications...)
+	}
 }
 
 // getSnykID extracts the canonical Snyk ID from a finding.
