@@ -8,6 +8,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
+	"github.com/snyk/cli-extension-os-flows/internal/semver"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
@@ -346,12 +347,13 @@ func FindingToLegacyVulns(
 		baseVuln.RiskScore = &finding.Attributes.Risk.RiskScore.Value
 	}
 
-	return processEvidences(finding, &baseVuln)
+	return processEvidencesAndRemediation(finding, &baseVuln, logger)
 }
 
-func processEvidences(
+func processEvidencesAndRemediation(
 	finding *testapi.FindingData,
 	baseVuln *definitions.Vulnerability,
+	logger *zerolog.Logger,
 ) ([]definitions.Vulnerability, error) {
 	var depPathEvidences []testapi.Evidence
 	var otherEvidences []testapi.Evidence
@@ -383,6 +385,9 @@ func processEvidences(
 					return nil, fmt.Errorf(errProcessEvidenceForFindingStr, err)
 				}
 			}
+			if err := ProcessRemediationForFinding(&vuln, finding, logger); err != nil {
+				return nil, err
+			}
 			vulns = append(vulns, vuln)
 		}
 	} else {
@@ -393,6 +398,9 @@ func processEvidences(
 			if err != nil {
 				return nil, fmt.Errorf(errProcessEvidenceForFindingStr, err)
 			}
+		}
+		if err := ProcessRemediationForFinding(&vuln, finding, logger); err != nil {
+			return nil, err
 		}
 		vulns = append(vulns, vuln)
 	}
@@ -438,6 +446,22 @@ func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*defin
 			}
 			res.Vulnerabilities = append(res.Vulnerabilities, vulns[i])
 		}
+	}
+
+	if semver, err := semver.GetSemver(params.PackageManager); err == nil {
+		pin, err := CalculatePin(res.Vulnerabilities, semver)
+		if err != nil {
+			return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("calculating pin remediation: %w", err))
+		}
+		res.Remediation = &definitions.Remediation{Pin: pin}
+	} else {
+		// This will be the case for the sbom test as long
+		// as long as we don't get the package manager back from the server
+		params.
+			Logger.
+			Warn().
+			Str("package manager", params.PackageManager).
+			Msg("skipping remediation computation as no semver runtime could be retrieved for the package manager")
 	}
 
 	return &res, nil
