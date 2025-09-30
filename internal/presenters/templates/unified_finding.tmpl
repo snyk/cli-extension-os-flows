@@ -6,7 +6,7 @@
 			{{- with (getIntroducedBy .) }}
    Introduced by: {{ . }}
 			{{- end }}
-			{{- with (getIntroducedThrough .) }}
+			{{- with (getIntroducedThroughWithCount .) }}
    Introduced through: {{ . }}
 			{{- end }}
 
