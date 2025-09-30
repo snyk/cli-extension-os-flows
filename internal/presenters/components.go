@@ -143,8 +143,8 @@ func RenderTip(str string) string {
 	return fmt.Sprintf("\n💡 Tip\n\n%s", body.Render(str))
 }
 
-// FilterSeverityASC filters a slice of severities based on a minimum level.
-func FilterSeverityASC(original []string, severityMinLevel string) []string {
+// FilterSeverityAsc filters a slice of severities based on a minimum level.
+func FilterSeverityAsc(original []string, severityMinLevel string) []string {
 	if severityMinLevel == "" {
 		return original
 	}

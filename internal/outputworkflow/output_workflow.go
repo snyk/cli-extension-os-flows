@@ -37,8 +37,10 @@ func InitOutputWorkflow(engine workflow.Engine) error {
 }
 
 func filterSummaryOutput(config configuration.Configuration, input workflow.Data, logger *zerolog.Logger) (workflow.Data, error) {
-	// Parse the summary data
-	summary := json_schemas.NewTestSummary("", "")
+	// Parse the summary data. Avoid NewTestSummary here: unmarshalling into &ptr can
+	// alias a shared instance across goroutines under parallel tests. A fresh value
+	// isolates each call and prevents data races.
+	var summary json_schemas.TestSummary
 	payload, ok := input.GetPayload().([]byte)
 	if !ok {
 		return nil, fmt.Errorf("invalid payload type: %T", input.GetPayload())
@@ -49,7 +51,7 @@ func filterSummaryOutput(config configuration.Configuration, input workflow.Data
 	}
 
 	minSeverity := config.GetString(configuration.FLAG_SEVERITY_THRESHOLD)
-	filteredSeverityOrderAsc := presenters.FilterSeverityASC(summary.SeverityOrderAsc, minSeverity)
+	filteredSeverityOrderAsc := presenters.FilterSeverityAsc(summary.SeverityOrderAsc, minSeverity)
 
 	// Filter out the results based on the configuration
 	var filteredResults []json_schemas.TestSummaryResult
