@@ -161,52 +161,50 @@
   "id": "d94fa3b8-d0ef-4030-a8aa-874781e9b0b6",
   "links": {},
   "relationships": {
-    "remediation": {
+    "fix": {
       "data": {
         "attributes": {
-          "actions": [
-            {
-              "package_name": "tar-fs",
-              "upgrade_version": "2.1.3",
-              "upgrade_paths": [
-                {
-                  "dependency_path": [
-                    {
-                      "name": "@yao-pkg/pkg",
-                      "version": "6.5.0"
-                    },
-                    {
-                      "name": "prebuild-install",
-                      "version": "7.1.3"
-                    },
-                    {
-                      "name": "tar-fs",
-                      "version": "2.1.3"
-                    }
-                  ],
-                  "is_drop": false
-                },
-                {
-                  "dependency_path": [
-                    {
-                      "name": "@yao-pkg/pkg",
-                      "version": "6.5.0"
-                    },
-                    {
-                      "name": "@yao-pkg/pkg-fetch",
-                      "version": "3.5.22"
-                    },
-                    {
-                      "name": "tar-fs",
-                      "version": "2.1.3"
-                    }
-                  ],
-                  "is_drop": false
-                }
-              ],
-              "type": "upgrade_package"
-            }
-          ]
+          "actions": {
+            "package_name": "tar-fs",
+            "upgrade_version": "2.1.3",
+            "upgrade_paths": [
+              {
+                "dependency_path": [
+                  {
+                    "name": "@yao-pkg/pkg",
+                    "version": "6.5.0"
+                  },
+                  {
+                    "name": "prebuild-install",
+                    "version": "7.1.3"
+                  },
+                  {
+                    "name": "tar-fs",
+                    "version": "2.1.3"
+                  }
+                ],
+                "is_drop": false
+              },
+              {
+                "dependency_path": [
+                  {
+                    "name": "@yao-pkg/pkg",
+                    "version": "6.5.0"
+                  },
+                  {
+                    "name": "@yao-pkg/pkg-fetch",
+                    "version": "3.5.22"
+                  },
+                  {
+                    "name": "tar-fs",
+                    "version": "2.1.3"
+                  }
+                ],
+                "is_drop": false
+              }
+            ],
+            "type": "upgrade_package"
+          }
         }
       }
     }

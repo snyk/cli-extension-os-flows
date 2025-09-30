@@ -240,6 +240,13 @@ func TestProcessRemediationForFinding(t *testing.T) {
 				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
 				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
 			} "json:\"asset,omitempty\""
+			Fix *struct {
+				Data *struct {
+					Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+					Id         uuid.UUID              "json:\"id\""
+					Type       string                 "json:\"type\""
+				} "json:\"data,omitempty\""
+			} "json:\"fix,omitempty\""
 			Org *struct {
 				Data *struct {
 					Id   uuid.UUID "json:\"id\""
@@ -254,13 +261,6 @@ func TestProcessRemediationForFinding(t *testing.T) {
 				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
 				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
 			} "json:\"policy,omitempty\""
-			Remediation *struct {
-				Data *struct {
-					Attributes *testapi.RemediationAttributes "json:\"attributes,omitempty\""
-					Id         uuid.UUID                      "json:\"id\""
-					Type       string                         "json:\"type\""
-				} "json:\"data,omitempty\""
-			} "json:\"remediation,omitempty\""
 			Test *struct {
 				Data *struct {
 					Id   uuid.UUID "json:\"id\""
@@ -270,19 +270,19 @@ func TestProcessRemediationForFinding(t *testing.T) {
 				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
 			} "json:\"test,omitempty\""
 		}{
-			Remediation: &struct {
+			Fix: &struct {
 				Data *struct {
-					Attributes *testapi.RemediationAttributes "json:\"attributes,omitempty\""
-					Id         uuid.UUID                      "json:\"id\""
-					Type       string                         "json:\"type\""
+					Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+					Id         uuid.UUID              "json:\"id\""
+					Type       string                 "json:\"type\""
 				} "json:\"data,omitempty\""
 			}{
 				Data: &struct {
-					Attributes *testapi.RemediationAttributes "json:\"attributes,omitempty\""
-					Id         uuid.UUID                      "json:\"id\""
-					Type       string                         "json:\"type\""
+					Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+					Id         uuid.UUID              "json:\"id\""
+					Type       string                 "json:\"type\""
 				}{
-					Attributes: &testapi.RemediationAttributes{},
+					Attributes: &testapi.FixAttributes{},
 				},
 			},
 		},
@@ -301,8 +301,7 @@ func TestProcessRemediationForFinding(t *testing.T) {
 
 		upa := testapi.Action{}
 		upa.FromUpgradePackageAction(testapi.UpgradePackageAction{
-			PackageName:    "bar",
-			UpgradeVersion: "1.4.9",
+			PackageName: "bar",
 			UpgradePaths: []testapi.UpgradePath{
 				{
 					DependencyPath: []testapi.Package{
@@ -322,7 +321,7 @@ func TestProcessRemediationForFinding(t *testing.T) {
 		})
 
 		upf := f
-		upf.Relationships.Remediation.Data.Attributes.Actions = []testapi.Action{upa}
+		upf.Relationships.Fix.Data.Attributes.Actions = &upa
 
 		root := definitions.Vulnerability_UpgradePath_Item{}
 		root.FromVulnerabilityUpgradePath1(false)
@@ -352,8 +351,7 @@ func TestProcessRemediationForFinding(t *testing.T) {
 
 		upaDrop := testapi.Action{}
 		upaDrop.FromUpgradePackageAction(testapi.UpgradePackageAction{
-			PackageName:    "foo",
-			UpgradeVersion: "1.2.3",
+			PackageName: "foo",
 			UpgradePaths: []testapi.UpgradePath{
 				{
 					DependencyPath: []testapi.Package{
@@ -369,7 +367,7 @@ func TestProcessRemediationForFinding(t *testing.T) {
 		})
 
 		upf := f
-		upf.Relationships.Remediation.Data.Attributes.Actions = []testapi.Action{upaDrop}
+		upf.Relationships.Fix.Data.Attributes.Actions = &upaDrop
 
 		root := definitions.Vulnerability_UpgradePath_Item{}
 		root.FromVulnerabilityUpgradePath1(false)
@@ -408,7 +406,7 @@ func TestProcessRemediationForFinding(t *testing.T) {
 		})
 
 		ppf := f
-		ppf.Relationships.Remediation.Data.Attributes.Actions = []testapi.Action{ppa}
+		ppf.Relationships.Fix.Data.Attributes.Actions = &ppa
 
 		err := transform.ProcessRemediationForFinding(&vuln, &ppf, &logger)
 		require.NoError(t, err)
