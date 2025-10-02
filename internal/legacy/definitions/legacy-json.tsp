@@ -208,7 +208,6 @@ model PinRemediation {
 
 model Remediation {
   ignore: Record<string>;
-  patch: Record<string>;
   pin: Record<PinRemediation>;
   unresolved: Vulnerability[];
   upgrade: Record<RemediationUpgradeInfo>;
