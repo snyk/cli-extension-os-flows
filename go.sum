@@ -168,12 +168,12 @@ github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3/go.mod h1:A0bzQcvG
 github.com/sirupsen/logrus v1.7.0/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/skeema/knownhosts v1.3.1 h1:X2osQ+RAjK76shCbvhHHHVl3ZlgDm8apHEHFqRjnBY8=
 github.com/skeema/knownhosts v1.3.1/go.mod h1:r7KTdC8l4uxWRyK2TpQZ/1o5HaSzh06ePQNxPwTcfiY=
-github.com/snyk/code-client-go v1.23.6 h1:L9fy6ihF9hETPzHmlWOcLXLjj7paBw6fa1HodyCUra8=
-github.com/snyk/code-client-go v1.23.6/go.mod h1:3d9rtr06j239obFmF7Ojl9KybivOTR3lz0vsmDNPsRI=
+github.com/snyk/code-client-go v1.24.0 h1:ZSh8/1+d6DkG3ZabOAxMrnzBPf4BsBV1O931lQGcOG4=
+github.com/snyk/code-client-go v1.24.0/go.mod h1:3d9rtr06j239obFmF7Ojl9KybivOTR3lz0vsmDNPsRI=
 github.com/snyk/error-catalog-golang-public v0.0.0-20250912144134-a308b7983895 h1:JrN/uGEMVprlres/CVMJybSKvaLuW59SfCHoT4TfvUk=
 github.com/snyk/error-catalog-golang-public v0.0.0-20250912144134-a308b7983895/go.mod h1:Ytttq7Pw4vOCu9NtRQaOeDU2dhBYUyNBe6kX4+nIIQ4=
-github.com/snyk/go-application-framework v0.0.0-20250930080844-e1587577795b h1:0orMlhFAbldv+LbEvNqJ1VWMQ9etd5IxPGPY4EnO0K0=
-github.com/snyk/go-application-framework v0.0.0-20250930080844-e1587577795b/go.mod h1:nHVL2jzsJao6vvlJAmre0NJlK2aafOn269w3wLMoU+g=
+github.com/snyk/go-application-framework v0.0.0-20251003144837-d95ed7522120 h1:ebSwoduzT4sUNia9EU2DIaPr9f1oE8hwq77qq7ohgeE=
+github.com/snyk/go-application-framework v0.0.0-20251003144837-d95ed7522120/go.mod h1:xYMN4TxZoz+11z18HV2qT07fRxNKGB5VUIRPezJAPjc=
 github.com/snyk/go-httpauth v0.0.0-20231117135515-eb445fea7530 h1:s9PHNkL6ueYRiAKNfd8OVxlUOqU3qY0VDbgCD1f6WQY=
 github.com/snyk/go-httpauth v0.0.0-20231117135515-eb445fea7530/go.mod h1:88KbbvGYlmLgee4OcQ19yr0bNpXpOr2kciOthaSzCAg=
 github.com/sourcegraph/conc v0.3.0 h1:OQTbbt6P72L20UqAkXXuLOj79LfEanQ+YQFNpLA9ySo=
