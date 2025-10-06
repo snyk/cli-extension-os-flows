@@ -31,6 +31,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
 	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 // WorkflowID is the identifier for the Open Source Test workflow.
@@ -176,34 +177,70 @@ func handleDepgraphReachabilityFlow(
 	return RunUnifiedTestFlow(ctx, ictx, testClient, orgUUID.String(), errFactory, logger, localPolicy, &scanID)
 }
 
-// CreateLocalPolicy will create a local policy only if risk score or severity threshold are specified in the config.
-func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logger) *testapi.LocalPolicy {
-	var riskScoreThreshold *uint16
+func convertReachabilityFilterToSchema(reachabilityFilter string) *testapi.ReachabilityFilter {
+	if reachabilityFilter == "" {
+		return nil
+	}
+
+	switch reachabilityFilter {
+	case "not-applicable", "not applicable":
+		return util.Ptr(testapi.ReachabilityFilterNoInfo)
+	case "no-path-found", "no path found":
+		return util.Ptr(testapi.ReachabilityFilterNoPathFound)
+	case "reachable":
+		return util.Ptr(testapi.ReachabilityFilterReachable)
+	default:
+		return nil
+	}
+}
+
+func getRiskScoreThreshold(config configuration.Configuration, logger *zerolog.Logger) *uint16 {
 	riskScoreThresholdInt := config.GetInt(flags.FlagRiskScoreThreshold)
 	if riskScoreThresholdInt >= math.MaxUint16 {
 		// the API will enforce a range from the test spec
 		logger.Warn().Msgf("Risk score threshold %d exceeds maximum uint16 value. Setting to maximum.", riskScoreThresholdInt)
 		maxVal := uint16(math.MaxUint16)
-		riskScoreThreshold = &maxVal
+		return &maxVal
 	} else if riskScoreThresholdInt >= 0 {
 		rs := uint16(riskScoreThresholdInt)
-		riskScoreThreshold = &rs
+		return &rs
 	}
+	return nil
+}
 
-	var severityThreshold *testapi.Severity
+func getSeverityThreshold(config configuration.Configuration) *testapi.Severity {
 	severityThresholdStr := config.GetString(flags.FlagSeverityThreshold)
 	if severityThresholdStr != "" {
 		st := testapi.Severity(severityThresholdStr)
-		severityThreshold = &st
+		return &st
+	}
+	return nil
+}
+
+func getReachabilityFilter(config configuration.Configuration) *testapi.ReachabilityFilter {
+	reachabilityFiltersFromConfig := convertReachabilityFilterToSchema(config.GetString(flags.FlagReachabilityFilter))
+
+	if reachabilityFiltersFromConfig != nil {
+		return reachabilityFiltersFromConfig
 	}
 
-	if riskScoreThreshold == nil && severityThreshold == nil {
+	return nil
+}
+
+// CreateLocalPolicy will create a local policy only if risk score or severity threshold or reachability filters are specified in the config.
+func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logger) *testapi.LocalPolicy {
+	riskScoreThreshold := getRiskScoreThreshold(config, logger)
+	severityThreshold := getSeverityThreshold(config)
+	reachabilityFilter := getReachabilityFilter(config)
+
+	if riskScoreThreshold == nil && severityThreshold == nil && reachabilityFilter == nil {
 		return nil
 	}
 
 	return &testapi.LocalPolicy{
 		RiskScoreThreshold: riskScoreThreshold,
 		SeverityThreshold:  severityThreshold,
+		ReachabilityFilter: reachabilityFilter,
 	}
 }
 

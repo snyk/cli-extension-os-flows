@@ -84,6 +84,66 @@ func TestOSWorkflow_CreateLocalPolicy_RiskScoreOverflow(t *testing.T) {
 	assert.Equal(t, uint16(math.MaxUint16), *localPolicy.RiskScoreThreshold)
 }
 
+func TestOSWorkflow_CreateLocalPolicy_ReachabilityFilter(t *testing.T) {
+	tests := []struct {
+		name          string
+		filterValue   string
+		expectFilter  bool
+		expectedValue testapi.ReachabilityFilter
+	}{
+		{
+			name:          "reachable",
+			filterValue:   "reachable",
+			expectFilter:  true,
+			expectedValue: testapi.ReachabilityFilterReachable,
+		},
+		{
+			name:          "no-path-found",
+			filterValue:   "no-path-found",
+			expectFilter:  true,
+			expectedValue: testapi.ReachabilityFilterNoPathFound,
+		},
+		{
+			name:          "not-applicable",
+			filterValue:   "not-applicable",
+			expectFilter:  true,
+			expectedValue: testapi.ReachabilityFilterNoInfo,
+		},
+		{
+			name:          "no path found",
+			filterValue:   "no path found",
+			expectFilter:  true,
+			expectedValue: testapi.ReachabilityFilterNoPathFound,
+		},
+		{
+			name:          "not applicable",
+			filterValue:   "not applicable",
+			expectFilter:  true,
+			expectedValue: testapi.ReachabilityFilterNoInfo,
+		},
+		{
+			name:         "invalid value",
+			filterValue:  "non-existent-filter",
+			expectFilter: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := configuration.New()
+			config.Set(flags.FlagReachabilityFilter, tt.filterValue)
+
+			localPolicy := ostest.CreateLocalPolicy(config, &logger)
+			assert.Equal(t, tt.expectFilter, localPolicy.ReachabilityFilter != nil)
+
+			// only match filter when available
+			if tt.expectFilter {
+				assert.Equal(t, tt.expectedValue, *localPolicy.ReachabilityFilter)
+			}
+		})
+	}
+}
+
 func TestOSWorkflow_LegacyFlow(t *testing.T) {
 	// Setup - No special flags set
 	ctrl := gomock.NewController(t)
