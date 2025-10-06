@@ -31,6 +31,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
 	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 // WorkflowID is the identifier for the Open Source Test workflow.
@@ -176,7 +177,24 @@ func handleDepgraphReachabilityFlow(
 	return RunUnifiedTestFlow(ctx, ictx, testClient, orgUUID.String(), errFactory, logger, localPolicy, &scanID)
 }
 
-// CreateLocalPolicy will create a local policy only if risk score or severity threshold are specified in the config.
+func convertReachabilityFilterToSchema(reachabilityFilter string) *testapi.ReachabilityFilter {
+	if reachabilityFilter == "" {
+		return nil
+	}
+
+	switch reachabilityFilter {
+	case "not-applicable", "not applicable":
+		return util.Ptr(testapi.ReachabilityFilterNoInfo)
+	case "no-path-found", "no path found":
+		return util.Ptr(testapi.ReachabilityFilterNoPathFound)
+	case "reachable":
+		return util.Ptr(testapi.ReachabilityFilterReachable)
+	default:
+		return nil
+	}
+}
+
+// CreateLocalPolicy will create a local policy only if risk score or severity threshold or reachability filters are specified in the config.
 func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logger) *testapi.LocalPolicy {
 	var riskScoreThreshold *uint16
 	riskScoreThresholdInt := config.GetInt(flags.FlagRiskScoreThreshold)
@@ -197,13 +215,21 @@ func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logge
 		severityThreshold = &st
 	}
 
-	if riskScoreThreshold == nil && severityThreshold == nil {
+	var reachabilityFilters *testapi.ReachabilityFilter
+	reachabilityFiltersFromConfig := convertReachabilityFilterToSchema(config.GetString(flags.FlagReachabilityFilter))
+
+	if reachabilityFiltersFromConfig != nil {
+		reachabilityFilters = reachabilityFiltersFromConfig
+	}
+
+	if riskScoreThreshold == nil && severityThreshold == nil && reachabilityFilters == nil {
 		return nil
 	}
 
 	return &testapi.LocalPolicy{
 		RiskScoreThreshold: riskScoreThreshold,
 		SeverityThreshold:  severityThreshold,
+		ReachabilityFilter: reachabilityFilters,
 	}
 }
 

@@ -10,6 +10,7 @@ const (
 	FlagProjectName        = "project-name"
 	FlagRiskScoreThreshold = "risk-score-threshold"
 	FlagSeverityThreshold  = "severity-threshold"
+	FlagReachabilityFilter = "reachability-filter"
 
 	// SBOM reachability.
 	FlagReachability = "reachability"
@@ -79,6 +80,7 @@ func OSTestFlagSet() *pflag.FlagSet {
 
 	// Reachability
 	flagSet.Bool(FlagReachability, false, "Run reachability analysis on source code.")
+	flagSet.String(FlagReachabilityFilter, "", "Report only findings with the specific reachability outcome e.g. 'reachable', 'no-path-found' or 'not-applicable'")
 
 	flagSet.String(FlagSBOM, "", "Specify an SBOM file to be tested.")
 	flagSet.String(FlagSourceDir, "", "Path of the directory containing the source code.")
