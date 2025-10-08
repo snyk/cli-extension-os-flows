@@ -84,6 +84,50 @@ func TestOSWorkflow_CreateLocalPolicy_RiskScoreOverflow(t *testing.T) {
 	assert.Equal(t, uint16(math.MaxUint16), *localPolicy.RiskScoreThreshold)
 }
 
+func TestOSWorkflow_CreateLocalPolicy_SeverityThresholdDefaultsToNone(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockEngine := mocks.NewMockEngine(ctrl)
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+	mockConfig := mockInvocationCtx.GetConfiguration()
+
+	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
+	mockConfig.Set(flags.FlagSeverityThreshold, "")
+
+	localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
+	require.NotNil(t, localPolicy)
+
+	require.NotNil(t, localPolicy.RiskScoreThreshold)
+	assert.Equal(t, uint16(100), *localPolicy.RiskScoreThreshold)
+
+	require.NotNil(t, localPolicy.SeverityThreshold)
+	assert.Equal(t, testapi.SeverityNone, *localPolicy.SeverityThreshold)
+}
+
+func TestOSWorkflow_CreateLocalPolicy_ReachabilityFilterDefaultBehavior(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockEngine := mocks.NewMockEngine(ctrl)
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+	mockConfig := mockInvocationCtx.GetConfiguration()
+
+	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
+	mockConfig.Set(flags.FlagReachabilityFilter, "")
+
+	localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
+	require.NotNil(t, localPolicy)
+
+	require.NotNil(t, localPolicy.RiskScoreThreshold)
+	assert.Equal(t, uint16(100), *localPolicy.RiskScoreThreshold)
+
+	require.NotNil(t, localPolicy.SeverityThreshold)
+	assert.Equal(t, testapi.SeverityNone, *localPolicy.SeverityThreshold)
+
+	assert.Nil(t, localPolicy.ReachabilityFilter)
+}
+
 func TestOSWorkflow_CreateLocalPolicy_ReachabilityFilter(t *testing.T) {
 	tests := []struct {
 		name          string

@@ -233,8 +233,14 @@ func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logge
 	severityThreshold := getSeverityThreshold(config)
 	reachabilityFilter := getReachabilityFilter(config)
 
+	// if everything is nil, return nil for local policy
 	if riskScoreThreshold == nil && severityThreshold == nil && reachabilityFilter == nil {
 		return nil
+	}
+
+	// if we have some policy but no severity threshold, default to None
+	if severityThreshold == nil {
+		severityThreshold = util.Ptr(testapi.SeverityNone)
 	}
 
 	return &testapi.LocalPolicy{
