@@ -104,6 +104,7 @@ func reachabilityStatusBody(status reachability.ScanStatus) string {
 
 func Test_StartReachabilityAnalysis(t *testing.T) {
 	orgID := testOrgID()
+	revisionID := uuid.New()
 	expectedReachabilityID := testReachabilityID()
 
 	rc, _ := setupTest(t, &TestServerConfig{
@@ -118,7 +119,7 @@ func Test_StartReachabilityAnalysis(t *testing.T) {
 		}`, expectedReachabilityID)),
 	})
 
-	reachabilityID, err := rc.StartReachabilityAnalysis(t.Context(), orgID, "bundle-hash")
+	reachabilityID, err := rc.StartReachabilityAnalysis(t.Context(), orgID, revisionID)
 	require.NoError(t, err)
 
 	assert.Equal(t, expectedReachabilityID, reachabilityID)
@@ -126,13 +127,14 @@ func Test_StartReachabilityAnalysis(t *testing.T) {
 
 func Test_StartReachabilityAnalysis_ServerError(t *testing.T) {
 	orgID := testOrgID()
+	revisionID := uuid.New()
 
 	rc, _ := setupTest(t, &TestServerConfig{
 		ResponseStatus: http.StatusInternalServerError,
 		ResponseBodies: singleResponse(`{"errors": [{"title": "Internal server error"}]}`),
 	})
 
-	_, err := rc.StartReachabilityAnalysis(t.Context(), orgID, "bundle-hash")
+	_, err := rc.StartReachabilityAnalysis(t.Context(), orgID, revisionID)
 
 	assert.ErrorContains(t, err, "api error during reachability analysis: Internal server error")
 }

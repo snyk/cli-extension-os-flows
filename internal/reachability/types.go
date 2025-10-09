@@ -1,14 +1,16 @@
 //nolint:tagliatelle // We must match API spec.
 package reachability
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 // Type aliases for better readability and type safety.
 type (
 	// OrgID represents a Snyk OrgID.
 	OrgID = uuid.UUID
-	// BundleHash represents a unique identifier for a code bundle.
-	BundleHash = string
+	// RevisionID represents a file upload revision UUID.
+	RevisionID = uuid.UUID
 	// ID represents a unique identifier for a reachability analysis.
 	ID = uuid.UUID
 )
@@ -20,8 +22,9 @@ type ResourceType string
 const ResourceTypeReachability ResourceType = "reachability"
 
 // StartReachabilityAttributes contains the attributes needed to start a reachability analysis.
+// It uses the upload_revision_id from the file upload API.
 type StartReachabilityAttributes struct {
-	BundleID string `json:"bundle_id"`
+	UploadRevisionID string `json:"upload_revision_id"`
 }
 
 // StartReachabilityRequestData contains the data payload for starting a reachability analysis.
