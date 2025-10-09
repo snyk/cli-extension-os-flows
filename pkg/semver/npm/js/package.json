@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "semver": "^7.7.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0"
+  },
+  "main": "build/index.js",
+  "name": "npm-semver",
+  "scripts": {
+    "build": "esbuild index.js --bundle --minify --outfile=build/index.js --platform=node --packages=bundle"
+  },
+  "type": "commonjs",
+  "version": "0.0.1"
+}

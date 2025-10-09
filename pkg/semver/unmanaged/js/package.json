@@ -1,0 +1,17 @@
+{
+  "dependencies": {
+    "@snyk/unmanaged-semver": "^1"
+  },
+  "devDependencies": {
+    "@types/node": "^18",
+    "esbuild": "^0",
+    "typescript": "^5"
+  },
+  "main": "build/index.js",
+  "name": "unmanaged-semver",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --minify --outfile=build/index.js --platform=node --packages=bundle"
+  },
+  "type": "commonjs",
+  "version": "0.0.1"
+}
