@@ -11,8 +11,10 @@ import (
 )
 
 type FakeClient struct {
-	revisions map[RevisionID][]string
-	err       error
+	revisions    map[RevisionID][]string
+	err          error
+	uploadCount  int // Tracks how many uploads have occurred
+	lastRevision RevisionID
 }
 
 var _ Client = (*FakeClient)(nil)
@@ -71,10 +73,27 @@ func (f *FakeClient) CreateRevisionFromPaths(ctx context.Context, paths []string
 
 	revID := uuid.New()
 	f.revisions[revID] = append([]string(nil), paths...)
+	f.uploadCount++
+	f.lastRevision = revID
 
 	return revID, nil
 }
 
 func (f *FakeClient) GetRevisionPaths(revID RevisionID) []string {
 	return f.revisions[revID]
+}
+
+// UploadOccurred returns true if at least one upload has been performed.
+func (f *FakeClient) UploadOccurred() bool {
+	return f.uploadCount > 0
+}
+
+// GetUploadCount returns the number of uploads that have occurred.
+func (f *FakeClient) GetUploadCount() int {
+	return f.uploadCount
+}
+
+// GetLastRevisionID returns the ID of the most recent revision created.
+func (f *FakeClient) GetLastRevisionID() RevisionID {
+	return f.lastRevision
 }

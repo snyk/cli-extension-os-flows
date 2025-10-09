@@ -12,6 +12,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/snyk/error-catalog-golang-public/snyk_errors"
+
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 )
 
 // Config contains configuration options for the SCA Engine client.
@@ -37,7 +39,7 @@ const (
 
 // Client defines the interface for reachability analysis operations.
 type Client interface {
-	StartReachabilityAnalysis(ctx context.Context, orgID OrgID, bundleID BundleHash) (ID, error)
+	StartReachabilityAnalysis(ctx context.Context, orgID OrgID, revisionID RevisionID) (ID, error)
 	WaitForReachabilityAnalysis(ctx context.Context, orgID OrgID, reachabilityID ID) error
 }
 
@@ -59,17 +61,22 @@ func NewClient(httpClient *http.Client, cfg Config) *HTTPClient {
 	return &HTTPClient{httpClient, cfg}
 }
 
-// StartReachabilityAnalysis initiates a reachability analysis for the given bundle and returns the analysis ID.
-func (sec *HTTPClient) StartReachabilityAnalysis(ctx context.Context, orgID OrgID, bundleID BundleHash) (ID, error) {
+// StartReachabilityAnalysis initiates a reachability analysis and returns the analysis ID.
+// The revisionID should be obtained from the file upload API.
+func (sec *HTTPClient) StartReachabilityAnalysis(ctx context.Context, orgID OrgID, revisionID RevisionID) (ID, error) {
 	if orgID == uuid.Nil {
 		return uuid.Nil, ErrEmptyOrgID
+	}
+
+	if revisionID == uuid.Nil {
+		return uuid.Nil, fileupload.ErrEmptyRevisionID
 	}
 
 	body := StartReachabilityRequestBody{
 		Data: StartReachabilityRequestData{
 			Type: ResourceTypeReachability,
 			Attributes: StartReachabilityAttributes{
-				BundleID: bundleID,
+				UploadRevisionID: revisionID.String(),
 			},
 		},
 	}

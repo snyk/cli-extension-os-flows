@@ -25,7 +25,7 @@ func NewFakeClient(reachabilityID ID) *FakeReachabilityClient {
 	return &FakeReachabilityClient{id: reachabilityID}
 }
 
-func (f *FakeReachabilityClient) StartReachabilityAnalysis(ctx context.Context, orgID OrgID, bundleID BundleHash) (ID, error) {
+func (f *FakeReachabilityClient) StartReachabilityAnalysis(ctx context.Context, orgID OrgID, revisionID RevisionID) (ID, error) {
 	return f.id, f.startErr
 }
 

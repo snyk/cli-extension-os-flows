@@ -27,6 +27,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
@@ -164,12 +165,12 @@ func handleDepgraphReachabilityFlow(
 		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagReachabilityForCLI)
 	}
 
-	bsClient := setupBundlestoreClient(ictx, logger)
+	fuClient := fileupload.NewClientFromInvocationContext(ictx, orgUUID)
 	rc := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
 		BaseURL: config.GetString(configuration.API_URL),
 	})
 
-	scanID, err := reachability.GetReachabilityID(ctx, orgUUID, sourceDir, rc, bsClient)
+	scanID, err := reachability.GetReachabilityID(ctx, orgUUID, sourceDir, rc, fuClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze source code: %w", err)
 	}

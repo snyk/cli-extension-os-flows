@@ -10,6 +10,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/puzpuzpuz/xsync"
+	"github.com/snyk/go-application-framework/pkg/configuration"
+	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	listsources "github.com/snyk/cli-extension-os-flows/internal/files"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/filters"
@@ -68,6 +70,21 @@ func NewClient(httpClient *http.Client, cfg Config, opts ...Option) *HTTPClient 
 	}
 
 	return client
+}
+
+// NewClientFromInvocationContext creates a new file upload client from a workflow.InvocationContext.
+// This is a convenience function that extracts the necessary configuration and HTTP client
+// from the invocation context.
+func NewClientFromInvocationContext(ictx workflow.InvocationContext, orgID uuid.UUID) Client {
+	cfg := ictx.GetConfiguration()
+	return NewClient(
+		ictx.GetNetworkAccess().GetHttpClient(),
+		Config{
+			BaseURL:   cfg.GetString(configuration.API_URL),
+			OrgID:     orgID,
+			IsFedRamp: cfg.GetBool(configuration.IS_FEDRAMP),
+		},
+	)
 }
 
 func (c *HTTPClient) loadFilters(ctx context.Context) error {

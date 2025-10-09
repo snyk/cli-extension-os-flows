@@ -3,16 +3,11 @@
 package reachability_test
 
 import (
-	"net/http"
 	"testing"
 
-	"github.com/rs/zerolog"
-	codeclient "github.com/snyk/code-client-go"
-	codeclienthttp "github.com/snyk/code-client-go/http"
-	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/stretchr/testify/require"
 
-	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/uploadrevision"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
@@ -20,7 +15,7 @@ import (
 
 func TestReachabilityScanIntegration(t *testing.T) {
 	setup := util.NewIntegrationTestSetup(t)
-	bsClient, reachabilityClient := setupReachabilityClient(setup)
+	ffc, reachabilityClient := setupReachabilityClient(setup)
 
 	files := []uploadrevision.LoadedFile{
 		{Path: "src/main.go", Content: "package main"},
@@ -28,37 +23,29 @@ func TestReachabilityScanIntegration(t *testing.T) {
 
 	dir := util.CreateTmpFiles(t, files)
 
-	bundleHash, err := bsClient.UploadSourceCode(t.Context(), dir.Name())
+	revisionID, err := ffc.CreateRevisionFromDir(t.Context(), dir.Name(), fileupload.UploadOptions{})
 	require.NoError(t, err)
 
-	reachabilityID, err := reachabilityClient.StartReachabilityAnalysis(t.Context(), setup.Config.OrgID, bundleHash)
+	reachabilityID, err := reachabilityClient.StartReachabilityAnalysis(t.Context(), setup.Config.OrgID, revisionID)
 	require.NoError(t, err)
 
 	err = reachabilityClient.WaitForReachabilityAnalysis(t.Context(), setup.Config.OrgID, reachabilityID)
 	require.NoError(t, err)
 }
 
-func setupReachabilityClient(setup *util.IntegrationTestSetup) (bsClient bundlestore.Client, reachabilityClient reachability.Client) {
+func setupReachabilityClient(setup *util.IntegrationTestSetup) (ffc fileupload.Client, reachabilityClient reachability.Client) {
 	httpclient := setup.Client
-	httpCodeClient := codeclienthttp.NewHTTPClient(
-		func() *http.Client { return httpclient },
+
+	ffc = fileupload.NewClient(
+		httpclient,
+		fileupload.Config{
+			BaseURL:   setup.Config.BaseURL,
+			OrgID:     setup.Config.OrgID,
+			IsFedRamp: false,
+		},
 	)
 
-	cfg := configuration.New()
-	cfg.Set(configuration.API_URL, setup.Config.BaseURL)
-	codeScannerConfig := bundlestore.CodeClientConfig{
-		LocalConfiguration: cfg,
-	}
-
-	cScanner := codeclient.NewCodeScanner(
-		&codeScannerConfig,
-		httpCodeClient,
-	)
-
-	nopLogger := zerolog.Nop()
-	bsClient = bundlestore.NewClient(httpclient, codeScannerConfig, cScanner, &nopLogger)
-
-	return bsClient, reachability.NewClient(httpclient, reachability.Config{
+	return ffc, reachability.NewClient(httpclient, reachability.Config{
 		BaseURL: setup.Config.BaseURL,
 	})
 }

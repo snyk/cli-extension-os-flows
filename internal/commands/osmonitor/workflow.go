@@ -6,15 +6,13 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-	codeclient "github.com/snyk/code-client-go"
-	codeclienthttp "github.com/snyk/code-client-go/http"
 	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
-	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
@@ -82,28 +80,13 @@ func runReachabilityScan(
 		sourceDir = "."
 	}
 
-	httpCodeClient := codeclienthttp.NewHTTPClient(
-		ictx.GetNetworkAccess().GetHttpClient,
-		codeclienthttp.WithLogger(logger),
-	)
-
-	codeScannerConfig := bundlestore.CodeClientConfig{
-		LocalConfiguration: cfg,
-	}
-
-	cScanner := codeclient.NewCodeScanner(
-		&codeScannerConfig,
-		httpCodeClient,
-		codeclient.WithLogger(logger),
-	)
-
-	bc := bundlestore.NewClient(ictx.GetNetworkAccess().GetHttpClient(), codeScannerConfig, cScanner, logger)
+	fuClient := fileupload.NewClientFromInvocationContext(ictx, orgID)
 
 	rc := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
 		BaseURL: cfg.GetString(configuration.API_URL),
 	})
 
-	scanID, err := reachability.GetReachabilityID(ctx, orgID, sourceDir, rc, bc)
+	scanID, err := reachability.GetReachabilityID(ctx, orgID, sourceDir, rc, fuClient)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to analyze source code: %w", err)
 	}
