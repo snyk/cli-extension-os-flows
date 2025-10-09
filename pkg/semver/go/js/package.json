@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "@snyk/go-semver": "^1"
+  },
+  "devDependencies": {
+    "esbuild": "^0"
+  },
+  "main": "build/index.js",
+  "name": "go-semver",
+  "scripts": {
+    "build": "esbuild index.js --bundle --minify --outfile=build/index.js --platform=node --packages=bundle"
+  },
+  "type": "commonjs",
+  "version": "0.0.1"
+}

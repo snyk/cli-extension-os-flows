@@ -170,6 +170,11 @@ issues:
         - revive
         - goconst
         - wrapcheck
+    - path: pkg/semver/(.+)\.go
+      linters:
+        - revive
+        - testpackage
+        - wrapcheck
   include:
     - EXC0012
     - EXC0014
