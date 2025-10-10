@@ -51,12 +51,18 @@ model PatchInfo {
   version: string;
 }
 
+model LegalInstruction {
+  licenseName: string;
+  legalContent: string;
+}
+
 model Vulnerability {
   id: string;
   type?: VulnerabilityType;
   title: string;
   semver?: SemVerInfo;
   license?: string;
+  legalInstructionsArray?: LegalInstruction[];
   language?: string;
   description: string;
   packageName?: string;
