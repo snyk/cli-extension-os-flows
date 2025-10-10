@@ -234,6 +234,16 @@ components:
           type: string
         remediation:
           $ref: '#/components/schemas/Remediation'
+    LegalInstruction:
+      type: object
+      required:
+        - licenseName
+        - legalContent
+      properties:
+        licenseName:
+          type: string
+        legalContent:
+          type: string
     LicenseRule:
       type: object
       required:
@@ -450,6 +460,10 @@ components:
           $ref: '#/components/schemas/SemVerInfo'
         license:
           type: string
+        legalInstructionsArray:
+          type: array
+          items:
+            $ref: '#/components/schemas/LegalInstruction'
         language:
           type: string
         description:
