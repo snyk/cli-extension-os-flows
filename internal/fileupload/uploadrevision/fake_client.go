@@ -77,6 +77,7 @@ func (f *FakeSealableClient) UploadFiles(_ context.Context, orgID OrgID, revisio
 		return ErrNoFilesProvided
 	}
 
+	var totalPayloadSize int64
 	for _, file := range files {
 		fileInfo, err := file.File.Stat()
 		if err != nil {
@@ -90,6 +91,12 @@ func (f *FakeSealableClient) UploadFiles(_ context.Context, orgID OrgID, revisio
 		if fileInfo.Size() > f.cfg.FileSizeLimit {
 			return NewFileSizeLimitError(file.Path, fileInfo.Size(), f.cfg.FileSizeLimit)
 		}
+
+		totalPayloadSize += fileInfo.Size()
+	}
+
+	if totalPayloadSize > f.cfg.TotalPayloadSizeLimit {
+		return NewTotalPayloadSizeLimitError(totalPayloadSize, f.cfg.TotalPayloadSizeLimit)
 	}
 
 	for _, file := range files {

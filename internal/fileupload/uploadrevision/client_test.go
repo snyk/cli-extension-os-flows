@@ -205,6 +205,93 @@ func TestClient_UploadFiles_FileCountLimit(t *testing.T) {
 	assert.Equal(t, c.GetLimits().FileCountLimit, fileCountErr.Limit)
 }
 
+func TestClient_UploadFiles_TotalPayloadSizeLimit(t *testing.T) {
+	c := uploadrevision.NewClient(uploadrevision.Config{})
+
+	// Create multiple files that individually are under the size limit,
+	// but together exceed the total payload size limit
+	mockFS := fstest.MapFS{}
+	files := []uploadrevision.UploadFile{}
+
+	// Use files that are 30MB each (under the 50MB individual limit)
+	// 8 files = 240MB > 200MB total limit
+	fileSize := int64(30_000_000)
+	numFiles := 8
+
+	for i := 0; i < numFiles; i++ {
+		filename := fmt.Sprintf("file%d.txt", i)
+		mockFS[filename] = &fstest.MapFile{Data: make([]byte, fileSize)}
+
+		file, err := mockFS.Open(filename)
+		require.NoError(t, err)
+
+		files = append(files, uploadrevision.UploadFile{
+			Path: filename,
+			File: file,
+		})
+	}
+
+	err := c.UploadFiles(context.Background(), orgID, revID, files)
+
+	assert.Error(t, err)
+	var totalSizeErr *uploadrevision.TotalPayloadSizeLimitError
+	assert.ErrorAs(t, err, &totalSizeErr)
+	assert.Equal(t, fileSize*int64(numFiles), totalSizeErr.TotalSize)
+	assert.Equal(t, c.GetLimits().TotalPayloadSizeLimit, totalSizeErr.Limit)
+}
+
+func TestClient_UploadFiles_TotalPayloadSizeExactlyAtLimit(t *testing.T) {
+	srv, c := setupTestServer(t)
+	defer srv.Close()
+
+	// Test boundary: exactly 200MB (should succeed)
+	mockFS := fstest.MapFS{}
+	files := []uploadrevision.UploadFile{}
+
+	// Create files that sum exactly to 200MB
+	// 4 files of 50MB each = 200MB exactly
+	fileSize := int64(50_000_000)
+	numFiles := 4
+
+	for i := 0; i < numFiles; i++ {
+		filename := fmt.Sprintf("file%d.txt", i)
+		mockFS[filename] = &fstest.MapFile{Data: make([]byte, fileSize)}
+
+		file, err := mockFS.Open(filename)
+		require.NoError(t, err)
+
+		files = append(files, uploadrevision.UploadFile{
+			Path: filename,
+			File: file,
+		})
+	}
+
+	err := c.UploadFiles(context.Background(), orgID, revID, files)
+
+	// Should succeed - exactly at limit is allowed
+	assert.NoError(t, err)
+}
+
+func TestClient_UploadFiles_IndividualFileSizeExactlyAtLimit(t *testing.T) {
+	srv, c := setupTestServer(t)
+	defer srv.Close()
+
+	// Test boundary: individual file exactly 50MB (should succeed)
+	mockFS := fstest.MapFS{
+		"exact_limit.bin": {Data: make([]byte, c.GetLimits().FileSizeLimit)},
+	}
+
+	file, err := mockFS.Open("exact_limit.bin")
+	require.NoError(t, err)
+
+	err = c.UploadFiles(context.Background(), orgID, revID, []uploadrevision.UploadFile{
+		{Path: "exact_limit.bin", File: file},
+	})
+
+	// Should succeed - exactly at limit is allowed
+	assert.NoError(t, err)
+}
+
 func TestClient_UploadFiles_SpecialFileError(t *testing.T) {
 	c := uploadrevision.NewClient(uploadrevision.Config{})
 

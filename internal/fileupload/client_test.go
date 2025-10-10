@@ -2,6 +2,7 @@ package fileupload_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -22,8 +23,9 @@ import (
 func Test_CreateRevisionFromPaths(t *testing.T) {
 	llcfg := uploadrevision.FakeClientConfig{
 		Limits: uploadrevision.Limits{
-			FileCountLimit: 10,
-			FileSizeLimit:  100,
+			FileCountLimit:        10,
+			FileSizeLimit:         100,
+			TotalPayloadSizeLimit: 10_000,
 		},
 	}
 
@@ -102,8 +104,9 @@ func Test_CreateRevisionFromPaths(t *testing.T) {
 func Test_CreateRevisionFromDir(t *testing.T) {
 	llcfg := uploadrevision.FakeClientConfig{
 		Limits: uploadrevision.Limits{
-			FileCountLimit: 2,
-			FileSizeLimit:  100,
+			FileCountLimit:        2,
+			FileSizeLimit:         100,
+			TotalPayloadSizeLimit: 10_000,
 		},
 	}
 
@@ -206,10 +209,150 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 		allFiles = append(allFiles, additionalFiles...)
 		ctx, fakeSealableClient, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
 			Limits: uploadrevision.Limits{
-				FileCountLimit: 2,
-				FileSizeLimit:  6,
+				FileCountLimit:        2,
+				FileSizeLimit:         6,
+				TotalPayloadSizeLimit: 100,
 			},
 		}, allFiles, allowList, nil)
+
+		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+		require.NoError(t, err)
+
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		require.NoError(t, err)
+		expectEqualFiles(t, expectedFiles, uploadedFiles)
+	})
+
+	t.Run("uploading a directory exceeding total payload size limit triggers batching", func(t *testing.T) {
+		// Create files that together exceed the payload size limit but not the count limit
+		// Each file is 30 bytes, limit is 70 bytes, so 3 files (90 bytes) should be split into 2 batches
+		expectedFiles := []uploadrevision.LoadedFile{
+			{
+				Path:    "file1.txt",
+				Content: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // 30 bytes
+			},
+			{
+				Path:    "file2.txt",
+				Content: "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", // 30 bytes
+			},
+			{
+				Path:    "file3.txt",
+				Content: "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz", // 30 bytes
+			},
+		}
+		ctx, fakeSealableClient, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
+			Limits: uploadrevision.Limits{
+				FileCountLimit:        10, // High enough to not trigger count-based batching
+				FileSizeLimit:         50, // Each file is under this
+				TotalPayloadSizeLimit: 70, // 70 bytes - forces batching by size
+			},
+		}, expectedFiles, allowList, nil)
+
+		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+		require.NoError(t, err)
+
+		// Success proves size-based batching works - without it, the low-level client
+		// would reject the 90-byte payload (limit: 70 bytes).
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		require.NoError(t, err)
+		expectEqualFiles(t, expectedFiles, uploadedFiles)
+	})
+
+	t.Run("uploading large individual files near payload limit", func(t *testing.T) {
+		// Tests edge case where individual files are large relative to the payload limit.
+		// File1: 150 bytes, File2: 80 bytes, File3: 60 bytes; Limit: 200 bytes
+		// Expected batches: [File1], [File2], [File3] - each file in its own batch
+		expectedFiles := []uploadrevision.LoadedFile{
+			{
+				Path:    "large1.txt",
+				Content: string(make([]byte, 150)),
+			},
+			{
+				Path:    "large2.txt",
+				Content: string(make([]byte, 80)),
+			},
+			{
+				Path:    "large3.txt",
+				Content: string(make([]byte, 60)),
+			},
+		}
+		ctx, fakeSealableClient, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
+			Limits: uploadrevision.Limits{
+				FileCountLimit:        10,
+				FileSizeLimit:         160,
+				TotalPayloadSizeLimit: 200,
+			},
+		}, expectedFiles, allowList, nil)
+
+		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+		require.NoError(t, err)
+
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		require.NoError(t, err)
+		expectEqualFiles(t, expectedFiles, uploadedFiles)
+	})
+
+	t.Run("uploading files with variable sizes triggers optimal batching", func(t *testing.T) {
+		// Tests realistic scenario with mixed file sizes.
+		// Files: 10, 60, 5, 70, 45 bytes; Limit: 100 bytes
+		// Expected batching: [10+60+5=75], [70], [45]
+		expectedFiles := []uploadrevision.LoadedFile{
+			{
+				Path:    "tiny.txt",
+				Content: string(make([]byte, 10)),
+			},
+			{
+				Path:    "medium.txt",
+				Content: string(make([]byte, 60)),
+			},
+			{
+				Path:    "small.txt",
+				Content: string(make([]byte, 5)),
+			},
+			{
+				Path:    "large.txt",
+				Content: string(make([]byte, 70)),
+			},
+			{
+				Path:    "mid.txt",
+				Content: string(make([]byte, 45)),
+			},
+		}
+		ctx, fakeSealableClient, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
+			Limits: uploadrevision.Limits{
+				FileCountLimit:        10,
+				FileSizeLimit:         80,
+				TotalPayloadSizeLimit: 100,
+			},
+		}, expectedFiles, allowList, nil)
+
+		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+		require.NoError(t, err)
+
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		require.NoError(t, err)
+		expectEqualFiles(t, expectedFiles, uploadedFiles)
+	})
+
+	t.Run("uploading directory where both size and count limits would be reached", func(t *testing.T) {
+		// Tests scenario where both limits are approached.
+		// 8 files of 30 bytes each = 240 bytes total
+		// FileCountLimit: 10, TotalPayloadSizeLimit: 200 bytes
+		// Should batch by size first: [file1-6=180], [file7-8=60]
+		expectedFiles := make([]uploadrevision.LoadedFile, 8)
+		for i := 0; i < 8; i++ {
+			expectedFiles[i] = uploadrevision.LoadedFile{
+				Path:    fmt.Sprintf("file%d.txt", i),
+				Content: string(make([]byte, 30)),
+			}
+		}
+		ctx, fakeSealableClient, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
+			Limits: uploadrevision.Limits{
+				FileCountLimit:        10,
+				FileSizeLimit:         50,
+				TotalPayloadSizeLimit: 200,
+			},
+		}, expectedFiles, allowList, nil)
 
 		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
@@ -295,8 +438,9 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 func Test_CreateRevisionFromFile(t *testing.T) {
 	llcfg := uploadrevision.FakeClientConfig{
 		Limits: uploadrevision.Limits{
-			FileCountLimit: 2,
-			FileSizeLimit:  100,
+			FileCountLimit:        2,
+			FileSizeLimit:         100,
+			TotalPayloadSizeLimit: 10_000,
 		},
 	}
 
@@ -331,8 +475,9 @@ func Test_CreateRevisionFromFile(t *testing.T) {
 		}
 		ctx, _, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
 			Limits: uploadrevision.Limits{
-				FileCountLimit: 1,
-				FileSizeLimit:  6,
+				FileCountLimit:        1,
+				FileSizeLimit:         6,
+				TotalPayloadSizeLimit: 10_000,
 			},
 		}, expectedFiles, allowList, nil)
 
