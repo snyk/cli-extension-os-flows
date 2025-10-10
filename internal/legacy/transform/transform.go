@@ -8,6 +8,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
+	"github.com/snyk/cli-extension-os-flows/internal/remediation"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
@@ -23,17 +24,18 @@ const (
 // SnykSchemaToLegacyParams is a struct to encapsulate necessary values to the
 // ConvertSnykSchemaFindingsToLegacy function.
 type SnykSchemaToLegacyParams struct {
-	Findings          []testapi.FindingData
-	TestResult        testapi.TestResult
-	OrgSlugOrID       string
-	ProjectName       string
-	PackageManager    string
-	TargetDir         string
-	UniqueCount       int32
-	DepCount          int
-	DisplayTargetFile string
-	ErrFactory        *errors.ErrorFactory
-	Logger            *zerolog.Logger
+	Findings           []testapi.FindingData
+	RemediationSummary remediation.Summary
+	TestResult         testapi.TestResult
+	OrgSlugOrID        string
+	ProjectName        string
+	PackageManager     string
+	TargetDir          string
+	UniqueCount        int32
+	DepCount           int
+	DisplayTargetFile  string
+	ErrFactory         *errors.ErrorFactory
+	Logger             *zerolog.Logger
 }
 
 // ProcessProblemForVuln is responsible for decorating the vulnerability with information provided
@@ -346,12 +348,13 @@ func FindingToLegacyVulns(
 		baseVuln.RiskScore = &finding.Attributes.Risk.RiskScore.Value
 	}
 
-	return processEvidences(finding, &baseVuln)
+	return processEvidencesAndRemediation(finding, &baseVuln, logger)
 }
 
-func processEvidences(
+func processEvidencesAndRemediation(
 	finding *testapi.FindingData,
 	baseVuln *definitions.Vulnerability,
+	logger *zerolog.Logger,
 ) ([]definitions.Vulnerability, error) {
 	var depPathEvidences []testapi.Evidence
 	var otherEvidences []testapi.Evidence
@@ -367,37 +370,60 @@ func processEvidences(
 		}
 	}
 
-	var vulns []definitions.Vulnerability
+	var vulnCount int
 	if len(depPathEvidences) > 0 {
-		// Create a new legacy vulnerability for each dependency path evidence.
-		for _, depPathEv := range depPathEvidences {
-			vuln := *baseVuln
-			vuln.From = []string{}
-			err := ProcessEvidenceForFinding(&vuln, &depPathEv)
-			if err != nil {
-				return nil, fmt.Errorf(errProcessEvidenceForFindingStr, err)
-			}
-			for _, otherEv := range otherEvidences {
-				err := ProcessEvidenceForFinding(&vuln, &otherEv)
-				if err != nil {
-					return nil, fmt.Errorf(errProcessEvidenceForFindingStr, err)
-				}
-			}
-			vulns = append(vulns, vuln)
-		}
+		vulnCount = len(depPathEvidences)
 	} else {
+		vulnCount = 1
+	}
+	vulns := make([]definitions.Vulnerability, 0, vulnCount)
+
+	// Create a new legacy vulnerability for each dependency path evidence.
+	for _, depPathEv := range depPathEvidences {
 		vuln := *baseVuln
 		vuln.From = []string{}
-		for _, ev := range finding.Attributes.Evidence {
-			err := ProcessEvidenceForFinding(&vuln, &ev)
-			if err != nil {
-				return nil, fmt.Errorf(errProcessEvidenceForFindingStr, err)
-			}
+		err := ProcessEvidenceForFinding(&vuln, &depPathEv)
+		if err != nil {
+			return nil, fmt.Errorf(errProcessEvidenceForFindingStr, err)
+		}
+
+		if err := processOtherEvidence(&vuln, otherEvidences); err != nil {
+			return nil, err
+		}
+
+		if err := ProcessRemediationForFinding(&vuln, finding, logger); err != nil {
+			return nil, err
+		}
+		vulns = append(vulns, vuln)
+	}
+
+	// If no dependency path evidence exists for fining.
+	// Create a vuln with an empty "from", but process the other evidence.
+	if len(depPathEvidences) == 0 {
+		vuln := *baseVuln
+		vuln.From = []string{}
+
+		if err := processOtherEvidence(&vuln, otherEvidences); err != nil {
+			return nil, err
+		}
+
+		if err := ProcessRemediationForFinding(&vuln, finding, logger); err != nil {
+			return nil, err
 		}
 		vulns = append(vulns, vuln)
 	}
 
 	return vulns, nil
+}
+
+func processOtherEvidence(vuln *definitions.Vulnerability, otherEvidences []testapi.Evidence) error {
+	for _, otherEv := range otherEvidences {
+		err := ProcessEvidenceForFinding(vuln, &otherEv)
+		if err != nil {
+			return fmt.Errorf(errProcessEvidenceForFindingStr, err)
+		}
+	}
+	return nil
 }
 
 // ConvertSnykSchemaFindingsToLegacy is a function that converts snyk schema findings into
@@ -439,6 +465,12 @@ func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*defin
 			res.Vulnerabilities = append(res.Vulnerabilities, vulns[i])
 		}
 	}
+
+	remSummary, err := RemediationSummaryToLegacy(res.Vulnerabilities, params.RemediationSummary)
+	if err != nil {
+		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("failed to compute remediation summary: %w", err))
+	}
+	res.Remediation = remSummary
 
 	return &res, nil
 }
