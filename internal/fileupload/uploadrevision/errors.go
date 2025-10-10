@@ -34,6 +34,16 @@ func (e *FileCountLimitError) Error() string {
 	return fmt.Sprintf("too many files: %d exceeds limit of %d", e.Count, e.Limit)
 }
 
+// TotalPayloadSizeLimitError indicates the total size of all files exceeds the maximum allowed payload size.
+type TotalPayloadSizeLimitError struct {
+	TotalSize int64
+	Limit     int64
+}
+
+func (e *TotalPayloadSizeLimitError) Error() string {
+	return fmt.Sprintf("total payload size %d bytes exceeds limit of %d bytes", e.TotalSize, e.Limit)
+}
+
 // FileAccessError indicates a file cannot be accessed or read.
 type FileAccessError struct {
 	FilePath string
@@ -98,6 +108,14 @@ func NewFileCountLimitError(count, limit int) *FileCountLimitError {
 	return &FileCountLimitError{
 		Count: count,
 		Limit: limit,
+	}
+}
+
+// NewTotalPayloadSizeLimitError creates a new TotalPayloadSizeLimitError with the given parameters.
+func NewTotalPayloadSizeLimitError(totalSize, limit int64) *TotalPayloadSizeLimitError {
+	return &TotalPayloadSizeLimitError{
+		TotalSize: totalSize,
+		Limit:     limit,
 	}
 }
 

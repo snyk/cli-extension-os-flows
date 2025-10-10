@@ -17,6 +17,9 @@ type FileSizeLimitError = uploadrevision.FileSizeLimitError
 // FileCountLimitError indicates too many files were provided.
 type FileCountLimitError = uploadrevision.FileCountLimitError
 
+// TotalPayloadSizeLimitError indicates the total size of all files exceeds the maximum allowed payload size.
+type TotalPayloadSizeLimitError = uploadrevision.TotalPayloadSizeLimitError
+
 // FileAccessError indicates a file access permission issue.
 type FileAccessError = uploadrevision.FileAccessError
 

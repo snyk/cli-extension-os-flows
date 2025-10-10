@@ -131,4 +131,6 @@ type Limits struct {
 	FileCountLimit int
 	// FileSizeLimit specifies the maximum allowed file size in bytes.
 	FileSizeLimit int64
+	// TotalPayloadSizeLimit specifies the maximum total uncompressed payload size in bytes.
+	TotalPayloadSizeLimit int64
 }

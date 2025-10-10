@@ -125,49 +125,143 @@ func (c *HTTPClient) createFileFilter(ctx context.Context) (func(string) bool, e
 	}, nil
 }
 
+// preparedFile represents a file that has been opened and validated for upload.
+type preparedFile struct {
+	uploadFile uploadrevision.UploadFile
+	size       int64
+}
+
 func (c *HTTPClient) uploadPaths(ctx context.Context, revID RevisionID, rootPath string, paths []string) error {
-	files := make([]uploadrevision.UploadFile, 0, c.uploadRevisionSealableClient.GetLimits().FileCountLimit)
-	defer func() {
-		for _, file := range files {
-			file.File.Close()
-		}
-	}()
+	limits := c.uploadRevisionSealableClient.GetLimits()
+	batch := newUploadBatch(limits.FileCountLimit)
+
+	defer batch.closeRemainingFiles()
 
 	for _, pth := range paths {
-		relPth, err := filepath.Rel(rootPath, pth)
+		prepared, skip, err := c.prepareFileForUpload(pth, rootPath, limits)
 		if err != nil {
-			return fmt.Errorf("failed to get relative path for %s: %w", pth, err)
+			return err
 		}
-
-		f, err := os.Open(pth)
-		if err != nil {
-			return fmt.Errorf("failed to open file %s: %w", pth, err)
-		}
-
-		fstat, err := f.Stat()
-		if err != nil {
-			return fmt.Errorf("failed to stat file %s: %w", pth, err)
-		}
-
-		// TODO: This behavior should be configurable through options.
-		if fstat.Size() > c.uploadRevisionSealableClient.GetLimits().FileSizeLimit {
-			f.Close()
-			//nolint:forbidigo // Temporarily use fmt to print warning.
-			fmt.Printf("skipping file exceeding size limit %s\n", pth)
+		if skip {
 			continue
 		}
 
-		files = append(files, uploadrevision.UploadFile{
-			Path: relPth,
-			File: f,
-		})
+		// Flush batch if adding this file would exceed limits
+		if batch.wouldExceedLimits(prepared.size, limits) {
+			if err := c.flushBatch(ctx, revID, batch); err != nil {
+				prepared.uploadFile.File.Close()
+				return err
+			}
+		}
+
+		batch.addFile(prepared)
 	}
 
-	err := c.uploadRevisionSealableClient.UploadFiles(ctx, c.cfg.OrgID, revID, files)
+	// Upload any remaining files
+	if err := c.flushBatch(ctx, revID, batch); err != nil {
+		return err
+	}
+
+	// If no files were uploaded at all, return an error
+	if batch.totalUploaded == 0 && len(paths) > 0 {
+		return uploadrevision.ErrNoFilesProvided
+	}
+
+	return nil
+}
+
+// prepareFileForUpload opens, validates, and prepares a file for upload.
+// Returns the prepared file, whether to skip it, and any error.
+func (c *HTTPClient) prepareFileForUpload(pth, rootPath string, limits uploadrevision.Limits) (*preparedFile, bool, error) {
+	relPth, err := filepath.Rel(rootPath, pth)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to get relative path for %s: %w", pth, err)
+	}
+
+	f, err := os.Open(pth)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to open file %s: %w", pth, err)
+	}
+
+	fstat, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, false, fmt.Errorf("failed to stat file %s: %w", pth, err)
+	}
+
+	if fstat.Size() > limits.FileSizeLimit {
+		f.Close()
+		return nil, true, nil
+	}
+
+	return &preparedFile{
+		uploadFile: uploadrevision.UploadFile{
+			Path: relPth,
+			File: f,
+		},
+		size: fstat.Size(),
+	}, false, nil
+}
+
+// uploadBatch manages a batch of files for upload.
+type uploadBatch struct {
+	files         []uploadrevision.UploadFile
+	currentSize   int64
+	totalUploaded int
+	initialCap    int
+}
+
+func newUploadBatch(capacity int) *uploadBatch {
+	return &uploadBatch{
+		files:      make([]uploadrevision.UploadFile, 0, capacity),
+		initialCap: capacity,
+	}
+}
+
+func (b *uploadBatch) addFile(prepared *preparedFile) {
+	b.files = append(b.files, prepared.uploadFile)
+	b.currentSize += prepared.size
+}
+
+func (b *uploadBatch) wouldExceedLimits(fileSize int64, limits uploadrevision.Limits) bool {
+	wouldExceedCount := len(b.files) >= limits.FileCountLimit
+	wouldExceedSize := b.currentSize+fileSize > limits.TotalPayloadSizeLimit
+	return wouldExceedCount || wouldExceedSize
+}
+
+func (b *uploadBatch) reset() {
+	b.files = make([]uploadrevision.UploadFile, 0, b.initialCap)
+	b.currentSize = 0
+}
+
+func (b *uploadBatch) isEmpty() bool {
+	return len(b.files) == 0
+}
+
+func (b *uploadBatch) closeRemainingFiles() {
+	for _, file := range b.files {
+		file.File.Close()
+	}
+}
+
+// flushBatch uploads the current batch and resets it.
+func (c *HTTPClient) flushBatch(ctx context.Context, revID RevisionID, batch *uploadBatch) error {
+	if batch.isEmpty() {
+		return nil
+	}
+
+	err := c.uploadRevisionSealableClient.UploadFiles(ctx, c.cfg.OrgID, revID, batch.files)
 	if err != nil {
 		return fmt.Errorf("failed to upload files: %w", err)
 	}
 
+	// Close files in the uploaded batch
+	for _, file := range batch.files {
+		file.File.Close()
+	}
+
+	batch.totalUploaded += len(batch.files)
+	batch.reset()
 	return nil
 }
 
