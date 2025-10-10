@@ -17,8 +17,20 @@ enum VulnerabilitySeverity {
 }
 
 enum Reachability {
-  REACHABLE,
-  NOT_REACHABLE,
+  function,
+  package,
+  `no-info`,
+  `not-applicable`,
+}
+
+model ReachableFunctionPaths {
+  functionName: string;
+  callPaths: string[][];
+}
+
+model ReachablePaths {
+  pathCount: uint32;
+  paths: ReachableFunctionPaths[];
 }
 
 alias UpgradePath = string | boolean;
@@ -69,6 +81,7 @@ model Vulnerability {
   riskScore?: uint16;
   from: string[];
   reachability?: Reachability;
+  reachablePaths?: ReachablePaths;
   upgradePath: UpgradePath[];
   isUpgradable: boolean;
   isPatchable: boolean;

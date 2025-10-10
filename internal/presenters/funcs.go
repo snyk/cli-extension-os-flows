@@ -15,7 +15,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
 )
 
-const notApplicable = "N/A"
+const notApplicable = "Not Applicable"
 
 // add returns the sum of two integers.
 func add(a, b int) int {
@@ -200,8 +200,8 @@ func getReachability(finding testapi.FindingData) string {
 			case testapi.ReachabilityTypeFunction:
 				return "Reachable"
 			case testapi.ReachabilityTypeNoInfo:
-				return "No reachable path found"
-			case testapi.ReachabilityTypeNotApplicable, testapi.ReachabilityTypeNone:
+				return "No Path Found"
+			default:
 				return notApplicable
 			}
 		}
@@ -400,7 +400,7 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 		if finding.Id != nil {
 			return finding.Id.String()
 		}
-		return notApplicable
+		return "N/A"
 	}
 
 	defaultMap := template.FuncMap{}
