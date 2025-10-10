@@ -228,14 +228,35 @@ func getReachabilityFilter(config configuration.Configuration) *testapi.Reachabi
 	return nil
 }
 
+type supportedFailOnPolicy struct {
+	onUpgradable *bool
+}
+
+func getFailOnPolicy(config configuration.Configuration) supportedFailOnPolicy {
+	failOnFromConfig := config.GetString(flags.FlagFailOn)
+
+	var failOnPolicy supportedFailOnPolicy
+	if failOnFromConfig == "" {
+		return failOnPolicy
+	}
+
+	switch failOnFromConfig {
+	case "upgradable", "all":
+		failOnPolicy.onUpgradable = util.Ptr(true)
+	}
+
+	return failOnPolicy
+}
+
 // CreateLocalPolicy will create a local policy only if risk score or severity threshold or reachability filters are specified in the config.
 func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logger) *testapi.LocalPolicy {
 	riskScoreThreshold := getRiskScoreThreshold(config, logger)
 	severityThreshold := getSeverityThreshold(config)
 	reachabilityFilter := getReachabilityFilter(config)
+	failOnPolicy := getFailOnPolicy(config)
 
 	// if everything is nil, return nil for local policy
-	if riskScoreThreshold == nil && severityThreshold == nil && reachabilityFilter == nil {
+	if riskScoreThreshold == nil && severityThreshold == nil && reachabilityFilter == nil && failOnPolicy.onUpgradable == nil {
 		return nil
 	}
 
@@ -248,6 +269,7 @@ func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logge
 		RiskScoreThreshold: riskScoreThreshold,
 		SeverityThreshold:  severityThreshold,
 		ReachabilityFilter: reachabilityFilter,
+		FailOnUpgradable:   failOnPolicy.onUpgradable,
 	}
 }
 
