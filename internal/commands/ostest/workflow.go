@@ -10,8 +10,11 @@ package ostest
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
+	"io/fs"
 	"math"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,10 +32,13 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
+	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
+	"github.com/snyk/cli-extension-os-flows/internal/policy"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
 	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
+	"github.com/snyk/cli-extension-os-flows/pkg/legacypolicy"
 )
 
 // WorkflowID is the identifier for the Open Source Test workflow.
@@ -248,15 +254,57 @@ func getFailOnPolicy(config configuration.Configuration) supportedFailOnPolicy {
 	return failOnPolicy
 }
 
+func getLegacyPolicyDir(config configuration.Configuration) string {
+	if dir := config.GetString(flags.FlagPolicyPath); dir != "" {
+		return dir
+	}
+	if dir := config.GetString(configuration.INPUT_DIRECTORY); dir != "" {
+		return dir
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return cwd
+}
+
+func getLocalIgnores(config configuration.Configuration, logger *zerolog.Logger) *[]testapi.LocalIgnore {
+	policyFile, err := policy.Resolve(getLegacyPolicyDir(config))
+	if err != nil {
+		var perr *fs.PathError
+		if stderrors.As(err, &perr) {
+			logger.Info().Msg("No .snyk file found.")
+		} else {
+			logger.Warn().Err(err).Msg("Failed to load .snyk file.")
+		}
+		return nil
+	}
+
+	var p legacypolicy.Policy
+	if err = legacypolicy.Unmarshal(policyFile, &p); err != nil {
+		logger.Error().Err(err).Msg("Failed to read .snyk file.")
+		return nil
+	}
+
+	localIgnores, err := transform.LegacyPolicyToLocalPolicy(&p)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to process ignores from .snyk file.")
+		return nil
+	}
+
+	return localIgnores
+}
+
 // CreateLocalPolicy will create a local policy only if risk score or severity threshold or reachability filters are specified in the config.
 func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logger) *testapi.LocalPolicy {
 	riskScoreThreshold := getRiskScoreThreshold(config, logger)
 	severityThreshold := getSeverityThreshold(config)
 	reachabilityFilter := getReachabilityFilter(config)
 	failOnPolicy := getFailOnPolicy(config)
+	localIgnores := getLocalIgnores(config, logger)
 
 	// if everything is nil, return nil for local policy
-	if riskScoreThreshold == nil && severityThreshold == nil && reachabilityFilter == nil && failOnPolicy.onUpgradable == nil {
+	if riskScoreThreshold == nil && severityThreshold == nil && reachabilityFilter == nil && failOnPolicy.onUpgradable == nil && localIgnores == nil {
 		return nil
 	}
 
@@ -270,6 +318,7 @@ func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logge
 		SeverityThreshold:  severityThreshold,
 		ReachabilityFilter: reachabilityFilter,
 		FailOnUpgradable:   failOnPolicy.onUpgradable,
+		Ignores:            localIgnores,
 	}
 }
 
