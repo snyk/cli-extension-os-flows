@@ -27,6 +27,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 var legacyWorkflowID = workflow.NewWorkflowIdentifier("legacycli")
@@ -34,23 +35,71 @@ var legacyWorkflowID = workflow.NewWorkflowIdentifier("legacycli")
 var logger = zerolog.Nop()
 
 func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
-	// Setup - No special flags set
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	tests := []struct {
+		name                     string
+		failOnValue              string
+		setFailOnFlag            bool
+		expectedFailOnUpgradable *bool
+	}{
+		{
+			name:                     "no fail-on flag set",
+			setFailOnFlag:            false,
+			expectedFailOnUpgradable: nil,
+		},
+		{
+			name:                     "fail-on upgradable",
+			failOnValue:              "upgradable",
+			setFailOnFlag:            true,
+			expectedFailOnUpgradable: util.Ptr(true),
+		},
+		{
+			name:                     "fail-on all",
+			failOnValue:              "all",
+			setFailOnFlag:            true,
+			expectedFailOnUpgradable: util.Ptr(true),
+		},
+		{
+			name:                     "fail-on unsupported value",
+			failOnValue:              "unsupported",
+			setFailOnFlag:            true,
+			expectedFailOnUpgradable: nil,
+		},
+	}
 
-	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
-	mockConfig := mockInvocationCtx.GetConfiguration()
-	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
-	mockConfig.Set(flags.FlagSeverityThreshold, "high")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-	localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
-	require.NotNil(t, localPolicy)
+			mockEngine := mocks.NewMockEngine(ctrl)
+			mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+			mockConfig := mockInvocationCtx.GetConfiguration()
 
-	require.NotNil(t, localPolicy.RiskScoreThreshold)
-	assert.Equal(t, uint16(100), *localPolicy.RiskScoreThreshold)
-	require.NotNil(t, localPolicy.SeverityThreshold)
-	assert.Equal(t, "high", string(*localPolicy.SeverityThreshold))
+			mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
+			mockConfig.Set(flags.FlagSeverityThreshold, "high")
+
+			if tt.setFailOnFlag {
+				mockConfig.Set(flags.FlagFailOn, tt.failOnValue)
+			}
+
+			localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
+
+			require.NotNil(t, localPolicy)
+
+			require.NotNil(t, localPolicy.RiskScoreThreshold)
+			assert.Equal(t, uint16(100), *localPolicy.RiskScoreThreshold)
+
+			require.NotNil(t, localPolicy.SeverityThreshold)
+			assert.Equal(t, "high", string(*localPolicy.SeverityThreshold))
+
+			if tt.expectedFailOnUpgradable == nil {
+				assert.Nil(t, localPolicy.FailOnUpgradable)
+			} else {
+				require.NotNil(t, localPolicy.FailOnUpgradable)
+				assert.Equal(t, *tt.expectedFailOnUpgradable, *localPolicy.FailOnUpgradable)
+			}
+		})
+	}
 }
 
 func TestOSWorkflow_CreateLocalPolicy_NoValues(t *testing.T) {
