@@ -6,6 +6,8 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path"
 	"strings"
 	"sync"
 	"testing"
@@ -255,6 +257,72 @@ func TestOSWorkflow_CreateLocalPolicy_ReachabilityFilter(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOSWorkflow_CreateLocalPolicy_NoLegacyPolicy(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockEngine := mocks.NewMockEngine(ctrl)
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+	mockConfig := mockInvocationCtx.GetConfiguration()
+	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
+
+	localPolicy, _ := ostest.CreateLocalPolicy(mockConfig, &logger, nil)
+	require.NotNil(t, localPolicy)
+	assert.Nil(t, localPolicy.Ignores)
+}
+
+func TestOSWorkflow_CreateLocalPolicy_WithLegacyPolicy(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockEngine := mocks.NewMockEngine(ctrl)
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+	mockConfig := mockInvocationCtx.GetConfiguration()
+	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
+
+	dir := createTempLegacyPolicy(t, `
+version: v1.0.0
+ignore:
+  'npm:hawk:20160119':
+    - sqlite > sqlite3 > node-pre-gyp > request > hawk:
+        reason: hawk got bumped
+        expires: '2116-03-01T14:30:04.136Z'
+`)
+
+	mockConfig.Set(configuration.INPUT_DIRECTORY, dir)
+
+	localPolicy, _ := ostest.CreateLocalPolicy(mockConfig, &logger, nil)
+	require.NotNil(t, localPolicy)
+	require.NotNil(t, localPolicy.Ignores)
+	assert.Len(t, *localPolicy.Ignores, 1)
+}
+
+func TestOSWorkflow_CreateLocalPolicy_PointingAtLegacyPolicy(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockEngine := mocks.NewMockEngine(ctrl)
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+	mockConfig := mockInvocationCtx.GetConfiguration()
+	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
+
+	dir := createTempLegacyPolicy(t, `
+version: v1.0.0
+ignore:
+  'npm:hawk:20160119':
+    - sqlite > sqlite3 > node-pre-gyp > request > hawk:
+        reason: hawk got bumped
+        expires: '2116-03-01T14:30:04.136Z'
+`)
+
+	mockConfig.Set(flags.FlagPolicyPath, dir)
+
+	localPolicy, _ := ostest.CreateLocalPolicy(mockConfig, &logger, nil)
+	require.NotNil(t, localPolicy)
+	require.NotNil(t, localPolicy.Ignores)
+	assert.Len(t, *localPolicy.Ignores, 1)
 }
 
 func TestOSWorkflow_LegacyFlow(t *testing.T) {
@@ -864,4 +932,20 @@ func TestOSWorkflow_ReachabilityFilterValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func createTempLegacyPolicy(t *testing.T, policy string) string {
+	t.Helper()
+
+	dir, err := os.MkdirTemp("", "snyktest")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(dir) })
+
+	fd, err := os.Create(path.Join(dir, ".snyk"))
+	require.NoError(t, err)
+
+	_, err = fd.WriteString(policy)
+	require.NoError(t, err)
+
+	return dir
 }

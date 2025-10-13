@@ -95,30 +95,31 @@ func packageFromFinding(sf testapi.FindingData) (Package, error) {
 }
 
 func depedencyPathsFromFinding(sf testapi.FindingData) ([]DependencyPath, error) {
-	var depPaths []DependencyPath
+	depPaths := []DependencyPath{}
 	for _, ev := range sf.Attributes.Evidence {
-		disc, err := ev.Discriminator()
+		dis, err := ev.Discriminator()
 		if err != nil {
 			return nil, fmt.Errorf("error getting evidence discriminator: %w", err)
 		}
-		if disc == string(testapi.DependencyPath) {
-			depEv, err := ev.AsDependencyPathEvidence()
-			if err != nil {
-				return nil, fmt.Errorf("error converting evidence to dependency path evidence: %w", err)
-			}
-			depPath := make([]Package, 0, len(depEv.Path))
-			for _, path := range depEv.Path {
-				depPath = append(depPath, Package{
-					Name:    path.Name,
-					Version: path.Version,
-				})
-			}
-			depPaths = append(depPaths, depPath)
+		if dis != string(testapi.DependencyPath) {
+			continue
 		}
+		depEv, err := ev.AsDependencyPathEvidence()
+		if err != nil {
+			return nil, fmt.Errorf("error parsing dependency path evidence: %w", err)
+		}
+		depPath := make([]Package, len(depEv.Path))
+		for i := range depEv.Path {
+			depPath[i] = Package{
+				Name:    depEv.Path[i].Name,
+				Version: depEv.Path[i].Version,
+			}
+		}
+		depPaths = append(depPaths, depPath)
 	}
 
 	if len(depPaths) == 0 {
-		return nil, fmt.Errorf("finding is missing depdency path evidence: %s", sf.Id)
+		return nil, fmt.Errorf("finding is missing dependency path evidence: %s", sf.Id)
 	}
 
 	return depPaths, nil
