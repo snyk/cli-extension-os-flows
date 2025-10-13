@@ -746,3 +746,52 @@ func TestOSWorkflow_AllProjects_UnifiedFlow(t *testing.T) {
 	assert.Contains(t, projectNames, "proj1")
 	assert.Contains(t, projectNames, "proj2")
 }
+
+func TestOSWorkflow_ReachabilityFilterValidation(t *testing.T) {
+	tests := []struct {
+		name          string
+		setup         func(config configuration.Configuration)
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "reachability-filter without reachability flag - should error",
+			setup: func(config configuration.Configuration) {
+				config.Set(flags.FlagReachabilityFilter, "reachable")
+				config.Set(flags.FlagReachability, false)
+			},
+			expectError: true,
+		},
+		{
+			name: "reachability-filter with sbom but without reachability flag - should error",
+			setup: func(config configuration.Configuration) {
+				config.Set(flags.FlagReachabilityFilter, "no-path-found")
+				config.Set(flags.FlagSBOM, "bom.json")
+				config.Set(flags.FlagReachability, false)
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockAPI := newMockAPIState(t)
+			defer mockAPI.Close()
+
+			mockEngine := mocks.NewMockEngine(ctrl)
+			mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockAPI.URL())
+
+			tt.setup(mockInvocationCtx.GetConfiguration())
+
+			_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, "Invalid flag option")
+			}
+		})
+	}
+}
