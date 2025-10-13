@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog"
+	snyk_cli_errors "github.com/snyk/error-catalog-golang-public/cli"
 )
 
 // OSFlowsExtensionError represents something gone wrong during the
@@ -121,4 +122,10 @@ func (ef *ErrorFactory) NewLegacyJSONTransformerError(err error) *OSFlowsExtensi
 		fmt.Errorf("legacy json transform: %w", err),
 		"An error occurred generating the JSON response.",
 	)
+}
+
+// NewReachabilityFilterWithoutReachabilityError creates a new error for when
+// the --reachability-filter flag is used without the --reachability flag.
+func (ef *ErrorFactory) NewReachabilityFilterWithoutReachabilityError() error {
+	return snyk_cli_errors.NewInvalidFlagOptionError("The --reachability-filter option requires reachability analysis. Please use it with --reachability flag.")
 }

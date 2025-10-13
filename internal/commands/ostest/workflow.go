@@ -261,8 +261,15 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 	errFactory := errors.NewErrorFactory(logger)
 	ctx := context.Background()
 
-	// Reachability
+	// Validate that --reachability-filter is only used with --reachability
+	reachabilityFilter := config.GetString(flags.FlagReachabilityFilter)
 	reachability := config.GetBool(flags.FlagReachability)
+
+	if reachabilityFilter != "" && !reachability {
+		return nil, errFactory.NewReachabilityFilterWithoutReachabilityError() //nolint:wrapcheck // error catalog already contains details
+	}
+
+	// Reachability
 	sourceDir := config.GetString(flags.FlagSourceDir)
 	if sourceDir == "" {
 		sourceDir = "."
