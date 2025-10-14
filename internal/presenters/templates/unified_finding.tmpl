@@ -92,7 +92,7 @@
   Organization:      {{ getValueFromConfig "internal_org_slug" }}
   Test type:         {{ if eq .Summary.Type "sast" }}Static code analysis{{else}}{{ .Summary.Type }}{{ end}}
   Project path:      {{ getValueFromConfig "targetDirectory" }}
-  
+
   {{- $vulnResults := getSummaryResultsByIssueType "vulnerability" .Findings .Summary.SeverityOrderAsc }}
   {{- $licenseResults := getSummaryResultsByIssueType "license" .Findings .Summary.SeverityOrderAsc }}
 
@@ -158,6 +158,11 @@
   {{- end }}
 {{- end }} {{/* end summary */}}
 
+{{- define "remediationDetails" }}
+{{- printf "  ✗ %s %s in %s\n"  (printf "%s %s" (.Vulnerability.Name | bold) (printf "[%s Severity]" (.Vulnerability.Severity | capitalize) | renderInSeverityColor) | renderInSeverityColor) (printf "[https://security.snyk.io/vulns/%s]" .Vulnerability.ID) (.VulnerablePackage.Name | bold) -}}
+{{- printf "    introduced by %s\n" (getRemediationIntroducedByWithCount .) -}}
+{{- end }}
+
 {{- define "main" }}
 {{- range .Results}}
     {{- template "header"  . }}
@@ -176,6 +181,37 @@
     {{- end }}
 
     {{- template "details" . }}
+
+    {{- $remediationSummary := getRemediationSummary .Findings -}}
+    {{- if gt (len $remediationSummary.Upgrades) 0 -}}
+	{{- "Issues to fix by upgrading:\n" | renderGreen | bold -}}
+	{{- range $upgrade := $remediationSummary.Upgrades -}}
+	    {{- printf "\n  Upgrade %s to %s to fix\n" (printf "%s@%s" $upgrade.From.Name $upgrade.From.Version) (printf "%s@%s" $upgrade.To.Name $upgrade.To.Version) }}
+	    {{- range $fix := $upgrade.Fixes }}
+		{{- template "remediationDetails" $fix -}}
+	    {{- end }}
+	{{- end }}
+    {{- end }}
+
+    {{- if gt (len $remediationSummary.Pins) 0 -}}
+	{{- "\nIssues to fix by upgrading dependencies:\n" | renderGreen | bold -}}
+	{{- range $pin := $remediationSummary.Pins -}}
+	    {{- printf "\n  Pin %s to %s to fix\n" (printf "%s@%s" $pin.From.Name $pin.From.Version) (printf "%s@%s" $pin.To.Name $pin.To.Version) }}
+	    {{- range $fix := $pin.Fixes }}
+		{{- template "remediationDetails" $fix -}}
+	    {{- end }}
+	{{- end }}
+    {{- end }}
+    {{- if gt (len $remediationSummary.Unresolved) 0 -}}
+	{{- "\nIssues with no direct upgrade or patch:" | renderGray | bold -}}
+	{{- "\n" -}} {{/* This needs to be on a separate line, otherwise the bold function will add extra white spaces */}}
+	{{- range $unresolved := $remediationSummary.Unresolved -}}
+	    {{- template "remediationDetails" $unresolved -}}
+	    {{- if gt (len $unresolved.FixedInVersions) 0 -}}
+		{{- printf "  This issue was fixed in: %s\n" (join $unresolved.FixedInVersions "," | bold) -}}
+	    {{- end }}
+	{{- end }}
+    {{- end }}
 
     {{- if not (eq (getValueFromConfig "severity-threshold") "") }}
         {{ tip "You are currently viewing results with --severity-threshold applied.\nTo view all issues, remove the --severity-threshold flag"}}

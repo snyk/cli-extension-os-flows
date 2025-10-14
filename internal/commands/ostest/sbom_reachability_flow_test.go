@@ -1,3 +1,4 @@
+//nolint:revive // Interferes with inline types from testapi.
 package ostest_test
 
 import (
@@ -135,9 +136,25 @@ func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonO
 	require.NoError(t, err)
 
 	// Create mock evidence
-	ev := testapi.Evidence{}
-	err = ev.FromReachabilityEvidence(testapi.ReachabilityEvidence{
+	reachEv := testapi.Evidence{}
+	err = reachEv.FromReachabilityEvidence(testapi.ReachabilityEvidence{
 		Reachability: testapi.ReachabilityTypeFunction,
+	})
+	require.NoError(t, err)
+
+	depPathEv := testapi.Evidence{}
+	err = depPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path: []testapi.Package{
+			{
+				Name:    "root",
+				Version: "1.0.0",
+			},
+			{
+				Name:    "foo",
+				Version: "0.0.0",
+			},
+		},
+		Source: testapi.DependencyPath,
 	})
 	require.NoError(t, err)
 
@@ -145,7 +162,7 @@ func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonO
 	findingAttrs := testapi.FindingAttributes{
 		CauseOfFailure: false,
 		Description:    "Test vulnerability description",
-		Evidence:       []testapi.Evidence{ev},
+		Evidence:       []testapi.Evidence{reachEv, depPathEv},
 		FindingType:    testapi.FindingTypeSca,
 		Key:            "TEST-FINDING-KEY",
 		Locations:      []testapi.FindingLocation{location},
@@ -155,12 +172,91 @@ func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonO
 		Title:          "Test High Severity Finding",
 	}
 
+	act := testapi.Action{}
+	act.FromUpgradePackageAction(testapi.UpgradePackageAction{
+		Type:        testapi.UpgradePackage,
+		PackageName: "foo",
+		UpgradePaths: []testapi.UpgradePath{
+			{
+				DependencyPath: []testapi.Package{
+					{
+						Name:    "root",
+						Version: "1.0.0",
+					},
+					{
+						Name:    "foo",
+						Version: "1.0.0",
+					},
+				},
+				IsDrop: false,
+			},
+		},
+	})
+
 	// Create mock FindingData
 	findingDataType := testapi.Findings
 	findingData := testapi.FindingData{
 		Attributes: &findingAttrs,
 		Id:         &findingID,
 		Type:       &findingDataType,
+		Relationships: &struct {
+			Asset *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+			} "json:\"asset,omitempty\""
+			Fix *struct {
+				Data *struct {
+					Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+					Id         uuid.UUID              "json:\"id\""
+					Type       string                 "json:\"type\""
+				} "json:\"data,omitempty\""
+			} "json:\"fix,omitempty\""
+			Org *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+			} "json:\"org,omitempty\""
+			Policy *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+			} "json:\"policy,omitempty\""
+			Test *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+			} "json:\"test,omitempty\""
+		}{
+			Fix: &struct {
+				Data *struct {
+					Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+					Id         uuid.UUID              "json:\"id\""
+					Type       string                 "json:\"type\""
+				} "json:\"data,omitempty\""
+			}{
+				Data: &struct {
+					Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+					Id         uuid.UUID              "json:\"id\""
+					Type       string                 "json:\"type\""
+				}{
+					Attributes: &testapi.FixAttributes{
+						Outcome: testapi.FullyResolved,
+						Actions: &act,
+					},
+				},
+			},
+		},
 	}
 
 	// Create test summary data

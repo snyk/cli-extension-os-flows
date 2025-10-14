@@ -1,3 +1,4 @@
+//nolint:revive // Interferes with inline types from testapi.
 package transform_test
 
 import (
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gkampitakis/go-snaps/snaps"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/stretchr/testify/assert"
@@ -227,6 +229,201 @@ func TestProcessingEvidenceForFinding(t *testing.T) {
 	}
 }
 
+func TestProcessRemediationForFinding(t *testing.T) {
+	logger := zerolog.Nop()
+	f := testapi.FindingData{
+		Relationships: &struct {
+			Asset *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+			} "json:\"asset,omitempty\""
+			Fix *struct {
+				Data *struct {
+					Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+					Id         uuid.UUID              "json:\"id\""
+					Type       string                 "json:\"type\""
+				} "json:\"data,omitempty\""
+			} "json:\"fix,omitempty\""
+			Org *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+			} "json:\"org,omitempty\""
+			Policy *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+			} "json:\"policy,omitempty\""
+			Test *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+			} "json:\"test,omitempty\""
+		}{
+			Fix: &struct {
+				Data *struct {
+					Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+					Id         uuid.UUID              "json:\"id\""
+					Type       string                 "json:\"type\""
+				} "json:\"data,omitempty\""
+			}{
+				Data: &struct {
+					Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+					Id         uuid.UUID              "json:\"id\""
+					Type       string                 "json:\"type\""
+				}{
+					Attributes: &testapi.FixAttributes{},
+				},
+			},
+		},
+	}
+
+	t.Run("update package action", func(t *testing.T) {
+		vuln := definitions.Vulnerability{
+			From: []string{
+				"root@1.0.0",
+				"foo@1.2.2",
+				"bar@1.4.8",
+			},
+			PackageName: util.Ptr("bar"),
+			Version:     "1.4.8",
+		}
+
+		upa := testapi.Action{}
+		upa.FromUpgradePackageAction(testapi.UpgradePackageAction{
+			PackageName: "bar",
+			UpgradePaths: []testapi.UpgradePath{
+				{
+					DependencyPath: []testapi.Package{
+						{
+							Name:    "root",
+							Version: "1.0.0",
+						},
+						{
+							Name:    "foo",
+							Version: "1.2.2",
+						},
+						{
+							Name:    "bar",
+							Version: "1.4.9",
+						},
+					},
+					IsDrop: false,
+				},
+			},
+			Type: testapi.UpgradePackage,
+		})
+
+		upf := f
+		upf.Relationships.Fix.Data.Attributes.Actions = &upa
+
+		root := definitions.Vulnerability_UpgradePath_Item{}
+		root.FromVulnerabilityUpgradePath1(false)
+		path1 := definitions.Vulnerability_UpgradePath_Item{}
+		path1.FromVulnerabilityUpgradePath0("foo@1.2.2")
+		path2 := definitions.Vulnerability_UpgradePath_Item{}
+		path2.FromVulnerabilityUpgradePath0("bar@1.4.9")
+		expectedUpgradePath := []definitions.Vulnerability_UpgradePath_Item{root, path1, path2}
+
+		err := transform.ProcessRemediationForFinding(&vuln, &upf, &logger)
+		require.NoError(t, err)
+
+		assert.True(t, vuln.IsUpgradable)
+		assert.Equal(t, expectedUpgradePath, vuln.UpgradePath)
+	})
+
+	t.Run("update package action with drop", func(t *testing.T) {
+		vuln := definitions.Vulnerability{
+			From: []string{
+				"root@1.0.0",
+				"foo@1.2.2",
+				"bar@1.4.8",
+			},
+			PackageName: util.Ptr("bar"),
+			Version:     "1.4.8",
+		}
+
+		upaDrop := testapi.Action{}
+		upaDrop.FromUpgradePackageAction(testapi.UpgradePackageAction{
+			PackageName: "foo",
+			UpgradePaths: []testapi.UpgradePath{
+				{
+					DependencyPath: []testapi.Package{
+						{
+							Name:    "root",
+							Version: "1.0.0",
+						},
+						{
+							Name:    "foo",
+							Version: "1.2.3",
+						},
+					},
+					IsDrop: true,
+				},
+			},
+			Type: testapi.UpgradePackage,
+		})
+
+		upf := f
+		upf.Relationships.Fix.Data.Attributes.Actions = &upaDrop
+
+		root := definitions.Vulnerability_UpgradePath_Item{}
+		root.FromVulnerabilityUpgradePath1(false)
+		path1 := definitions.Vulnerability_UpgradePath_Item{}
+		path1.FromVulnerabilityUpgradePath0("foo@1.2.3")
+		expectedUpgradePath := []definitions.Vulnerability_UpgradePath_Item{root, path1}
+
+		err := transform.ProcessRemediationForFinding(&vuln, &upf, &logger)
+		require.NoError(t, err)
+
+		assert.True(t, vuln.IsUpgradable)
+		assert.Equal(t, expectedUpgradePath, vuln.UpgradePath)
+	})
+
+	t.Run("pin package action", func(t *testing.T) {
+		vuln := definitions.Vulnerability{
+			From: []string{
+				"root@1.0.0",
+				"foo@1.2.2",
+				"bar@1.4.8",
+				"baz@4.5.0",
+			},
+			PackageName: util.Ptr("baz"),
+			Version:     "4.5.0",
+			FixedIn: util.Ptr([]string{
+				"4.5.6",
+				"5.0.0",
+			}),
+		}
+
+		ppa := testapi.Action{}
+		ppa.FromPinPackageAction(testapi.PinPackageAction{
+			PackageName: "baz",
+			PinVersion:  "4.5.6",
+			Type:        testapi.PinPackage,
+		})
+
+		ppf := f
+		ppf.Relationships.Fix.Data.Attributes.Actions = &ppa
+
+		err := transform.ProcessRemediationForFinding(&vuln, &ppf, &logger)
+		require.NoError(t, err)
+
+		assert.True(t, *vuln.IsPinnable)
+	})
+}
+
 func TestProcessLocationForVuln(t *testing.T) {
 	packageName := "name"
 	packageVersion := "version"
@@ -382,7 +579,7 @@ func TestProcessProblemForVuln_License(t *testing.T) {
 }
 
 func TestFindingToLegacyVulns(t *testing.T) {
-	buf, err := os.ReadFile("testdata/yarn-legacy-cli-finding.json")
+	buf, err := os.ReadFile("testdata/multiple-paths-remediation-finding.json")
 	require.NoError(t, err)
 
 	var finding testapi.FindingData
@@ -395,5 +592,9 @@ func TestFindingToLegacyVulns(t *testing.T) {
 		&logger,
 	)
 	require.NoError(t, err)
-	snaps.MatchStandaloneSnapshot(t, vulns)
+
+	bts, err := json.MarshalIndent(vulns, "", "  ")
+	require.NoError(t, err)
+
+	snaps.MatchStandaloneSnapshot(t, string(bts))
 }

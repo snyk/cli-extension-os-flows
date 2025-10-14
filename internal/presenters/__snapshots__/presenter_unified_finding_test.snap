@@ -7,6 +7,8 @@ Security issues: 1
  ✗ [HIGH] High severity vulnerability
    Finding ID: SNYK-JS-VM2-5537100
    Info: https://snyk.io/vuln/SNYK-JS-VM2-5537100
+   Introduced by: root@0.0.0
+   Introduced through: root@0.0.0 > foo@1.0.0
    Risk Score: 780
 
 
@@ -16,6 +18,10 @@ License issues: 1
    Finding ID: snyk:lic:npm:web3-core:LGPL-3.0
    Info: https://snyk.io/vuln/snyk:lic:npm:web3-core:LGPL-3.0
 
+                                       
+Issues with no direct upgrade or patch:
+  ✗ High severity vulnerability [High Severity] [https://security.snyk.io/vulns/SNYK-JS-VM2-5537100] in foo
+    introduced by root@0.0.0 > foo@1.0.0
 
 ╭─────────────────────────────────────────────────────────╮
 │ Test Summary                                            │
