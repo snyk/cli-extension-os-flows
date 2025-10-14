@@ -288,11 +288,12 @@ func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonO
 
 	// Mock TestResult with comprehensive data
 	mockTestResult := gafclientmocks.NewMockTestResult(ctrl)
-	mockTestResult.EXPECT().GetExecutionState().Return(testapi.Finished).Times(1)
+	mockTestResult.EXPECT().GetExecutionState().Return(testapi.Finished).AnyTimes()
 	mockTestResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{findingData}, true, nil).Times(1)
 	mockTestResult.EXPECT().GetTestSubject().Return(testSubject).AnyTimes()
 	mockTestResult.EXPECT().GetEffectiveSummary().Return(summary).AnyTimes()
 	mockTestResult.EXPECT().GetRawSummary().Return(summary).AnyTimes()
+	mockTestResult.EXPECT().GetPassFail().Return(nil).AnyTimes()
 
 	// Mock TestHandle
 	mockTestHandle := gafclientmocks.NewMockTestHandle(ctrl)

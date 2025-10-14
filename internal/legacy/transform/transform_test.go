@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/gkampitakis/go-snaps/snaps"
+	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/apiclients/mocks"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -597,4 +599,71 @@ func TestFindingToLegacyVulns(t *testing.T) {
 	require.NoError(t, err)
 
 	snaps.MatchStandaloneSnapshot(t, string(bts))
+}
+
+func TestIsTestResultOk(t *testing.T) {
+	tests := []struct {
+		name           string
+		testResult     testapi.TestResult
+		setupMock      func(mock *mocks.MockTestResult)
+		expectedResult bool
+	}{
+		{
+			name:           "nil test result should return false",
+			testResult:     nil,
+			setupMock:      nil,
+			expectedResult: false,
+		},
+		{
+			name: "outcome Pass should return true",
+			setupMock: func(mock *mocks.MockTestResult) {
+				passFail := testapi.Pass
+				mock.EXPECT().GetPassFail().Return(&passFail).Times(1)
+			},
+			expectedResult: true,
+		},
+		{
+			name: "outcome Fail should return false",
+			setupMock: func(mock *mocks.MockTestResult) {
+				passFail := testapi.Fail
+				mock.EXPECT().GetPassFail().Return(&passFail).Times(1)
+			},
+			expectedResult: false,
+		},
+		{
+			name: "outcome is nil and execution state is not Errored should return true",
+			setupMock: func(mock *mocks.MockTestResult) {
+				mock.EXPECT().GetPassFail().Return(nil).Times(1)
+				mock.EXPECT().GetExecutionState().Return(testapi.Finished).Times(1)
+			},
+			expectedResult: true,
+		},
+		{
+			name: "outcome is nil and execution state is Errored should return false",
+			setupMock: func(mock *mocks.MockTestResult) {
+				mock.EXPECT().GetPassFail().Return(nil).Times(1)
+				mock.EXPECT().GetExecutionState().Return(testapi.Errored).Times(1)
+			},
+			expectedResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var testResult testapi.TestResult
+
+			if tt.setupMock != nil {
+				ctrl := gomock.NewController(t)
+				defer ctrl.Finish()
+				mockTestResult := mocks.NewMockTestResult(ctrl)
+				tt.setupMock(mockTestResult)
+				testResult = mockTestResult
+			} else {
+				testResult = tt.testResult
+			}
+
+			result := transform.IsTestResultOk(testResult)
+			assert.Equal(t, tt.expectedResult, result)
+		})
+	}
 }

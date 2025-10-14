@@ -31,7 +31,8 @@ func ShimFindingsToRemediationFindings(shimFindings []testapi.FindingData) (Find
 
 		depPaths, err := depedencyPathsFromFinding(sf)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get finding dependency path: %w", err)
+			// return nil, fmt.Errorf("failed to get finding dependency path: %w", err)
+			continue
 		}
 
 		fix, err := fixFromFinding(sf)

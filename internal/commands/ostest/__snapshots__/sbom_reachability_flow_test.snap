@@ -20,7 +20,7 @@
   "orgLicenseRules": null,
   "severities": null
  },
- "ok": false,
+ "ok": true,
  "org": "test-org-slug",
  "packageManager": "",
  "policy": "",

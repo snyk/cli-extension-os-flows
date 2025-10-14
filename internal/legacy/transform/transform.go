@@ -443,7 +443,7 @@ func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*defin
 		UniqueCount:       params.UniqueCount,
 		DependencyCount:   int64(params.DepCount),
 		Vulnerabilities:   []definitions.Vulnerability{},
-		Ok:                len(params.Findings) == 0,
+		Ok:                IsTestResultOk(params.TestResult),
 		Filtered: definitions.Filtered{
 			Ignore: make([]definitions.Vulnerability, 0),
 			Patch:  make([]string, 0),
@@ -541,4 +541,18 @@ func ensureVulnHasIdentifiers(v *definitions.Vulnerability) {
 	if v.Identifiers == nil {
 		v.Identifiers = &definitions.Identifiers{CVE: []string{}, CWE: []string{}}
 	}
+}
+
+// IsTestResultOk determines if a test result should be considered successful.
+func IsTestResultOk(testResult testapi.TestResult) bool {
+	if testResult == nil {
+		return false
+	}
+
+	passFail := testResult.GetPassFail()
+	if passFail == nil {
+		return testResult.GetExecutionState() != testapi.Errored
+	}
+
+	return *passFail == testapi.Pass
 }
