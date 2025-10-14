@@ -561,7 +561,7 @@ func TestUnifiedFindingPresenter_Ignored_ShownInIgnoredSectionWithBang(t *testin
 	assert.Contains(t, out, " ! [IGNORED] [MEDIUM] Ignored Suppression Finding")
 }
 
-// TestUnifiedFindingPresenter_LicenseInstructions verifies that license instructions appear in output.
+// verifies that license instructions appear in output.
 func TestUnifiedFindingPresenter_LicenseInstructions(t *testing.T) {
 	config := configuration.New()
 	buffer := &bytes.Buffer{}
@@ -611,7 +611,7 @@ func TestUnifiedFindingPresenter_LicenseInstructions(t *testing.T) {
 	assert.Contains(t, out, "○ for LGPL-3.0: This license requires you to disclose source code changes.")
 }
 
-// TestUnifiedFindingPresenter_LicenseWithoutInstructions verifies that license findings without instructions don't show the instructions field.
+// verifies that license findings without instructions don't show the instructions field.
 func TestUnifiedFindingPresenter_LicenseWithoutInstructions(t *testing.T) {
 	config := configuration.New()
 	buffer := &bytes.Buffer{}
