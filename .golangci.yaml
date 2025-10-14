@@ -162,6 +162,7 @@ issues:
         - ireturn
         - wrapcheck
         - errcheck
+        - dupl
     - path: internal/view/(.+)_test\.go
       linters:
         - testpackage
