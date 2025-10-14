@@ -337,7 +337,7 @@ func ConsolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger)
 }
 
 func consolidateFindingFix(existing, additional testapi.FindingData, pkgManager string) (*testapi.FindingData, error) {
-	if additional.Relationships == nil {
+	if additional.Relationships == nil || additional.Relationships.Fix == nil {
 		return &existing, nil
 	}
 	if existing.Relationships == nil {

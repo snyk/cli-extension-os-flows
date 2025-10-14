@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -16,7 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	service "github.com/snyk/cli-extension-os-flows/internal/common"
-	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	snykErrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
@@ -43,7 +44,7 @@ func RunUnifiedTestFlow(
 	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
 	orgID string,
-	errFactory *errors.ErrorFactory,
+	errFactory *snykErrors.ErrorFactory,
 	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
 	reachabilityScanID *reachability.ID,
@@ -82,7 +83,7 @@ type testProcessor struct {
 	ictx        workflow.InvocationContext
 	testClient  testapi.TestClient
 	orgID       string
-	errFactory  *errors.ErrorFactory
+	errFactory  *snykErrors.ErrorFactory
 	logger      *zerolog.Logger
 	localPolicy *testapi.LocalPolicy
 }
@@ -115,7 +116,7 @@ func testAllDepGraphs(
 	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
 	orgID string,
-	errFactory *errors.ErrorFactory,
+	errFactory *snykErrors.ErrorFactory,
 	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
 	depGraphs []*testapi.IoSnykApiV1testdepgraphRequestDepGraph,
@@ -144,7 +145,13 @@ func testAllDepGraphs(
 	outputsByIdx := make([][]workflow.Data, len(depGraphs))
 
 	for i := range depGraphs {
-		g.Go(func() error {
+		g.Go(func() (err error) {
+			defer func() {
+				if pErr := recover(); pErr != nil {
+					logger.Error().Err(fmt.Errorf("panic: %v", pErr)).Msg("unexpected error occurred")
+					err = errors.Join(err, errors.New("unexpected error occurred"))
+				}
+			}()
 			depGraph := depGraphs[i]
 			displayTargetFile := ""
 			if i < len(displayTargetFiles) {
@@ -160,7 +167,8 @@ func testAllDepGraphs(
 				findingsByIdx[i] = legacyFinding
 			}
 			outputsByIdx[i] = outputData
-			return nil
+
+			return err
 		})
 	}
 
@@ -224,7 +232,7 @@ func handleOutput(
 	ictx workflow.InvocationContext,
 	allLegacyFindings []definitions.LegacyVulnerabilityResponse,
 	allOutputData []workflow.Data,
-	errFactory *errors.ErrorFactory,
+	errFactory *snykErrors.ErrorFactory,
 ) ([]workflow.Data, error) {
 	config := ictx.GetConfiguration()
 	jsonOutput := config.GetBool(outputworkflow.OutputConfigKeyJSON)
@@ -281,7 +289,7 @@ func handleOutput(
 // prepareJSONOutput prepares legacy JSON output from findings.
 func prepareJSONOutput(
 	allLegacyFindings []definitions.LegacyVulnerabilityResponse,
-	errFactory *errors.ErrorFactory,
+	errFactory *snykErrors.ErrorFactory,
 ) ([]byte, error) {
 	if len(allLegacyFindings) == 0 {
 		return nil, nil
