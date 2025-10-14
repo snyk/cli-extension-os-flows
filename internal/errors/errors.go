@@ -127,5 +127,7 @@ func (ef *ErrorFactory) NewLegacyJSONTransformerError(err error) *OSFlowsExtensi
 // NewReachabilityFilterWithoutReachabilityError creates a new error for when
 // the --reachability-filter flag is used without the --reachability flag.
 func (ef *ErrorFactory) NewReachabilityFilterWithoutReachabilityError() error {
-	return snyk_cli_errors.NewInvalidFlagOptionError("The --reachability-filter option requires reachability analysis. Please use it with --reachability flag.")
+	return snyk_cli_errors.NewInvalidFlagOptionError(
+		"The --reachability-filter option requires reachability analysis. Please use it with --reachability=true flag.",
+	)
 }

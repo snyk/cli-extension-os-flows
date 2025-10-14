@@ -79,7 +79,8 @@ func OSTestFlagSet() *pflag.FlagSet {
 	flagSet.String(FlagSeverityThreshold, "", "Report only findings at the specified level or higher.")
 
 	// Reachability
-	flagSet.Bool(FlagReachability, false, "Run reachability analysis on source code.")
+	flagSet.Bool(FlagReachability, false, "Run reachability analysis on source code. "+
+		"Use --reachability=true to enable, or --reachability=false to disable.")
 	flagSet.String(FlagReachabilityFilter, "", "Report only findings with the specific reachability outcome e.g. 'reachable', 'no-path-found' or 'not-applicable'")
 
 	flagSet.String(FlagSBOM, "", "Specify an SBOM file to be tested.")
@@ -132,7 +133,8 @@ func OSTestFlagSet() *pflag.FlagSet {
 func OSMonitorFlagSet() *pflag.FlagSet {
 	flagSet := pflag.NewFlagSet("snyk-cli-extension-os-flows", pflag.ExitOnError)
 
-	flagSet.Bool(FlagReachability, false, "Run reachability analysis on source code.")
+	flagSet.Bool(FlagReachability, false, "Run reachability analysis on source code. "+
+		"Use --reachability=true to enable, or --reachability=false to disable.")
 	flagSet.String(FlagSourceDir, "", "Path of the directory containing the source code.")
 
 	// Open Source
