@@ -66,7 +66,7 @@ func runReachabilityScan(
 
 	if !isReachEnabled {
 		return uuid.Nil, ecosystems.NewReachabilitySettingDisabledError(
-			"In order to run the `monitor` command with `--reachability`, the reachability settings must be enabled.",
+			"In order to run the `monitor` command with `--reachability=true`, the reachability settings must be enabled.",
 		)
 	}
 
