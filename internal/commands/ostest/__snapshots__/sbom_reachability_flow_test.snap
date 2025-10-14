@@ -25,6 +25,23 @@
  "packageManager": "",
  "policy": "",
  "projectName": "",
+ "remediation": {
+  "ignore": null,
+  "patch": null,
+  "pin": {},
+  "unresolved": [],
+  "upgrade": {
+   "foo@0.0.0": {
+    "upgradeTo": "foo@1.0.0",
+    "upgrades": [
+     "foo@0.0.0"
+    ],
+    "vulns": [
+     "snyk-vuln-123"
+    ]
+   }
+  }
+ },
  "summary": "",
  "uniqueCount": 1,
  "vulnerabilities": [
@@ -34,10 +51,13 @@
    "description": "Test vulnerability description",
    "disclosureTime": "2025-07-28T17:11:43.000000Z",
    "epssDetails": null,
-   "from": [],
+   "from": [
+    "root@1.0.0",
+    "foo@0.0.0"
+   ],
    "id": "snyk-vuln-123",
    "isPatchable": false,
-   "isUpgradable": false,
+   "isUpgradable": true,
    "language": "js",
    "malicious": true,
    "modificationTime": "2025-07-28T17:11:43.000000Z",
@@ -50,7 +70,10 @@
    "severity": "high",
    "socialTrendAlert": false,
    "title": "Test High Severity Finding",
-   "upgradePath": null,
+   "upgradePath": [
+    false,
+    "foo@1.0.0"
+   ],
    "version": "0.0.0"
   }
  ]
