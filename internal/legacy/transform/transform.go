@@ -534,6 +534,33 @@ func setBasicLicenseInfo(v *definitions.Vulnerability, license *testapi.SnykLice
 	v.Type = &licenseType
 	v.License = &license.License
 	v.PackageName = &license.PackageName
+
+	if instructions := convertLicenseInstructions(license.Instructions); len(instructions) > 0 {
+		v.LegalInstructionsArray = &instructions
+	}
+}
+
+// convertLicenseInstructions converts license instructions to the json format.
+func convertLicenseInstructions(instructionsList []testapi.SnykvulndbLicenseInstructions) []definitions.LegalInstruction {
+	if len(instructionsList) == 0 {
+		return nil
+	}
+
+	instructions := make([]definitions.LegalInstruction, 0, len(instructionsList))
+	for _, inst := range instructionsList {
+		if inst.Content == "" {
+			continue
+		}
+		instructions = append(instructions, definitions.LegalInstruction{
+			LicenseName:  inst.License,
+			LegalContent: inst.Content,
+		})
+	}
+
+	if len(instructions) == 0 {
+		return nil
+	}
+	return instructions
 }
 
 // ensureVulnHasIdentifiers ensures that a vulnerability has an identifiers field initialized.

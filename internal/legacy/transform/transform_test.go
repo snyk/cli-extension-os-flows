@@ -598,3 +598,344 @@ func TestFindingToLegacyVulns(t *testing.T) {
 
 	snaps.MatchStandaloneSnapshot(t, string(bts))
 }
+
+func TestLicenseInstructions(t *testing.T) {
+	t.Run("single instruction", func(t *testing.T) {
+		now := time.Now()
+
+		buildEcosystem := testapi.SnykvulndbPackageEcosystem{}
+		err := buildEcosystem.FromSnykvulndbBuildPackageEcosystem(testapi.SnykvulndbBuildPackageEcosystem{
+			Type:           testapi.Build,
+			Language:       "javascript",
+			PackageManager: "npm",
+		})
+		require.NoError(t, err)
+
+		licenseProblem := testapi.SnykLicenseProblem{
+			Id:             "snyk:lic:npm:test-pkg:GPL-3.0",
+			Source:         testapi.SnykLicense,
+			CreatedAt:      now,
+			PublishedAt:    now,
+			PackageName:    "test-pkg",
+			PackageVersion: "1.0.0",
+			Severity:       testapi.SeverityMedium,
+			License:        "GPL-3.0",
+			Ecosystem:      buildEcosystem,
+			Instructions: []testapi.SnykvulndbLicenseInstructions{
+				{
+					License: "GPL-3.0",
+					Content: "This license requires source disclosure.",
+				},
+			},
+		}
+
+		problem := &testapi.Problem{}
+		err = problem.FromSnykLicenseProblem(licenseProblem)
+		require.NoError(t, err)
+
+		vuln := &definitions.Vulnerability{}
+		logger := zerolog.Nop()
+		err = transform.ProcessProblemForVuln(vuln, problem, &logger)
+		require.NoError(t, err)
+
+		require.NotNil(t, vuln.LegalInstructionsArray)
+		require.Len(t, *vuln.LegalInstructionsArray, 1)
+		assert.Equal(t, "GPL-3.0", (*vuln.LegalInstructionsArray)[0].LicenseName)
+		assert.Equal(t, "This license requires source disclosure.", (*vuln.LegalInstructionsArray)[0].LegalContent)
+	})
+
+	t.Run("multiple instructions", func(t *testing.T) {
+		now := time.Now()
+
+		buildEcosystem := testapi.SnykvulndbPackageEcosystem{}
+		err := buildEcosystem.FromSnykvulndbBuildPackageEcosystem(testapi.SnykvulndbBuildPackageEcosystem{
+			Type:           testapi.Build,
+			Language:       "javascript",
+			PackageManager: "npm",
+		})
+		require.NoError(t, err)
+
+		licenseProblem := testapi.SnykLicenseProblem{
+			Id:             "snyk:lic:npm:test-pkg:Dual",
+			Source:         testapi.SnykLicense,
+			CreatedAt:      now,
+			PublishedAt:    now,
+			PackageName:    "test-pkg",
+			PackageVersion: "1.0.0",
+			Severity:       testapi.SeverityHigh,
+			License:        "GPL-3.0 OR MIT",
+			Ecosystem:      buildEcosystem,
+			Instructions: []testapi.SnykvulndbLicenseInstructions{
+				{
+					License: "GPL-3.0",
+					Content: "Requires source disclosure.",
+				},
+				{
+					License: "MIT",
+					Content: "Include copyright notice.",
+				},
+			},
+		}
+
+		problem := &testapi.Problem{}
+		err = problem.FromSnykLicenseProblem(licenseProblem)
+		require.NoError(t, err)
+
+		vuln := &definitions.Vulnerability{}
+		logger := zerolog.Nop()
+		err = transform.ProcessProblemForVuln(vuln, problem, &logger)
+		require.NoError(t, err)
+
+		require.NotNil(t, vuln.LegalInstructionsArray)
+		require.Len(t, *vuln.LegalInstructionsArray, 2)
+		assert.Equal(t, "GPL-3.0", (*vuln.LegalInstructionsArray)[0].LicenseName)
+		assert.Equal(t, "Requires source disclosure.", (*vuln.LegalInstructionsArray)[0].LegalContent)
+		assert.Equal(t, "MIT", (*vuln.LegalInstructionsArray)[1].LicenseName)
+		assert.Equal(t, "Include copyright notice.", (*vuln.LegalInstructionsArray)[1].LegalContent)
+	})
+
+	t.Run("no instructions", func(t *testing.T) {
+		now := time.Now()
+
+		buildEcosystem := testapi.SnykvulndbPackageEcosystem{}
+		err := buildEcosystem.FromSnykvulndbBuildPackageEcosystem(testapi.SnykvulndbBuildPackageEcosystem{
+			Type:           testapi.Build,
+			Language:       "javascript",
+			PackageManager: "npm",
+		})
+		require.NoError(t, err)
+
+		licenseProblem := testapi.SnykLicenseProblem{
+			Id:             "snyk:lic:npm:test-pkg:MIT",
+			Source:         testapi.SnykLicense,
+			CreatedAt:      now,
+			PublishedAt:    now,
+			PackageName:    "test-pkg",
+			PackageVersion: "1.0.0",
+			Severity:       testapi.SeverityLow,
+			License:        "MIT",
+			Ecosystem:      buildEcosystem,
+			Instructions:   []testapi.SnykvulndbLicenseInstructions{},
+		}
+
+		problem := &testapi.Problem{}
+		err = problem.FromSnykLicenseProblem(licenseProblem)
+		require.NoError(t, err)
+
+		vuln := &definitions.Vulnerability{}
+		logger := zerolog.Nop()
+		err = transform.ProcessProblemForVuln(vuln, problem, &logger)
+		require.NoError(t, err)
+
+		assert.Nil(t, vuln.LegalInstructionsArray)
+	})
+}
+
+func TestFindingToLegacyVulns_MultipleInstructions(t *testing.T) {
+	now := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	buildEcosystem := testapi.SnykvulndbPackageEcosystem{}
+	err := buildEcosystem.FromSnykvulndbBuildPackageEcosystem(testapi.SnykvulndbBuildPackageEcosystem{
+		Type:           testapi.Build,
+		Language:       "python",
+		PackageManager: "pip",
+	})
+	require.NoError(t, err)
+
+	licenseProblem := testapi.SnykLicenseProblem{
+		Id:             "snyk:lic:pip:dual-pkg:GPL-3.0-OR-MIT",
+		Source:         testapi.SnykLicense,
+		CreatedAt:      now,
+		PublishedAt:    now,
+		PackageName:    "dual-pkg",
+		PackageVersion: "1.0.0",
+		Severity:       testapi.SeverityHigh,
+		License:        "GPL-3.0 OR MIT",
+		Ecosystem:      buildEcosystem,
+		Instructions: []testapi.SnykvulndbLicenseInstructions{
+			{
+				License: "GPL-3.0",
+				Content: "Consult your legal team before distribution.",
+			},
+			{
+				License: "MIT",
+				Content: "Include the copyright notice and permission notice in all copies.",
+			},
+		},
+		AffectedVersions: util.Ptr([]string{">=1.0.0"}),
+	}
+
+	problem := testapi.Problem{}
+	err = problem.FromSnykLicenseProblem(licenseProblem)
+	require.NoError(t, err)
+
+	depPath := testapi.Evidence{}
+	err = depPath.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path: []testapi.Package{
+			{Name: "root", Version: "1.0.0"},
+			{Name: "dual-pkg", Version: "1.0.0"},
+		},
+		Source: testapi.DependencyPath,
+	})
+	require.NoError(t, err)
+
+	finding := testapi.FindingData{
+		Id:   util.Ptr(uuid.New()),
+		Type: util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{
+			Title:       "GPL-3.0 OR MIT license",
+			Description: "This package contains a dual license.",
+			Problems:    []testapi.Problem{problem},
+			Evidence:    []testapi.Evidence{depPath},
+			Rating: testapi.Rating{
+				Severity: testapi.Severity("high"),
+			},
+		},
+	}
+
+	logger := zerolog.Nop()
+	vulns, err := transform.FindingToLegacyVulns(&finding, &logger)
+	require.NoError(t, err)
+	require.Len(t, vulns, 1)
+
+	require.NotNil(t, vulns[0].LegalInstructionsArray)
+	require.Len(t, *vulns[0].LegalInstructionsArray, 2)
+	assert.Equal(t, "GPL-3.0", (*vulns[0].LegalInstructionsArray)[0].LicenseName)
+	assert.Equal(t, "MIT", (*vulns[0].LegalInstructionsArray)[1].LicenseName)
+
+	snaps.MatchStandaloneSnapshot(t, vulns)
+}
+
+func TestFindingToLegacyVulns_SingleInstruction(t *testing.T) {
+	now := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	buildEcosystem := testapi.SnykvulndbPackageEcosystem{}
+	err := buildEcosystem.FromSnykvulndbBuildPackageEcosystem(testapi.SnykvulndbBuildPackageEcosystem{
+		Type:           testapi.Build,
+		Language:       "python",
+		PackageManager: "pip",
+	})
+	require.NoError(t, err)
+
+	licenseProblem := testapi.SnykLicenseProblem{
+		Id:             "snyk:lic:pip:agpl-pkg:AGPL-3.0",
+		Source:         testapi.SnykLicense,
+		CreatedAt:      now,
+		PublishedAt:    now,
+		PackageName:    "agpl-pkg",
+		PackageVersion: "2.5.0",
+		Severity:       testapi.SeverityHigh,
+		License:        "AGPL-3.0",
+		Ecosystem:      buildEcosystem,
+		Instructions: []testapi.SnykvulndbLicenseInstructions{
+			{
+				License: "AGPL-3.0",
+				Content: "Review section 13 for network use requirements.",
+			},
+		},
+		AffectedVersions: util.Ptr([]string{">=2.0.0"}),
+	}
+
+	problem := testapi.Problem{}
+	err = problem.FromSnykLicenseProblem(licenseProblem)
+	require.NoError(t, err)
+
+	depPath := testapi.Evidence{}
+	err = depPath.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path: []testapi.Package{
+			{Name: "root", Version: "1.0.0"},
+			{Name: "agpl-pkg", Version: "2.5.0"},
+		},
+		Source: testapi.DependencyPath,
+	})
+	require.NoError(t, err)
+
+	finding := testapi.FindingData{
+		Id:   util.Ptr(uuid.New()),
+		Type: util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{
+			Title:       "AGPL-3.0 license",
+			Description: "This package contains an AGPL-3.0 license.",
+			Problems:    []testapi.Problem{problem},
+			Evidence:    []testapi.Evidence{depPath},
+			Rating: testapi.Rating{
+				Severity: testapi.Severity("high"),
+			},
+		},
+	}
+
+	logger := zerolog.Nop()
+	vulns, err := transform.FindingToLegacyVulns(&finding, &logger)
+	require.NoError(t, err)
+	require.Len(t, vulns, 1)
+
+	require.NotNil(t, vulns[0].LegalInstructionsArray)
+	require.Len(t, *vulns[0].LegalInstructionsArray, 1)
+	assert.Equal(t, "AGPL-3.0", (*vulns[0].LegalInstructionsArray)[0].LicenseName)
+	assert.Contains(t, (*vulns[0].LegalInstructionsArray)[0].LegalContent, "section 13")
+
+	snaps.MatchStandaloneSnapshot(t, vulns)
+}
+
+func TestFindingToLegacyVulns_NoInstructions(t *testing.T) {
+	now := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	buildEcosystem := testapi.SnykvulndbPackageEcosystem{}
+	err := buildEcosystem.FromSnykvulndbBuildPackageEcosystem(testapi.SnykvulndbBuildPackageEcosystem{
+		Type:           testapi.Build,
+		Language:       "python",
+		PackageManager: "pip",
+	})
+	require.NoError(t, err)
+
+	licenseProblem := testapi.SnykLicenseProblem{
+		Id:               "snyk:lic:pip:mit-pkg:MIT",
+		Source:           testapi.SnykLicense,
+		CreatedAt:        now,
+		PublishedAt:      now,
+		PackageName:      "mit-pkg",
+		PackageVersion:   "3.2.1",
+		Severity:         testapi.SeverityLow,
+		License:          "MIT",
+		Ecosystem:        buildEcosystem,
+		Instructions:     []testapi.SnykvulndbLicenseInstructions{},
+		AffectedVersions: util.Ptr([]string{">=3.0.0"}),
+	}
+
+	problem := testapi.Problem{}
+	err = problem.FromSnykLicenseProblem(licenseProblem)
+	require.NoError(t, err)
+
+	depPath := testapi.Evidence{}
+	err = depPath.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path: []testapi.Package{
+			{Name: "root", Version: "1.0.0"},
+			{Name: "mit-pkg", Version: "3.2.1"},
+		},
+		Source: testapi.DependencyPath,
+	})
+	require.NoError(t, err)
+
+	finding := testapi.FindingData{
+		Id:   util.Ptr(uuid.New()),
+		Type: util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{
+			Title:       "MIT license",
+			Description: "This package contains an MIT license.",
+			Problems:    []testapi.Problem{problem},
+			Evidence:    []testapi.Evidence{depPath},
+			Rating: testapi.Rating{
+				Severity: testapi.Severity("low"),
+			},
+		},
+	}
+
+	logger := zerolog.Nop()
+	vulns, err := transform.FindingToLegacyVulns(&finding, &logger)
+	require.NoError(t, err)
+	require.Len(t, vulns, 1)
+
+	assert.Nil(t, vulns[0].LegalInstructionsArray)
+
+	snaps.MatchStandaloneSnapshot(t, vulns)
+}

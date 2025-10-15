@@ -136,6 +136,12 @@ type LegacyVulnerabilityResponse struct {
 	Vulnerabilities    []Vulnerability `json:"vulnerabilities"`
 }
 
+// LegalInstruction defines model for LegalInstruction.
+type LegalInstruction struct {
+	LegalContent string `json:"legalContent"`
+	LicenseName  string `json:"licenseName"`
+}
+
 // LicenseRule defines model for LicenseRule.
 type LicenseRule struct {
 	Instructions string `json:"instructions"`
@@ -227,56 +233,57 @@ type VulnFilteredIgnored struct {
 
 // Vulnerability defines model for Vulnerability.
 type Vulnerability struct {
-	CVSSv3                *string                          `json:"CVSSv3,omitempty"`
-	AlternativeIds        *[]string                        `json:"alternativeIds,omitempty"`
-	CreationTime          string                           `json:"creationTime"`
-	Credit                *[]string                        `json:"credit,omitempty"`
-	CvssDetails           *[]CVSSDetail                    `json:"cvssDetails,omitempty"`
-	CvssScore             *float32                         `json:"cvssScore,omitempty"`
-	CvssSources           *[]CVSSSource                    `json:"cvssSources,omitempty"`
-	Description           string                           `json:"description"`
-	DisclosureTime        *string                          `json:"disclosureTime,omitempty"`
-	EpssDetails           *EPSSDetails                     `json:"epssDetails"`
-	Exploit               *string                          `json:"exploit,omitempty"`
-	ExploitDetails        *ExploitDetails                  `json:"exploitDetails,omitempty"`
-	Filtered              *VulnFiltered                    `json:"filtered,omitempty"`
-	FixedIn               *[]string                        `json:"fixedIn,omitempty"`
-	From                  []string                         `json:"from"`
-	Functions             *[]FunctionInfo                  `json:"functions,omitempty"`
-	FunctionsNew          *[]NewFunctionInfo               `json:"functions_new,omitempty"`
-	Id                    string                           `json:"id"`
-	Identifiers           *Identifiers                     `json:"identifiers,omitempty"`
-	Insights              *Insights                        `json:"insights,omitempty"`
-	IsDisputed            *bool                            `json:"isDisputed,omitempty"`
-	IsPatchable           bool                             `json:"isPatchable"`
-	IsPinnable            *bool                            `json:"isPinnable,omitempty"`
-	IsRuntime             *bool                            `json:"isRuntime,omitempty"`
-	IsUpgradable          bool                             `json:"isUpgradable"`
-	Language              *string                          `json:"language,omitempty"`
-	License               *string                          `json:"license,omitempty"`
-	Malicious             *bool                            `json:"malicious,omitempty"`
-	ModificationTime      *string                          `json:"modificationTime,omitempty"`
-	ModuleName            *string                          `json:"moduleName,omitempty"`
-	Name                  string                           `json:"name"`
-	PackageManager        *string                          `json:"packageManager,omitempty"`
-	PackageName           *string                          `json:"packageName,omitempty"`
-	PackagePopularityRank *int32                           `json:"packagePopularityRank,omitempty"`
-	Patch                 *[]string                        `json:"patch,omitempty"`
-	Patches               *[]PatchInfo                     `json:"patches,omitempty"`
-	Proprietary           *bool                            `json:"proprietary,omitempty"`
-	PublicationTime       *string                          `json:"publicationTime,omitempty"`
-	Reachability          *Reachability                    `json:"reachability,omitempty"`
-	References            *[]Reference                     `json:"references,omitempty"`
-	RiskScore             *uint16                          `json:"riskScore,omitempty"`
-	Semver                *SemVerInfo                      `json:"semver,omitempty"`
-	Severity              VulnerabilitySeverity            `json:"severity"`
-	SeverityBasedOn       *string                          `json:"severityBasedOn,omitempty"`
-	SeverityWithCritical  *VulnerabilitySeverity           `json:"severityWithCritical,omitempty"`
-	SocialTrendAlert      *bool                            `json:"socialTrendAlert,omitempty"`
-	Title                 string                           `json:"title"`
-	Type                  *VulnerabilityType               `json:"type,omitempty"`
-	UpgradePath           []Vulnerability_UpgradePath_Item `json:"upgradePath"`
-	Version               string                           `json:"version"`
+	CVSSv3                 *string                          `json:"CVSSv3,omitempty"`
+	AlternativeIds         *[]string                        `json:"alternativeIds,omitempty"`
+	CreationTime           string                           `json:"creationTime"`
+	Credit                 *[]string                        `json:"credit,omitempty"`
+	CvssDetails            *[]CVSSDetail                    `json:"cvssDetails,omitempty"`
+	CvssScore              *float32                         `json:"cvssScore,omitempty"`
+	CvssSources            *[]CVSSSource                    `json:"cvssSources,omitempty"`
+	Description            string                           `json:"description"`
+	DisclosureTime         *string                          `json:"disclosureTime,omitempty"`
+	EpssDetails            *EPSSDetails                     `json:"epssDetails"`
+	Exploit                *string                          `json:"exploit,omitempty"`
+	ExploitDetails         *ExploitDetails                  `json:"exploitDetails,omitempty"`
+	Filtered               *VulnFiltered                    `json:"filtered,omitempty"`
+	FixedIn                *[]string                        `json:"fixedIn,omitempty"`
+	From                   []string                         `json:"from"`
+	Functions              *[]FunctionInfo                  `json:"functions,omitempty"`
+	FunctionsNew           *[]NewFunctionInfo               `json:"functions_new,omitempty"`
+	Id                     string                           `json:"id"`
+	Identifiers            *Identifiers                     `json:"identifiers,omitempty"`
+	Insights               *Insights                        `json:"insights,omitempty"`
+	IsDisputed             *bool                            `json:"isDisputed,omitempty"`
+	IsPatchable            bool                             `json:"isPatchable"`
+	IsPinnable             *bool                            `json:"isPinnable,omitempty"`
+	IsRuntime              *bool                            `json:"isRuntime,omitempty"`
+	IsUpgradable           bool                             `json:"isUpgradable"`
+	Language               *string                          `json:"language,omitempty"`
+	LegalInstructionsArray *[]LegalInstruction              `json:"legalInstructionsArray,omitempty"`
+	License                *string                          `json:"license,omitempty"`
+	Malicious              *bool                            `json:"malicious,omitempty"`
+	ModificationTime       *string                          `json:"modificationTime,omitempty"`
+	ModuleName             *string                          `json:"moduleName,omitempty"`
+	Name                   string                           `json:"name"`
+	PackageManager         *string                          `json:"packageManager,omitempty"`
+	PackageName            *string                          `json:"packageName,omitempty"`
+	PackagePopularityRank  *int32                           `json:"packagePopularityRank,omitempty"`
+	Patch                  *[]string                        `json:"patch,omitempty"`
+	Patches                *[]PatchInfo                     `json:"patches,omitempty"`
+	Proprietary            *bool                            `json:"proprietary,omitempty"`
+	PublicationTime        *string                          `json:"publicationTime,omitempty"`
+	Reachability           *Reachability                    `json:"reachability,omitempty"`
+	References             *[]Reference                     `json:"references,omitempty"`
+	RiskScore              *uint16                          `json:"riskScore,omitempty"`
+	Semver                 *SemVerInfo                      `json:"semver,omitempty"`
+	Severity               VulnerabilitySeverity            `json:"severity"`
+	SeverityBasedOn        *string                          `json:"severityBasedOn,omitempty"`
+	SeverityWithCritical   *VulnerabilitySeverity           `json:"severityWithCritical,omitempty"`
+	SocialTrendAlert       *bool                            `json:"socialTrendAlert,omitempty"`
+	Title                  string                           `json:"title"`
+	Type                   *VulnerabilityType               `json:"type,omitempty"`
+	UpgradePath            []Vulnerability_UpgradePath_Item `json:"upgradePath"`
+	Version                string                           `json:"version"`
 }
 
 // VulnerabilityUpgradePath0 defines model for .
