@@ -101,49 +101,7 @@ func Test_Output_outputWorkflowEntryPoint(t *testing.T) {
 
 		// assert
 		assert.Nil(t, err)
-		assert.Equal(t, []workflow.Data{}, output)
-	})
-
-	t.Run("should output to stdout by default for text/plain", func(t *testing.T) {
-		workflowIdentifier := workflow.NewTypeIdentifier(workflowIDOutputWorkflow, "output")
-		data := workflow.NewData(workflowIdentifier, "text/plain", []byte(payload))
-
-		// mock assertions
-		outputDestination.EXPECT().Println(payload).Return(0, nil).Times(1)
-
-		// execute
-		output, err := EntryPoint(invocationContextMock, []workflow.Data{data}, outputDestination)
-
-		// assert
-		assert.Nil(t, err)
-		assert.Equal(t, []workflow.Data{}, output)
-	})
-
-	t.Run("should print unsupported mimeTypes that are string convertible", func(t *testing.T) {
-		workflowIdentifier := workflow.NewTypeIdentifier(workflowIDOutputWorkflow, "output")
-		data := workflow.NewData(workflowIdentifier, "hammer/head", payload)
-
-		// mock assertions
-		outputDestination.EXPECT().Println(payload).Return(0, nil).Times(1)
-
-		// execute
-		output, err := EntryPoint(invocationContextMock, []workflow.Data{data}, outputDestination)
-
-		// assert
-		assert.Nil(t, err)
-		assert.Equal(t, []workflow.Data{}, output)
-	})
-
-	t.Run("should reject unsupported mimeTypes", func(t *testing.T) {
-		workflowIdentifier := workflow.NewTypeIdentifier(workflowIDOutputWorkflow, "output")
-		data := workflow.NewData(workflowIdentifier, "hammer/head", workflowIdentifier) // re-using workflowIdentifier as data to have some non string data
-
-		// execute
-		output, err := EntryPoint(invocationContextMock, []workflow.Data{data}, outputDestination)
-
-		// assert
-		assert.Equal(t, []workflow.Data{}, output)
-		assert.Equal(t, "unsupported output type: hammer/head", err.Error())
+		assert.Equal(t, 1, len(output))
 	})
 
 	t.Run("should not output anything for test summary mimeType", func(t *testing.T) {
@@ -177,20 +135,20 @@ func Test_Output_outputWorkflowEntryPoint(t *testing.T) {
 		assert.Equal(t, 1, len(output))
 	})
 
-	t.Run("should reject test summary mimeType and display known mimeType", func(t *testing.T) {
+	t.Run("should not print anything for unknown mimeTypes and just return the data", func(t *testing.T) {
 		workflowIdentifier := workflow.NewTypeIdentifier(workflowIDOutputWorkflow, "output")
 		testSummaryData := workflow.NewData(workflowIdentifier, content_type.TEST_SUMMARY, []byte(payload))
 		textData := workflow.NewData(workflowIdentifier, "text/plain", []byte(payload))
 
 		// mock assertions
-		outputDestination.EXPECT().Println(payload).Return(0, nil).Times(1)
+		outputDestination.EXPECT().Println(gomock.Any()).Return(0, nil).Times(0)
 
 		// execute
 		output, err := EntryPoint(invocationContextMock, []workflow.Data{testSummaryData, textData}, outputDestination)
 
 		// assert
 		assert.Nil(t, err)
-		assert.Equal(t, 1, len(output))
+		assert.Equal(t, 2, len(output))
 	})
 }
 

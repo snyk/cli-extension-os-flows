@@ -15,6 +15,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
+	"github.com/snyk/go-application-framework/pkg/utils/ufm"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -188,6 +189,12 @@ func prepareOutput(
 	var outputData []workflow.Data
 	if summaryData != nil {
 		outputData = append(outputData, summaryData)
+	}
+
+	// always output the test result
+	testResultData := ufm.CreateWorkflowDataFromTestResults(ictx.GetWorkflowIdentifier(), []testapi.TestResult{params.TestResult})
+	if testResultData != nil {
+		outputData = append(outputData, testResultData)
 	}
 
 	wantsJSONStdOut := config.GetBool(outputworkflow.OutputConfigKeyJSON)

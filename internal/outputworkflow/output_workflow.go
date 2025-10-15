@@ -116,32 +116,11 @@ func EntryPoint(invocation workflow.InvocationContext, input []workflow.Data, ou
 
 		debugLogger.Printf("Processing '%s' based on '%s' of type '%s'", input[i].GetIdentifier().String(), contentLocation, mimeType)
 
-		if !strings.Contains(mimeType, "json") { // handle text/plain and unknown the same way
-			err := handleContentTypeOthers(input, i, mimeType, outputDestination)
-			if err != nil {
-				return output, err
-			}
-		}
+		// output all unhandled data
+		output = append(output, input[i])
 	}
 
 	return output, nil
-}
-
-func handleContentTypeOthers(input []workflow.Data, i int, mimeType string, outputDestination OutputDestination) error {
-	// try to convert payload to a string
-	var singleDataAsString string
-	singleData, typeCastSuccessful := input[i].GetPayload().([]byte)
-	if !typeCastSuccessful {
-		singleDataAsString, typeCastSuccessful = input[i].GetPayload().(string)
-		if !typeCastSuccessful {
-			return fmt.Errorf("unsupported output type: %s", mimeType)
-		}
-	} else {
-		singleDataAsString = string(singleData)
-	}
-
-	outputDestination.Println(singleDataAsString)
-	return nil
 }
 
 func outputWorkflowEntryPointImpl(invocation workflow.InvocationContext, input []workflow.Data) (output []workflow.Data, err error) {

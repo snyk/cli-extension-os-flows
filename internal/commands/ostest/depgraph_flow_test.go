@@ -81,6 +81,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
 	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
+	mockIctx.EXPECT().GetWorkflowIdentifier().Return(common.DepGraphWorkflowID).AnyTimes()
 	// Engine is used by createDepGraphs
 	mockIctx.EXPECT().GetEngine().Return(mockEngine).AnyTimes()
 
@@ -146,6 +147,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
 	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
 	mockIctx.EXPECT().GetEngine().Return(mockEngine).AnyTimes()
+	mockIctx.EXPECT().GetWorkflowIdentifier().Return(common.DepGraphWorkflowID).AnyTimes()
 
 	const n = 10
 	depGraphDatas := make([]workflow.Data, 0, n)

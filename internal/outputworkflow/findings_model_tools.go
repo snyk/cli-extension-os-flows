@@ -3,13 +3,13 @@ package outputworkflow
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/output_workflow"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"golang.org/x/sync/semaphore"
 
@@ -43,7 +43,6 @@ func getUnifiedProjectResults(input []workflow.Data, debugLogger *zerolog.Logger
 		contentType := data.GetContentType()
 		payloadBytes, ok := data.GetPayload().([]byte)
 		if !ok {
-			debugLogger.Warn().Err(fmt.Errorf("invalid payload type: %T", data.GetPayload())).Msg("Skipping data item in unified model processing")
 			remainingData = append(remainingData, data)
 			continue
 		}
@@ -117,8 +116,10 @@ func getTotalNumberOfUnifiedFindings(projectResults []*presenters.UnifiedProject
 
 func getWritersToUse(config configuration.Configuration, outputDestination OutputDestination) map[string]*WriterEntry {
 	// resulting map of writers and their templates
-	writerMap := map[string]*WriterEntry{
-		DefaultWriter: getDefaultWriter(config, outputDestination),
+	writerMap := map[string]*WriterEntry{}
+
+	if defaultWriter := getDefaultWriter(config, outputDestination); defaultWriter != nil {
+		writerMap[DefaultWriter] = defaultWriter
 	}
 
 	// default file writers
@@ -151,6 +152,11 @@ func getDefaultWriter(config configuration.Configuration, outputDestination Outp
 		mimeType:        DefaultMimeType,
 		templates:       presenters.DefaultTemplateFiles,
 		renderEmptyData: true,
+	}
+
+	// disable default loca writer if sarif is enabled which basically delegates the sarif writing to the global renderer
+	if config.GetBool(output_workflow.OUTPUT_CONFIG_KEY_SARIF) {
+		return nil
 	}
 
 	if config.IsSet(OutputConfigTemplateFile) {
@@ -207,10 +213,14 @@ func HandleContentTypeUnifiedModel(input []workflow.Data, invocation workflow.In
 		return remainingData, nil
 	}
 
+	writerMap := getWritersToUse(config, outputDestination)
+	if len(writerMap) == 0 {
+		debugLogger.Info().Msg("No writers to use")
+		return remainingData, nil
+	}
+
 	threadCount := max(int64(config.GetInt(configuration.MAX_THREADS)), 1)
 	debugLogger.Info().Msgf("Thread count: %d", threadCount)
-
-	writerMap := getWritersToUse(config, outputDestination)
 
 	// iterate over all writers and render for each of them
 	ctx := context.Background()
