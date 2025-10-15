@@ -1,0 +1,16 @@
+&[]testapi.LocalIgnore{
+    {
+        CreatedAt: time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
+        ExpiresAt: time.Date(2116, time.March, 1, 14, 30, 4, 136000000, time.UTC),
+        Path:      &[]string{"sqlite", "sqlite3", "node-pre-gyp", "request", "hawk"},
+        Reason:    "hawk got bumped",
+        VulnId:    "npm:hawk:20160119",
+    },
+    {
+        CreatedAt: time.Date(2022, time.April, 10, 15, 56, 2, 74000000, time.UTC),
+        ExpiresAt: time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
+        Path:      (*[]string)(nil),
+        Reason:    "none given",
+        VulnId:    "npm:method-override:20170927",
+    },
+}

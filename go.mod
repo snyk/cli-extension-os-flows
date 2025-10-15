@@ -16,12 +16,13 @@ require (
 	github.com/puzpuzpuz/xsync v1.5.2
 	github.com/rs/zerolog v1.34.0
 	github.com/snyk/code-client-go v1.24.0
-	github.com/snyk/error-catalog-golang-public v0.0.0-20250912144134-a308b7983895
-	github.com/snyk/go-application-framework v0.0.0-20251003144837-d95ed7522120
+	github.com/snyk/error-catalog-golang-public v0.0.0-20251006093240-2d9cc5458485
+	github.com/snyk/go-application-framework v0.0.0-20251013090404-379d4a1195a9
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.43.0
 	golang.org/x/sync v0.17.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -103,7 +104,6 @@ require (
 	golang.org/x/text v0.29.0 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 // replace github.com/snyk/go-application-framework => ../go-application-framework
