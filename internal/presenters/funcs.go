@@ -20,7 +20,10 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/remediation"
 )
 
-const notApplicable = "N/A"
+const (
+	notApplicable = "N/A"
+	bulletPoint   = "○"
+)
 
 // add returns the sum of two integers.
 func add(a, b int) int {
@@ -345,6 +348,52 @@ func isLicenseFinding(finding testapi.FindingData) bool {
 	return false
 }
 
+// getLicenseInstructions returns license instructions for a license finding.
+func getLicenseInstructions(finding testapi.FindingData) string {
+	if finding.Attributes == nil {
+		return ""
+	}
+
+	for _, problem := range finding.Attributes.Problems {
+		disc, err := problem.Discriminator()
+		if err != nil {
+			continue
+		}
+
+		if disc != string(testapi.SnykLicense) {
+			continue
+		}
+
+		p, err := problem.AsSnykLicenseProblem()
+		if err != nil {
+			continue
+		}
+
+		if len(p.Instructions) == 0 {
+			continue
+		}
+
+		instructions := buildInstructionsList(p.Instructions)
+		if len(instructions) > 0 {
+			return "\n" + strings.Join(instructions, "\n")
+		}
+	}
+	return ""
+}
+
+// buildInstructionsList formats license instructions prefixing with a bullet point and license name.
+func buildInstructionsList(instructionsList []testapi.SnykvulndbLicenseInstructions) []string {
+	instructions := make([]string, 0, len(instructionsList))
+
+	for _, inst := range instructionsList {
+		if inst.Content == "" {
+			continue
+		}
+		instructions = append(instructions, fmt.Sprintf("   %s for %s: %s", bulletPoint, inst.License, inst.Content))
+	}
+	return instructions
+}
+
 // isLicenseFindingFilter returns a filter function that checks if a finding is a license finding.
 func isLicenseFindingFilter() func(obj any) bool {
 	return func(obj any) bool {
@@ -476,6 +525,7 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 	defaultMap["getSourceLocation"] = getSourceLocation
 	defaultMap["getFindingId"] = getFindingID
 	defaultMap["isLicenseFinding"] = isLicenseFinding
+	defaultMap["getLicenseInstructions"] = getLicenseInstructions
 	defaultMap["hasPrefix"] = strings.HasPrefix
 	defaultMap["constructDisplayPath"] = constructDisplayPath(config)
 	defaultMap["filterByIssueType"] = filterByIssueType

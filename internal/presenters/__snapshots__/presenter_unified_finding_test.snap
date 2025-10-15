@@ -17,6 +17,8 @@ License issues: 1
  ✗ [MEDIUM] LGPL-3.0 license
    Finding ID: snyk:lic:npm:web3-core:LGPL-3.0
    Info: https://snyk.io/vuln/snyk:lic:npm:web3-core:LGPL-3.0
+   Legal instructions:
+   ○ for LGPL-3.0: This license requires source code disclosure when modified.
 
                                        
 Issues with no direct upgrade or patch:
@@ -33,6 +35,67 @@ Issues with no direct upgrade or patch:
 │   Total security issues: 1                              │
 │   Ignored: 0 [ 0 CRITICAL  0 HIGH  0 MEDIUM  0 LOW ]    │
 │   Open   : 1 [ 0 CRITICAL  1 HIGH  0 MEDIUM  0 LOW ]    │
+│                                                         │
+│   Total license issues: 1                               │
+│   Ignored: 0 [ 0 CRITICAL  0 HIGH  0 MEDIUM  0 LOW ]    │
+│   Open   : 1 [ 0 CRITICAL  0 HIGH  1 MEDIUM  0 LOW ]    │
+╰─────────────────────────────────────────────────────────╯
+💡 Tip
+
+   To view ignored issues, use the --include-ignores option.
+                                                            
+
+---
+
+[TestUnifiedFindingPresenter_CliOutput/snapshot_test_with_multiple_license_instructions - 1]
+
+Testing  ...
+
+License issues: 1
+
+ ✗ [HIGH] GPL-3.0 OR MIT license
+   Finding ID: snyk:lic:npm:dual-pkg:GPL-3.0-OR-MIT
+   Info: https://snyk.io/vuln/snyk:lic:npm:dual-pkg:GPL-3.0-OR-MIT
+   Legal instructions:
+   ○ for GPL-3.0: Strong copyleft license. Requires source code disclosure for modifications.
+   ○ for MIT: Permissive license. Must include original copyright notice.
+
+
+╭─────────────────────────────────────────────────────────╮
+│ Test Summary                                            │
+│                                                         │
+│   Organization:                                         │
+│   Test type:         open-source                        │
+│   Project path:                                         │
+│                                                         │
+│   Total license issues: 1                               │
+│   Ignored: 0 [ 0 CRITICAL  0 HIGH  0 MEDIUM  0 LOW ]    │
+│   Open   : 1 [ 0 CRITICAL  1 HIGH  0 MEDIUM  0 LOW ]    │
+╰─────────────────────────────────────────────────────────╯
+💡 Tip
+
+   To view ignored issues, use the --include-ignores option.
+                                                            
+
+---
+
+[TestUnifiedFindingPresenter_CliOutput/snapshot_test_with_license_without_instructions - 1]
+
+Testing  ...
+
+License issues: 1
+
+ ✗ [MEDIUM] Apache-2.0 license
+   Finding ID: snyk:lic:npm:test-pkg:Apache-2.0
+   Info: https://snyk.io/vuln/snyk:lic:npm:test-pkg:Apache-2.0
+
+
+╭─────────────────────────────────────────────────────────╮
+│ Test Summary                                            │
+│                                                         │
+│   Organization:                                         │
+│   Test type:         open-source                        │
+│   Project path:                                         │
 │                                                         │
 │   Total license issues: 1                               │
 │   Ignored: 0 [ 0 CRITICAL  0 HIGH  0 MEDIUM  0 LOW ]    │

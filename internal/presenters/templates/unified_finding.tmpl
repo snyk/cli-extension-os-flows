@@ -24,6 +24,12 @@
    Reachability: {{ $reachability }}
 			{{- end }}
 
+			{{- if isLicenseFinding . }}
+				{{- with (getLicenseInstructions .) }}
+   Legal instructions:{{ . }}
+				{{- end }}
+			{{- end }}
+
 {{end}}
 
 {{- define "details" -}}

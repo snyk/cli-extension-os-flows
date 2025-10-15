@@ -232,7 +232,13 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 					var p testapi.Problem
 					err := p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{
 						Id:      licProblemID,
-						License: string(testapi.SnykLicense),
+						License: "LGPL-3.0",
+						Instructions: []testapi.SnykvulndbLicenseInstructions{
+							{
+								License: "LGPL-3.0",
+								Content: "This license requires source code disclosure when modified.",
+							},
+						},
 					})
 					assert.NoError(t, err)
 					return []testapi.Problem{p}
@@ -271,6 +277,123 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
 
 		// assert
+		assert.NoError(t, err)
+		snaps.MatchSnapshot(t, buffer.String())
+	})
+
+	t.Run("snapshot test with multiple license instructions", func(t *testing.T) {
+		config := configuration.New()
+		buffer := &bytes.Buffer{}
+		lipgloss.SetColorProfile(termenv.Ascii)
+
+		// Create a dual-licensed package with instructions for each license
+		dualLicenseFinding := testapi.FindingData{
+			Id:   util.Ptr(uuid.MustParse("44444444-4444-4444-4444-444444444444")),
+			Type: util.Ptr(testapi.Findings),
+			Attributes: &testapi.FindingAttributes{
+				Title: "GPL-3.0 OR MIT license",
+				Rating: testapi.Rating{
+					Severity: testapi.Severity("high"),
+				},
+				Problems: func() []testapi.Problem {
+					var p testapi.Problem
+					err := p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{
+						Id:      "snyk:lic:npm:dual-pkg:GPL-3.0-OR-MIT",
+						License: "GPL-3.0 OR MIT",
+						Instructions: []testapi.SnykvulndbLicenseInstructions{
+							{
+								License: "GPL-3.0",
+								Content: "Strong copyleft license. Requires source code disclosure for modifications.",
+							},
+							{
+								License: "MIT",
+								Content: "Permissive license. Must include original copyright notice.",
+							},
+						},
+					})
+					assert.NoError(t, err)
+					return []testapi.Problem{p}
+				}(),
+			},
+		}
+
+		projectResult := &presenters.UnifiedProjectResult{
+			Findings: []testapi.FindingData{dualLicenseFinding},
+			Summary: &json_schemas.TestSummary{
+				Type:             "open-source",
+				Path:             "test/path",
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+				Results: []json_schemas.TestSummaryResult{
+					{
+						Severity: "high",
+						Open:     1,
+						Total:    1,
+					},
+				},
+			},
+		}
+
+		presenter := presenters.NewUnifiedFindingsRenderer(
+			[]*presenters.UnifiedProjectResult{projectResult},
+			config,
+			buffer,
+		)
+
+		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		assert.NoError(t, err)
+		snaps.MatchSnapshot(t, buffer.String())
+	})
+
+	t.Run("snapshot test with license without instructions", func(t *testing.T) {
+		config := configuration.New()
+		buffer := &bytes.Buffer{}
+		lipgloss.SetColorProfile(termenv.Ascii)
+
+		// Create a license finding without instructions
+		licenseFinding := testapi.FindingData{
+			Id:   util.Ptr(uuid.MustParse("55555555-5555-5555-5555-555555555555")),
+			Type: util.Ptr(testapi.Findings),
+			Attributes: &testapi.FindingAttributes{
+				Title: "Apache-2.0 license",
+				Rating: testapi.Rating{
+					Severity: testapi.Severity("medium"),
+				},
+				Problems: func() []testapi.Problem {
+					var p testapi.Problem
+					err := p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{
+						Id:           "snyk:lic:npm:test-pkg:Apache-2.0",
+						License:      "Apache-2.0",
+						Instructions: []testapi.SnykvulndbLicenseInstructions{}, // No instructions
+					})
+					assert.NoError(t, err)
+					return []testapi.Problem{p}
+				}(),
+			},
+		}
+
+		projectResult := &presenters.UnifiedProjectResult{
+			Findings: []testapi.FindingData{licenseFinding},
+			Summary: &json_schemas.TestSummary{
+				Type:             "open-source",
+				Path:             "test/path",
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+				Results: []json_schemas.TestSummaryResult{
+					{
+						Severity: "medium",
+						Open:     1,
+						Total:    1,
+					},
+				},
+			},
+		}
+
+		presenter := presenters.NewUnifiedFindingsRenderer(
+			[]*presenters.UnifiedProjectResult{projectResult},
+			config,
+			buffer,
+		)
+
+		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
 		assert.NoError(t, err)
 		snaps.MatchSnapshot(t, buffer.String())
 	})
@@ -462,4 +585,100 @@ func TestUnifiedFindingPresenter_Ignored_ShownInIgnoredSectionWithBang(t *testin
 	assert.Contains(t, out, "Ignored Issues")
 	// Ignored entries appear with ! and IGNORED label
 	assert.Contains(t, out, " ! [IGNORED] [MEDIUM] Ignored Suppression Finding")
+}
+
+// verifies that license instructions appear in output.
+func TestUnifiedFindingPresenter_LicenseInstructions(t *testing.T) {
+	config := configuration.New()
+	buffer := &bytes.Buffer{}
+	lipgloss.SetColorProfile(termenv.Ascii)
+
+	licProblem := testapi.SnykLicenseProblem{
+		Id:      "snyk:lic:npm:web3-core:LGPL-3.0",
+		License: "LGPL-3.0",
+		Instructions: []testapi.SnykvulndbLicenseInstructions{
+			{
+				License: "LGPL-3.0",
+				Content: "This license requires you to disclose source code changes.",
+			},
+		},
+	}
+
+	var p testapi.Problem
+	err := p.FromSnykLicenseProblem(licProblem)
+	assert.NoError(t, err)
+
+	licenseFinding := testapi.FindingData{
+		Id:   util.Ptr(uuid.New()),
+		Type: util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{
+			Title:    "LGPL-3.0 license",
+			Rating:   testapi.Rating{Severity: testapi.Severity("medium")},
+			Problems: []testapi.Problem{p},
+		},
+	}
+
+	projectResult := &presenters.UnifiedProjectResult{
+		Findings: []testapi.FindingData{licenseFinding},
+		Summary: &json_schemas.TestSummary{
+			Type:             "open-source",
+			Path:             "test/path",
+			SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+			Results:          []json_schemas.TestSummaryResult{{Severity: "medium", Open: 1, Total: 1}},
+		},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer([]*presenters.UnifiedProjectResult{projectResult}, config, buffer)
+	err = presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	assert.NoError(t, err)
+
+	out := buffer.String()
+	assert.Contains(t, out, "Legal instructions:")
+	assert.Contains(t, out, "○ for LGPL-3.0: This license requires you to disclose source code changes.")
+}
+
+// verifies that license findings without instructions don't show the instructions field.
+func TestUnifiedFindingPresenter_LicenseWithoutInstructions(t *testing.T) {
+	config := configuration.New()
+	buffer := &bytes.Buffer{}
+	lipgloss.SetColorProfile(termenv.Ascii)
+
+	licenseFinding := testapi.FindingData{
+		Id:   util.Ptr(uuid.New()),
+		Type: util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{
+			Title: "MIT license",
+			Rating: testapi.Rating{
+				Severity: testapi.Severity("low"),
+			},
+			Problems: func() []testapi.Problem {
+				var p testapi.Problem
+				err := p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{
+					Id:           "snyk:lic:npm:test-pkg:MIT",
+					License:      "MIT",
+					Instructions: []testapi.SnykvulndbLicenseInstructions{},
+				})
+				assert.NoError(t, err)
+				return []testapi.Problem{p}
+			}(),
+		},
+	}
+
+	projectResult := &presenters.UnifiedProjectResult{
+		Findings: []testapi.FindingData{licenseFinding},
+		Summary: &json_schemas.TestSummary{
+			Type:             "open-source",
+			Path:             "test/path",
+			SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+			Results:          []json_schemas.TestSummaryResult{{Severity: "low", Open: 1, Total: 1}},
+		},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer([]*presenters.UnifiedProjectResult{projectResult}, config, buffer)
+	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	assert.NoError(t, err)
+
+	out := buffer.String()
+	assert.NotContains(t, out, "Legal instructions:")
+	assert.Contains(t, out, "MIT license")
 }
