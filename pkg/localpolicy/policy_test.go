@@ -1,4 +1,4 @@
-package legacypolicy_test
+package localpolicy_test
 
 import (
 	"bytes"
@@ -8,14 +8,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/snyk/cli-extension-os-flows/pkg/legacypolicy"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
+	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
 )
 
 //go:embed testdata/ignore.yaml
 var fixedPolicy []byte
 
 func TestPolicy_New(t *testing.T) {
-	p := legacypolicy.New()
+	p := localpolicy.New()
 
 	assert.NotNil(t, p)
 	assert.NotZero(t, p.Version)
@@ -24,9 +25,9 @@ func TestPolicy_New(t *testing.T) {
 
 func TestPolicy_Unmarshal(t *testing.T) {
 	buf := bytes.NewBuffer(fixedPolicy)
-	var p legacypolicy.Policy
+	var p localpolicy.Policy
 
-	err := legacypolicy.Unmarshal(buf, &p)
+	err := localpolicy.Unmarshal(buf, &p)
 	require.NoError(t, err)
 
 	assert.Equal(t, "v1.0.0", p.Version)
@@ -39,15 +40,15 @@ func TestPolicy_Unmarshal(t *testing.T) {
 
 func TestPolicy_Marshal(t *testing.T) {
 	var buf bytes.Buffer
-	p := legacypolicy.New()
-	p.Ignore["SNYK-GOLANG-PACKAGE-12345"] = append(p.Ignore["SNYK-GOLANG-PACKAGE-12345"], legacypolicy.RuleEntry{
+	p := localpolicy.New()
+	p.Ignore["SNYK-GOLANG-PACKAGE-12345"] = append(p.Ignore["SNYK-GOLANG-PACKAGE-12345"], localpolicy.RuleEntry{
 		"*": {
-			Reason:             "none given",
-			DisregardIfFixable: true,
+			Reason:             util.Ptr("none given"),
+			DisregardIfFixable: util.Ptr(true),
 		},
 	})
 
-	err := legacypolicy.Marshal(&buf, p)
+	err := localpolicy.Marshal(&buf, p)
 	require.NoError(t, err)
 
 	assert.Equal(t, `version: v1.25.1
