@@ -203,8 +203,8 @@ func TestProcessingEvidenceForFinding(t *testing.T) {
 		{depPathEv, testDepList, nil, false},
 		{execFlowEv, nil, nil, false},  // Exec flow not yet supported.
 		{otherFlowEv, nil, nil, false}, // Other flow not yet supported.
-		{reachableEv, nil, util.Ptr(definitions.REACHABLE), false},
-		{notReachableEv, nil, util.Ptr(definitions.NOTREACHABLE), false},
+		{reachableEv, nil, util.Ptr(definitions.Reachable), false},
+		{notReachableEv, nil, util.Ptr(definitions.NoPathFound), false},
 	}
 
 	for _, tt := range tests {

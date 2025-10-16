@@ -43,6 +43,7 @@
         Proprietary:           (*bool)(nil),
         PublicationTime:       &"2025-01-01T12:00:00.000000Z",
         Reachability:          (*definitions.Reachability)(nil),
+        ReachablePaths:        (*definitions.ReachablePaths)(nil),
         References:            (*[]definitions.Reference)(nil),
         RiskScore:             (*uint16)(nil),
         Semver:                &definitions.SemVerInfo{
