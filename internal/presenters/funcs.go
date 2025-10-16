@@ -237,8 +237,8 @@ func getReachability(finding testapi.FindingData) string {
 			case testapi.ReachabilityTypeFunction:
 				return "Reachable"
 			case testapi.ReachabilityTypeNoInfo:
-				return "No reachable path found"
-			case testapi.ReachabilityTypeNotApplicable, testapi.ReachabilityTypeNone:
+				return "No Path Found"
+			default:
 				return notApplicable
 			}
 		}

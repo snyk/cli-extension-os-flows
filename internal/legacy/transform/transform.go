@@ -311,10 +311,12 @@ func ProcessEvidenceForFinding(vuln *definitions.Vulnerability, ev *testapi.Evid
 		}
 		switch reachEvidence.Reachability {
 		case testapi.ReachabilityTypeFunction:
-			vuln.Reachability = util.Ptr(definitions.REACHABLE)
+			vuln.Reachability = util.Ptr(definitions.Reachable)
 		case testapi.ReachabilityTypeNoInfo:
-			vuln.Reachability = util.Ptr(definitions.NOTREACHABLE)
-		case testapi.ReachabilityTypeNotApplicable, testapi.ReachabilityTypeNone:
+			vuln.Reachability = util.Ptr(definitions.NoPathFound)
+		case testapi.ReachabilityTypeNotApplicable:
+			vuln.Reachability = util.Ptr(definitions.NotApplicable)
+		default:
 			// No reachability value set for these types
 		}
 	}

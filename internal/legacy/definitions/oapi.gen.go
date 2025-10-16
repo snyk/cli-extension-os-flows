@@ -11,8 +11,9 @@ import (
 
 // Defines values for Reachability.
 const (
-	NOTREACHABLE Reachability = "NOT_REACHABLE"
-	REACHABLE    Reachability = "REACHABLE"
+	NoPathFound   Reachability = "no-path-found"
+	NotApplicable Reachability = "not-applicable"
+	Reachable     Reachability = "reachable"
 )
 
 // Defines values for VulnerabilitySeverity.
@@ -186,6 +187,18 @@ type PinRemediation struct {
 // Reachability defines model for Reachability.
 type Reachability string
 
+// ReachableFunctionPaths defines model for ReachableFunctionPaths.
+type ReachableFunctionPaths struct {
+	CallPaths    [][]string `json:"callPaths"`
+	FunctionName string     `json:"functionName"`
+}
+
+// ReachablePaths defines model for ReachablePaths.
+type ReachablePaths struct {
+	PathCount uint32                   `json:"pathCount"`
+	Paths     []ReachableFunctionPaths `json:"paths"`
+}
+
 // Reference defines model for Reference.
 type Reference struct {
 	Title string `json:"title"`
@@ -195,7 +208,6 @@ type Reference struct {
 // Remediation defines model for Remediation.
 type Remediation struct {
 	Ignore     map[string]string                 `json:"ignore"`
-	Patch      map[string]string                 `json:"patch"`
 	Pin        map[string]PinRemediation         `json:"pin"`
 	Unresolved []Vulnerability                   `json:"unresolved"`
 	Upgrade    map[string]RemediationUpgradeInfo `json:"upgrade"`
@@ -273,6 +285,7 @@ type Vulnerability struct {
 	Proprietary            *bool                            `json:"proprietary,omitempty"`
 	PublicationTime        *string                          `json:"publicationTime,omitempty"`
 	Reachability           *Reachability                    `json:"reachability,omitempty"`
+	ReachablePaths         *ReachablePaths                  `json:"reachablePaths,omitempty"`
 	References             *[]Reference                     `json:"references,omitempty"`
 	RiskScore              *uint16                          `json:"riskScore,omitempty"`
 	Semver                 *SemVerInfo                      `json:"semver,omitempty"`

@@ -334,8 +334,36 @@ components:
     Reachability:
       type: string
       enum:
-        - REACHABLE
-        - NOT_REACHABLE
+        - reachable
+        - no-path-found
+        - not-applicable
+    ReachableFunctionPaths:
+      type: object
+      required:
+        - functionName
+        - callPaths
+      properties:
+        functionName:
+          type: string
+        callPaths:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+    ReachablePaths:
+      type: object
+      required:
+        - pathCount
+        - paths
+      properties:
+        pathCount:
+          type: integer
+          format: uint32
+        paths:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReachableFunctionPaths'
     Reference:
       type: object
       required:
@@ -350,16 +378,11 @@ components:
       type: object
       required:
         - ignore
-        - patch
         - pin
         - unresolved
         - upgrade
       properties:
         ignore:
-          type: object
-          additionalProperties:
-            type: string
-        patch:
           type: object
           additionalProperties:
             type: string
@@ -492,6 +515,8 @@ components:
             type: string
         reachability:
           $ref: '#/components/schemas/Reachability'
+        reachablePaths:
+          $ref: '#/components/schemas/ReachablePaths'
         upgradePath:
           type: array
           items:
