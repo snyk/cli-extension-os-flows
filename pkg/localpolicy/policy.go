@@ -1,4 +1,4 @@
-package legacypolicy
+package localpolicy
 
 import (
 	"fmt"
@@ -64,17 +64,17 @@ type RuleEntry map[string]*Rule
 
 // Rule models an actual policy rule.
 type Rule struct {
-	Created   time.Time `yaml:"created,omitempty"`
-	Expires   time.Time `yaml:"expires,omitempty"`
-	IgnoredBy struct {
-		Email string `yaml:"email,omitempty"`
-		Name  string `yaml:"name,omitempty"`
+	Created   *time.Time `yaml:"created,omitempty"`
+	Expires   *time.Time `yaml:"expires,omitempty"`
+	IgnoredBy *struct {
+		Email *string `yaml:"email,omitempty"`
+		Name  *string `yaml:"name,omitempty"`
 	} `yaml:"ignoredBy,omitempty"`
-	Reason             string     `yaml:"reason,omitempty"`
-	ReasonType         ReasonType `yaml:"reasonType,omitempty"`
-	Source             string     `yaml:"source,omitempty"`
-	From               string     `yaml:"from,omitempty"`
-	DisregardIfFixable bool       `yaml:"disregardIfFixable,omitempty"`
+	Reason             *string     `yaml:"reason,omitempty"`
+	ReasonType         *ReasonType `yaml:"reasonType,omitempty"`
+	Source             *string     `yaml:"source,omitempty"`
+	From               *string     `yaml:"from,omitempty"`
+	DisregardIfFixable *bool       `yaml:"disregardIfFixable,omitempty"`
 }
 
 // ReasonType is an enum of known categories for why a rule was applied.
