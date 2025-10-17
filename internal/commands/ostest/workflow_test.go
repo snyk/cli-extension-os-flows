@@ -24,15 +24,18 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	common "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
-var legacyWorkflowID = workflow.NewWorkflowIdentifier("legacycli")
-
-var logger = zerolog.Nop()
+var (
+	legacyWorkflowID = workflow.NewWorkflowIdentifier("legacycli")
+	logger           = zerolog.Nop()
+	errFactory       = errors.NewErrorFactory(&logger)
+)
 
 func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
 	tests := []struct {
@@ -58,12 +61,6 @@ func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
 			setFailOnFlag:            true,
 			expectedFailOnUpgradable: util.Ptr(true),
 		},
-		{
-			name:                     "fail-on unsupported value",
-			failOnValue:              "unsupported",
-			setFailOnFlag:            true,
-			expectedFailOnUpgradable: nil,
-		},
 	}
 
 	for _, tt := range tests {
@@ -82,7 +79,8 @@ func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
 				mockConfig.Set(flags.FlagFailOn, tt.failOnValue)
 			}
 
-			localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
+			localPolicy, err := ostest.CreateLocalPolicy(mockConfig, &logger, errFactory)
+			require.NoError(t, err)
 
 			require.NotNil(t, localPolicy)
 
@@ -102,6 +100,23 @@ func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
 	}
 }
 
+func TestOSWorkflow_CreateLocalPolicy_UnsupportedFailOnValue(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockEngine := mocks.NewMockEngine(ctrl)
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+	mockConfig := mockInvocationCtx.GetConfiguration()
+
+	mockConfig.Set(flags.FlagFailOn, "unsupported")
+
+	localPolicy, err := ostest.CreateLocalPolicy(mockConfig, &logger, errFactory)
+	require.Error(t, err)
+	assert.Nil(t, localPolicy)
+	assert.Contains(t, err.Error(), "Unsupported value 'unsupported' for --fail-on flag")
+	assert.Contains(t, err.Error(), "Supported values are: 'all', 'upgradable'")
+}
+
 func TestOSWorkflow_CreateLocalPolicy_NoValues(t *testing.T) {
 	// Setup - No special flags set
 	ctrl := gomock.NewController(t)
@@ -111,7 +126,8 @@ func TestOSWorkflow_CreateLocalPolicy_NoValues(t *testing.T) {
 	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
 	mockConfig := mockInvocationCtx.GetConfiguration()
 
-	localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
+	localPolicy, err := ostest.CreateLocalPolicy(mockConfig, &logger, errFactory)
+	require.NoError(t, err)
 
 	assert.Nil(t, localPolicy)
 }
@@ -126,7 +142,8 @@ func TestOSWorkflow_CreateLocalPolicy_RiskScoreOverflow(t *testing.T) {
 	mockConfig := mockInvocationCtx.GetConfiguration()
 	mockConfig.Set(flags.FlagRiskScoreThreshold, math.MaxUint16+10)
 
-	localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
+	localPolicy, err := ostest.CreateLocalPolicy(mockConfig, &logger, errFactory)
+	require.NoError(t, err)
 	require.NotNil(t, localPolicy)
 
 	assert.NotNil(t, localPolicy.RiskScoreThreshold)
@@ -144,7 +161,8 @@ func TestOSWorkflow_CreateLocalPolicy_SeverityThresholdDefaultsToNone(t *testing
 	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
 	mockConfig.Set(flags.FlagSeverityThreshold, "")
 
-	localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
+	localPolicy, err := ostest.CreateLocalPolicy(mockConfig, &logger, errFactory)
+	require.NoError(t, err)
 	require.NotNil(t, localPolicy)
 
 	require.NotNil(t, localPolicy.RiskScoreThreshold)
@@ -165,7 +183,8 @@ func TestOSWorkflow_CreateLocalPolicy_ReachabilityFilterDefaultBehavior(t *testi
 	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
 	mockConfig.Set(flags.FlagReachabilityFilter, "")
 
-	localPolicy := ostest.CreateLocalPolicy(mockConfig, &logger)
+	localPolicy, err := ostest.CreateLocalPolicy(mockConfig, &logger, errFactory)
+	require.NoError(t, err)
 	require.NotNil(t, localPolicy)
 
 	require.NotNil(t, localPolicy.RiskScoreThreshold)
@@ -226,7 +245,8 @@ func TestOSWorkflow_CreateLocalPolicy_ReachabilityFilter(t *testing.T) {
 			config := configuration.New()
 			config.Set(flags.FlagReachabilityFilter, tt.filterValue)
 
-			localPolicy := ostest.CreateLocalPolicy(config, &logger)
+			localPolicy, err := ostest.CreateLocalPolicy(config, &logger, errFactory)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expectFilter, localPolicy.ReachabilityFilter != nil)
 
 			// only match filter when available

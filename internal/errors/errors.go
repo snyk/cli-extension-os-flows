@@ -131,3 +131,12 @@ func (ef *ErrorFactory) NewReachabilityFilterWithoutReachabilityError() error {
 		"The --reachability-filter option requires reachability analysis. Please use it with --reachability=true flag.",
 	)
 }
+
+// NewUnsupportedFailOnValueError creates a new error for when
+// an unsupported value is provided to the --fail-on flag.
+func (ef *ErrorFactory) NewUnsupportedFailOnValueError(value string) *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("unsupported fail-on value: %s", value),
+		fmt.Sprintf("Unsupported value '%s' for --fail-on flag. Supported values are: 'all', 'upgradable'.", value),
+	)
+}

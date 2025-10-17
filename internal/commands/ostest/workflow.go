@@ -232,32 +232,38 @@ type supportedFailOnPolicy struct {
 	onUpgradable *bool
 }
 
-func getFailOnPolicy(config configuration.Configuration) supportedFailOnPolicy {
+func getFailOnPolicy(config configuration.Configuration, errFactory *errors.ErrorFactory) (supportedFailOnPolicy, error) {
 	failOnFromConfig := config.GetString(flags.FlagFailOn)
 
 	var failOnPolicy supportedFailOnPolicy
 	if failOnFromConfig == "" {
-		return failOnPolicy
+		return failOnPolicy, nil
 	}
 
 	switch failOnFromConfig {
 	case "upgradable", "all":
 		failOnPolicy.onUpgradable = util.Ptr(true)
+	default:
+		return failOnPolicy, errFactory.NewUnsupportedFailOnValueError(failOnFromConfig)
 	}
 
-	return failOnPolicy
+	return failOnPolicy, nil
 }
 
 // CreateLocalPolicy will create a local policy only if risk score or severity threshold or reachability filters are specified in the config.
-func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logger) *testapi.LocalPolicy {
+func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logger, errFactory *errors.ErrorFactory) (*testapi.LocalPolicy, error) {
 	riskScoreThreshold := getRiskScoreThreshold(config, logger)
 	severityThreshold := getSeverityThreshold(config)
 	reachabilityFilter := getReachabilityFilter(config)
-	failOnPolicy := getFailOnPolicy(config)
+	failOnPolicy, err := getFailOnPolicy(config, errFactory)
+	if err != nil {
+		return nil, err
+	}
 
-	// if everything is nil, return nil for local policy
+	// if everything is nil, return nil for local policy (no error, just no policy)
 	if riskScoreThreshold == nil && severityThreshold == nil && reachabilityFilter == nil && failOnPolicy.onUpgradable == nil {
-		return nil
+		var noPolicy *testapi.LocalPolicy
+		return noPolicy, nil
 	}
 
 	// if we have some policy but no severity threshold, default to None
@@ -270,7 +276,7 @@ func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logge
 		SeverityThreshold:  severityThreshold,
 		ReachabilityFilter: reachabilityFilter,
 		FailOnUpgradable:   failOnPolicy.onUpgradable,
-	}
+	}, nil
 }
 
 // OSWorkflow is the entry point for the Open Source Test workflow.
@@ -356,7 +362,10 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
 	}
 
-	localPolicy := CreateLocalPolicy(config, logger)
+	localPolicy, err := CreateLocalPolicy(config, logger, errFactory)
+	if err != nil {
+		return nil, err
+	}
 
 	testClient, err := setupTestClient(ictx)
 	if err != nil {
