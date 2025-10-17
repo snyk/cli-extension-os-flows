@@ -486,6 +486,7 @@ func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engin
 	icontext.EXPECT().GetConfiguration().Return(mockConfig).AnyTimes()
 	icontext.EXPECT().GetEnhancedLogger().Return(&mockLogger).AnyTimes()
 	icontext.EXPECT().GetNetworkAccess().Return(networking.NewNetworkAccess(mockConfig)).AnyTimes()
+	icontext.EXPECT().GetWorkflowIdentifier().Return(workflow.NewWorkflowIdentifier("test")).AnyTimes()
 
 	if engine != nil {
 		icontext.EXPECT().GetEngine().Return(engine).AnyTimes()

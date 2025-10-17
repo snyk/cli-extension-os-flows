@@ -16,6 +16,7 @@ import (
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	gafmocks "github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
 	"github.com/snyk/go-application-framework/pkg/workflow"
@@ -72,8 +73,9 @@ func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Len(t, result, 1)
-	require.Contains(t, result[0].GetContentType(), "application/json; schema=test-summary")
+	require.Len(t, result, 2)
+	require.Contains(t, "application/json; schema=test-summary", result[0].GetContentType())
+	require.Contains(t, content_type.UFM_RESULT, result[1].GetContentType())
 
 	legacySummary, ok := result[0].GetPayload().([]byte)
 	require.True(t, ok)
@@ -316,6 +318,7 @@ func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonO
 	mockIctx.EXPECT().GetConfiguration().Return(mockConfig).AnyTimes()
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&nopLogger).AnyTimes()
 	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
+	mockIctx.EXPECT().GetWorkflowIdentifier().Return(workflow.NewWorkflowIdentifier("test")).AnyTimes()
 
 	return mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath
 }
