@@ -309,6 +309,46 @@ func Test_FindingsToRemediationSummary(t *testing.T) {
 			}, summary)
 		})
 
+		t.Run("upgrade with drop for single package with single path returns valid summary", func(t *testing.T) {
+			summary, err := remediation.FindingsToRemediationSummary([]*remediation.Finding{
+				{
+					Vulnerability: aVulnerabilityWithID("VULN_ID"),
+					Package:       newPackage("vulnerable@1.0.0"),
+					DependencyPaths: []remediation.DependencyPath{
+						newDependencyPath("root@1.0.0", "direct@1.0.0", "vulnerable@1.0.0"),
+					},
+					FixedInVersions: []string{},
+					PackageManager:  "npm",
+					Fix: remediation.NewUpgradeFix(remediation.FullyResolved, remediation.UpgradeAction{
+						PackageName: "vulnerable",
+						UpgradePaths: []remediation.DependencyPath{
+							newDependencyPath("root@1.0.0", "direct@1.2.3"),
+						},
+					}),
+				},
+			})
+
+			require.NoError(t, err)
+			equalSummaries(t, remediation.Summary{
+				Upgrades: []*remediation.Upgrade{
+					{
+						From: newPackage("direct@1.0.0"),
+						To:   newPackage("direct@1.2.3"),
+						Fixes: []*remediation.VulnerabilityInPackage{
+							{
+								FixedInVersions:   []string{},
+								VulnerablePackage: newPackage("vulnerable@1.0.0"),
+								Vulnerability:     aVulnerabilityWithID("VULN_ID"),
+								IntroducedThrough: []remediation.DependencyPath{
+									newDependencyPath("root@1.0.0", "direct@1.0.0", "vulnerable@1.0.0"),
+								},
+							},
+						},
+					},
+				},
+			}, summary)
+		})
+
 		t.Run("upgrades for single package with multiple resolved paths returns valid summary", func(t *testing.T) {
 			summary, err := remediation.FindingsToRemediationSummary([]*remediation.Finding{
 				{

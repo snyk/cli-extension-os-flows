@@ -186,9 +186,6 @@ func newVulnerabilityInPackage(finding *Finding) *VulnerabilityInPackage {
 }
 
 func isMatchingUpgradePath(upath, depPath DependencyPath) bool {
-	if len(depPath) != len(upath) {
-		return false
-	}
 	for i, uDep := range upath {
 		if uDep.Name != depPath[i].Name {
 			return false
