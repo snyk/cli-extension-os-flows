@@ -205,6 +205,7 @@ func Test_RemediationSummaryToLegacy(t *testing.T) {
 		unresolved := []definitions.Vulnerability{
 			{
 				Id:               "SNYK-BAZ-123",
+				From:             []string{"root@1.0.0", "direct-3@1.0.0", "baz@1.0.0"},
 				FixedIn:          &[]string{},
 				PackageName:      util.Ptr("baz"),
 				Version:          "1.0.0",
@@ -226,7 +227,7 @@ func Test_RemediationSummaryToLegacy(t *testing.T) {
 		}, summary)
 	})
 
-	t.Run("remediation summary with unresolved and upgrades results in valid legacy summary", func(t *testing.T) {
+	t.Run("remediation summary with unresolved and upgrade for the same vuln results in valid legacy summary", func(t *testing.T) {
 		remSummary := remediation.Summary{
 			Upgrades: []*remediation.Upgrade{
 				{
@@ -240,7 +241,7 @@ func Test_RemediationSummaryToLegacy(t *testing.T) {
 								Name:     "SQL Injection",
 								Severity: remediation.SeverityHigh,
 							},
-							FixedInVersions: []string{"1.0.1", "2.0.0"},
+							FixedInVersions: []string{},
 							IntroducedThrough: []remediation.DependencyPath{
 								newDependencyPath("root@1.0.0", "direct-1@1.0.0", "foo@1.0.0"),
 							},
@@ -250,42 +251,57 @@ func Test_RemediationSummaryToLegacy(t *testing.T) {
 			},
 			Unresolved: []*remediation.VulnerabilityInPackage{
 				{
-					VulnerablePackage: newPackage("baz@1.0.0"),
+					VulnerablePackage: newPackage("foo@1.0.0"),
 					Vulnerability: remediation.Vulnerability{
-						ID:       "SNYK-BAZ-123",
-						Name:     "RCE",
-						Severity: remediation.SeverityCritical,
+						ID:       "SNYK-FOO-123",
+						Name:     "SQL Injection",
+						Severity: remediation.SeverityHigh,
 					},
 					FixedInVersions: []string{},
 					IntroducedThrough: []remediation.DependencyPath{
-						newDependencyPath("root@1.0.0", "direct-3@1.0.0", "baz@1.0.0"),
+						newDependencyPath("root@1.0.0", "foo@1.0.0"),
 					},
 				},
 			},
 		}
+		// We consider the issue unresolved for this path, as pkg `foo` doesn't have an upgrade
 		unresolved := []definitions.Vulnerability{
 			{
-				Id:               "SNYK-BAZ-123",
-				FixedIn:          &[]string{},
-				PackageName:      util.Ptr("baz"),
-				Version:          "1.0.0",
+				Id:               "SNYK-FOO-123",
+				From:             []string{"root@1.0.0", "foo@1.0.0"},
 				IsUpgradable:     false,
+				FixedIn:          &[]string{},
+				PackageName:      util.Ptr("foo"),
+				Version:          "1.0.0",
 				Reachability:     util.Ptr(definitions.Reachable),
 				CvssScore:        util.Ptr(float32(9.7)),
-				Severity:         definitions.Critical,
+				Severity:         definitions.High,
 				ModificationTime: util.Ptr("2025-06-03T10:14:39Z"),
 			},
 		}
 		var allIssues []definitions.Vulnerability
 		allIssues = append(allIssues, unresolved...)
+
+		root := definitions.Vulnerability_UpgradePath_Item{}
+		err := root.FromVulnerabilityUpgradePath1(false)
+		require.NoError(t, err)
+		dep := definitions.Vulnerability_UpgradePath_Item{}
+		err = dep.FromVulnerabilityUpgradePath0("direct-1@1.2.0")
+		require.NoError(t, err)
+
+		// We consider the same issue resolved here, as upgrading pkg `direct-1`
+		// will result in us dropping the `foo` dependency
+		uPath := []definitions.Vulnerability_UpgradePath_Item{root, dep}
 		allIssues = append(allIssues, definitions.Vulnerability{
 			Id:               "SNYK-FOO-123",
-			FixedIn:          &[]string{"1.0.1", "2.0.0"},
+			From:             []string{"root@1.0.0", "direct-1@1.0.0", "foo@1.0.0"},
+			IsUpgradable:     true,
+			UpgradePath:      uPath,
+			FixedIn:          &[]string{},
 			PackageName:      util.Ptr("foo"),
 			Version:          "1.0.0",
-			IsUpgradable:     true,
 			Reachability:     util.Ptr(definitions.Reachable),
-			CvssScore:        util.Ptr(float32(7.7)),
+			CvssScore:        util.Ptr(float32(9.7)),
 			Severity:         definitions.High,
 			ModificationTime: util.Ptr("2025-06-03T10:14:39Z"),
 		})

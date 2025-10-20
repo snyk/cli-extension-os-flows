@@ -3,6 +3,7 @@ package transform
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -120,7 +121,8 @@ func RemediationSummaryToLegacy(legacyVulns []definitions.Vulnerability, remSumm
 	if len(remSummary.Unresolved) > 0 {
 		for i := range legacyVulns {
 			vuln := &legacyVulns[i]
-			rawVulnsMap[vuln.Id] = vuln
+			key := getVulnKeyByPath(vuln.Id, vuln.From)
+			rawVulnsMap[key] = vuln
 		}
 	}
 
@@ -162,13 +164,24 @@ func RemediationSummaryToLegacy(legacyVulns []definitions.Vulnerability, remSumm
 	}
 
 	for _, unresolved := range remSummary.Unresolved {
-		rawVuln, exists := rawVulnsMap[string(unresolved.Vulnerability.ID)]
-		if !exists {
-			return nil, fmt.Errorf("vulnerability not found in map: %s", unresolved.Vulnerability.ID)
-		}
+		for _, introducedThrough := range unresolved.IntroducedThrough {
+			path := make([]string, 0, len(introducedThrough))
+			for _, pkg := range introducedThrough {
+				path = append(path, legacyUtils.JoinNameAndVersion(pkg.Name, pkg.Version))
+			}
+			key := getVulnKeyByPath(string(unresolved.Vulnerability.ID), path)
+			rawVuln, exists := rawVulnsMap[key]
+			if !exists {
+				return nil, fmt.Errorf("vulnerability not found in map: %s", unresolved.Vulnerability.ID)
+			}
 
-		summary.Unresolved = append(summary.Unresolved, *rawVuln)
+			summary.Unresolved = append(summary.Unresolved, *rawVuln)
+		}
 	}
 
 	return &summary, nil
+}
+
+func getVulnKeyByPath(vulnID string, path []string) string {
+	return fmt.Sprintf("%s:%s", vulnID, strings.Join(path, ","))
 }
