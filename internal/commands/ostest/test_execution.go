@@ -141,7 +141,7 @@ func executeTest(
 		return nil, nil, fmt.Errorf("test completed but no result was returned")
 	}
 
-	if finalResult.GetExecutionState() == testapi.Errored {
+	if finalResult.GetExecutionState() == testapi.TestExecutionStatesErrored {
 		apiErrors := finalResult.GetErrors()
 		if apiErrors != nil && len(*apiErrors) > 0 {
 			var errorMessages []string
@@ -372,12 +372,19 @@ func consolidateFindingFix(existing, additional testapi.FindingData, pkgManager 
 			} "json:\"org,omitempty\""
 			Policy *struct {
 				Data *struct {
-					Id   uuid.UUID "json:\"id\""
-					Type string    "json:\"type\""
-				} "json:\"data,omitempty\""
-				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
-				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
-			} "json:\"policy,omitempty\""
+					// Attributes Inlined attributes included in the relationship, if it is expanded.
+					//
+					// Expansion is a Snyk variation on JSON API. See
+					// https://snyk.roadie.so/docs/default/component/sweater-comb/standards/rest/#expansion
+					Attributes *testapi.PolicyAttributes `json:"attributes,omitempty"`
+					Id         uuid.UUID                 `json:"id"`
+					Type       string                    `json:"type"`
+				} `json:"data,omitempty"`
+				Links testapi.IoSnykApiCommonRelatedLink `json:"links"`
+
+				// Meta Free-form object that may contain non-standard information.
+				Meta *testapi.IoSnykApiCommonMeta `json:"meta,omitempty"`
+			} `json:"policy,omitempty"`
 			Test *struct {
 				Data *struct {
 					Id   uuid.UUID "json:\"id\""

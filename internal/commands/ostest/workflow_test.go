@@ -690,7 +690,7 @@ func (s *mockAPIState) handleGetTestResult(w http.ResponseWriter, r *http.Reques
 		Id:   &parsedTestID,
 		Type: testapi.TestDataTypeTests,
 		Attributes: testapi.TestAttributes{
-			State:            &testapi.TestState{Execution: testapi.Finished},
+			State:            &testapi.TestState{Execution: testapi.TestExecutionStatesFinished},
 			Outcome:          &testapi.TestOutcome{Result: pass},
 			RawSummary:       &testapi.FindingSummary{Count: 0},
 			EffectiveSummary: &testapi.FindingSummary{Count: 0},

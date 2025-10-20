@@ -50,7 +50,7 @@ func mockConcurrentStartTest(ctrl *gomock.Controller, n int, current, peak *atom
 
 		// Result: minimal finished result with empty findings
 		result := gafclientmocks.NewMockTestResult(ctrl)
-		result.EXPECT().GetExecutionState().Return(testapi.Finished).AnyTimes()
+		result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
 		result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
 		handle.EXPECT().Result().Return(result).Times(1)
 		return handle, nil
