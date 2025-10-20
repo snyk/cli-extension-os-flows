@@ -9,15 +9,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	service "github.com/snyk/cli-extension-os-flows/internal/common"
-	snykErrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
@@ -41,14 +40,14 @@ func enrichWithScanID(depgraphs []*testapi.IoSnykApiV1testdepgraphRequestDepGrap
 // RunUnifiedTestFlow handles the unified test API flow.
 func RunUnifiedTestFlow(
 	ctx context.Context,
-	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
 	orgID string,
-	errFactory *snykErrors.ErrorFactory,
-	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
 	reachabilityScanID *reachability.ID,
 ) ([]workflow.Data, error) {
+	ictx := cmdctx.Ictx(ctx)
+	logger := cmdctx.Logger(ctx)
+
 	logger.Info().Msg("Starting open source test")
 
 	// Create depgraphs and get their associated target files
@@ -61,11 +60,8 @@ func RunUnifiedTestFlow(
 
 	allLegacyFindings, allOutputData, err := testAllDepGraphs(
 		ctx,
-		ictx,
 		testClient,
 		orgID,
-		errFactory,
-		logger,
 		localPolicy,
 		depGraphs,
 		displayTargetFiles,
@@ -74,17 +70,13 @@ func RunUnifiedTestFlow(
 		return nil, err
 	}
 
-	//nolint:contextcheck // The handleOutput call chain is not context-aware
-	return handleOutput(ictx, allLegacyFindings, allOutputData, errFactory)
+	return handleOutput(ctx, allLegacyFindings, allOutputData)
 }
 
 // testProcessor contains the context and dependencies for running a depGraph test.
 type testProcessor struct {
-	ictx        workflow.InvocationContext
 	testClient  testapi.TestClient
 	orgID       string
-	errFactory  *snykErrors.ErrorFactory
-	logger      *zerolog.Logger
 	localPolicy *testapi.LocalPolicy
 }
 
@@ -99,13 +91,13 @@ func (p *testProcessor) runDepGraphTest(
 		return nil, nil, err
 	}
 
-	projectName := getProjectName(p.ictx, depGraph)
+	projectName := getProjectName(ctx, depGraph)
 	packageManager := depGraph.PkgManager.Name
 	depCount := max(0, len(depGraph.Pkgs)-1)
 
 	return RunTest(
-		ctx, p.ictx, p.testClient, subject, projectName, packageManager, depCount,
-		displayTargetFile, p.orgID, p.errFactory, p.logger, p.localPolicy,
+		ctx, p.testClient, subject, projectName, packageManager, depCount,
+		displayTargetFile, p.orgID, p.localPolicy,
 	)
 }
 
@@ -113,31 +105,26 @@ func (p *testProcessor) runDepGraphTest(
 // Returns legacy JSON and/or human-readable workflow data, depending on parameters.
 func testAllDepGraphs(
 	ctx context.Context,
-	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
 	orgID string,
-	errFactory *snykErrors.ErrorFactory,
-	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
 	depGraphs []*testapi.IoSnykApiV1testdepgraphRequestDepGraph,
 	displayTargetFiles []string,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	cfg := cmdctx.Config(ctx)
+	logger := cmdctx.Logger(ctx)
 	g, gctx := errgroup.WithContext(ctx)
 
-	config := ictx.GetConfiguration()
 	numThreads := maxConcurrentTests
-	maxThreads := config.GetInt(configuration.MAX_THREADS)
+	maxThreads := cfg.GetInt(configuration.MAX_THREADS)
 	if maxThreads > 0 {
 		numThreads = min(maxThreads, maxConcurrentTests)
 	}
 	g.SetLimit(numThreads)
 
 	processor := &testProcessor{
-		ictx:        ictx,
 		testClient:  testClient,
 		orgID:       orgID,
-		errFactory:  errFactory,
-		logger:      logger,
 		localPolicy: localPolicy,
 	}
 
@@ -211,13 +198,13 @@ func createTestSubject(
 }
 
 func getProjectName(
-	ictx workflow.InvocationContext,
+	ctx context.Context,
 	depGraph *testapi.IoSnykApiV1testdepgraphRequestDepGraph,
 ) string {
+	cfg := cmdctx.Config(ctx)
 	// Project name assigned as follows: --project-name || config project name || scannedProject?.depTree?.name
 	// TODO: use project name from Config file
-	config := ictx.GetConfiguration()
-	projectName := config.GetString(flags.FlagProjectName)
+	projectName := cfg.GetString(flags.FlagProjectName)
 	if projectName == "" && len(depGraph.Pkgs) > 0 {
 		projectName = depGraph.Pkgs[0].Info.Name
 	}
@@ -229,14 +216,14 @@ func getProjectName(
 // JSON file output is written to file here, while JSON stdout is added to the output workflow.
 // Summary data is added to the output workflow for exit code calculation.
 func handleOutput(
-	ictx workflow.InvocationContext,
+	ctx context.Context,
 	allLegacyFindings []definitions.LegacyVulnerabilityResponse,
 	allOutputData []workflow.Data,
-	errFactory *snykErrors.ErrorFactory,
 ) ([]workflow.Data, error) {
-	config := ictx.GetConfiguration()
-	jsonOutput := config.GetBool(outputworkflow.OutputConfigKeyJSON)
-	jsonFileOutput := config.GetString(outputworkflow.OutputConfigKeyJSONFile)
+	ictx := cmdctx.Ictx(ctx)
+	cfg := cmdctx.Config(ctx)
+	jsonOutput := cfg.GetBool(outputworkflow.OutputConfigKeyJSON)
+	jsonFileOutput := cfg.GetString(outputworkflow.OutputConfigKeyJSONFile)
 
 	// Human-readable output is suppressed only when --json is specified.
 	wantsHumanReadable := !jsonOutput
@@ -247,6 +234,7 @@ func handleOutput(
 	if wantsHumanReadable {
 		outputDestination := outputworkflow.NewOutputDestination()
 		// The output workflow returns data it did not handle, like test summaries for exit code calculation.
+		//nolint:contextcheck // The outputworkflow.EntryPoint call chain is not context-aware
 		remainingData, err := outputworkflow.EntryPoint(ictx, allOutputData, outputDestination)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process output workflow: %w", err)
@@ -259,7 +247,7 @@ func handleOutput(
 		return finalOutput, nil
 	}
 
-	jsonBytes, err := prepareJSONOutput(allLegacyFindings, errFactory)
+	jsonBytes, err := prepareJSONOutput(ctx, allLegacyFindings)
 	if err != nil {
 		return nil, err
 	}
@@ -288,9 +276,11 @@ func handleOutput(
 
 // prepareJSONOutput prepares legacy JSON output from findings.
 func prepareJSONOutput(
+	ctx context.Context,
 	allLegacyFindings []definitions.LegacyVulnerabilityResponse,
-	errFactory *snykErrors.ErrorFactory,
 ) ([]byte, error) {
+	errFactory := cmdctx.ErrorFactory(ctx)
+
 	if len(allLegacyFindings) == 0 {
 		return nil, nil
 	}

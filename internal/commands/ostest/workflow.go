@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	codeclient "github.com/snyk/code-client-go"
 	codeclienthttp "github.com/snyk/code-client-go/http"
 	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
@@ -29,6 +28,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
@@ -88,10 +88,11 @@ func RegisterWorkflows(e workflow.Engine) error {
 	return nil
 }
 
-func setupTestClient(ictx workflow.InvocationContext) (testapi.TestClient, error) {
-	config := ictx.GetConfiguration()
+func setupTestClient(ctx context.Context) (testapi.TestClient, error) {
+	cfg := cmdctx.Config(ctx)
+	ictx := cmdctx.Ictx(ctx)
 	httpClient := ictx.GetNetworkAccess().GetHttpClient()
-	snykClient := snykclient.NewSnykClient(httpClient, config.GetString(configuration.API_URL), config.GetString(configuration.ORGANIZATION))
+	snykClient := snykclient.NewSnykClient(httpClient, cfg.GetString(configuration.API_URL), cfg.GetString(configuration.ORGANIZATION))
 
 	testClient, err := testapi.NewTestClient(
 		snykClient.GetAPIBaseURL(),
@@ -105,23 +106,25 @@ func setupTestClient(ictx workflow.InvocationContext) (testapi.TestClient, error
 	return testClient, nil
 }
 
-func setupSettingsClient(ictx workflow.InvocationContext) settings.Client {
-	config := ictx.GetConfiguration()
-	sc := settings.NewClient(ictx.GetNetworkAccess().GetHttpClient(), settings.Config{BaseURL: config.GetString(configuration.API_URL)})
+func setupSettingsClient(ctx context.Context) settings.Client {
+	ictx := cmdctx.Ictx(ctx)
+	cfg := cmdctx.Config(ctx)
+	sc := settings.NewClient(ictx.GetNetworkAccess().GetHttpClient(), settings.Config{BaseURL: cfg.GetString(configuration.API_URL)})
 
 	return sc
 }
 
-func setupBundlestoreClient(ictx workflow.InvocationContext, logger *zerolog.Logger) bundlestore.Client {
-	config := ictx.GetConfiguration()
-
+func setupBundlestoreClient(ctx context.Context) bundlestore.Client {
+	ictx := cmdctx.Ictx(ctx)
+	cfg := cmdctx.Config(ctx)
+	logger := cmdctx.Logger(ctx)
 	httpCodeClient := codeclienthttp.NewHTTPClient(
 		ictx.GetNetworkAccess().GetHttpClient,
 		codeclienthttp.WithLogger(logger),
 	)
 
 	codeScannerConfig := bundlestore.CodeClientConfig{
-		LocalConfiguration: config,
+		LocalConfiguration: cfg,
 	}
 
 	cScanner := codeclient.NewCodeScanner(
@@ -138,42 +141,39 @@ func setupBundlestoreClient(ictx workflow.InvocationContext, logger *zerolog.Log
 // handleSBOMReachabilityFlow sets up and runs the SBOM reachability flow.
 func handleSBOMReachabilityFlow(
 	ctx context.Context,
-	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
 	orgID, sbom, sourceDir string,
-	errFactory *errors.ErrorFactory,
-	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
 ) ([]workflow.Data, error) {
-	config := ictx.GetConfiguration()
+	cfg := cmdctx.Config(ctx)
+	errFactory := cmdctx.ErrorFactory(ctx)
 
-	if !config.GetBool(FeatureFlagSBOMTestReachability) {
+	if !cfg.GetBool(FeatureFlagSBOMTestReachability) {
 		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagSBOMTestReachability)
 	}
 
-	bsClient := setupBundlestoreClient(ictx, logger)
-	return RunSbomReachabilityFlow(ctx, ictx, testClient, errFactory, logger, sbom, sourceDir, bsClient, orgID, localPolicy)
+	bsClient := setupBundlestoreClient(ctx)
+	return RunSbomReachabilityFlow(ctx, testClient, sbom, sourceDir, bsClient, orgID, localPolicy)
 }
 
 func handleDepgraphReachabilityFlow(
 	ctx context.Context,
-	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
 	orgUUID uuid.UUID,
 	sourceDir string,
-	errFactory *errors.ErrorFactory,
-	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
 ) ([]workflow.Data, error) {
-	config := ictx.GetConfiguration()
+	ictx := cmdctx.Ictx(ctx)
+	cfg := cmdctx.Config(ctx)
+	errFactory := cmdctx.ErrorFactory(ctx)
 
-	if !config.GetBool(FeatureFlagReachabilityForCLI) {
+	if !cfg.GetBool(FeatureFlagReachabilityForCLI) {
 		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagReachabilityForCLI)
 	}
 
 	fuClient := fileupload.NewClientFromInvocationContext(ictx, orgUUID)
 	rc := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
-		BaseURL: config.GetString(configuration.API_URL),
+		BaseURL: cfg.GetString(configuration.API_URL),
 	})
 
 	scanID, err := reachability.GetReachabilityID(ctx, orgUUID, sourceDir, rc, fuClient)
@@ -181,7 +181,7 @@ func handleDepgraphReachabilityFlow(
 		return nil, fmt.Errorf("failed to analyze source code: %w", err)
 	}
 
-	return RunUnifiedTestFlow(ctx, ictx, testClient, orgUUID.String(), errFactory, logger, localPolicy, &scanID)
+	return RunUnifiedTestFlow(ctx, testClient, orgUUID.String(), localPolicy, &scanID)
 }
 
 func convertReachabilityFilterToSchema(reachabilityFilter string) *testapi.ReachabilityFilter {
@@ -201,8 +201,10 @@ func convertReachabilityFilterToSchema(reachabilityFilter string) *testapi.Reach
 	}
 }
 
-func getRiskScoreThreshold(config configuration.Configuration, logger *zerolog.Logger) *uint16 {
-	riskScoreThresholdInt := config.GetInt(flags.FlagRiskScoreThreshold)
+func getRiskScoreThreshold(ctx context.Context) *uint16 {
+	cfg := cmdctx.Config(ctx)
+	logger := cmdctx.Logger(ctx)
+	riskScoreThresholdInt := cfg.GetInt(flags.FlagRiskScoreThreshold)
 	if riskScoreThresholdInt >= math.MaxUint16 {
 		// the API will enforce a range from the test spec
 		logger.Warn().Msgf("Risk score threshold %d exceeds maximum uint16 value. Setting to maximum.", riskScoreThresholdInt)
@@ -215,8 +217,9 @@ func getRiskScoreThreshold(config configuration.Configuration, logger *zerolog.L
 	return nil
 }
 
-func getSeverityThreshold(config configuration.Configuration) *testapi.Severity {
-	severityThresholdStr := config.GetString(flags.FlagSeverityThreshold)
+func getSeverityThreshold(ctx context.Context) *testapi.Severity {
+	cfg := cmdctx.Config(ctx)
+	severityThresholdStr := cfg.GetString(flags.FlagSeverityThreshold)
 	if severityThresholdStr != "" {
 		st := testapi.Severity(severityThresholdStr)
 		return &st
@@ -224,8 +227,9 @@ func getSeverityThreshold(config configuration.Configuration) *testapi.Severity 
 	return nil
 }
 
-func getReachabilityFilter(config configuration.Configuration) *testapi.ReachabilityFilter {
-	reachabilityFiltersFromConfig := convertReachabilityFilterToSchema(config.GetString(flags.FlagReachabilityFilter))
+func getReachabilityFilter(ctx context.Context) *testapi.ReachabilityFilter {
+	cfg := cmdctx.Config(ctx)
+	reachabilityFiltersFromConfig := convertReachabilityFilterToSchema(cfg.GetString(flags.FlagReachabilityFilter))
 
 	if reachabilityFiltersFromConfig != nil {
 		return reachabilityFiltersFromConfig
@@ -238,8 +242,10 @@ type supportedFailOnPolicy struct {
 	onUpgradable *bool
 }
 
-func getFailOnPolicy(config configuration.Configuration, errFactory *errors.ErrorFactory) (supportedFailOnPolicy, error) {
-	failOnFromConfig := config.GetString(flags.FlagFailOn)
+func getFailOnPolicy(ctx context.Context) (supportedFailOnPolicy, error) {
+	cfg := cmdctx.Config(ctx)
+	errFactory := cmdctx.ErrorFactory(ctx)
+	failOnFromConfig := cfg.GetString(flags.FlagFailOn)
 
 	var failOnPolicy supportedFailOnPolicy
 	if failOnFromConfig == "" {
@@ -256,11 +262,12 @@ func getFailOnPolicy(config configuration.Configuration, errFactory *errors.Erro
 	return failOnPolicy, nil
 }
 
-func getLocalPolicyDir(config configuration.Configuration) string {
-	if dir := config.GetString(flags.FlagPolicyPath); dir != "" {
+func getLocalPolicyDir(ctx context.Context) string {
+	cfg := cmdctx.Config(ctx)
+	if dir := cfg.GetString(flags.FlagPolicyPath); dir != "" {
 		return dir
 	}
-	if dir := config.GetString(configuration.INPUT_DIRECTORY); dir != "" {
+	if dir := cfg.GetString(configuration.INPUT_DIRECTORY); dir != "" {
 		return dir
 	}
 	cwd, err := os.Getwd()
@@ -273,8 +280,10 @@ func getLocalPolicyDir(config configuration.Configuration) string {
 // getLocalIgnores attempts to resolve a .snyk file and read the ignore rules within it.
 // Failing to resolve, open or read the file is not fatal and will result in no ignores
 // to be applied.
-func getLocalIgnores(config configuration.Configuration, logger *zerolog.Logger) *[]testapi.LocalIgnore {
-	policyFile, err := policy.Resolve(getLocalPolicyDir(config))
+func getLocalIgnores(ctx context.Context) *[]testapi.LocalIgnore {
+	logger := cmdctx.Logger(ctx)
+
+	policyFile, err := policy.Resolve(getLocalPolicyDir(ctx))
 	if err != nil {
 		var perr *fs.PathError
 		if stderrors.As(err, &perr) {
@@ -295,15 +304,15 @@ func getLocalIgnores(config configuration.Configuration, logger *zerolog.Logger)
 }
 
 // CreateLocalPolicy will create a local policy only if risk score or severity threshold or reachability filters are specified in the config.
-func CreateLocalPolicy(config configuration.Configuration, logger *zerolog.Logger, errFactory *errors.ErrorFactory) (*testapi.LocalPolicy, error) {
-	riskScoreThreshold := getRiskScoreThreshold(config, logger)
-	severityThreshold := getSeverityThreshold(config)
-	reachabilityFilter := getReachabilityFilter(config)
-	failOnPolicy, err := getFailOnPolicy(config, errFactory)
+func CreateLocalPolicy(cmdCtx context.Context) (*testapi.LocalPolicy, error) {
+	riskScoreThreshold := getRiskScoreThreshold(cmdCtx)
+	severityThreshold := getSeverityThreshold(cmdCtx)
+	reachabilityFilter := getReachabilityFilter(cmdCtx)
+	failOnPolicy, err := getFailOnPolicy(cmdCtx)
 	if err != nil {
 		return nil, err
 	}
-	localIgnores := getLocalIgnores(config, logger)
+	localIgnores := getLocalIgnores(cmdCtx)
 
 	// if everything is nil, return nil for local policy (no error, just no policy)
 	if riskScoreThreshold == nil && severityThreshold == nil && reachabilityFilter == nil && failOnPolicy.onUpgradable == nil && localIgnores == nil {
@@ -330,37 +339,40 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 	ictx workflow.InvocationContext,
 	_ []workflow.Data,
 ) ([]workflow.Data, error) {
-	config := ictx.GetConfiguration()
+	ctx := context.Background()
+	cfg := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
-	ctx := context.Background()
-
+	ctx = cmdctx.WithIctx(ctx, ictx)
+	ctx = cmdctx.WithConfig(ctx, cfg)
+	ctx = cmdctx.WithLogger(ctx, logger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 	// Validate that --reachability-filter is only used with --reachability
-	reachabilityFilter := config.GetString(flags.FlagReachabilityFilter)
-	reachability := config.GetBool(flags.FlagReachability)
+	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
+	reachability := cfg.GetBool(flags.FlagReachability)
 
 	if reachabilityFilter != "" && !reachability {
 		return nil, errFactory.NewReachabilityFilterWithoutReachabilityError() //nolint:wrapcheck // error catalog already contains details
 	}
 
 	// Reachability
-	sourceDir := config.GetString(flags.FlagSourceDir)
+	sourceDir := cfg.GetString(flags.FlagSourceDir)
 	if sourceDir == "" {
 		sourceDir = "."
 	}
 
 	// SBOM Test w/ Reachability
-	sbom := config.GetString(flags.FlagSBOM)
+	sbom := cfg.GetString(flags.FlagSBOM)
 	sbomReachabilityTest := reachability && sbom != ""
 
 	// Risk Score
-	ffRiskScore := config.GetBool(FeatureFlagRiskScore)
-	ffRiskScoreInCLI := config.GetBool(FeatureFlagRiskScoreInCLI)
+	ffRiskScore := cfg.GetBool(FeatureFlagRiskScore)
+	ffRiskScoreInCLI := cfg.GetBool(FeatureFlagRiskScoreInCLI)
 	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
-	riskScoreThreshold := config.GetInt(flags.FlagRiskScoreThreshold)
+	riskScoreThreshold := cfg.GetInt(flags.FlagRiskScoreThreshold)
 	riskScoreTest := riskScoreFFsEnabled || riskScoreThreshold != -1
 
-	forceLegacyTest := config.GetBool(ForceLegacyCLIEnvVar)
+	forceLegacyTest := cfg.GetBool(ForceLegacyCLIEnvVar)
 	// Legacy test fallthrough
 	if forceLegacyTest || (!sbomReachabilityTest && !riskScoreTest && !reachability) {
 		logger.Debug().Msgf(
@@ -373,7 +385,7 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 	}
 
 	logger.Info().Msg("Getting preferred organization ID")
-	orgID := config.GetString(configuration.ORGANIZATION)
+	orgID := cfg.GetString(configuration.ORGANIZATION)
 	if orgID == "" {
 		logger.Error().Msg("No organization ID provided")
 		return nil, errFactory.NewEmptyOrgError()
@@ -384,7 +396,7 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 		return nil, fmt.Errorf("orgID is not a valid UUID: %w", err)
 	}
 
-	sc := setupSettingsClient(ictx)
+	sc := setupSettingsClient(ctx)
 	if reachability {
 		//nolint:govet // Shadowing err is not an issue here.
 		isReachEnabled, err := sc.IsReachabilityEnabled(ctx, orgUUID)
@@ -408,12 +420,12 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
 	}
 
-	localPolicy, err := CreateLocalPolicy(config, logger, errFactory)
+	localPolicy, err := CreateLocalPolicy(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	testClient, err := setupTestClient(ictx)
+	testClient, err := setupTestClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -421,10 +433,10 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 	// Route to the appropriate flow based on flags
 	switch {
 	case sbomReachabilityTest:
-		return handleSBOMReachabilityFlow(ctx, ictx, testClient, orgID, sbom, sourceDir, errFactory, logger, localPolicy)
+		return handleSBOMReachabilityFlow(ctx, testClient, orgID, sbom, sourceDir, localPolicy)
 	case reachability:
-		return handleDepgraphReachabilityFlow(ctx, ictx, testClient, orgUUID, sourceDir, errFactory, logger, localPolicy)
+		return handleDepgraphReachabilityFlow(ctx, testClient, orgUUID, sourceDir, localPolicy)
 	default:
-		return RunUnifiedTestFlow(ctx, ictx, testClient, orgID, errFactory, logger, localPolicy, nil)
+		return RunUnifiedTestFlow(ctx, testClient, orgID, localPolicy, nil)
 	}
 }

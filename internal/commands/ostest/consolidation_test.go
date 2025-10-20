@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 )
@@ -47,8 +48,10 @@ func Test_consolidateFindings(t *testing.T) {
 				},
 			},
 		}
+		ctx := t.Context()
+		ctx = cmdctx.WithLogger(ctx, &logger)
 
-		consolidated, err := ostest.ConsolidateFindings(findings, &logger)
+		consolidated, err := ostest.ConsolidateFindings(ctx, findings)
 		require.NoError(t, err)
 		require.Len(t, consolidated, 1)
 
@@ -84,8 +87,10 @@ func Test_consolidateFindings(t *testing.T) {
 				},
 			},
 		}
+		ctx := t.Context()
+		ctx = cmdctx.WithLogger(ctx, &logger)
 
-		consolidated, err := ostest.ConsolidateFindings(findings, &logger)
+		consolidated, err := ostest.ConsolidateFindings(ctx, findings)
 		require.NoError(t, err)
 		require.Len(t, consolidated, 1)
 
@@ -124,8 +129,10 @@ func Test_consolidateFindings(t *testing.T) {
 				},
 			},
 		}
+		ctx := t.Context()
+		ctx = cmdctx.WithLogger(ctx, &logger)
 
-		consolidated, err := ostest.ConsolidateFindings(findings, &logger)
+		consolidated, err := ostest.ConsolidateFindings(ctx, findings)
 		require.NoError(t, err)
 		require.Len(t, consolidated, 1)
 
@@ -156,8 +163,10 @@ func Test_consolidateFindings(t *testing.T) {
 				},
 			},
 		}
+		ctx := t.Context()
+		ctx = cmdctx.WithLogger(ctx, &logger)
 
-		consolidated, err := ostest.ConsolidateFindings(findings, &logger)
+		consolidated, err := ostest.ConsolidateFindings(ctx, findings)
 		require.NoError(t, err)
 		require.Len(t, consolidated, 1)
 

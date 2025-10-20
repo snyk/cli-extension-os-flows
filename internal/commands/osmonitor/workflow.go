@@ -11,6 +11,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
@@ -43,13 +44,11 @@ func RegisterWorkflows(e workflow.Engine) error {
 	return nil
 }
 
-func runReachabilityScan(
-	ctx context.Context,
-	ictx workflow.InvocationContext,
-) (uuid.UUID, error) {
-	cfg := ictx.GetConfiguration()
-	logger := ictx.GetEnhancedLogger()
-	errFactory := errors.NewErrorFactory(logger)
+func runReachabilityScan(ctx context.Context) (uuid.UUID, error) {
+	ictx := cmdctx.Ictx(ctx)
+	cfg := cmdctx.Config(ctx)
+	logger := cmdctx.Logger(ctx)
+	errFactory := cmdctx.ErrorFactory(ctx)
 
 	logger.Debug().Msg("Running analysis of source code")
 
@@ -101,10 +100,17 @@ func OSWorkflow(
 ) ([]workflow.Data, error) {
 	ctx := context.Background()
 	cfg := ictx.GetConfiguration()
+	logger := ictx.GetEnhancedLogger()
+	errFactory := errors.NewErrorFactory(logger)
+	ctx = cmdctx.WithIctx(ctx, ictx)
+	ctx = cmdctx.WithConfig(ctx, cfg)
+	ctx = cmdctx.WithLogger(ctx, logger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
 	legacyArgs := os.Args[1:]
 
 	if cfg.GetBool(flags.FlagReachability) {
-		scanID, err := runReachabilityScan(ctx, ictx)
+		scanID, err := runReachabilityScan(ctx)
 		if err != nil {
 			return nil, err
 		}

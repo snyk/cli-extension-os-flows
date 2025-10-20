@@ -18,6 +18,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/require"
 
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	common "github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -112,10 +113,15 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	mockTestClient := mockConcurrentStartTest(ctrl, n, &current, &peak)
 
 	// Run
-	ctx := context.Background()
 	ef := errors.NewErrorFactory(&logger)
 	orgID := "org-123"
-	_, err := ostest.RunUnifiedTestFlow(ctx, mockIctx, mockTestClient, orgID, ef, &logger, nil, nil)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+
+	_, err := ostest.RunUnifiedTestFlow(ctx, mockTestClient, orgID, nil, nil)
 	require.NoError(t, err)
 
 	p := peak.Load()
@@ -173,10 +179,15 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 	mockTestClient := mockConcurrentStartTest(ctrl, n, &current, &peak)
 
 	// Run
-	ctx := context.Background()
 	ef := errors.NewErrorFactory(&logger)
 	orgID := "org-123"
-	_, err := ostest.RunUnifiedTestFlow(ctx, mockIctx, mockTestClient, orgID, ef, &logger, nil, nil)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+
+	_, err := ostest.RunUnifiedTestFlow(ctx, mockTestClient, orgID, nil, nil)
 	require.NoError(t, err)
 
 	p := peak.Load()
@@ -252,10 +263,16 @@ func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
 	}).Times(n)
 
 	// Run with a timeout to avoid hanging in case of failure.
-	runCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	runCtx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
 	ef := errors.NewErrorFactory(&logger)
-	_, err := ostest.RunUnifiedTestFlow(runCtx, mockIctx, mockTestClient, "org-123", ef, &logger, nil, nil)
+	ctx := runCtx
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+
+	_, err := ostest.RunUnifiedTestFlow(ctx, mockTestClient, "org-123", nil, nil)
 	require.Error(t, err)
 
 	// At least one sibling should have observed cancellation.

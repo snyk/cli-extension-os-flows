@@ -2,7 +2,6 @@
 package ostest_test
 
 import (
-	"context"
 	"regexp"
 	"testing"
 	"time"
@@ -22,6 +21,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/mocks"
@@ -39,12 +39,16 @@ func Test_RunSbomReachabilityFlow_JSON(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	ctx := context.Background()
 	ef := errors.NewErrorFactory(&nopLogger)
-	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(ctx, t, ctrl, true)
+	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, true)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
 
 	// This should now succeed with proper finding data
-	result, err := ostest.RunSbomReachabilityFlow(ctx, mockIctx, mockTestClient, ef, &nopLogger, sbomPath, sourceCodePath, mockBsClient, orgID, nil)
+	result, err := ostest.RunSbomReachabilityFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -64,12 +68,16 @@ func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	ctx := context.Background()
 	ef := errors.NewErrorFactory(&nopLogger)
-	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(ctx, t, ctrl, false)
+	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, false)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
 
 	// This should now succeed with proper finding data
-	result, err := ostest.RunSbomReachabilityFlow(ctx, mockIctx, mockTestClient, ef, &nopLogger, sbomPath, sourceCodePath, mockBsClient, orgID, nil)
+	result, err := ostest.RunSbomReachabilityFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -83,7 +91,7 @@ func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
 }
 
 //nolint:gocritic // Not important for tests.
-func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonOutput bool) (
+func setupTest(t *testing.T, ctrl *gomock.Controller, jsonOutput bool) (
 	workflow.InvocationContext,
 	testapi.TestClient,
 	bundlestore.Client,
@@ -314,8 +322,8 @@ func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonO
 
 	// Mock BundleStore Client
 	mockBsClient := mocks.NewMockClient(ctrl)
-	mockBsClient.EXPECT().UploadSBOM(ctx, sbomPath).Return("test-sbom-hash", nil).Times(1)
-	mockBsClient.EXPECT().UploadSourceCode(ctx, sourceCodePath).Return("test-source-hash", nil).Times(1)
+	mockBsClient.EXPECT().UploadSBOM(gomock.Any(), sbomPath).Return("test-sbom-hash", nil).Times(1)
+	mockBsClient.EXPECT().UploadSourceCode(gomock.Any(), sourceCodePath).Return("test-source-hash", nil).Times(1)
 
 	// Mock Invocation Context
 	mockConfig := configuration.New()

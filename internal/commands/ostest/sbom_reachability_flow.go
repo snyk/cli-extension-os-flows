@@ -5,29 +5,27 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
-	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 )
 
 // RunSbomReachabilityFlow runs the SBOM reachability flow.
 func RunSbomReachabilityFlow(
 	ctx context.Context,
-	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
-	errFactory *errors.ErrorFactory,
-	logger *zerolog.Logger,
 	sbomPath string,
 	sourceCodePath string,
 	bsClient bundlestore.Client,
 	orgID string,
 	localPolicy *testapi.LocalPolicy,
 ) ([]workflow.Data, error) {
-	if err := validateDirectory(sourceCodePath, logger, errFactory); err != nil {
+	logger := cmdctx.Logger(ctx)
+
+	if err := validateDirectory(ctx, sourceCodePath); err != nil {
 		return nil, err
 	}
 
@@ -64,7 +62,7 @@ func RunSbomReachabilityFlow(
 		return nil, fmt.Errorf("failed to create sbom test reachability subject: %w", err)
 	}
 
-	findings, summary, err := RunTest(ctx, ictx, testClient, subject, "", "", int(0), sbomPath, orgID, errFactory, logger, localPolicy)
+	findings, summary, err := RunTest(ctx, testClient, subject, "", "", int(0), sbomPath, orgID, localPolicy)
 	if err != nil {
 		return nil, err
 	}
@@ -74,12 +72,14 @@ func RunSbomReachabilityFlow(
 		allLegacyFindings = append(allLegacyFindings, *findings)
 	}
 
-	//nolint:contextcheck // The handleOutput call chain is not context-aware
-	return handleOutput(ictx, allLegacyFindings, summary, errFactory)
+	return handleOutput(ctx, allLegacyFindings, summary)
 }
 
 // validateDirectory checks if the given path exists and contains files.
-func validateDirectory(sourceCodePath string, logger *zerolog.Logger, errFactory *errors.ErrorFactory) error {
+func validateDirectory(ctx context.Context, sourceCodePath string) error {
+	logger := cmdctx.Logger(ctx)
+	errFactory := cmdctx.ErrorFactory(ctx)
+
 	exists, err := dirExists(sourceCodePath)
 	if err != nil {
 		logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("Failed to check if directory exists")
