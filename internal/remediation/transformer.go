@@ -10,12 +10,12 @@ import (
 func ShimFindingsToRemediationFindings(shimFindings []testapi.FindingData) (Findings, error) {
 	var findings Findings
 	for _, sf := range shimFindings {
-		vuln, err := getFindingVulnProblem(sf)
+		snykProb, err := getSnykProblem(sf)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get finding vuln: %w", err)
 		}
-		// We skip over findings without snyk vulns (e.g findings with license issues)
-		if vuln == nil {
+		// We skip over findings without snyk vulns/license issues (e.g CVE problems)
+		if snykProb == nil {
 			continue
 		}
 
@@ -24,7 +24,7 @@ func ShimFindingsToRemediationFindings(shimFindings []testapi.FindingData) (Find
 			return nil, fmt.Errorf("failed to get finding package: %w", err)
 		}
 
-		ecosystem, err := vuln.Ecosystem.AsSnykvulndbBuildPackageEcosystem()
+		ecosystem, err := snykProb.Ecosystem.AsSnykvulndbBuildPackageEcosystem()
 		if err != nil {
 			return nil, fmt.Errorf("error converting vuln ecosystem to build package ecosystem: %w", err)
 		}
@@ -42,12 +42,12 @@ func ShimFindingsToRemediationFindings(shimFindings []testapi.FindingData) (Find
 		findings = append(findings, &Finding{
 			Package: pkg,
 			Vulnerability: Vulnerability{
-				ID:       VulnID(vuln.Id),
+				ID:       VulnID(snykProb.ID),
 				Name:     sf.Attributes.Title,
 				Severity: Severity(sf.Attributes.Rating.Severity),
 			},
 			DependencyPaths: depPaths,
-			FixedInVersions: vuln.InitiallyFixedInVersions,
+			FixedInVersions: snykProb.FixedIn,
 			Fix:             fix,
 			PackageManager:  PackageManager(ecosystem.PackageManager),
 		})
@@ -55,7 +55,13 @@ func ShimFindingsToRemediationFindings(shimFindings []testapi.FindingData) (Find
 	return findings, nil
 }
 
-func getFindingVulnProblem(sf testapi.FindingData) (*testapi.SnykVulnProblem, error) {
+type snykProblem struct {
+	ID        string
+	FixedIn   []string
+	Ecosystem testapi.SnykvulndbPackageEcosystem
+}
+
+func getSnykProblem(sf testapi.FindingData) (*snykProblem, error) {
 	for _, prob := range sf.Attributes.Problems {
 		disc, err := prob.Discriminator()
 		if err != nil {
@@ -66,7 +72,21 @@ func getFindingVulnProblem(sf testapi.FindingData) (*testapi.SnykVulnProblem, er
 			if err != nil {
 				return nil, fmt.Errorf("error converting problem to snyk vuln: %w", err)
 			}
-			return &vulnProb, nil
+			return &snykProblem{
+				ID:        vulnProb.Id,
+				FixedIn:   vulnProb.InitiallyFixedInVersions,
+				Ecosystem: vulnProb.Ecosystem,
+			}, nil
+		} else if disc == string(testapi.SnykLicense) {
+			licProb, err := prob.AsSnykLicenseProblem()
+			if err != nil {
+				return nil, fmt.Errorf("error converting problem to snyk license problem: %w", err)
+			}
+			return &snykProblem{
+				ID:        licProb.Id,
+				FixedIn:   []string{},
+				Ecosystem: licProb.Ecosystem,
+			}, nil
 		}
 	}
 

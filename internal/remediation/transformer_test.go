@@ -51,6 +51,44 @@ func Test_ShimFindingsToRemediationFindings(t *testing.T) {
 		}, res)
 	})
 
+	t.Run("finding with license problem", func(t *testing.T) {
+		inputFindings := []testapi.FindingData{
+			{
+				Attributes: &testapi.FindingAttributes{
+					Title: "BSD-3-Clause",
+					Rating: testapi.Rating{
+						Severity: testapi.SeverityHigh,
+					},
+					Evidence: []testapi.Evidence{
+						newShimDependencyPathEvidence(t, "goof@1.0.0", "@snyk/nodejs-runtime-agent@1.43.0", "acorn@5.7.1"),
+					},
+					Locations: []testapi.FindingLocation{newShimPackageLocation(t, "acorn@5.7.1")},
+					Problems:  []testapi.Problem{newShimLicenseProblem(t, "npm:lic:foo-bar", "js", "npm")},
+				},
+			},
+		}
+
+		res, err := remediation.ShimFindingsToRemediationFindings(inputFindings)
+		require.NoError(t, err)
+
+		require.Equal(t, remediation.Findings{
+			{
+				Package: newPackage("acorn@5.7.1"),
+				Vulnerability: remediation.Vulnerability{
+					ID:       "npm:lic:foo-bar",
+					Name:     "BSD-3-Clause",
+					Severity: remediation.SeverityHigh,
+				},
+				DependencyPaths: []remediation.DependencyPath{
+					newDependencyPath("goof@1.0.0", "@snyk/nodejs-runtime-agent@1.43.0", "acorn@5.7.1"),
+				},
+				FixedInVersions: []string{},
+				Fix:             remediation.UnresolvedFix{},
+				PackageManager:  "npm",
+			},
+		}, res)
+	})
+
 	t.Run("finding with single dependency path and pin fix", func(t *testing.T) {
 		inputFindings := []testapi.FindingData{
 			{
@@ -371,6 +409,25 @@ func newShimVulnProblem(t *testing.T, vulnID, language, pkgManager string, fixed
 		Id:                       vulnID,
 		Ecosystem:                ecosystem,
 		InitiallyFixedInVersions: fixedIn,
+	})
+
+	return prob
+}
+
+func newShimLicenseProblem(t *testing.T, licID, language, pkgManager string) testapi.Problem {
+	t.Helper()
+
+	ecosystem := testapi.SnykvulndbPackageEcosystem{}
+	err := ecosystem.FromSnykvulndbBuildPackageEcosystem(testapi.SnykvulndbBuildPackageEcosystem{
+		Language:       language,
+		PackageManager: pkgManager,
+		Type:           testapi.Build,
+	})
+	require.NoError(t, err)
+	prob := testapi.Problem{}
+	prob.FromSnykLicenseProblem(testapi.SnykLicenseProblem{
+		Id:        licID,
+		Ecosystem: ecosystem,
 	})
 
 	return prob

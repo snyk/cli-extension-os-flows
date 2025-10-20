@@ -17,12 +17,16 @@ License issues: 1
  ✗ [MEDIUM] LGPL-3.0 license
    Finding ID: snyk:lic:npm:web3-core:LGPL-3.0
    Info: https://snyk.io/vuln/snyk:lic:npm:web3-core:LGPL-3.0
+   Introduced by: root@0.0.0
+   Introduced through: root@0.0.0 > foo@1.0.0
    Legal instructions:
    ○ for LGPL-3.0: This license requires source code disclosure when modified.
 
                                        
 Issues with no direct upgrade or patch:
   ✗ High severity vulnerability [High Severity] [https://security.snyk.io/vulns/SNYK-JS-VM2-5537100] in foo
+    introduced by root@0.0.0 > foo@1.0.0
+  ✗ LGPL-3.0 license [Medium Severity] [https://security.snyk.io/vulns/snyk:lic:npm:web3-core:LGPL-3.0] in foo
     introduced by root@0.0.0 > foo@1.0.0
 
 ╭─────────────────────────────────────────────────────────╮
@@ -56,10 +60,16 @@ License issues: 1
  ✗ [HIGH] GPL-3.0 OR MIT license
    Finding ID: snyk:lic:npm:dual-pkg:GPL-3.0-OR-MIT
    Info: https://snyk.io/vuln/snyk:lic:npm:dual-pkg:GPL-3.0-OR-MIT
+   Introduced by: root@0.0.0
+   Introduced through: root@0.0.0 > foo@1.0.0
    Legal instructions:
    ○ for GPL-3.0: Strong copyleft license. Requires source code disclosure for modifications.
    ○ for MIT: Permissive license. Must include original copyright notice.
 
+                                       
+Issues with no direct upgrade or patch:
+  ✗ GPL-3.0 OR MIT license [High Severity] [https://security.snyk.io/vulns/snyk:lic:npm:dual-pkg:GPL-3.0-OR-MIT] in foo
+    introduced by root@0.0.0 > foo@1.0.0
 
 ╭─────────────────────────────────────────────────────────╮
 │ Test Summary                                            │
@@ -88,7 +98,13 @@ License issues: 1
  ✗ [MEDIUM] Apache-2.0 license
    Finding ID: snyk:lic:npm:test-pkg:Apache-2.0
    Info: https://snyk.io/vuln/snyk:lic:npm:test-pkg:Apache-2.0
+   Introduced by: root@0.0.0
+   Introduced through: root@0.0.0 > foo@1.0.0
 
+                                       
+Issues with no direct upgrade or patch:
+  ✗ Apache-2.0 license [Medium Severity] [https://security.snyk.io/vulns/snyk:lic:npm:test-pkg:Apache-2.0] in foo
+    introduced by root@0.0.0 > foo@1.0.0
 
 ╭─────────────────────────────────────────────────────────╮
 │ Test Summary                                            │
