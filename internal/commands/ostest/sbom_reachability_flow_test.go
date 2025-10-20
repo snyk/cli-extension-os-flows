@@ -225,12 +225,19 @@ func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonO
 			} "json:\"org,omitempty\""
 			Policy *struct {
 				Data *struct {
-					Id   uuid.UUID "json:\"id\""
-					Type string    "json:\"type\""
-				} "json:\"data,omitempty\""
-				Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
-				Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
-			} "json:\"policy,omitempty\""
+					// Attributes Inlined attributes included in the relationship, if it is expanded.
+					//
+					// Expansion is a Snyk variation on JSON API. See
+					// https://snyk.roadie.so/docs/default/component/sweater-comb/standards/rest/#expansion
+					Attributes *testapi.PolicyAttributes `json:"attributes,omitempty"`
+					Id         uuid.UUID                 `json:"id"`
+					Type       string                    `json:"type"`
+				} `json:"data,omitempty"`
+				Links testapi.IoSnykApiCommonRelatedLink `json:"links"`
+
+				// Meta Free-form object that may contain non-standard information.
+				Meta *testapi.IoSnykApiCommonMeta `json:"meta,omitempty"`
+			} `json:"policy,omitempty"`
 			Test *struct {
 				Data *struct {
 					Id   uuid.UUID "json:\"id\""
@@ -290,7 +297,7 @@ func setupTest(ctx context.Context, t *testing.T, ctrl *gomock.Controller, jsonO
 
 	// Mock TestResult with comprehensive data
 	mockTestResult := gafclientmocks.NewMockTestResult(ctrl)
-	mockTestResult.EXPECT().GetExecutionState().Return(testapi.Finished).Times(1)
+	mockTestResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).Times(1)
 	mockTestResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{findingData}, true, nil).Times(1)
 	mockTestResult.EXPECT().GetTestSubject().Return(testSubject).AnyTimes()
 	mockTestResult.EXPECT().GetEffectiveSummary().Return(summary).AnyTimes()

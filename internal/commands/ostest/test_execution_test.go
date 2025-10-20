@@ -159,7 +159,7 @@ func Test_RunTest_ErrorsWhenFindingsError(t *testing.T) {
 	// Wait succeeds
 	mockHandle.EXPECT().Wait(gomock.Any()).Return(nil)
 	// Result reports Finished
-	mockResult.EXPECT().GetExecutionState().Return(testapi.Finished).AnyTimes()
+	mockResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
 	// Findings returns error (complete value doesn't matter for this case)
 	mockResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{{}}, true, assert.AnError)
 	mockHandle.EXPECT().Result().Return(mockResult)
@@ -186,7 +186,7 @@ func Test_RunTest_ErrorsWhenFindingsIncomplete(t *testing.T) {
 
 	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Return(mockHandle, nil)
 	mockHandle.EXPECT().Wait(gomock.Any()).Return(nil)
-	mockResult.EXPECT().GetExecutionState().Return(testapi.Finished).AnyTimes()
+	mockResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
 	// Findings incomplete without error
 	mockResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{{}}, false, nil)
 	mockHandle.EXPECT().Result().Return(mockResult)
