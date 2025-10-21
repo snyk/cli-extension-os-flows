@@ -2,6 +2,7 @@ package remediation
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/utils"
 	"github.com/snyk/cli-extension-os-flows/pkg/semver"
@@ -9,6 +10,8 @@ import (
 
 // FindingsToRemediationSummary will compute a remediation summary based on the provided findings.
 func FindingsToRemediationSummary(findings Findings) (Summary, error) {
+	findings = filterIgnores(findings)
+
 	pins, err := calculatePins(findings)
 	if err != nil {
 		return Summary{}, err
@@ -26,6 +29,12 @@ func FindingsToRemediationSummary(findings Findings) (Summary, error) {
 		Upgrades:   upgrades,
 		Unresolved: append(unresolved, upgradesUnresolved...),
 	}, err
+}
+
+func filterIgnores(findings Findings) Findings {
+	return slices.DeleteFunc(slices.Clone(findings), func(f *Finding) bool {
+		return f.Ignored
+	})
 }
 
 func calculateUnresolved(findings Findings) (unresolved []*VulnerabilityInPackage) {

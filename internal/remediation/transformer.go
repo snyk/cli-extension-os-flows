@@ -50,9 +50,14 @@ func ShimFindingsToRemediationFindings(shimFindings []testapi.FindingData) (Find
 			FixedInVersions: snykProb.FixedIn,
 			Fix:             fix,
 			PackageManager:  PackageManager(ecosystem.PackageManager),
+			Ignored:         isIgnored(sf),
 		})
 	}
 	return findings, nil
+}
+
+func isIgnored(sf testapi.FindingData) bool {
+	return sf.Attributes.Suppression != nil && sf.Attributes.Suppression.Status == testapi.SuppressionStatusIgnored
 }
 
 type snykProblem struct {

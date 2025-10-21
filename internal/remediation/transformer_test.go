@@ -231,6 +231,7 @@ func Test_ShimFindingsToRemediationFindings(t *testing.T) {
 					},
 				}),
 				PackageManager: "npm",
+				Ignored:        false,
 			},
 		}, res)
 	})
@@ -341,6 +342,32 @@ func Test_ShimFindingsToRemediationFindings(t *testing.T) {
 				PackageManager: "npm",
 			},
 		}, res)
+	})
+
+	t.Run("finding with suppression", func(t *testing.T) {
+		inputFindings := []testapi.FindingData{
+			{
+				Attributes: &testapi.FindingAttributes{
+					Title: "Regular Expression Denial of Service (ReDoS)",
+					Rating: testapi.Rating{
+						Severity: testapi.SeverityHigh,
+					},
+					Evidence: []testapi.Evidence{
+						newShimDependencyPathEvidence(t, "goof@1.0.0", "@snyk/nodejs-runtime-agent@1.43.0", "acorn@5.7.1"),
+					},
+					Locations: []testapi.FindingLocation{newShimPackageLocation(t, "acorn@5.7.1")},
+					Problems:  []testapi.Problem{newShimVulnProblem(t, "SNYK-JS-ACORN-559469", "js", "npm", []string{"5.7.4", "6.4.1", "7.1.1"})},
+					Suppression: &testapi.Suppression{
+						Status: testapi.SuppressionStatusIgnored,
+					},
+				},
+			},
+		}
+
+		res, err := remediation.ShimFindingsToRemediationFindings(inputFindings)
+		require.NoError(t, err)
+
+		require.True(t, res[0].Ignored)
 	})
 }
 

@@ -15,6 +15,7 @@ type Finding struct {
 	FixedInVersions []string
 	Fix             Fix
 	PackageManager  PackageManager
+	Ignored         bool
 }
 
 // Findings represents a collection of vulnerability findings.
