@@ -117,6 +117,7 @@ func RouteToFlow(ctx context.Context, orgUUID uuid.UUID, sc settings.Client) (Fl
 	sbomReachabilityTest := reachability && sbom != ""
 	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
 
+	experimentalUvSupport := cfg.GetBool(EnableExperimentalUvSupportEnvVar)
 	forceLegacyTest := cfg.GetBool(ForceLegacyCLIEnvVar)
 	requiresLegacy := cfg.GetBool(flags.FlagPrintGraph) ||
 		cfg.GetBool(flags.FlagPrintDeps) ||
@@ -147,12 +148,13 @@ func RouteToFlow(ctx context.Context, orgUUID uuid.UUID, sc settings.Client) (Fl
 	}
 
 	switch {
-	case forceLegacyTest || requiresLegacy || (!riskScoreTest && !reachability && sbom == ""):
+	case forceLegacyTest || requiresLegacy || (!riskScoreTest && !reachability && sbom == "" && !experimentalUvSupport):
 		logger.Debug().Msgf(
-			"Using legacy flow. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %t.",
+			"Using legacy flow. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %t. Experimental uv Support: %t.",
 			forceLegacyTest,
 			sbomReachabilityTest,
 			riskScoreTest,
+			experimentalUvSupport,
 		)
 		return LegacyFlow, nil
 	case sbomReachabilityTest:

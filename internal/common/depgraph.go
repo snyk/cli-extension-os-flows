@@ -29,9 +29,16 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) (*DepGraphRes
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
 
-	logger.Println("Invoking depgraph workflow")
-
 	depGraphConfig := config.Clone()
+	experimentalUvSupportEnabled := config.GetBool("SNYK_ENABLE_EXPERIMENTAL_UV_SUPPORT")
+
+	if experimentalUvSupportEnabled {
+		logger.Info().Msg("experimental uv support enabled, using SBOM resolution in depgraph workflow")
+		depGraphConfig.Set("use-sbom-resolve", true)
+	} else {
+		logger.Println("Invoking depgraph workflow")
+	}
+
 	// Overriding the INPUT_DIRECTORY flag which the depgraph workflow will use to extract the depgraphs.
 	depGraphConfig.Set(configuration.INPUT_DIRECTORY, inputDir)
 	depGraphs, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)

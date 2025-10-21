@@ -564,6 +564,36 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			},
 			expectedError: "The feature you are trying to use is not available for your organization",
 		},
+		{
+			name: "UV test flow enabled, expects depgraph workflow with use-sbom-resolve flag",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(ostest.EnableExperimentalUvSupportEnvVar, true)
+				mockEngine.EXPECT().
+					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
+					DoAndReturn(func(_ workflow.Identifier, cfg configuration.Configuration) ([]workflow.Data, error) {
+						// Verify that use-sbom-resolve flag is set
+						if !cfg.GetBool("use-sbom-resolve") {
+							return nil, fmt.Errorf("expected use-sbom-resolve flag to be set")
+						}
+						return nil, assert.AnError
+					}).
+					Times(1)
+			},
+			expectedError: "failed to get dependency graph",
+		},
+		{
+			name: "UV test flow disabled, depgraph calls legacy internally",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(ostest.EnableExperimentalUvSupportEnvVar, false)
+				// When UV is disabled, depgraph workflow is called without use-sbom-resolve flag
+				// Then depgraph internally calls legacycli
+				mockEngine.EXPECT().
+					InvokeWithConfig(gomock.Any(), gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			},
+			expectedError: "", // No error, should succeed via legacy path
+		},
 	}
 
 	for _, test := range tests {
