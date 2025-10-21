@@ -12,6 +12,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
@@ -58,6 +59,31 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 		buffer := &bytes.Buffer{}
 
 		problemID := uuid.New().String()
+
+		loc := testapi.FindingLocation{}
+		loc.FromPackageLocation(testapi.PackageLocation{
+			Package: testapi.Package{
+				Name:    "foo",
+				Version: "1.0.0",
+			},
+			Type: testapi.PackageLocationTypePackage,
+		})
+
+		depPathEv := testapi.Evidence{}
+		depPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+			Path: []testapi.Package{
+				{
+					Name:    "root",
+					Version: "0.0.0",
+				},
+				{
+					Name:    "foo",
+					Version: "1.0.0",
+				},
+			},
+			Source: testapi.DependencyPath,
+		})
+
 		licenseFinding := testapi.FindingData{
 			Id:   util.Ptr(uuid.New()),
 			Type: util.Ptr(testapi.Findings),
@@ -66,6 +92,8 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 				Rating: testapi.Rating{
 					Severity: testapi.Severity("medium"),
 				},
+				Evidence:  []testapi.Evidence{depPathEv},
+				Locations: []testapi.FindingLocation{loc},
 				Problems: func() []testapi.Problem {
 					var p testapi.Problem
 					err := p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{
@@ -228,6 +256,8 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 				Rating: testapi.Rating{
 					Severity: testapi.Severity("medium"),
 				},
+				Evidence:  []testapi.Evidence{depPathEv},
+				Locations: []testapi.FindingLocation{loc},
 				Problems: func() []testapi.Problem {
 					var p testapi.Problem
 					err := p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{
@@ -286,6 +316,30 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		lipgloss.SetColorProfile(termenv.Ascii)
 
+		loc := testapi.FindingLocation{}
+		loc.FromPackageLocation(testapi.PackageLocation{
+			Package: testapi.Package{
+				Name:    "foo",
+				Version: "1.0.0",
+			},
+			Type: testapi.PackageLocationTypePackage,
+		})
+
+		depPathEv := testapi.Evidence{}
+		depPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+			Path: []testapi.Package{
+				{
+					Name:    "root",
+					Version: "0.0.0",
+				},
+				{
+					Name:    "foo",
+					Version: "1.0.0",
+				},
+			},
+			Source: testapi.DependencyPath,
+		})
+
 		// Create a dual-licensed package with instructions for each license
 		dualLicenseFinding := testapi.FindingData{
 			Id:   util.Ptr(uuid.MustParse("44444444-4444-4444-4444-444444444444")),
@@ -295,6 +349,8 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 				Rating: testapi.Rating{
 					Severity: testapi.Severity("high"),
 				},
+				Evidence:  []testapi.Evidence{depPathEv},
+				Locations: []testapi.FindingLocation{loc},
 				Problems: func() []testapi.Problem {
 					var p testapi.Problem
 					err := p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{
@@ -349,6 +405,30 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		lipgloss.SetColorProfile(termenv.Ascii)
 
+		loc := testapi.FindingLocation{}
+		loc.FromPackageLocation(testapi.PackageLocation{
+			Package: testapi.Package{
+				Name:    "foo",
+				Version: "1.0.0",
+			},
+			Type: testapi.PackageLocationTypePackage,
+		})
+
+		depPathEv := testapi.Evidence{}
+		depPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+			Path: []testapi.Package{
+				{
+					Name:    "root",
+					Version: "0.0.0",
+				},
+				{
+					Name:    "foo",
+					Version: "1.0.0",
+				},
+			},
+			Source: testapi.DependencyPath,
+		})
+
 		// Create a license finding without instructions
 		licenseFinding := testapi.FindingData{
 			Id:   util.Ptr(uuid.MustParse("55555555-5555-5555-5555-555555555555")),
@@ -358,6 +438,8 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 				Rating: testapi.Rating{
 					Severity: testapi.Severity("medium"),
 				},
+				Evidence:  []testapi.Evidence{depPathEv},
+				Locations: []testapi.FindingLocation{loc},
 				Problems: func() []testapi.Problem {
 					var p testapi.Problem
 					err := p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{
@@ -441,16 +523,44 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 		config := configuration.New()
 		buffer := &bytes.Buffer{}
 
+		loc := testapi.FindingLocation{}
+		err := loc.FromPackageLocation(testapi.PackageLocation{
+			Package: testapi.Package{
+				Name:    "foo",
+				Version: "1.0.0",
+			},
+			Type: testapi.PackageLocationTypePackage,
+		})
+		require.NoError(t, err)
+
+		ev := testapi.Evidence{}
+		err = ev.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+			Path: []testapi.Package{
+				{
+					Name:    "root",
+					Version: "0.0.0",
+				},
+				{
+					Name:    "foo",
+					Version: "1.0.0",
+				},
+			},
+			Source: testapi.DependencyPath,
+		})
+		require.NoError(t, err)
+
 		problemID := uuid.New().String()
 		licenseFinding := testapi.FindingData{
 			Id:   util.Ptr(uuid.New()),
 			Type: util.Ptr(testapi.Findings),
 			Attributes: &testapi.FindingAttributes{
-				Title:  "LGPL-3.0 license",
-				Rating: testapi.Rating{Severity: testapi.Severity("medium")},
+				Title:     "LGPL-3.0 license",
+				Rating:    testapi.Rating{Severity: testapi.Severity("medium")},
+				Locations: []testapi.FindingLocation{loc},
+				Evidence:  []testapi.Evidence{ev},
 				Problems: func() []testapi.Problem {
 					var p testapi.Problem
-					err := p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{Id: problemID, License: string(testapi.SnykLicense)})
+					err = p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{Id: problemID, License: string(testapi.SnykLicense)})
 					assert.NoError(t, err)
 					return []testapi.Problem{p}
 				}(),
@@ -473,7 +583,7 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 			buffer,
 		)
 
-		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		err = presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
 		assert.NoError(t, err)
 
 		out := buffer.String()
@@ -608,13 +718,41 @@ func TestUnifiedFindingPresenter_LicenseInstructions(t *testing.T) {
 	err := p.FromSnykLicenseProblem(licProblem)
 	assert.NoError(t, err)
 
+	loc := testapi.FindingLocation{}
+	err = loc.FromPackageLocation(testapi.PackageLocation{
+		Package: testapi.Package{
+			Name:    "foo",
+			Version: "1.0.0",
+		},
+		Type: testapi.PackageLocationTypePackage,
+	})
+	require.NoError(t, err)
+
+	ev := testapi.Evidence{}
+	err = ev.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path: []testapi.Package{
+			{
+				Name:    "root",
+				Version: "0.0.0",
+			},
+			{
+				Name:    "foo",
+				Version: "1.0.0",
+			},
+		},
+		Source: testapi.DependencyPath,
+	})
+	require.NoError(t, err)
+
 	licenseFinding := testapi.FindingData{
 		Id:   util.Ptr(uuid.New()),
 		Type: util.Ptr(testapi.Findings),
 		Attributes: &testapi.FindingAttributes{
-			Title:    "LGPL-3.0 license",
-			Rating:   testapi.Rating{Severity: testapi.Severity("medium")},
-			Problems: []testapi.Problem{p},
+			Title:     "LGPL-3.0 license",
+			Locations: []testapi.FindingLocation{loc},
+			Evidence:  []testapi.Evidence{ev},
+			Rating:    testapi.Rating{Severity: testapi.Severity("medium")},
+			Problems:  []testapi.Problem{p},
 		},
 	}
 
@@ -643,6 +781,32 @@ func TestUnifiedFindingPresenter_LicenseWithoutInstructions(t *testing.T) {
 	buffer := &bytes.Buffer{}
 	lipgloss.SetColorProfile(termenv.Ascii)
 
+	loc := testapi.FindingLocation{}
+	err := loc.FromPackageLocation(testapi.PackageLocation{
+		Package: testapi.Package{
+			Name:    "foo",
+			Version: "1.0.0",
+		},
+		Type: testapi.PackageLocationTypePackage,
+	})
+	require.NoError(t, err)
+
+	ev := testapi.Evidence{}
+	err = ev.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path: []testapi.Package{
+			{
+				Name:    "root",
+				Version: "0.0.0",
+			},
+			{
+				Name:    "foo",
+				Version: "1.0.0",
+			},
+		},
+		Source: testapi.DependencyPath,
+	})
+	require.NoError(t, err)
+
 	licenseFinding := testapi.FindingData{
 		Id:   util.Ptr(uuid.New()),
 		Type: util.Ptr(testapi.Findings),
@@ -651,9 +815,11 @@ func TestUnifiedFindingPresenter_LicenseWithoutInstructions(t *testing.T) {
 			Rating: testapi.Rating{
 				Severity: testapi.Severity("low"),
 			},
+			Evidence:  []testapi.Evidence{ev},
+			Locations: []testapi.FindingLocation{loc},
 			Problems: func() []testapi.Problem {
 				var p testapi.Problem
-				err := p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{
+				err = p.FromSnykLicenseProblem(testapi.SnykLicenseProblem{
 					Id:           "snyk:lic:npm:test-pkg:MIT",
 					License:      "MIT",
 					Instructions: []testapi.SnykvulndbLicenseInstructions{},
@@ -675,7 +841,7 @@ func TestUnifiedFindingPresenter_LicenseWithoutInstructions(t *testing.T) {
 	}
 
 	presenter := presenters.NewUnifiedFindingsRenderer([]*presenters.UnifiedProjectResult{projectResult}, config, buffer)
-	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	err = presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
 	assert.NoError(t, err)
 
 	out := buffer.String()
