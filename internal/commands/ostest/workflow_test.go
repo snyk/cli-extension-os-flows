@@ -564,6 +564,28 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			},
 			expectedError: "The feature you are trying to use is not available for your organization",
 		},
+		{
+			name: "UV test flow enabled, expects unified flow (SCA workflow called)",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(ostest.EnableExperimentalUvSupportEnvVar, true)
+				mockEngine.EXPECT().
+					InvokeWithConfig(common.SCAWorkflowID, gomock.Any()).
+					Return(nil, assert.AnError).
+					Times(1)
+			},
+			expectedError: "failed to get dependency graph",
+		},
+		{
+			name: "UV test flow disabled, uses legacy flow",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(ostest.EnableExperimentalUvSupportEnvVar, false)
+				mockEngine.EXPECT().
+					InvokeWithConfig(gomock.Any(), gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			},
+			expectedError: "", // No error, should succeed via legacy path
+		},
 	}
 
 	for _, test := range tests {
