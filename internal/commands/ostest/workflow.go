@@ -370,6 +370,9 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 	// Reachability
 	sourceDir := cfg.GetString(flags.FlagSourceDir)
 	if sourceDir == "" {
+		sourceDir = cfg.GetString(configuration.INPUT_DIRECTORY)
+	}
+	if sourceDir == "" {
 		sourceDir = "."
 	}
 
