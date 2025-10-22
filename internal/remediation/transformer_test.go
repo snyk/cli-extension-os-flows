@@ -231,7 +231,6 @@ func Test_ShimFindingsToRemediationFindings(t *testing.T) {
 					},
 				}),
 				PackageManager: "npm",
-				Ignored:        false,
 			},
 		}, res)
 	})
@@ -344,7 +343,7 @@ func Test_ShimFindingsToRemediationFindings(t *testing.T) {
 		}, res)
 	})
 
-	t.Run("finding with suppression", func(t *testing.T) {
+	t.Run("finding with suppression gets dropped", func(t *testing.T) {
 		inputFindings := []testapi.FindingData{
 			{
 				Attributes: &testapi.FindingAttributes{
@@ -367,7 +366,7 @@ func Test_ShimFindingsToRemediationFindings(t *testing.T) {
 		res, err := remediation.ShimFindingsToRemediationFindings(inputFindings)
 		require.NoError(t, err)
 
-		require.True(t, res[0].Ignored)
+		require.Empty(t, res)
 	})
 }
 

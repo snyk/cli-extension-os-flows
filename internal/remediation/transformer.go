@@ -19,6 +19,10 @@ func ShimFindingsToRemediationFindings(shimFindings []testapi.FindingData) (Find
 			continue
 		}
 
+		if isIgnored(sf) {
+			continue
+		}
+
 		pkg, err := packageFromFinding(sf)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get finding package: %w", err)
@@ -50,7 +54,6 @@ func ShimFindingsToRemediationFindings(shimFindings []testapi.FindingData) (Find
 			FixedInVersions: snykProb.FixedIn,
 			Fix:             fix,
 			PackageManager:  PackageManager(ecosystem.PackageManager),
-			Ignored:         isIgnored(sf),
 		})
 	}
 	return findings, nil

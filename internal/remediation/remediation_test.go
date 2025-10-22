@@ -265,28 +265,6 @@ func Test_FindingsToRemediationSummary(t *testing.T) {
 					}},
 				}, summary)
 			})
-
-			t.Run("ignored pin returns empty summary", func(t *testing.T) {
-				summary, err := remediation.FindingsToRemediationSummary([]*remediation.Finding{
-					{
-						Vulnerability: aVulnerabilityWithID("VULN_ID"),
-						Package:       newPackage("vulnerable@1.0.0"),
-						Ignored:       true,
-						DependencyPaths: []remediation.DependencyPath{
-							newDependencyPath("root@1.0.0", "direct@1.0.0", "vulnerable@1.0.0"),
-						},
-						FixedInVersions: []string{"1.0.1", "2.0.0"},
-						PackageManager:  "pip",
-						Fix: remediation.NewPinFix(remediation.FullyResolved,
-							remediation.PinAction{
-								Package: newPackage("vulnerable@1.0.1"),
-							},
-						),
-					},
-				})
-				require.NoError(t, err)
-				require.Empty(t, summary.Pins)
-			})
 		})
 	})
 
@@ -538,32 +516,6 @@ func Test_FindingsToRemediationSummary(t *testing.T) {
 			}, summary)
 		})
 
-		t.Run("upgrade for single package with an unresolved path and a resolved path when ignored", func(t *testing.T) {
-			summary, err := remediation.FindingsToRemediationSummary([]*remediation.Finding{
-				{
-					Vulnerability: aVulnerabilityWithID("VULN_ID"),
-					Package:       newPackage("vulnerable@1.0.0"),
-					Ignored:       true,
-					DependencyPaths: []remediation.DependencyPath{
-						newDependencyPath("root@1.0.0", "direct-1@1.0.0", "vulnerable@1.0.0"),
-						newDependencyPath("root@1.0.0", "direct-2@1.0.0", "transitive-1@1.0.0", "vulnerable@1.0.0"),
-					},
-					FixedInVersions: []string{"1.0.1", "2.0.0"},
-					PackageManager:  "npm",
-					Fix: remediation.NewUpgradeFix(remediation.FullyResolved, remediation.UpgradeAction{
-						PackageName: "vulnerable",
-						UpgradePaths: []remediation.DependencyPath{
-							newDependencyPath("root@1.0.0", "direct-1@1.2.3", "vulnerable@1.0.1"),
-						},
-					}),
-				},
-			})
-
-			require.NoError(t, err)
-			require.Empty(t, summary.Upgrades)
-			require.Empty(t, summary.Unresolved)
-		})
-
 		t.Run("upgrade for single package with multiple vulns returns valid summary", func(t *testing.T) {
 			summary, err := remediation.FindingsToRemediationSummary([]*remediation.Finding{
 				{
@@ -758,30 +710,6 @@ func Test_FindingsToRemediationSummary(t *testing.T) {
 				},
 			}, summary)
 		})
-
-		t.Run("upgrade for ignored finding", func(t *testing.T) {
-			summary, err := remediation.FindingsToRemediationSummary([]*remediation.Finding{
-				{
-					Vulnerability: aVulnerabilityWithID("VULN_ID"),
-					Package:       newPackage("vulnerable@1.0.0"),
-					Ignored:       true,
-					DependencyPaths: []remediation.DependencyPath{
-						newDependencyPath("root@1.0.0", "direct@1.0.0", "vulnerable@1.0.0"),
-					},
-					FixedInVersions: []string{"1.0.1", "2.0.0"},
-					PackageManager:  "npm",
-					Fix: remediation.NewUpgradeFix(remediation.FullyResolved, remediation.UpgradeAction{
-						PackageName: "vulnerable",
-						UpgradePaths: []remediation.DependencyPath{
-							newDependencyPath("root@1.0.0", "direct@1.2.3", "vulnerable@1.0.1"),
-						},
-					}),
-				},
-			})
-
-			require.NoError(t, err)
-			require.Empty(t, summary.Upgrades)
-		})
 	})
 
 	t.Run("unresolved", func(t *testing.T) {
@@ -812,25 +740,6 @@ func Test_FindingsToRemediationSummary(t *testing.T) {
 					},
 				},
 			}, summary)
-		})
-
-		t.Run("a group-policy ignored unresolved finding does not show up", func(t *testing.T) {
-			summary, err := remediation.FindingsToRemediationSummary([]*remediation.Finding{
-				{
-					Vulnerability: aVulnerabilityWithID("VULN_ID"),
-					Package:       newPackage("vulnerable@1.0.0"),
-					Ignored:       true,
-					DependencyPaths: []remediation.DependencyPath{
-						newDependencyPath("root@1.0.0", "direct-1@1.0.0", "vulnerable@1.0.0"),
-					},
-					FixedInVersions: []string{"1.0.1", "2.0.0"},
-					PackageManager:  "npm",
-					Fix:             remediation.NewUnresolvedFix(),
-				},
-			})
-
-			require.NoError(t, err)
-			require.Empty(t, summary.Unresolved)
 		})
 	})
 }
