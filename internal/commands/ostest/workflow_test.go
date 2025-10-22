@@ -20,6 +20,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/networking"
+	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +39,14 @@ var (
 	legacyWorkflowID = workflow.NewWorkflowIdentifier("legacycli")
 	logger           = zerolog.Nop()
 	errFactory       = errors.NewErrorFactory(&logger)
+	nopProgressBar   = NopProgressBar{}
 )
+
+type NopProgressBar struct{}
+
+func (npb *NopProgressBar) SetTitle(_ string)              {}
+func (npb *NopProgressBar) UpdateProgress(_ float64) error { return nil }
+func (npb *NopProgressBar) Clear() error                   { return nil }
 
 func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
 	tests := []struct {
@@ -83,6 +91,7 @@ func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
 			ctx = cmdctx.WithConfig(ctx, mockConfig)
 			ctx = cmdctx.WithLogger(ctx, &logger)
 			ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+			ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 			if tt.setFailOnFlag {
 				mockConfig.Set(flags.FlagFailOn, tt.failOnValue)
@@ -124,6 +133,7 @@ func TestOSWorkflow_CreateLocalPolicy_UnsupportedFailOnValue(t *testing.T) {
 	ctx = cmdctx.WithConfig(ctx, mockConfig)
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	localPolicy, err := ostest.CreateLocalPolicy(ctx)
 	require.Error(t, err)
@@ -145,6 +155,7 @@ func TestOSWorkflow_CreateLocalPolicy_NoValues(t *testing.T) {
 	ctx = cmdctx.WithConfig(ctx, mockConfig)
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	localPolicy, err := ostest.CreateLocalPolicy(ctx)
 	require.NoError(t, err)
@@ -166,6 +177,7 @@ func TestOSWorkflow_CreateLocalPolicy_RiskScoreOverflow(t *testing.T) {
 	ctx = cmdctx.WithConfig(ctx, mockConfig)
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	localPolicy, err := ostest.CreateLocalPolicy(ctx)
 	require.NoError(t, err)
@@ -190,6 +202,7 @@ func TestOSWorkflow_CreateLocalPolicy_SeverityThresholdDefaultsToNone(t *testing
 	ctx = cmdctx.WithConfig(ctx, mockConfig)
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	localPolicy, err := ostest.CreateLocalPolicy(ctx)
 	require.NoError(t, err)
@@ -217,6 +230,7 @@ func TestOSWorkflow_CreateLocalPolicy_ReachabilityFilterDefaultBehavior(t *testi
 	ctx = cmdctx.WithConfig(ctx, mockConfig)
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	localPolicy, err := ostest.CreateLocalPolicy(ctx)
 	require.NoError(t, err)
@@ -284,6 +298,7 @@ func TestOSWorkflow_CreateLocalPolicy_ReachabilityFilter(t *testing.T) {
 			ctx = cmdctx.WithConfig(ctx, config)
 			ctx = cmdctx.WithLogger(ctx, &logger)
 			ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+			ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 			localPolicy, err := ostest.CreateLocalPolicy(ctx)
 			require.NoError(t, err)
@@ -310,6 +325,7 @@ func TestOSWorkflow_CreateLocalPolicy_NoLegacyPolicy(t *testing.T) {
 	ctx = cmdctx.WithConfig(ctx, mockConfig)
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	localPolicy, _ := ostest.CreateLocalPolicy(ctx)
 	require.NotNil(t, localPolicy)
@@ -340,6 +356,7 @@ ignore:
 	ctx = cmdctx.WithConfig(ctx, mockConfig)
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	localPolicy, _ := ostest.CreateLocalPolicy(ctx)
 	require.NotNil(t, localPolicy)
@@ -371,6 +388,7 @@ ignore:
 	ctx = cmdctx.WithConfig(ctx, mockConfig)
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	localPolicy, _ := ostest.CreateLocalPolicy(ctx)
 	require.NotNil(t, localPolicy)
@@ -628,6 +646,7 @@ func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engin
 	icontext.EXPECT().GetEnhancedLogger().Return(&mockLogger).AnyTimes()
 	icontext.EXPECT().GetNetworkAccess().Return(networking.NewNetworkAccess(mockConfig)).AnyTimes()
 	icontext.EXPECT().GetWorkflowIdentifier().Return(workflow.NewWorkflowIdentifier("test")).AnyTimes()
+	icontext.EXPECT().GetUserInterface().Return(ui.DefaultUi()).AnyTimes()
 
 	if engine != nil {
 		icontext.EXPECT().GetEngine().Return(engine).AnyTimes()

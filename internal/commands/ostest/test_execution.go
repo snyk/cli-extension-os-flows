@@ -120,6 +120,7 @@ func executeTest(
 ) (testapi.TestResult, []testapi.FindingData, error) {
 	logger := cmdctx.Logger(ctx)
 	errFactory := cmdctx.ErrorFactory(ctx)
+	progressbar := cmdctx.ProgressBar(ctx)
 
 	startParams := testapi.StartTestParams{
 		OrgID:       orgID,
@@ -127,11 +128,13 @@ func executeTest(
 		LocalPolicy: localPolicy,
 	}
 
+	progressbar.SetTitle("Starting test...")
 	handle, err := testClient.StartTest(ctx, startParams)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to start test: %w", err)
 	}
 
+	progressbar.SetTitle("Waiting for test completion...")
 	if waitErr := handle.Wait(ctx); waitErr != nil {
 		return nil, nil, fmt.Errorf("test run failed: %w", waitErr)
 	}

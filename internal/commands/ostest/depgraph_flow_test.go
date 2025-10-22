@@ -120,6 +120,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	_, err := ostest.RunUnifiedTestFlow(ctx, mockTestClient, orgID, nil, nil)
 	require.NoError(t, err)
@@ -186,6 +187,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	_, err := ostest.RunUnifiedTestFlow(ctx, mockTestClient, orgID, nil, nil)
 	require.NoError(t, err)
@@ -271,6 +273,7 @@ func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	_, err := ostest.RunUnifiedTestFlow(ctx, mockTestClient, "org-123", nil, nil)
 	require.Error(t, err)

@@ -47,9 +47,11 @@ func RunUnifiedTestFlow(
 ) ([]workflow.Data, error) {
 	ictx := cmdctx.Ictx(ctx)
 	logger := cmdctx.Logger(ctx)
+	progressBar := cmdctx.ProgressBar(ctx)
 
 	logger.Info().Msg("Starting open source test")
 
+	progressBar.SetTitle("Listing dependencies...")
 	// Create depgraphs and get their associated target files
 	depGraphs, displayTargetFiles, err := createDepGraphs(ictx)
 	if err != nil {

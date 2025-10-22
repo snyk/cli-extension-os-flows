@@ -25,6 +25,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/code_workflow"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
+	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
@@ -166,6 +167,7 @@ func handleDepgraphReachabilityFlow(
 	ictx := cmdctx.Ictx(ctx)
 	cfg := cmdctx.Config(ctx)
 	errFactory := cmdctx.ErrorFactory(ctx)
+	progressBar := cmdctx.ProgressBar(ctx)
 
 	if !cfg.GetBool(FeatureFlagReachabilityForCLI) {
 		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagReachabilityForCLI)
@@ -176,6 +178,7 @@ func handleDepgraphReachabilityFlow(
 		BaseURL: cfg.GetString(configuration.API_URL),
 	})
 
+	progressBar.SetTitle("Uploading source code...")
 	scanID, err := reachability.GetReachabilityID(ctx, orgUUID, sourceDir, rc, fuClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze source code: %w", err)
@@ -343,10 +346,19 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 	cfg := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
+	progressBar := ictx.GetUserInterface().NewProgressBar()
 	ctx = cmdctx.WithIctx(ctx, ictx)
 	ctx = cmdctx.WithConfig(ctx, cfg)
 	ctx = cmdctx.WithLogger(ctx, logger)
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+	ctx = cmdctx.WithProgressBar(ctx, progressBar)
+
+	progressBar.SetTitle("Validating configuration...")
+	//nolint:errcheck // We don't need to fail the command due to UI errors.
+	progressBar.UpdateProgress(ui.InfiniteProgress)
+	//nolint:errcheck // We don't need to fail the command due to UI errors.
+	defer progressBar.Clear()
+
 	// Validate that --reachability-filter is only used with --reachability
 	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
 	reachability := cfg.GetBool(flags.FlagReachability)
@@ -381,6 +393,9 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 			sbomReachabilityTest,
 			riskScoreTest,
 		)
+		// clear the progress bar early as to not interfere with the legacy command
+		//nolint:errcheck // We don't need to fail the command due to UI errors.
+		progressBar.Clear()
 		return code_workflow.EntryPointLegacy(ictx)
 	}
 

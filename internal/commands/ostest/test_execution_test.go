@@ -165,6 +165,7 @@ func Test_RunTest_ErrorsWhenFindingsError(t *testing.T) {
 	ctx := t.Context()
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	var subject testapi.TestSubjectCreate
 	_ = subject.FromDepGraphSubjectCreate(testapi.DepGraphSubjectCreate{Type: testapi.DepGraphSubjectCreateTypeDepGraph})
@@ -193,6 +194,7 @@ func Test_RunTest_ErrorsWhenFindingsIncomplete(t *testing.T) {
 	ctx := t.Context()
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	var subject testapi.TestSubjectCreate
 	_ = subject.FromDepGraphSubjectCreate(testapi.DepGraphSubjectCreate{Type: testapi.DepGraphSubjectCreateTypeDepGraph})

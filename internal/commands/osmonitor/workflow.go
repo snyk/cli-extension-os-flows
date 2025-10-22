@@ -9,6 +9,7 @@ import (
 	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
+	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
@@ -49,6 +50,7 @@ func runReachabilityScan(ctx context.Context) (uuid.UUID, error) {
 	cfg := cmdctx.Config(ctx)
 	logger := cmdctx.Logger(ctx)
 	errFactory := cmdctx.ErrorFactory(ctx)
+	progressBar := cmdctx.ProgressBar(ctx)
 
 	logger.Debug().Msg("Running analysis of source code")
 
@@ -85,6 +87,7 @@ func runReachabilityScan(ctx context.Context) (uuid.UUID, error) {
 		BaseURL: cfg.GetString(configuration.API_URL),
 	})
 
+	progressBar.SetTitle("Uploading source code...")
 	scanID, err := reachability.GetReachabilityID(ctx, orgID, sourceDir, rc, fuClient)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to analyze source code: %w", err)
@@ -102,10 +105,18 @@ func OSWorkflow(
 	cfg := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
+	progressBar := ictx.GetUserInterface().NewProgressBar()
 	ctx = cmdctx.WithIctx(ctx, ictx)
 	ctx = cmdctx.WithConfig(ctx, cfg)
 	ctx = cmdctx.WithLogger(ctx, logger)
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+	ctx = cmdctx.WithProgressBar(ctx, progressBar)
+
+	progressBar.SetTitle("Validating configuration...")
+	//nolint:errcheck // We don't need to fail the command due to UI errors.
+	progressBar.UpdateProgress(ui.InfiniteProgress)
+	//nolint:errcheck // We don't need to fail the command due to UI errors.
+	defer progressBar.Clear()
 
 	legacyArgs := os.Args[1:]
 
@@ -122,6 +133,9 @@ func OSWorkflow(
 	engine := ictx.GetEngine()
 	cfg.Set(configuration.WORKFLOW_USE_STDIO, true)
 	cfg.Set(configuration.RAW_CMD_ARGS, legacyArgs)
+
+	//nolint:errcheck // We don't need to fail the command due to UI errors.
+	progressBar.Clear()
 	//nolint:wrapcheck // No need to wrap the error since the legacy CLI will be invoked.
 	return engine.InvokeWithConfig(workflow.NewWorkflowIdentifier("legacycli"), cfg)
 }
