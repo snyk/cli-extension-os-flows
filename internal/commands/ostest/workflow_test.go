@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	common "github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -77,11 +78,17 @@ func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
 			mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
 			mockConfig.Set(flags.FlagSeverityThreshold, "high")
 
+			ctx := t.Context()
+			ctx = cmdctx.WithIctx(ctx, mockInvocationCtx)
+			ctx = cmdctx.WithConfig(ctx, mockConfig)
+			ctx = cmdctx.WithLogger(ctx, &logger)
+			ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
 			if tt.setFailOnFlag {
 				mockConfig.Set(flags.FlagFailOn, tt.failOnValue)
 			}
 
-			localPolicy, err := ostest.CreateLocalPolicy(mockConfig, &logger, errFactory)
+			localPolicy, err := ostest.CreateLocalPolicy(ctx)
 			require.NoError(t, err)
 
 			require.NotNil(t, localPolicy)
@@ -112,7 +119,13 @@ func TestOSWorkflow_CreateLocalPolicy_UnsupportedFailOnValue(t *testing.T) {
 
 	mockConfig.Set(flags.FlagFailOn, "unsupported")
 
-	localPolicy, err := ostest.CreateLocalPolicy(mockConfig, &logger, errFactory)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockInvocationCtx)
+	ctx = cmdctx.WithConfig(ctx, mockConfig)
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+	localPolicy, err := ostest.CreateLocalPolicy(ctx)
 	require.Error(t, err)
 	assert.Nil(t, localPolicy)
 	assert.Contains(t, err.Error(), "Unsupported value 'unsupported' for --fail-on flag")
@@ -127,8 +140,13 @@ func TestOSWorkflow_CreateLocalPolicy_NoValues(t *testing.T) {
 	mockEngine := mocks.NewMockEngine(ctrl)
 	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
 	mockConfig := mockInvocationCtx.GetConfiguration()
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockInvocationCtx)
+	ctx = cmdctx.WithConfig(ctx, mockConfig)
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-	localPolicy, err := ostest.CreateLocalPolicy(mockConfig, &logger, errFactory)
+	localPolicy, err := ostest.CreateLocalPolicy(ctx)
 	require.NoError(t, err)
 
 	assert.Nil(t, localPolicy)
@@ -143,8 +161,13 @@ func TestOSWorkflow_CreateLocalPolicy_RiskScoreOverflow(t *testing.T) {
 	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
 	mockConfig := mockInvocationCtx.GetConfiguration()
 	mockConfig.Set(flags.FlagRiskScoreThreshold, math.MaxUint16+10)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockInvocationCtx)
+	ctx = cmdctx.WithConfig(ctx, mockConfig)
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-	localPolicy, err := ostest.CreateLocalPolicy(mockConfig, &logger, errFactory)
+	localPolicy, err := ostest.CreateLocalPolicy(ctx)
 	require.NoError(t, err)
 	require.NotNil(t, localPolicy)
 
@@ -162,8 +185,13 @@ func TestOSWorkflow_CreateLocalPolicy_SeverityThresholdDefaultsToNone(t *testing
 
 	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
 	mockConfig.Set(flags.FlagSeverityThreshold, "")
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockInvocationCtx)
+	ctx = cmdctx.WithConfig(ctx, mockConfig)
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-	localPolicy, err := ostest.CreateLocalPolicy(mockConfig, &logger, errFactory)
+	localPolicy, err := ostest.CreateLocalPolicy(ctx)
 	require.NoError(t, err)
 	require.NotNil(t, localPolicy)
 
@@ -184,8 +212,13 @@ func TestOSWorkflow_CreateLocalPolicy_ReachabilityFilterDefaultBehavior(t *testi
 
 	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
 	mockConfig.Set(flags.FlagReachabilityFilter, "")
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockInvocationCtx)
+	ctx = cmdctx.WithConfig(ctx, mockConfig)
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-	localPolicy, err := ostest.CreateLocalPolicy(mockConfig, &logger, errFactory)
+	localPolicy, err := ostest.CreateLocalPolicy(ctx)
 	require.NoError(t, err)
 	require.NotNil(t, localPolicy)
 
@@ -247,7 +280,12 @@ func TestOSWorkflow_CreateLocalPolicy_ReachabilityFilter(t *testing.T) {
 			config := configuration.New()
 			config.Set(flags.FlagReachabilityFilter, tt.filterValue)
 
-			localPolicy, err := ostest.CreateLocalPolicy(config, &logger, errFactory)
+			ctx := t.Context()
+			ctx = cmdctx.WithConfig(ctx, config)
+			ctx = cmdctx.WithLogger(ctx, &logger)
+			ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+			localPolicy, err := ostest.CreateLocalPolicy(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectFilter, localPolicy.ReachabilityFilter != nil)
 
@@ -267,8 +305,13 @@ func TestOSWorkflow_CreateLocalPolicy_NoLegacyPolicy(t *testing.T) {
 	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
 	mockConfig := mockInvocationCtx.GetConfiguration()
 	mockConfig.Set(flags.FlagRiskScoreThreshold, 100)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockInvocationCtx)
+	ctx = cmdctx.WithConfig(ctx, mockConfig)
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-	localPolicy, _ := ostest.CreateLocalPolicy(mockConfig, &logger, nil)
+	localPolicy, _ := ostest.CreateLocalPolicy(ctx)
 	require.NotNil(t, localPolicy)
 	assert.Nil(t, localPolicy.Ignores)
 }
@@ -292,8 +335,13 @@ ignore:
 `)
 
 	mockConfig.Set(configuration.INPUT_DIRECTORY, dir)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockInvocationCtx)
+	ctx = cmdctx.WithConfig(ctx, mockConfig)
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-	localPolicy, _ := ostest.CreateLocalPolicy(mockConfig, &logger, nil)
+	localPolicy, _ := ostest.CreateLocalPolicy(ctx)
 	require.NotNil(t, localPolicy)
 	require.NotNil(t, localPolicy.Ignores)
 	assert.Len(t, *localPolicy.Ignores, 1)
@@ -318,8 +366,13 @@ ignore:
 `)
 
 	mockConfig.Set(flags.FlagPolicyPath, dir)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockInvocationCtx)
+	ctx = cmdctx.WithConfig(ctx, mockConfig)
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-	localPolicy, _ := ostest.CreateLocalPolicy(mockConfig, &logger, nil)
+	localPolicy, _ := ostest.CreateLocalPolicy(ctx)
 	require.NotNil(t, localPolicy)
 	require.NotNil(t, localPolicy.Ignores)
 	assert.Len(t, *localPolicy.Ignores, 1)

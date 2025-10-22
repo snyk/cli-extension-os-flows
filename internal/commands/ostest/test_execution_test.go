@@ -1,30 +1,27 @@
 package ostest_test
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/rs/zerolog"
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
-	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	xerrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 )
 
 func Test_NewSummaryDataFromFindings(t *testing.T) {
-	logger := zerolog.Nop()
 	path := "/test/path"
 
 	t.Run("no findings returns an empty summary", func(t *testing.T) {
-		summary, data, err := ostest.NewSummaryDataFromFindings([]testapi.FindingData{}, &logger, path)
+		summary, data, err := ostest.NewSummaryDataFromFindings([]testapi.FindingData{}, path)
 		assert.NoError(t, err)
 		assert.NotNil(t, summary)
 		assert.NotNil(t, data)
@@ -42,7 +39,7 @@ func Test_NewSummaryDataFromFindings(t *testing.T) {
 			},
 		}
 
-		summaryStruct, data, err := ostest.NewSummaryDataFromFindings(findings, &logger, path)
+		summaryStruct, data, err := ostest.NewSummaryDataFromFindings(findings, path)
 		require.NoError(t, err)
 		require.NotNil(t, data)
 		require.NotNil(t, summaryStruct)
@@ -95,7 +92,7 @@ func Test_NewSummaryDataFromFindings(t *testing.T) {
 			},
 		}
 
-		summaryStruct, data, err := ostest.NewSummaryDataFromFindings(findings, &logger, path)
+		summaryStruct, data, err := ostest.NewSummaryDataFromFindings(findings, path)
 		require.NoError(t, err)
 		require.NotNil(t, data)
 		require.NotNil(t, summaryStruct)
@@ -123,7 +120,7 @@ func Test_NewSummaryDataFromFindings(t *testing.T) {
 	})
 
 	t.Run("nil findings slice returns an empty summary", func(t *testing.T) {
-		summary, data, err := ostest.NewSummaryDataFromFindings(nil, &logger, path)
+		summary, data, err := ostest.NewSummaryDataFromFindings(nil, path)
 		assert.NoError(t, err)
 		assert.NotNil(t, summary)
 		assert.NotNil(t, data)
@@ -164,14 +161,15 @@ func Test_RunTest_ErrorsWhenFindingsError(t *testing.T) {
 	mockResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{{}}, true, assert.AnError)
 	mockHandle.EXPECT().Result().Return(mockResult)
 
-	var ictx workflow.InvocationContext = nil
-	logger := zerolog.Nop()
 	ef := xerrors.NewErrorFactory(&logger)
+	ctx := t.Context()
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
 
 	var subject testapi.TestSubjectCreate
 	_ = subject.FromDepGraphSubjectCreate(testapi.DepGraphSubjectCreate{Type: testapi.DepGraphSubjectCreateTypeDepGraph})
 
-	_, _, err := ostest.RunTest(context.Background(), ictx, mockTestClient, subject, "", "", 0, "", "org", ef, &logger, nil)
+	_, _, err := ostest.RunTest(ctx, mockTestClient, subject, "", "", 0, "", "org", nil)
 	require.Error(t, err)
 }
 
@@ -191,13 +189,14 @@ func Test_RunTest_ErrorsWhenFindingsIncomplete(t *testing.T) {
 	mockResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{{}}, false, nil)
 	mockHandle.EXPECT().Result().Return(mockResult)
 
-	var ictx workflow.InvocationContext = nil
-	logger := zerolog.Nop()
 	ef := xerrors.NewErrorFactory(&logger)
+	ctx := t.Context()
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
 
 	var subject testapi.TestSubjectCreate
 	_ = subject.FromDepGraphSubjectCreate(testapi.DepGraphSubjectCreate{Type: testapi.DepGraphSubjectCreateTypeDepGraph})
 
-	_, _, err := ostest.RunTest(context.Background(), ictx, mockTestClient, subject, "", "", 0, "", "org", ef, &logger, nil)
+	_, _, err := ostest.RunTest(ctx, mockTestClient, subject, "", "", 0, "", "org", nil)
 	require.Error(t, err)
 }

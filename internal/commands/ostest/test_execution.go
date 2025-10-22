@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
@@ -18,7 +17,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/utils/ufm"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
-	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
@@ -40,7 +39,6 @@ var ErrNoSummaryData = std_errors.New("no summary data to create")
 // Returns legacy JSON and/or human-readable workflow data, depending on parameters.
 func RunTest(
 	ctx context.Context,
-	ictx workflow.InvocationContext,
 	testClient testapi.TestClient,
 	subject testapi.TestSubjectCreate,
 	projectName string,
@@ -48,19 +46,20 @@ func RunTest(
 	depCount int,
 	displayTargetFile string,
 	orgID string,
-	errFactory *errors.ErrorFactory,
-	logger *zerolog.Logger,
 	localPolicy *testapi.LocalPolicy,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	finalResult, findingsData, err := executeTest(ctx, testClient, orgID, subject, localPolicy, errFactory, logger)
+	cfg := cmdctx.Config(ctx)
+	logger := cmdctx.Logger(ctx)
+	errFactory := cmdctx.ErrorFactory(ctx)
+
+	finalResult, findingsData, err := executeTest(ctx, testClient, orgID, subject, localPolicy)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	config := ictx.GetConfiguration()
-	targetDir := config.GetString(configuration.INPUT_DIRECTORY)
+	targetDir := cfg.GetString(configuration.INPUT_DIRECTORY)
 
-	orgSlugOrID := config.GetString(configuration.ORGANIZATION_SLUG)
+	orgSlugOrID := cfg.GetString(configuration.ORGANIZATION_SLUG)
 	if orgSlugOrID == "" {
 		logger.Info().Msg("No organization slug provided; using organization ID.")
 		orgSlugOrID = orgID
@@ -69,7 +68,7 @@ func RunTest(
 	allFindingsData := findingsData
 	vulnerablePathsCount := calculateVulnerablePathsCount(allFindingsData)
 
-	consolidatedFindings, err := ConsolidateFindings(allFindingsData, logger)
+	consolidatedFindings, err := ConsolidateFindings(ctx, allFindingsData)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to consolidate findings: %w", err)
 	}
@@ -77,7 +76,7 @@ func RunTest(
 	uniqueCount := int32(len(consolidatedFindings))
 
 	// The summary is always needed for the exit code calculation.
-	standardSummary, summaryData, summaryErr := NewSummaryDataFromFindings(consolidatedFindings, logger, targetDir)
+	standardSummary, summaryData, summaryErr := NewSummaryDataFromFindings(consolidatedFindings, targetDir)
 	if summaryErr != nil {
 		// Log other errors but continue, as this is not fatal.
 		logger.Warn().Err(summaryErr).Msg("Failed to create test summary for exit code handling")
@@ -108,7 +107,7 @@ func RunTest(
 		Logger:             logger,
 	}
 
-	return prepareOutput(ictx, consolidatedFindings, standardSummary, summaryData, legacyParams, vulnerablePathsCount)
+	return prepareOutput(ctx, consolidatedFindings, standardSummary, summaryData, legacyParams, vulnerablePathsCount)
 }
 
 // executeTest runs the test and returns the results.
@@ -118,9 +117,10 @@ func executeTest(
 	orgID string,
 	subject testapi.TestSubjectCreate,
 	localPolicy *testapi.LocalPolicy,
-	errFactory *errors.ErrorFactory,
-	logger *zerolog.Logger,
 ) (testapi.TestResult, []testapi.FindingData, error) {
+	logger := cmdctx.Logger(ctx)
+	errFactory := cmdctx.ErrorFactory(ctx)
+
 	startParams := testapi.StartTestParams{
 		OrgID:       orgID,
 		Subject:     subject,
@@ -178,14 +178,16 @@ func executeTest(
 // If JSON-stdout is not requested, then human-readable findings are added to the output workflow.
 // Human-readable stdout with JSON file output is a valid combination and returns both human-readable and legacy JSON types.
 func prepareOutput(
-	ictx workflow.InvocationContext,
+	ctx context.Context,
 	findingsData []testapi.FindingData,
 	standardSummary *json_schemas.TestSummary,
 	summaryData workflow.Data,
 	params *transform.SnykSchemaToLegacyParams,
 	vulnerablePathsCount int,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	config := ictx.GetConfiguration()
+	ictx := cmdctx.Ictx(ctx)
+	cfg := cmdctx.Config(ctx)
+
 	var outputData []workflow.Data
 	if summaryData != nil {
 		outputData = append(outputData, summaryData)
@@ -197,8 +199,8 @@ func prepareOutput(
 		outputData = append(outputData, testResultData)
 	}
 
-	wantsJSONStdOut := config.GetBool(outputworkflow.OutputConfigKeyJSON)
-	jsonFileOutput := config.GetString(outputworkflow.OutputConfigKeyJSONFile)
+	wantsJSONStdOut := cfg.GetBool(outputworkflow.OutputConfigKeyJSON)
+	jsonFileOutput := cfg.GetString(outputworkflow.OutputConfigKeyJSONFile)
 	wantsJSONFile := jsonFileOutput != ""
 	wantsAnyJSON := wantsJSONStdOut || wantsJSONFile
 	var legacyVulnResponse *definitions.LegacyVulnerabilityResponse
@@ -247,7 +249,6 @@ func prepareOutput(
 // the CLI exit code.
 func NewSummaryDataFromFindings(
 	findings []testapi.FindingData,
-	_ *zerolog.Logger,
 	path string,
 ) (*json_schemas.TestSummary, workflow.Data, error) {
 	if len(findings) == 0 {
@@ -302,7 +303,9 @@ func NewSummaryDataFromFindings(
 // ConsolidateFindings consolidates findings with the same Snyk ID into a single finding
 // with all the evidence, locations and fixes from the original findings.
 // It preserves the highest risk score and severity rating.
-func ConsolidateFindings(findings []testapi.FindingData, logger *zerolog.Logger) ([]testapi.FindingData, error) {
+func ConsolidateFindings(ctx context.Context, findings []testapi.FindingData) ([]testapi.FindingData, error) {
+	logger := cmdctx.Logger(ctx)
+
 	consolidatedFindings := make(map[string]testapi.FindingData)
 	var orderedKeys []string
 
