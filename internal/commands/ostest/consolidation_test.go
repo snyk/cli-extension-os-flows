@@ -50,6 +50,7 @@ func Test_consolidateFindings(t *testing.T) {
 		}
 		ctx := t.Context()
 		ctx = cmdctx.WithLogger(ctx, &logger)
+		ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 		consolidated, err := ostest.ConsolidateFindings(ctx, findings)
 		require.NoError(t, err)
@@ -89,6 +90,7 @@ func Test_consolidateFindings(t *testing.T) {
 		}
 		ctx := t.Context()
 		ctx = cmdctx.WithLogger(ctx, &logger)
+		ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 		consolidated, err := ostest.ConsolidateFindings(ctx, findings)
 		require.NoError(t, err)
@@ -131,6 +133,7 @@ func Test_consolidateFindings(t *testing.T) {
 		}
 		ctx := t.Context()
 		ctx = cmdctx.WithLogger(ctx, &logger)
+		ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 		consolidated, err := ostest.ConsolidateFindings(ctx, findings)
 		require.NoError(t, err)
@@ -165,6 +168,7 @@ func Test_consolidateFindings(t *testing.T) {
 		}
 		ctx := t.Context()
 		ctx = cmdctx.WithLogger(ctx, &logger)
+		ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 		consolidated, err := ostest.ConsolidateFindings(ctx, findings)
 		require.NoError(t, err)

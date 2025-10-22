@@ -46,6 +46,7 @@ func Test_RunSbomReachabilityFlow_JSON(t *testing.T) {
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
 	result, err := ostest.RunSbomReachabilityFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil)
@@ -75,6 +76,7 @@ func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
 	result, err := ostest.RunSbomReachabilityFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil)

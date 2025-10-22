@@ -24,11 +24,13 @@ func RunSbomReachabilityFlow(
 	localPolicy *testapi.LocalPolicy,
 ) ([]workflow.Data, error) {
 	logger := cmdctx.Logger(ctx)
+	progressBar := cmdctx.ProgressBar(ctx)
 
 	if err := validateDirectory(ctx, sourceCodePath); err != nil {
 		return nil, err
 	}
 
+	progressBar.SetTitle("Uploading SBOM document...")
 	sbomBundleHash, err := bsClient.UploadSBOM(ctx, sbomPath)
 	if err != nil {
 		logger.Error().Err(err).Str("sbomPath", sbomPath).Msg("Failed to upload SBOM")
@@ -36,6 +38,7 @@ func RunSbomReachabilityFlow(
 	}
 	logger.Println("sbomBundleHash", sbomBundleHash)
 
+	progressBar.SetTitle("Uploading source code...")
 	sourceCodeBundleHash, err := bsClient.UploadSourceCode(ctx, sourceCodePath)
 	if err != nil {
 		//nolint:goconst // sourceCodePath is ok
