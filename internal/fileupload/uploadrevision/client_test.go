@@ -205,6 +205,65 @@ func TestClient_UploadFiles_FileCountLimit(t *testing.T) {
 	assert.Equal(t, c.GetLimits().FileCountLimit, fileCountErr.Limit)
 }
 
+func TestClient_UploadFiles_FileNameLengthLimit(t *testing.T) {
+	c := uploadrevision.NewClient(uploadrevision.Config{})
+
+	// Create a file name that exceeds the limit
+	longFileName := string(make([]byte, c.GetLimits().FileNameLengthLimit+1))
+	for i := range longFileName {
+		longFileName = longFileName[:i] + "a" + longFileName[i+1:]
+	}
+
+	mockFS := fstest.MapFS{
+		"short_file.txt": {Data: []byte("content")},
+	}
+
+	file, err := mockFS.Open("short_file.txt")
+	require.NoError(t, err)
+
+	err = c.UploadFiles(context.Background(),
+		orgID,
+		revID,
+		[]uploadrevision.UploadFile{
+			{Path: longFileName, File: file},
+		})
+
+	assert.Error(t, err)
+	var fileNameLengthErr *uploadrevision.FileNameLengthLimitError
+	assert.ErrorAs(t, err, &fileNameLengthErr)
+	assert.Equal(t, longFileName, fileNameLengthErr.FilePath)
+	assert.Equal(t, c.GetLimits().FileNameLengthLimit+1, fileNameLengthErr.Length)
+	assert.Equal(t, c.GetLimits().FileNameLengthLimit, fileNameLengthErr.Limit)
+}
+
+func TestClient_UploadFiles_FileNameLengthExactlyAtLimit(t *testing.T) {
+	srv, c := setupTestServer(t)
+	defer srv.Close()
+
+	// Create a file name that is exactly at the limit
+	fileNameAtLimit := string(make([]byte, c.GetLimits().FileNameLengthLimit))
+	for i := range fileNameAtLimit {
+		fileNameAtLimit = fileNameAtLimit[:i] + "a" + fileNameAtLimit[i+1:]
+	}
+
+	mockFS := fstest.MapFS{
+		"short_file.txt": {Data: []byte("content")},
+	}
+
+	file, err := mockFS.Open("short_file.txt")
+	require.NoError(t, err)
+
+	// This should not error since the file name is exactly at the limit
+	err = c.UploadFiles(context.Background(),
+		orgID,
+		revID,
+		[]uploadrevision.UploadFile{
+			{Path: fileNameAtLimit, File: file},
+		})
+
+	assert.NoError(t, err)
+}
+
 func TestClient_UploadFiles_TotalPayloadSizeLimit(t *testing.T) {
 	c := uploadrevision.NewClient(uploadrevision.Config{})
 
@@ -218,7 +277,7 @@ func TestClient_UploadFiles_TotalPayloadSizeLimit(t *testing.T) {
 	fileSize := int64(30_000_000)
 	numFiles := 8
 
-	for i := 0; i < numFiles; i++ {
+	for i := range numFiles {
 		filename := fmt.Sprintf("file%d.txt", i)
 		mockFS[filename] = &fstest.MapFile{Data: make([]byte, fileSize)}
 

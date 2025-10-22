@@ -44,6 +44,17 @@ func (e *TotalPayloadSizeLimitError) Error() string {
 	return fmt.Sprintf("total payload size %d bytes exceeds limit of %d bytes", e.TotalSize, e.Limit)
 }
 
+// FileNameLengthLimitError indicates a file name exceeds the maximum allowed length.
+type FileNameLengthLimitError struct {
+	FilePath string
+	Length   int
+	Limit    int
+}
+
+func (e *FileNameLengthLimitError) Error() string {
+	return fmt.Sprintf("file name %s length %d exceeds limit of %d characters", e.FilePath, e.Length, e.Limit)
+}
+
 // FileAccessError indicates a file cannot be accessed or read.
 type FileAccessError struct {
 	FilePath string
@@ -150,5 +161,14 @@ func NewSpecialFileError(path string, mode os.FileMode) *SpecialFileError {
 	return &SpecialFileError{
 		Path: path,
 		Mode: mode,
+	}
+}
+
+// NewFileNameLengthLimitError creates a new FileNameLengthLimitError with the given parameters.
+func NewFileNameLengthLimitError(filePath string, length, limit int) *FileNameLengthLimitError {
+	return &FileNameLengthLimitError{
+		FilePath: filePath,
+		Length:   length,
+		Limit:    limit,
 	}
 }
