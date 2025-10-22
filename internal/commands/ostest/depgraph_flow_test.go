@@ -197,6 +197,85 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 	require.LessOrEqualf(t, p, limit, "observed concurrency %d exceeds limit %d", p, limit)
 }
 
+// Test_RunUnifiedTestFlow_WithIgnorePolicyFlag verifies that the ignore-policy flag
+// is correctly added to depgraphs before being sent to the test API.
+func Test_RunUnifiedTestFlow_WithIgnorePolicyFlag(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockEngine := gafmocks.NewMockEngine(ctrl)
+	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
+
+	cfg := configuration.New()
+	cfg.Set(ostest.FeatureFlagRiskScore, true)
+	cfg.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+	cfg.Set(flags.FlagIgnorePolicy, true)
+
+	logger := zerolog.Nop()
+
+	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
+	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
+	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
+	mockIctx.EXPECT().GetWorkflowIdentifier().Return(common.DepGraphWorkflowID).AnyTimes()
+	mockIctx.EXPECT().GetEngine().Return(mockEngine).AnyTimes()
+
+	// Create a single depgraph
+	dg := testapi.IoSnykApiV1testdepgraphRequestDepGraph{
+		SchemaVersion: "1.2.0",
+		PkgManager:    testapi.IoSnykApiV1testdepgraphRequestPackageManager{Name: "npm"},
+		Pkgs: []testapi.IoSnykApiV1testdepgraphRequestPackage{
+			{Id: "proj@1.0.0", Info: testapi.IoSnykApiV1testdepgraphRequestPackageInfo{Name: "proj", Version: "1.0.0"}},
+		},
+		Graph: testapi.IoSnykApiV1testdepgraphRequestGraph{RootNodeId: "root"},
+	}
+	bytes, err := json.Marshal(dg)
+	require.NoError(t, err)
+	d := gafmocks.NewMockData(ctrl)
+	d.EXPECT().GetPayload().Return(bytes).AnyTimes()
+	d.EXPECT().GetMetaData(common.ContentLocationKey).Return("proj/package.json", nil).AnyTimes()
+
+	mockEngine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return([]workflow.Data{d}, nil).Times(1)
+
+	// Mock TestClient to capture the StartTest call and verify the depgraph contains ignorePolicy
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, params testapi.StartTestParams) (testapi.TestHandle, error) {
+		// Verify the depgraph has the ignorePolicy field set
+		subject := params.Subject
+		depGraphSubject, dgErr := subject.AsDepGraphSubjectCreate()
+		require.NoError(t, dgErr)
+
+		value, exists := depGraphSubject.DepGraph.Get("ignorePolicy")
+		require.True(t, exists, "depgraph should have ignorePolicy field set")
+		require.Equal(t, true, value, "ignorePolicy should be true")
+
+		// Return a successful test result
+		handle := gafclientmocks.NewMockTestHandle(ctrl)
+		handle.EXPECT().Wait(gomock.Any()).Return(nil).Times(1)
+
+		result := gafclientmocks.NewMockTestResult(ctrl)
+		result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
+		result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
+		handle.EXPECT().Result().Return(result).Times(1)
+
+		return handle, nil
+	}).Times(1)
+
+	// Run
+	ef := errors.NewErrorFactory(&logger)
+	orgID := "org-123"
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithConfig(ctx, cfg)
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+
+	_, err = ostest.RunUnifiedTestFlow(ctx, mockTestClient, orgID, nil, nil)
+	require.NoError(t, err)
+}
+
 // Test_RunUnifiedTestFlow_CancelsOnError verifies that an error from one depgraph
 // cancels siblings via the errgroup context and raises the error.
 func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
