@@ -25,7 +25,10 @@ import (
 
 const maxConcurrentTests = 5
 
-const scanIDField = "reachabilityScanId"
+const (
+	scanIDField       = "reachabilityScanId"
+	ignorePolicyField = "ignorePolicy"
+)
 
 func enrichWithScanID(depgraphs []*testapi.IoSnykApiV1testdepgraphRequestDepGraph, reachabilityScanID *reachability.ID) {
 	if reachabilityScanID == nil {
@@ -34,6 +37,16 @@ func enrichWithScanID(depgraphs []*testapi.IoSnykApiV1testdepgraphRequestDepGrap
 
 	for _, dg := range depgraphs {
 		dg.Set(scanIDField, reachabilityScanID.String())
+	}
+}
+
+func enrichWithIgnorePolicy(depgraphs []*testapi.IoSnykApiV1testdepgraphRequestDepGraph, ignorePolicy bool) {
+	if !ignorePolicy {
+		return
+	}
+
+	for _, dg := range depgraphs {
+		dg.Set(ignorePolicyField, ignorePolicy)
 	}
 }
 
@@ -46,6 +59,7 @@ func RunUnifiedTestFlow(
 	reachabilityScanID *reachability.ID,
 ) ([]workflow.Data, error) {
 	ictx := cmdctx.Ictx(ctx)
+	cfg := cmdctx.Config(ctx)
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
 
@@ -59,6 +73,7 @@ func RunUnifiedTestFlow(
 	}
 
 	enrichWithScanID(depGraphs, reachabilityScanID)
+	enrichWithIgnorePolicy(depGraphs, cfg.GetBool(flags.FlagIgnorePolicy))
 
 	allLegacyFindings, allOutputData, err := testAllDepGraphs(
 		ctx,
