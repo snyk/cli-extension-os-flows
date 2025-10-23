@@ -48,6 +48,7 @@ const (
 	FlagVersion                      = "version"
 
 	FlagFailFast                   = "fail-fast"
+	FlagPrintGraph                 = "print-graph"
 	FlagPrintDeps                  = "print-deps"
 	FlagPrintDepPaths              = "print-dep-paths"
 	FlagOrg                        = "org"
@@ -115,6 +116,7 @@ func OSTestFlagSet() *pflag.FlagSet {
 	flagSet.String(FlagPythonPackageManager, "", `Add --package-manager=pip to your command if the file name is not "requirements.txt".`)
 	flagSet.Int(FlagUnmanagedMaxDepth, 0, "Specify the maximum level of archive extraction for unmanaged scanning.")
 	flagSet.Bool(FlagFailFast, false, "Stop scanning after the first vulnerability is found when used with --all-projects.")
+	flagSet.Bool(FlagPrintGraph, false, "Print the dependency graph of the project.")
 	flagSet.Bool(FlagPrintDeps, false, "Print the dependency tree before sending it for analysis.")
 	flagSet.Bool(FlagPrintDepPaths, false, "Display dependencies. Shows what files contributed to each dependency.")
 	flagSet.Bool(FlagIgnorePolicy, false, "Ignore all set policies, the current policy in the .snyk file, Org level ignores, and the project policy on snyk.io.")
@@ -148,6 +150,7 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 		"DEPTH must be a number, 1 or greater; zero (0) is the current directory.")
 	flagSet.String(FlagExclude, "", "Can be used with --all-projects to indicate directory names and file names to exclude. Must be comma separated.")
 	flagSet.BoolP(FlagPruneRepeatedSubDependencies, "p", false, "Prune dependency trees, removing duplicate sub-dependencies.")
+	flagSet.Bool(FlagPrintGraph, false, "Print the dependency graph of the project.")
 	flagSet.Bool(FlagPrintDeps, false, "Print the dependency tree before sending it for analysis.")
 	flagSet.Bool(FlagPrintDepPaths, false, "Display dependencies. Shows what files contributed to each dependency.")
 	flagSet.String(FlagRemoteRepoURL, "", "Set or override the remote URL for the repository.")

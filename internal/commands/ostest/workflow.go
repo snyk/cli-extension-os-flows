@@ -20,7 +20,6 @@ import (
 	"github.com/google/uuid"
 	codeclient "github.com/snyk/code-client-go"
 	codeclienthttp "github.com/snyk/code-client-go/http"
-	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/code_workflow"
@@ -146,13 +145,6 @@ func handleSBOMReachabilityFlow(
 	orgID, sbom, sourceDir string,
 	localPolicy *testapi.LocalPolicy,
 ) ([]workflow.Data, error) {
-	cfg := cmdctx.Config(ctx)
-	errFactory := cmdctx.ErrorFactory(ctx)
-
-	if !cfg.GetBool(FeatureFlagSBOMTestReachability) {
-		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagSBOMTestReachability)
-	}
-
 	bsClient := setupBundlestoreClient(ctx)
 	return RunSbomReachabilityFlow(ctx, testClient, sbom, sourceDir, bsClient, orgID, localPolicy)
 }
@@ -166,12 +158,7 @@ func handleDepgraphReachabilityFlow(
 ) ([]workflow.Data, error) {
 	ictx := cmdctx.Ictx(ctx)
 	cfg := cmdctx.Config(ctx)
-	errFactory := cmdctx.ErrorFactory(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
-
-	if !cfg.GetBool(FeatureFlagReachabilityForCLI) {
-		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagReachabilityForCLI)
-	}
 
 	fuClient := fileupload.NewClientFromInvocationContext(ictx, orgUUID)
 	rc := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
@@ -338,7 +325,7 @@ func CreateLocalPolicy(cmdCtx context.Context) (*testapi.LocalPolicy, error) {
 }
 
 // OSWorkflow is the entry point for the Open Source Test workflow.
-func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
+func OSWorkflow(
 	ictx workflow.InvocationContext,
 	_ []workflow.Data,
 ) ([]workflow.Data, error) {
@@ -359,12 +346,29 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	defer progressBar.Clear()
 
-	// Validate that --reachability-filter is only used with --reachability
-	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
-	reachability := cfg.GetBool(flags.FlagReachability)
+	logger.Info().Msg("Getting preferred organization ID")
+	orgID := cfg.GetString(configuration.ORGANIZATION)
+	if orgID == "" {
+		logger.Error().Msg("No organization ID provided")
+		return nil, errFactory.NewEmptyOrgError()
+	}
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		return nil, fmt.Errorf("orgID is not a valid UUID: %w", err)
+	}
 
-	if reachabilityFilter != "" && !reachability {
-		return nil, errFactory.NewReachabilityFilterWithoutReachabilityError() //nolint:wrapcheck // error catalog already contains details
+	sc := setupSettingsClient(ctx)
+	flow, err := RouteToFlow(ctx, orgUUID, sc)
+	if err != nil {
+		return nil, err
+	}
+
+	// Legacy test fallthrough
+	if flow == LegacyFlow {
+		// clear the progress bar early as to not interfere with the legacy command
+		//nolint:errcheck // We don't need to fail the command due to UI errors.
+		progressBar.Clear()
+		return code_workflow.EntryPointLegacy(ictx)
 	}
 
 	// Reachability
@@ -376,67 +380,7 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 		sourceDir = "."
 	}
 
-	// SBOM Test w/ Reachability
 	sbom := cfg.GetString(flags.FlagSBOM)
-	sbomReachabilityTest := reachability && sbom != ""
-
-	// Risk Score
-	ffRiskScore := cfg.GetBool(FeatureFlagRiskScore)
-	ffRiskScoreInCLI := cfg.GetBool(FeatureFlagRiskScoreInCLI)
-	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
-	riskScoreThreshold := cfg.GetInt(flags.FlagRiskScoreThreshold)
-	riskScoreTest := riskScoreFFsEnabled || riskScoreThreshold != -1
-
-	forceLegacyTest := cfg.GetBool(ForceLegacyCLIEnvVar)
-	// Legacy test fallthrough
-	if forceLegacyTest || (!sbomReachabilityTest && !riskScoreTest && !reachability) {
-		logger.Debug().Msgf(
-			"Using legacy flow. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %t.",
-			forceLegacyTest,
-			sbomReachabilityTest,
-			riskScoreTest,
-		)
-		// clear the progress bar early as to not interfere with the legacy command
-		//nolint:errcheck // We don't need to fail the command due to UI errors.
-		progressBar.Clear()
-		return code_workflow.EntryPointLegacy(ictx)
-	}
-
-	logger.Info().Msg("Getting preferred organization ID")
-	orgID := cfg.GetString(configuration.ORGANIZATION)
-	if orgID == "" {
-		logger.Error().Msg("No organization ID provided")
-		return nil, errFactory.NewEmptyOrgError()
-	}
-
-	orgUUID, err := uuid.Parse(orgID)
-	if err != nil {
-		return nil, fmt.Errorf("orgID is not a valid UUID: %w", err)
-	}
-
-	sc := setupSettingsClient(ctx)
-	if reachability {
-		//nolint:govet // Shadowing err is not an issue here.
-		isReachEnabled, err := sc.IsReachabilityEnabled(ctx, orgUUID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to check reachability settings: %w", err)
-		}
-
-		if !isReachEnabled {
-			return nil, ecosystems.NewReachabilitySettingDisabledError(
-				"In order to run the `test` command with `--reachability`, the reachability settings must be enabled.",
-			)
-		}
-	}
-
-	if riskScoreThreshold != -1 && !riskScoreFFsEnabled {
-		// The user tried to use a risk score threshold without the required feature flags.
-		// Return a specific error for the first missing flag found.
-		if !ffRiskScore {
-			return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScore)
-		}
-		return nil, errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
-	}
 
 	localPolicy, err := CreateLocalPolicy(ctx)
 	if err != nil {
@@ -449,12 +393,14 @@ func OSWorkflow( //nolint:gocyclo // Will be addressed in a refactor.
 	}
 
 	// Route to the appropriate flow based on flags
-	switch {
-	case sbomReachabilityTest:
+	switch flow {
+	case SBOMReachabilityFlow:
 		return handleSBOMReachabilityFlow(ctx, testClient, orgID, sbom, sourceDir, localPolicy)
-	case reachability:
+	case DepgraphReachabilityFlow:
 		return handleDepgraphReachabilityFlow(ctx, testClient, orgUUID, sourceDir, localPolicy)
-	default:
+	case DepgraphFlow:
 		return RunUnifiedTestFlow(ctx, testClient, orgID, localPolicy, nil)
+	default:
+		return nil, fmt.Errorf("unknown test flow: %s", flow)
 	}
 }
