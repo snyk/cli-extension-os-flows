@@ -23,10 +23,10 @@ func TestReachabilityScanIntegration(t *testing.T) {
 
 	dir := util.CreateTmpFiles(t, files)
 
-	revisionID, err := ffc.CreateRevisionFromDir(t.Context(), dir.Name(), fileupload.UploadOptions{})
+	res, err := ffc.CreateRevisionFromDir(t.Context(), dir.Name(), fileupload.UploadOptions{})
 	require.NoError(t, err)
 
-	reachabilityID, err := reachabilityClient.StartReachabilityAnalysis(t.Context(), setup.Config.OrgID, revisionID)
+	reachabilityID, err := reachabilityClient.StartReachabilityAnalysis(t.Context(), setup.Config.OrgID, res.RevisionID)
 	require.NoError(t, err)
 
 	err = reachabilityClient.WaitForReachabilityAnalysis(t.Context(), setup.Config.OrgID, reachabilityID)

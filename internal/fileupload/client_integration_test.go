@@ -24,11 +24,11 @@ func TestUploadFileIntegration(t *testing.T) {
 
 	dir := util.CreateTmpFiles(t, files)
 
-	fileuploadRevisionID, err := fileUploadClient.CreateRevisionFromFile(t.Context(), filepath.Join(dir.Name(), files[0].Path), fileupload.UploadOptions{})
+	res, err := fileUploadClient.CreateRevisionFromFile(t.Context(), filepath.Join(dir.Name(), files[0].Path), fileupload.UploadOptions{})
 	if err != nil {
 		t.Errorf("failed to create fileupload revision: %s", err.Error())
 	}
-	assert.NotEqual(t, uuid.Nil, fileuploadRevisionID)
+	assert.NotEqual(t, uuid.Nil, res.RevisionID)
 }
 
 func TestUploadDirectoryIntegration(t *testing.T) {
@@ -43,11 +43,11 @@ func TestUploadDirectoryIntegration(t *testing.T) {
 
 	dir := util.CreateTmpFiles(t, files)
 
-	fileuploadRevisionID, err := fileUploadClient.CreateRevisionFromDir(t.Context(), dir.Name(), fileupload.UploadOptions{})
+	res, err := fileUploadClient.CreateRevisionFromDir(t.Context(), dir.Name(), fileupload.UploadOptions{})
 	if err != nil {
 		t.Errorf("failed to create fileupload revision: %s", err.Error())
 	}
-	assert.NotEqual(t, uuid.Nil, fileuploadRevisionID)
+	assert.NotEqual(t, uuid.Nil, res.RevisionID)
 }
 
 func TestUploadLargeFileIntegration(t *testing.T) {
@@ -61,11 +61,11 @@ func TestUploadLargeFileIntegration(t *testing.T) {
 
 	dir := util.CreateTmpFiles(t, files)
 
-	fileuploadRevisionID, err := fileUploadClient.CreateRevisionFromFile(t.Context(), filepath.Join(dir.Name(), files[0].Path), fileupload.UploadOptions{})
+	res, err := fileUploadClient.CreateRevisionFromFile(t.Context(), filepath.Join(dir.Name(), files[0].Path), fileupload.UploadOptions{})
 	if err != nil {
 		t.Errorf("failed to create fileupload revision: %s", err.Error())
 	}
-	assert.NotEqual(t, uuid.Nil, fileuploadRevisionID)
+	assert.NotEqual(t, uuid.Nil, res.RevisionID)
 }
 
 func newFileUploadClient(setup *util.IntegrationTestSetup) fileupload.Client {

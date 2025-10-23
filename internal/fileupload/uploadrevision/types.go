@@ -112,7 +112,7 @@ type ErrorResponseBody struct {
 
 // UploadFile represents a file to be uploaded, containing both the path and file handle.
 type UploadFile struct {
-	Path string // The name to use for the file in the upload
+	Path string // The path of the uploaded file, relative to the root directory.
 	File fs.File
 }
 
@@ -133,4 +133,6 @@ type Limits struct {
 	FileSizeLimit int64
 	// TotalPayloadSizeLimit specifies the maximum total uncompressed payload size in bytes.
 	TotalPayloadSizeLimit int64
+	// FilePathLengthLimit specifies the maximum allowed file name length in characters.
+	FilePathLengthLimit int
 }

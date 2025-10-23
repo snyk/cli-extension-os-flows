@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -205,6 +206,59 @@ func TestClient_UploadFiles_FileCountLimit(t *testing.T) {
 	assert.Equal(t, c.GetLimits().FileCountLimit, fileCountErr.Limit)
 }
 
+func TestClient_UploadFiles_FilePathLengthLimit(t *testing.T) {
+	c := uploadrevision.NewClient(uploadrevision.Config{})
+
+	// Create a file path that exceeds the limit
+	longFilePath := strings.Repeat("a", c.GetLimits().FilePathLengthLimit+1)
+
+	mockFS := fstest.MapFS{
+		"short_file.txt": {Data: []byte("content")},
+	}
+
+	file, err := mockFS.Open("short_file.txt")
+	require.NoError(t, err)
+
+	err = c.UploadFiles(context.Background(),
+		orgID,
+		revID,
+		[]uploadrevision.UploadFile{
+			{Path: longFilePath, File: file},
+		})
+
+	assert.Error(t, err)
+	var filePathLengthErr *uploadrevision.FilePathLengthLimitError
+	assert.ErrorAs(t, err, &filePathLengthErr)
+	assert.Equal(t, longFilePath, filePathLengthErr.FilePath)
+	assert.Equal(t, c.GetLimits().FilePathLengthLimit+1, filePathLengthErr.Length)
+	assert.Equal(t, c.GetLimits().FilePathLengthLimit, filePathLengthErr.Limit)
+}
+
+func TestClient_UploadFiles_FilePathLengthExactlyAtLimit(t *testing.T) {
+	srv, c := setupTestServer(t)
+	defer srv.Close()
+
+	// Create a file name that is exactly at the limit
+	filePathAtLimit := strings.Repeat("a", c.GetLimits().FilePathLengthLimit)
+
+	mockFS := fstest.MapFS{
+		"short_file.txt": {Data: []byte("content")},
+	}
+
+	file, err := mockFS.Open("short_file.txt")
+	require.NoError(t, err)
+
+	// This should not error since the file path is exactly at the limit
+	err = c.UploadFiles(context.Background(),
+		orgID,
+		revID,
+		[]uploadrevision.UploadFile{
+			{Path: filePathAtLimit, File: file},
+		})
+
+	assert.NoError(t, err)
+}
+
 func TestClient_UploadFiles_TotalPayloadSizeLimit(t *testing.T) {
 	c := uploadrevision.NewClient(uploadrevision.Config{})
 
@@ -218,7 +272,7 @@ func TestClient_UploadFiles_TotalPayloadSizeLimit(t *testing.T) {
 	fileSize := int64(30_000_000)
 	numFiles := 8
 
-	for i := 0; i < numFiles; i++ {
+	for i := range numFiles {
 		filename := fmt.Sprintf("file%d.txt", i)
 		mockFS[filename] = &fstest.MapFile{Data: make([]byte, fileSize)}
 
@@ -349,7 +403,7 @@ func TestClient_UploadFiles_SpecialFileError(t *testing.T) {
 
 			var sfe *uploadrevision.SpecialFileError
 			assert.ErrorAs(t, err, &sfe)
-			assert.Equal(t, filePath, sfe.Path)
+			assert.Equal(t, filePath, sfe.FilePath)
 		})
 	}
 }
