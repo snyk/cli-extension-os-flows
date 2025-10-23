@@ -1,0 +1,62 @@
+{
+  "attributes": {
+    "finding_type": "sca",
+    "problems": [
+      {
+        "id": "CVE-2025-48387",
+        "source": "cve"
+      },
+      {
+        "id": "SNYK-JS-TARFS-10293725",
+        "source": "snyk_vuln"
+      },
+      {
+        "id": "CWE-59",
+        "source": "cwe"
+      },
+      {
+        "id": "CWE-22",
+        "source": "cwe"
+      }
+    ],
+    "title": "Improper Link Resolution Before File Access ('Link Following')",
+    "suppression": {
+      "policy": {
+        "id": "676f3917-6d58-4104-a8e4-23e1fa82e50f",
+        "type": "managed_policy"
+      }
+    }
+  },
+  "id": "d94fa3b8-d0ef-4030-a8aa-874781e9b0b6",
+  "links": {},
+  "relationships": {
+    "policy": {
+      "data": {
+        "attributes": {
+          "policies": [
+            {
+              "id": "676f3917-6d58-4104-a8e4-23e1fa82e50f",
+              "type": "managed_policy",
+              "applied_policy": {
+                "type": "ignore",
+                "ignore": {
+                  "reason": "This is a test suppression",
+                  "reason_type": "wont-fix",
+                  "source": "api",
+                  "created": "2025-06-03T07:41:24Z",
+                  "expires": "2025-06-03T07:41:24Z",
+                  "ignored_by": {
+                    "id": "082c9473-b58c-4936-bf44-46131e3ffdb9",
+                    "name": "Jane Doe",
+                    "email": "janedoe@example.com"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "type": "findings"
+}

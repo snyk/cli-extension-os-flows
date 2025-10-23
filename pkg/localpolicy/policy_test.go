@@ -58,6 +58,7 @@ ignore:
         - '*':
             reason: none given
             disregardIfFixable: true
+patch: {}
 `, buf.String())
 }
 

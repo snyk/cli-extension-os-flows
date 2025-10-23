@@ -1,11 +1,13 @@
 package transform
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 
+	cmdutil "github.com/snyk/cli-extension-os-flows/internal/commands/util"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/remediation"
@@ -430,7 +432,7 @@ func processOtherEvidence(vuln *definitions.Vulnerability, otherEvidences []test
 
 // ConvertSnykSchemaFindingsToLegacy is a function that converts snyk schema findings into
 // the legacy vulnerability response structure for the snyk cli.
-func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*definitions.LegacyVulnerabilityResponse, error) {
+func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaToLegacyParams) (*definitions.LegacyVulnerabilityResponse, error) {
 	if _, err := params.TestResult.GetTestSubject().AsDepGraphSubject(); err != nil {
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(
 			fmt.Errorf("expected a depgraph subject but got something else: %w", err))
@@ -473,6 +475,13 @@ func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*defin
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("failed to compute remediation summary: %w", err))
 	}
 	res.Remediation = remSummary
+
+	policy := cmdutil.GetLocalPolicy(ctx)
+	policyStr, err := ExtendLocalPolicyFromSchema(policy, params.Findings)
+	if err != nil {
+		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("failed to convert to local policy: %w", err))
+	}
+	res.Policy = policyStr
 
 	return &res, nil
 }
