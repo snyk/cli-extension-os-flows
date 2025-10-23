@@ -15,12 +15,15 @@
 # Define GOCI_LINT_V for golangci-lint. The install.sh script handles OS/ARCH.
 # User requested v1.64.6 for local macOS use.
 GOCI_LINT_V?=v1.64.6
+# Define GOTESTSUM_V for gotestsum. The install.sh script handles OS/ARCH.
+GOTESTSUM_V?=1.13.0
 
 ####################################################
 ### END PROJECT-SPECIFIC CONFIGURATION OVERRIDES ###
 ####################################################
 
 # Variables
+ARCH?=$(shell go env GOARCH)
 GO_BIN?=$(shell pwd)/.bin
 OS?=$(shell go env GOOS)
 
@@ -37,6 +40,9 @@ ifndef CI
 	@echo "Installing golangci-lint ${GOCI_LINT_V} to ${GO_BIN}..."
 	curl -sSfL 'https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh' | sh -s -- -b ${GO_BIN} ${GOCI_LINT_V}
 	@echo "golangci-lint installed."
+	@echo "Installing gotestsum ${GOTESTSUM_V} to ${GO_BIN}..."
+	curl -sSfL 'https://github.com/gotestyourself/gotestsum/releases/download/v${GOTESTSUM_V}/gotestsum_${GOTESTSUM_V}_${OS}_${ARCH}.tar.gz' | tar -xz -C ${GO_BIN} gotestsum
+	@echo "gotestsum installed."
 else
 	@echo "CI environment detected, skipping local installation of golangci-lint."
 endif
@@ -63,12 +69,20 @@ else
 	golangci-lint run -v ./...
 endif
 
+.PHONY: test
+test:
+	mkdir -p test/results
+	gotestsum --junitfile test/results/unit-tests.xml -- -race -v ./...
+
 .PHONY: format
-format: format-tsp
+format: format-tsp format-go
 
 .PHONY: format-tsp
 format-tsp:
 	./node_modules/.bin/tsp format 'internal/definitions/**/*.tsp'
+
+.PHONY: format-go
+format-go: golangci-lint run --fix -v ./...
 
 .PHONY: generate
 generate: tsp-compile oapi-generate
