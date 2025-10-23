@@ -14,6 +14,9 @@ var (
 // FileSizeLimitError indicates a file exceeds the maximum allowed size.
 type FileSizeLimitError = uploadrevision.FileSizeLimitError
 
+// FilePathLengthLimitError indicates a file's path exceeds the maximum allowed size.
+type FilePathLengthLimitError = uploadrevision.FilePathLengthLimitError
+
 // FileCountLimitError indicates too many files were provided.
 type FileCountLimitError = uploadrevision.FileCountLimitError
 

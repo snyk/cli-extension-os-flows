@@ -32,43 +32,43 @@ func (f *FakeClient) WithError(err error) *FakeClient {
 	return f
 }
 
-func (f *FakeClient) CreateRevisionFromDir(ctx context.Context, dirPath string, opts UploadOptions) (RevisionID, error) {
+func (f *FakeClient) CreateRevisionFromDir(ctx context.Context, dirPath string, opts UploadOptions) (UploadResult, error) {
 	if f.err != nil {
-		return uuid.Nil, f.err
+		return UploadResult{}, f.err
 	}
 
 	info, err := os.Stat(dirPath)
 	if err != nil {
-		return uuid.Nil, uploadrevision.NewFileAccessError(dirPath, err)
+		return UploadResult{}, uploadrevision.NewFileAccessError(dirPath, err)
 	}
 
 	if !info.IsDir() {
-		return uuid.Nil, fmt.Errorf("the provided path is not a directory: %s", dirPath)
+		return UploadResult{}, fmt.Errorf("the provided path is not a directory: %s", dirPath)
 	}
 
 	return f.CreateRevisionFromPaths(ctx, []string{dirPath}, opts)
 }
 
-func (f *FakeClient) CreateRevisionFromFile(ctx context.Context, filePath string, opts UploadOptions) (RevisionID, error) {
+func (f *FakeClient) CreateRevisionFromFile(ctx context.Context, filePath string, opts UploadOptions) (UploadResult, error) {
 	if f.err != nil {
-		return uuid.Nil, f.err
+		return UploadResult{}, f.err
 	}
 
 	info, err := os.Stat(filePath)
 	if err != nil {
-		return uuid.Nil, uploadrevision.NewFileAccessError(filePath, err)
+		return UploadResult{}, uploadrevision.NewFileAccessError(filePath, err)
 	}
 
 	if !info.Mode().IsRegular() {
-		return uuid.Nil, fmt.Errorf("the provided path is not a regular file: %s", filePath)
+		return UploadResult{}, fmt.Errorf("the provided path is not a regular file: %s", filePath)
 	}
 
 	return f.CreateRevisionFromPaths(ctx, []string{filePath}, opts)
 }
 
-func (f *FakeClient) CreateRevisionFromPaths(ctx context.Context, paths []string, opts UploadOptions) (RevisionID, error) {
+func (f *FakeClient) CreateRevisionFromPaths(ctx context.Context, paths []string, opts UploadOptions) (UploadResult, error) {
 	if f.err != nil {
-		return uuid.Nil, f.err
+		return UploadResult{}, f.err
 	}
 
 	revID := uuid.New()
@@ -76,7 +76,7 @@ func (f *FakeClient) CreateRevisionFromPaths(ctx context.Context, paths []string
 	f.uploadCount++
 	f.lastRevision = revID
 
-	return revID, nil
+	return UploadResult{RevisionID: revID, UploadedFilesCount: len(paths)}, nil
 }
 
 func (f *FakeClient) GetRevisionPaths(revID RevisionID) []string {

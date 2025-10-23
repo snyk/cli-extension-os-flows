@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -205,14 +206,11 @@ func TestClient_UploadFiles_FileCountLimit(t *testing.T) {
 	assert.Equal(t, c.GetLimits().FileCountLimit, fileCountErr.Limit)
 }
 
-func TestClient_UploadFiles_FileNameLengthLimit(t *testing.T) {
+func TestClient_UploadFiles_FilePathLengthLimit(t *testing.T) {
 	c := uploadrevision.NewClient(uploadrevision.Config{})
 
-	// Create a file name that exceeds the limit
-	longFileName := string(make([]byte, c.GetLimits().FileNameLengthLimit+1))
-	for i := range longFileName {
-		longFileName = longFileName[:i] + "a" + longFileName[i+1:]
-	}
+	// Create a file path that exceeds the limit
+	longFilePath := strings.Repeat("a", c.GetLimits().FilePathLengthLimit+1)
 
 	mockFS := fstest.MapFS{
 		"short_file.txt": {Data: []byte("content")},
@@ -225,26 +223,23 @@ func TestClient_UploadFiles_FileNameLengthLimit(t *testing.T) {
 		orgID,
 		revID,
 		[]uploadrevision.UploadFile{
-			{Path: longFileName, File: file},
+			{Path: longFilePath, File: file},
 		})
 
 	assert.Error(t, err)
-	var fileNameLengthErr *uploadrevision.FileNameLengthLimitError
-	assert.ErrorAs(t, err, &fileNameLengthErr)
-	assert.Equal(t, longFileName, fileNameLengthErr.FilePath)
-	assert.Equal(t, c.GetLimits().FileNameLengthLimit+1, fileNameLengthErr.Length)
-	assert.Equal(t, c.GetLimits().FileNameLengthLimit, fileNameLengthErr.Limit)
+	var filePathLengthErr *uploadrevision.FilePathLengthLimitError
+	assert.ErrorAs(t, err, &filePathLengthErr)
+	assert.Equal(t, longFilePath, filePathLengthErr.FilePath)
+	assert.Equal(t, c.GetLimits().FilePathLengthLimit+1, filePathLengthErr.Length)
+	assert.Equal(t, c.GetLimits().FilePathLengthLimit, filePathLengthErr.Limit)
 }
 
-func TestClient_UploadFiles_FileNameLengthExactlyAtLimit(t *testing.T) {
+func TestClient_UploadFiles_FilePathLengthExactlyAtLimit(t *testing.T) {
 	srv, c := setupTestServer(t)
 	defer srv.Close()
 
 	// Create a file name that is exactly at the limit
-	fileNameAtLimit := string(make([]byte, c.GetLimits().FileNameLengthLimit))
-	for i := range fileNameAtLimit {
-		fileNameAtLimit = fileNameAtLimit[:i] + "a" + fileNameAtLimit[i+1:]
-	}
+	filePathAtLimit := strings.Repeat("a", c.GetLimits().FilePathLengthLimit)
 
 	mockFS := fstest.MapFS{
 		"short_file.txt": {Data: []byte("content")},
@@ -253,12 +248,12 @@ func TestClient_UploadFiles_FileNameLengthExactlyAtLimit(t *testing.T) {
 	file, err := mockFS.Open("short_file.txt")
 	require.NoError(t, err)
 
-	// This should not error since the file name is exactly at the limit
+	// This should not error since the file path is exactly at the limit
 	err = c.UploadFiles(context.Background(),
 		orgID,
 		revID,
 		[]uploadrevision.UploadFile{
-			{Path: fileNameAtLimit, File: file},
+			{Path: filePathAtLimit, File: file},
 		})
 
 	assert.NoError(t, err)
@@ -408,7 +403,7 @@ func TestClient_UploadFiles_SpecialFileError(t *testing.T) {
 
 			var sfe *uploadrevision.SpecialFileError
 			assert.ErrorAs(t, err, &sfe)
-			assert.Equal(t, filePath, sfe.Path)
+			assert.Equal(t, filePath, sfe.FilePath)
 		})
 	}
 }

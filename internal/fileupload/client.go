@@ -2,6 +2,7 @@ package fileupload
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -35,9 +36,9 @@ type HTTPClient struct {
 
 // Client defines the interface for the high level file upload client.
 type Client interface {
-	CreateRevisionFromPaths(ctx context.Context, paths []string, opts UploadOptions) (RevisionID, error)
-	CreateRevisionFromDir(ctx context.Context, dirPath string, opts UploadOptions) (RevisionID, error)
-	CreateRevisionFromFile(ctx context.Context, filePath string, opts UploadOptions) (RevisionID, error)
+	CreateRevisionFromPaths(ctx context.Context, paths []string, opts UploadOptions) (UploadResult, error)
+	CreateRevisionFromDir(ctx context.Context, dirPath string, opts UploadOptions) (UploadResult, error)
+	CreateRevisionFromFile(ctx context.Context, filePath string, opts UploadOptions) (UploadResult, error)
 }
 
 var _ Client = (*HTTPClient)(nil)
@@ -110,142 +111,39 @@ func (c *HTTPClient) loadFilters(ctx context.Context) error {
 	return c.filters.initErr
 }
 
-// createFileFilter creates a filter function based on the current filtering configuration.
-func (c *HTTPClient) createFileFilter(ctx context.Context) (func(string) bool, error) {
+// createDeeproxyFilter creates a filter function based on the current deeproxy filtering configuration.
+func (c *HTTPClient) createDeeproxyFilter(ctx context.Context) (filter, error) {
 	if err := c.loadFilters(ctx); err != nil {
 		return nil, fmt.Errorf("failed to load deeproxy filters: %w", err)
 	}
 
-	return func(path string) bool {
-		fileExt := filepath.Ext(path)
-		fileName := filepath.Base(path)
+	return func(ff fileToFilter) *FilteredFile {
+		fileExt := filepath.Ext(ff.Stat.Name())
+		fileName := filepath.Base(ff.Stat.Name())
 		_, isSupportedExtension := c.filters.supportedExtensions.Load(fileExt)
 		_, isSupportedConfigFile := c.filters.supportedConfigFiles.Load(fileName)
-		return isSupportedExtension || isSupportedConfigFile
-	}, nil
-}
 
-// preparedFile represents a file that has been opened and validated for upload.
-type preparedFile struct {
-	uploadFile uploadrevision.UploadFile
-	size       int64
-}
-
-func (c *HTTPClient) uploadPaths(ctx context.Context, revID RevisionID, rootPath string, paths []string) error {
-	limits := c.uploadRevisionSealableClient.GetLimits()
-	batch := newUploadBatch(limits.FileCountLimit)
-
-	defer batch.closeRemainingFiles()
-
-	for _, pth := range paths {
-		prepared, skip, err := c.prepareFileForUpload(pth, rootPath, limits)
-		if err != nil {
-			return err
-		}
-		if skip {
-			continue
-		}
-
-		// Flush batch if adding this file would exceed limits
-		if batch.wouldExceedLimits(prepared.size, limits) {
-			if err := c.flushBatch(ctx, revID, batch); err != nil {
-				prepared.uploadFile.File.Close()
-				return err
+		if !isSupportedExtension && !isSupportedConfigFile {
+			var reason error
+			if !isSupportedConfigFile {
+				reason = errors.Join(reason, fmt.Errorf("file name is not a part of the supported config files: %s", fileName))
+			}
+			if !isSupportedExtension {
+				reason = errors.Join(reason, fmt.Errorf("file extension is not supported: %s", fileExt))
+			}
+			return &FilteredFile{
+				Path:   ff.Path,
+				Reason: reason,
 			}
 		}
 
-		batch.addFile(prepared)
-	}
-
-	// Upload any remaining files
-	if err := c.flushBatch(ctx, revID, batch); err != nil {
-		return err
-	}
-
-	// If no files were uploaded at all, return an error
-	if batch.totalUploaded == 0 && len(paths) > 0 {
-		return uploadrevision.ErrNoFilesProvided
-	}
-
-	return nil
+		return nil
+	}, nil
 }
 
-// prepareFileForUpload opens, validates, and prepares a file for upload.
-// Returns the prepared file, whether to skip it, and any error.
-func (c *HTTPClient) prepareFileForUpload(pth, rootPath string, limits uploadrevision.Limits) (*preparedFile, bool, error) {
-	relPth, err := filepath.Rel(rootPath, pth)
-	if err != nil {
-		return nil, false, fmt.Errorf("failed to get relative path for %s: %w", pth, err)
-	}
+func (c *HTTPClient) uploadBatch(ctx context.Context, revID RevisionID, batch *uploadBatch) error {
+	defer batch.closeRemainingFiles()
 
-	f, err := os.Open(pth)
-	if err != nil {
-		return nil, false, fmt.Errorf("failed to open file %s: %w", pth, err)
-	}
-
-	fstat, err := f.Stat()
-	if err != nil {
-		f.Close()
-		return nil, false, fmt.Errorf("failed to stat file %s: %w", pth, err)
-	}
-
-	if fstat.Size() > limits.FileSizeLimit {
-		f.Close()
-		return nil, true, nil
-	}
-
-	return &preparedFile{
-		uploadFile: uploadrevision.UploadFile{
-			Path: relPth,
-			File: f,
-		},
-		size: fstat.Size(),
-	}, false, nil
-}
-
-// uploadBatch manages a batch of files for upload.
-type uploadBatch struct {
-	files         []uploadrevision.UploadFile
-	currentSize   int64
-	totalUploaded int
-	initialCap    int
-}
-
-func newUploadBatch(capacity int) *uploadBatch {
-	return &uploadBatch{
-		files:      make([]uploadrevision.UploadFile, 0, capacity),
-		initialCap: capacity,
-	}
-}
-
-func (b *uploadBatch) addFile(prepared *preparedFile) {
-	b.files = append(b.files, prepared.uploadFile)
-	b.currentSize += prepared.size
-}
-
-func (b *uploadBatch) wouldExceedLimits(fileSize int64, limits uploadrevision.Limits) bool {
-	wouldExceedCount := len(b.files) >= limits.FileCountLimit
-	wouldExceedSize := b.currentSize+fileSize > limits.TotalPayloadSizeLimit
-	return wouldExceedCount || wouldExceedSize
-}
-
-func (b *uploadBatch) reset() {
-	b.files = make([]uploadrevision.UploadFile, 0, b.initialCap)
-	b.currentSize = 0
-}
-
-func (b *uploadBatch) isEmpty() bool {
-	return len(b.files) == 0
-}
-
-func (b *uploadBatch) closeRemainingFiles() {
-	for _, file := range b.files {
-		file.File.Close()
-	}
-}
-
-// flushBatch uploads the current batch and resets it.
-func (c *HTTPClient) flushBatch(ctx context.Context, revID RevisionID, batch *uploadBatch) error {
 	if batch.isEmpty() {
 		return nil
 	}
@@ -255,38 +153,75 @@ func (c *HTTPClient) flushBatch(ctx context.Context, revID RevisionID, batch *up
 		return fmt.Errorf("failed to upload files: %w", err)
 	}
 
-	// Close files in the uploaded batch
-	for _, file := range batch.files {
-		file.File.Close()
-	}
-
-	batch.totalUploaded += len(batch.files)
-	batch.reset()
 	return nil
 }
 
 // addPathsToRevision adds multiple file paths to an existing revision.
-func (c *HTTPClient) addPathsToRevision(ctx context.Context, revisionID RevisionID, rootPath string, pathsChan <-chan string, opts UploadOptions) error {
-	var chunks <-chan []string
-
-	if opts.SkipFiltering {
-		chunks = chunkChan(pathsChan, c.uploadRevisionSealableClient.GetLimits().FileCountLimit)
-	} else {
-		filter, err := c.createFileFilter(ctx)
-		if err != nil {
-			return err
-		}
-		chunks = chunkChanFiltered(pathsChan, c.uploadRevisionSealableClient.GetLimits().FileCountLimit, filter)
+func (c *HTTPClient) addPathsToRevision(
+	ctx context.Context,
+	revisionID RevisionID,
+	rootPath string,
+	pathsChan <-chan string,
+	opts UploadOptions,
+) (UploadResult, error) {
+	res := UploadResult{
+		RevisionID:    revisionID,
+		FilteredFiles: make([]FilteredFile, 0),
 	}
 
-	for chunk := range chunks {
-		err := c.uploadPaths(ctx, revisionID, rootPath, chunk)
-		if err != nil {
-			return err
+	fileSizeFilter := func(ff fileToFilter) *FilteredFile {
+		fileSizeLimit := c.uploadRevisionSealableClient.GetLimits().FileSizeLimit
+		if ff.Stat.Size() > fileSizeLimit {
+			return &FilteredFile{
+				Path:   ff.Path,
+				Reason: uploadrevision.NewFileSizeLimitError(ff.Stat.Name(), ff.Stat.Size(), fileSizeLimit),
+			}
 		}
+
+		return nil
 	}
 
-	return nil
+	filePathLengthFilter := func(ff fileToFilter) *FilteredFile {
+		filePathLengthLimit := c.uploadRevisionSealableClient.GetLimits().FilePathLengthLimit
+		if len(ff.Path) > filePathLengthLimit {
+			return &FilteredFile{
+				Path:   ff.Path,
+				Reason: uploadrevision.NewFilePathLengthLimitError(ff.Path, len(ff.Path), filePathLengthLimit),
+			}
+		}
+
+		return nil
+	}
+
+	filters := []filter{
+		fileSizeFilter,
+		filePathLengthFilter,
+	}
+	if !opts.SkipDeeproxyFiltering {
+		deeproxyFilter, err := c.createDeeproxyFilter(ctx)
+		if err != nil {
+			return res, err
+		}
+
+		filters = append(filters, deeproxyFilter)
+	}
+
+	for batchResult, err := range batchPaths(rootPath, pathsChan, c.uploadRevisionSealableClient.GetLimits(), filters...) {
+		if err != nil {
+			return res, fmt.Errorf("failed to batch files: %w", err)
+		}
+
+		res.FilteredFiles = append(res.FilteredFiles, batchResult.filteredFiles...)
+
+		err = c.uploadBatch(ctx, revisionID, batchResult.batch)
+		if err != nil {
+			return res, err
+		}
+
+		res.UploadedFilesCount += len(batchResult.batch.files)
+	}
+
+	return res, nil
 }
 
 // createRevision creates a new revision and returns its ID.
@@ -299,7 +234,7 @@ func (c *HTTPClient) createRevision(ctx context.Context) (RevisionID, error) {
 }
 
 // addFileToRevision adds a single file to an existing revision.
-func (c *HTTPClient) addFileToRevision(ctx context.Context, revisionID RevisionID, filePath string, opts UploadOptions) error {
+func (c *HTTPClient) addFileToRevision(ctx context.Context, revisionID RevisionID, filePath string, opts UploadOptions) (UploadResult, error) {
 	writableChan := make(chan string, 1)
 	writableChan <- filePath
 	close(writableChan)
@@ -308,10 +243,10 @@ func (c *HTTPClient) addFileToRevision(ctx context.Context, revisionID RevisionI
 }
 
 // addDirToRevision adds a directory and all its contents to an existing revision.
-func (c *HTTPClient) addDirToRevision(ctx context.Context, revisionID RevisionID, dirPath string, opts UploadOptions) error {
+func (c *HTTPClient) addDirToRevision(ctx context.Context, revisionID RevisionID, dirPath string, opts UploadOptions) (UploadResult, error) {
 	sources, err := listsources.ForPath(dirPath, nil, runtime.NumCPU())
 	if err != nil {
-		return fmt.Errorf("failed to list files in directory %s: %w", dirPath, err)
+		return UploadResult{}, fmt.Errorf("failed to list files in directory %s: %w", dirPath, err)
 	}
 
 	return c.addPathsToRevision(ctx, revisionID, dirPath, sources, opts)
@@ -328,46 +263,61 @@ func (c *HTTPClient) sealRevision(ctx context.Context, revisionID RevisionID) er
 
 // CreateRevisionFromPaths uploads multiple paths (files or directories), returning a revision ID.
 // This is a convenience method that creates, uploads, and seals a revision.
-func (c *HTTPClient) CreateRevisionFromPaths(ctx context.Context, paths []string, opts UploadOptions) (RevisionID, error) {
+func (c *HTTPClient) CreateRevisionFromPaths(ctx context.Context, paths []string, opts UploadOptions) (UploadResult, error) {
+	res := UploadResult{
+		FilteredFiles: make([]FilteredFile, 0),
+	}
+
 	revisionID, err := c.createRevision(ctx)
 	if err != nil {
-		return uuid.Nil, err
+		return res, err
 	}
+	res.RevisionID = revisionID
 
 	for _, pth := range paths {
 		info, err := os.Stat(pth)
 		if err != nil {
-			return uuid.Nil, uploadrevision.NewFileAccessError(pth, err)
+			return UploadResult{}, uploadrevision.NewFileAccessError(pth, err)
 		}
 
 		if info.IsDir() {
-			if err := c.addDirToRevision(ctx, revisionID, pth, opts); err != nil {
-				return uuid.Nil, fmt.Errorf("failed to add directory %s: %w", pth, err)
+			dirUploadRes, err := c.addDirToRevision(ctx, revisionID, pth, opts)
+			if err != nil {
+				return res, fmt.Errorf("failed to add directory %s: %w", pth, err)
 			}
+			res.FilteredFiles = append(res.FilteredFiles, dirUploadRes.FilteredFiles...)
+			res.UploadedFilesCount += dirUploadRes.UploadedFilesCount
 		} else {
-			if err := c.addFileToRevision(ctx, revisionID, pth, opts); err != nil {
-				return uuid.Nil, fmt.Errorf("failed to add file %s: %w", pth, err)
+			fileUploadRes, err := c.addFileToRevision(ctx, revisionID, pth, opts)
+			if err != nil {
+				return res, fmt.Errorf("failed to add file %s: %w", pth, err)
 			}
+			res.FilteredFiles = append(res.FilteredFiles, fileUploadRes.FilteredFiles...)
+			res.UploadedFilesCount += fileUploadRes.UploadedFilesCount
 		}
 	}
 
-	if err := c.sealRevision(ctx, revisionID); err != nil {
-		return uuid.Nil, err
+	if res.UploadedFilesCount == 0 && len(res.FilteredFiles) == 0 {
+		return res, ErrNoFilesProvided
 	}
 
-	return revisionID, nil
+	if err := c.sealRevision(ctx, revisionID); err != nil {
+		return res, err
+	}
+
+	return res, nil
 }
 
 // CreateRevisionFromDir uploads a directory and all its contents, returning a revision ID.
 // This is a convenience method for validating the directory path and calling CreateRevisionFromPaths with a single directory path.
-func (c *HTTPClient) CreateRevisionFromDir(ctx context.Context, dirPath string, opts UploadOptions) (RevisionID, error) {
+func (c *HTTPClient) CreateRevisionFromDir(ctx context.Context, dirPath string, opts UploadOptions) (UploadResult, error) {
 	info, err := os.Stat(dirPath)
 	if err != nil {
-		return uuid.Nil, uploadrevision.NewFileAccessError(dirPath, err)
+		return UploadResult{}, uploadrevision.NewFileAccessError(dirPath, err)
 	}
 
 	if !info.IsDir() {
-		return uuid.Nil, fmt.Errorf("the provided path is not a directory: %s", dirPath)
+		return UploadResult{}, fmt.Errorf("the provided path is not a directory: %s", dirPath)
 	}
 
 	return c.CreateRevisionFromPaths(ctx, []string{dirPath}, opts)
@@ -375,14 +325,14 @@ func (c *HTTPClient) CreateRevisionFromDir(ctx context.Context, dirPath string, 
 
 // CreateRevisionFromFile uploads a single file, returning a revision ID.
 // This is a convenience method for validating the file path and calling CreateRevisionFromPaths with a single file path.
-func (c *HTTPClient) CreateRevisionFromFile(ctx context.Context, filePath string, opts UploadOptions) (RevisionID, error) {
+func (c *HTTPClient) CreateRevisionFromFile(ctx context.Context, filePath string, opts UploadOptions) (UploadResult, error) {
 	info, err := os.Stat(filePath)
 	if err != nil {
-		return uuid.Nil, uploadrevision.NewFileAccessError(filePath, err)
+		return UploadResult{}, uploadrevision.NewFileAccessError(filePath, err)
 	}
 
 	if !info.Mode().IsRegular() {
-		return uuid.Nil, fmt.Errorf("the provided path is not a regular file: %s", filePath)
+		return UploadResult{}, fmt.Errorf("the provided path is not a regular file: %s", filePath)
 	}
 
 	return c.CreateRevisionFromPaths(ctx, []string{filePath}, opts)

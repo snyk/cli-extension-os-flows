@@ -24,5 +24,12 @@ type Filters struct {
 
 // UploadOptions configures the behavior of file upload operations.
 type UploadOptions struct {
-	SkipFiltering bool
+	SkipDeeproxyFiltering bool
+}
+
+// UploadResult respresents the result of the upload.
+type UploadResult struct {
+	RevisionID         RevisionID     // The ID of the revision which was created.
+	UploadedFilesCount int            // The number of uploaded files.
+	FilteredFiles      []FilteredFile // The list of files which were filtered.
 }

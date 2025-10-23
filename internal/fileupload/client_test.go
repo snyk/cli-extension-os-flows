@@ -26,6 +26,7 @@ func Test_CreateRevisionFromPaths(t *testing.T) {
 			FileCountLimit:        10,
 			FileSizeLimit:         100,
 			TotalPayloadSizeLimit: 10_000,
+			FilePathLengthLimit:   20,
 		},
 	}
 
@@ -49,10 +50,11 @@ func Test_CreateRevisionFromPaths(t *testing.T) {
 			filepath.Join(dir.Name(), "README.md"), // Individual file
 		}
 
-		revID, err := client.CreateRevisionFromPaths(ctx, paths, fileupload.UploadOptions{})
+		res, err := client.CreateRevisionFromPaths(ctx, paths, fileupload.UploadOptions{})
 		require.NoError(t, err)
 
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		assert.Empty(t, res.FilteredFiles)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		require.Len(t, uploadedFiles, 3) // 2 from src/ + 1 README.md
 
@@ -107,6 +109,7 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 			FileCountLimit:        2,
 			FileSizeLimit:         100,
 			TotalPayloadSizeLimit: 10_000,
+			FilePathLengthLimit:   20,
 		},
 	}
 
@@ -128,10 +131,11 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 		}
 		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, expectedFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
-
+		res, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+
+		assert.Empty(t, res.FilteredFiles)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, expectedFiles, uploadedFiles)
 	})
@@ -149,10 +153,11 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 		}
 		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, expectedFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
-
+		res, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+
+		assert.Empty(t, res.FilteredFiles)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, expectedFiles, uploadedFiles)
 	})
@@ -182,10 +187,11 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 		}
 		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, expectedFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+		res, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
 
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		assert.Empty(t, res.FilteredFiles)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, expectedFiles, uploadedFiles)
 	})
@@ -212,13 +218,23 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 				FileCountLimit:        2,
 				FileSizeLimit:         6,
 				TotalPayloadSizeLimit: 100,
+				FilePathLengthLimit:   20,
 			},
 		}, allFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+		res, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
 
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		var fileSizeErr *uploadrevision.FileSizeLimitError
+		assert.Len(t, res.FilteredFiles, 1)
+		ff := res.FilteredFiles[0]
+		assert.Contains(t, ff.Path, "file1.txt")
+		assert.ErrorAs(t, ff.Reason, &fileSizeErr)
+		assert.Equal(t, "file1.txt", fileSizeErr.FilePath)
+		assert.Equal(t, int64(6), fileSizeErr.Limit)
+		assert.Equal(t, int64(7), fileSizeErr.FileSize)
+
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, expectedFiles, uploadedFiles)
 	})
@@ -245,15 +261,17 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 				FileCountLimit:        10, // High enough to not trigger count-based batching
 				FileSizeLimit:         50, // Each file is under this
 				TotalPayloadSizeLimit: 70, // 70 bytes - forces batching by size
+				FilePathLengthLimit:   20,
 			},
 		}, expectedFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+		res, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
 
+		assert.Empty(t, res.FilteredFiles)
 		// Success proves size-based batching works - without it, the low-level client
 		// would reject the 90-byte payload (limit: 70 bytes).
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, expectedFiles, uploadedFiles)
 	})
@@ -281,13 +299,15 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 				FileCountLimit:        10,
 				FileSizeLimit:         160,
 				TotalPayloadSizeLimit: 200,
+				FilePathLengthLimit:   20,
 			},
 		}, expectedFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+		res, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
 
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		assert.Empty(t, res.FilteredFiles)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, expectedFiles, uploadedFiles)
 	})
@@ -323,13 +343,15 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 				FileCountLimit:        10,
 				FileSizeLimit:         80,
 				TotalPayloadSizeLimit: 100,
+				FilePathLengthLimit:   20,
 			},
 		}, expectedFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+		res, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
 
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		assert.Empty(t, res.FilteredFiles)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, expectedFiles, uploadedFiles)
 	})
@@ -351,13 +373,15 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 				FileCountLimit:        10,
 				FileSizeLimit:         50,
 				TotalPayloadSizeLimit: 200,
+				FilePathLengthLimit:   20,
 			},
 		}, expectedFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+		res, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
 
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		assert.Empty(t, res.FilteredFiles)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, expectedFiles, uploadedFiles)
 	})
@@ -392,10 +416,11 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 
 		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, allFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
+		res, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{})
 		require.NoError(t, err)
 
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		assert.Len(t, res.FilteredFiles, 2)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, expectedFiles, uploadedFiles)
 	})
@@ -426,10 +451,11 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 
 		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, allFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{SkipFiltering: true})
+		res, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{SkipDeeproxyFiltering: true})
 		require.NoError(t, err)
 
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		assert.Empty(t, res.FilteredFiles)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, allFiles, uploadedFiles)
 	})
@@ -441,6 +467,7 @@ func Test_CreateRevisionFromFile(t *testing.T) {
 			FileCountLimit:        2,
 			FileSizeLimit:         100,
 			TotalPayloadSizeLimit: 10_000,
+			FilePathLengthLimit:   20,
 		},
 	}
 
@@ -458,10 +485,11 @@ func Test_CreateRevisionFromFile(t *testing.T) {
 		}
 		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, expectedFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "file1.txt"), fileupload.UploadOptions{})
-
+		res, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "file1.txt"), fileupload.UploadOptions{})
 		require.NoError(t, err)
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+
+		assert.Empty(t, res.FilteredFiles)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, expectedFiles, uploadedFiles)
 	})
@@ -473,17 +501,62 @@ func Test_CreateRevisionFromFile(t *testing.T) {
 				Content: "foo bar",
 			},
 		}
-		ctx, _, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
+		ctx, fakeSealableClient, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
 			Limits: uploadrevision.Limits{
 				FileCountLimit:        1,
 				FileSizeLimit:         6,
 				TotalPayloadSizeLimit: 10_000,
+				FilePathLengthLimit:   20,
 			},
 		}, expectedFiles, allowList, nil)
 
-		_, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "file1.txt"), fileupload.UploadOptions{})
+		res, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "file1.txt"), fileupload.UploadOptions{})
+		require.NoError(t, err)
 
-		require.ErrorIs(t, err, uploadrevision.ErrNoFilesProvided)
+		var fileSizeErr *uploadrevision.FileSizeLimitError
+		assert.Len(t, res.FilteredFiles, 1)
+		ff := res.FilteredFiles[0]
+		assert.Contains(t, ff.Path, "file1.txt")
+		assert.ErrorAs(t, ff.Reason, &fileSizeErr)
+		assert.Equal(t, "file1.txt", fileSizeErr.FilePath)
+		assert.Equal(t, int64(6), fileSizeErr.Limit)
+		assert.Equal(t, int64(7), fileSizeErr.FileSize)
+
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
+		require.NoError(t, err)
+		expectEqualFiles(t, nil, uploadedFiles)
+	})
+
+	t.Run("uploading a file exceeding the file path limit", func(t *testing.T) {
+		expectedFiles := []uploadrevision.LoadedFile{
+			{
+				Path:    "file1.txt",
+				Content: "foo bar",
+			},
+		}
+		ctx, fakeSealableClient, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
+			Limits: uploadrevision.Limits{
+				FileCountLimit:        1,
+				FileSizeLimit:         10,
+				TotalPayloadSizeLimit: 10_000,
+				FilePathLengthLimit:   5,
+			},
+		}, expectedFiles, allowList, nil)
+
+		res, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "file1.txt"), fileupload.UploadOptions{})
+		require.NoError(t, err)
+
+		var filePathErr *uploadrevision.FilePathLengthLimitError
+		assert.Len(t, res.FilteredFiles, 1)
+		ff := res.FilteredFiles[0]
+		assert.Contains(t, ff.Path, "file1.txt")
+		assert.ErrorAs(t, ff.Reason, &filePathErr)
+		assert.Equal(t, "file1.txt", filePathErr.FilePath)
+		assert.Equal(t, 5, filePathErr.Limit)
+
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
+		require.NoError(t, err)
+		expectEqualFiles(t, nil, uploadedFiles)
 	})
 
 	t.Run("uploading a file applies filtering", func(t *testing.T) {
@@ -496,10 +569,11 @@ func Test_CreateRevisionFromFile(t *testing.T) {
 
 		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, allFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "script.js"), fileupload.UploadOptions{})
+		res, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "script.js"), fileupload.UploadOptions{})
 		require.NoError(t, err)
 
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		assert.Len(t, res.FilteredFiles, 1)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, nil, uploadedFiles)
 	})
@@ -514,10 +588,11 @@ func Test_CreateRevisionFromFile(t *testing.T) {
 
 		ctx, fakeSealableClient, client, dir := setupTest(t, llcfg, expectedFiles, allowList, nil)
 
-		revID, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "script.js"), fileupload.UploadOptions{SkipFiltering: true})
+		res, err := client.CreateRevisionFromFile(ctx, path.Join(dir.Name(), "script.js"), fileupload.UploadOptions{SkipDeeproxyFiltering: true})
 		require.NoError(t, err)
 
-		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(revID)
+		assert.Empty(t, res.FilteredFiles)
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
 		require.NoError(t, err)
 		expectEqualFiles(t, expectedFiles, uploadedFiles)
 	})

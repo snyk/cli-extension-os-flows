@@ -12,12 +12,12 @@ import (
 // GetReachabilityID will upload the source code directory using the file upload API,
 // kick off a reachability scan, wait for the scan to complete and return the scan ID.
 func GetReachabilityID(ctx context.Context, orgID uuid.UUID, sourceDir string, rc Client, fc fileupload.Client) (ID, error) {
-	revisionID, err := fc.CreateRevisionFromDir(ctx, sourceDir, fileupload.UploadOptions{})
+	res, err := fc.CreateRevisionFromDir(ctx, sourceDir, fileupload.UploadOptions{})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to upload source code for reachability analysis: %w", err)
 	}
 
-	scanID, err := rc.StartReachabilityAnalysis(ctx, orgID, revisionID)
+	scanID, err := rc.StartReachabilityAnalysis(ctx, orgID, res.RevisionID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to start reachability analysis: %w", err)
 	}

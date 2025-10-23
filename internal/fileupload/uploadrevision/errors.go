@@ -44,14 +44,14 @@ func (e *TotalPayloadSizeLimitError) Error() string {
 	return fmt.Sprintf("total payload size %d bytes exceeds limit of %d bytes", e.TotalSize, e.Limit)
 }
 
-// FileNameLengthLimitError indicates a file name exceeds the maximum allowed length.
-type FileNameLengthLimitError struct {
+// FilePathLengthLimitError indicates a file path exceeds the maximum allowed length.
+type FilePathLengthLimitError struct {
 	FilePath string
 	Length   int
 	Limit    int
 }
 
-func (e *FileNameLengthLimitError) Error() string {
+func (e *FilePathLengthLimitError) Error() string {
 	return fmt.Sprintf("file name %s length %d exceeds limit of %d characters", e.FilePath, e.Length, e.Limit)
 }
 
@@ -97,12 +97,12 @@ func (e *MultipartError) Unwrap() error {
 
 // SpecialFileError indicates a path points to a special file (device, pipe, socket, etc.) instead of a regular file.
 type SpecialFileError struct {
-	Path string
-	Mode os.FileMode
+	FilePath string
+	Mode     os.FileMode
 }
 
 func (e *SpecialFileError) Error() string {
-	return fmt.Sprintf("path %s is not a regular file (mode: %s)", e.Path, e.Mode)
+	return fmt.Sprintf("path %s is not a regular file (mode: %s)", e.FilePath, e.Mode)
 }
 
 // NewFileSizeLimitError creates a new FileSizeLimitError with the given parameters.
@@ -159,14 +159,14 @@ func NewMultipartError(filePath string, err error) *MultipartError {
 // NewSpecialFileError creates a new SpecialFileError with the given path and mode.
 func NewSpecialFileError(path string, mode os.FileMode) *SpecialFileError {
 	return &SpecialFileError{
-		Path: path,
-		Mode: mode,
+		FilePath: path,
+		Mode:     mode,
 	}
 }
 
-// NewFileNameLengthLimitError creates a new FileNameLengthLimitError with the given parameters.
-func NewFileNameLengthLimitError(filePath string, length, limit int) *FileNameLengthLimitError {
-	return &FileNameLengthLimitError{
+// NewFilePathLengthLimitError creates a new FilePathLengthLimitError with the given parameters.
+func NewFilePathLengthLimitError(filePath string, length, limit int) *FilePathLengthLimitError {
+	return &FilePathLengthLimitError{
 		FilePath: filePath,
 		Length:   length,
 		Limit:    limit,
