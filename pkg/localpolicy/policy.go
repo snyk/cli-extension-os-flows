@@ -84,6 +84,7 @@ type RuleEntry map[string]*Rule
 type Rule struct {
 	Created            *time.Time  `yaml:"created,omitempty"`
 	Expires            *time.Time  `yaml:"expires,omitempty"`
+	Patched            *time.Time  `yaml:"patched,omitempty"`
 	IgnoredBy          *IgnoredBy  `yaml:"ignoredBy,omitempty"`
 	Reason             *string     `yaml:"reason,omitempty"`
 	ReasonType         *ReasonType `yaml:"reasonType,omitempty"`

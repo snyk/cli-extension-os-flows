@@ -8,6 +8,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/util"
@@ -61,4 +62,26 @@ func TestResolvePolicyFile_WithDirectoryPath(t *testing.T) {
 	})
 
 	assert.Equal(t, fd.Name(), tmpPolicy.Name())
+}
+
+func TestGetLocalPolicy_BrokenPolicy(t *testing.T) {
+	dir, err := os.MkdirTemp("", "snyk-policy")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(dir) })
+
+	tmpPolicy, err := os.Create(path.Join(dir, ".snyk"))
+	require.NoError(t, err)
+
+	_, err = tmpPolicy.WriteString(`¯\_(ツ)_/¯`)
+	require.NoError(t, err)
+
+	cfg := configuration.New()
+	cfg.Set(configuration.INPUT_DIRECTORY, dir)
+	ctx := cmdctx.WithConfig(t.Context(), cfg)
+
+	policy, err := util.GetLocalPolicy(ctx)
+
+	require.Nil(t, policy)
+	var terr *yaml.TypeError
+	assert.ErrorAs(t, err, &terr)
 }

@@ -248,14 +248,16 @@ func getFailOnPolicy(ctx context.Context) (supportedFailOnPolicy, error) {
 	return failOnPolicy, nil
 }
 
-// getLocalIgnores attempts to resolve a .snyk file and read the ignore rules within it.
-// Failing to resolve, open or read the file is not fatal and will result in no ignores
-// to be applied.
-func getLocalIgnores(ctx context.Context) *[]testapi.LocalIgnore {
-	if policy := cmdutil.GetLocalPolicy(ctx); policy != nil {
-		return transform.LocalPolicyToSchema(policy)
+func getLocalIgnores(ctx context.Context) (*[]testapi.LocalIgnore, error) {
+	policy, err := cmdutil.GetLocalPolicy(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get local ignores: %w", err)
 	}
-	return nil
+	if policy != nil {
+		return transform.LocalPolicyToSchema(policy), nil
+	}
+	//nolint:nilnil // Intentionally returning nil ignores if no policy is present.
+	return nil, nil
 }
 
 // CreateLocalPolicy will create a local policy only if risk score or severity threshold or reachability filters are specified in the config.
@@ -267,7 +269,10 @@ func CreateLocalPolicy(cmdCtx context.Context) (*testapi.LocalPolicy, error) {
 	if err != nil {
 		return nil, err
 	}
-	localIgnores := getLocalIgnores(cmdCtx)
+	localIgnores, err := getLocalIgnores(cmdCtx)
+	if err != nil {
+		return nil, err
+	}
 
 	// if everything is nil, return nil for local policy (no error, just no policy)
 	if riskScoreThreshold == nil && severityThreshold == nil && reachabilityFilter == nil && failOnPolicy.onUpgradable == nil && localIgnores == nil {

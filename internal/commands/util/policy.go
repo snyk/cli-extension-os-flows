@@ -52,27 +52,26 @@ func ResolvePolicyFile(ctx context.Context) (*os.File, error) {
 }
 
 // GetLocalPolicy attempts to load a local policy file from disk. If no policy
-// file is found, nil is returned. If an error occurs while loading the policy file,
-// the error is logged and nil is returned.
-func GetLocalPolicy(ctx context.Context) *localpolicy.Policy {
+// file is found, nil is returned. An error is returned if opening or reading the
+// policy file fails.
+func GetLocalPolicy(ctx context.Context) (*localpolicy.Policy, error) {
 	logger := cmdctx.Logger(ctx)
 
 	policyFile, err := ResolvePolicyFile(ctx)
 	if err != nil {
 		var perr *fs.PathError
 		if errors.As(err, &perr) {
-			logger.Info().Msg("No .snyk file found.")
-		} else {
-			logger.Warn().Err(err).Msg("Failed to load .snyk file.")
+			logger.Info().Msgf("No %s file found.", policyFileName)
+			//nolint:nilnil // Intentionally returning a nil policy, because none could be found.
+			return nil, nil
 		}
-		return nil
+		return nil, fmt.Errorf("failed to open %s file: %w", policyFileName, err)
 	}
 	defer policyFile.Close()
 
 	var p localpolicy.Policy
 	if err := localpolicy.Unmarshal(policyFile, &p); err != nil {
-		logger.Warn().Err(err).Msg("Failed to load .snyk file.")
-		return nil
+		return nil, fmt.Errorf("failed to read %s file: %w", policyFileName, err)
 	}
-	return &p
+	return &p, nil
 }
