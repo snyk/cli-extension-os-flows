@@ -82,30 +82,15 @@ func TestLegacyPolicyToLocalIgnores_NoIgnores(t *testing.T) {
 }
 
 func TestExtendLocalPolicyFromSchema(t *testing.T) {
-	// create temporary .snyk file
-	tmpDotSnyk, err := os.CreateTemp("", ".snyk")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.Remove(tmpDotSnyk.Name()) })
-	_, err = tmpDotSnyk.WriteString(`version: v1.2.0
+	fixedPolicy := `version: v1.2.0
 ignore:
     SNYK-JS-EXPRESS-6474509:
         - goof@1.0.0 > express@1.2.3:
             expires: 2025-06-03T07:41:24Z
             reason: none given
-`)
-	require.NoError(t, err)
-	lp, err := localpolicy.Load(tmpDotSnyk.Name())
-	require.NoError(t, err)
-
-	// load fixed findings
-	var findings testapi.FindingData
-	err = json.Unmarshal(findingWithSuppression, &findings)
-	require.NoError(t, err)
-
-	policy, err := transform.ExtendLocalPolicyFromSchema(lp, []testapi.FindingData{findings})
-	require.NoError(t, err)
-
-	assert.Equal(t, `version: v1.2.0
+patch: {}
+`
+	expectedPolicy := `version: v1.2.0
 ignore:
     SNYK-JS-EXPRESS-6474509:
         - goof@1.0.0 > express@1.2.3:
@@ -123,7 +108,25 @@ ignore:
             reasonType: wont-fix
             source: api
 patch: {}
-`, policy)
+`
+	// create temporary .snyk file
+	tmpDotSnyk, err := os.CreateTemp("", ".snyk")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Remove(tmpDotSnyk.Name()) })
+	_, err = tmpDotSnyk.WriteString(fixedPolicy)
+	require.NoError(t, err)
+	lp, err := localpolicy.Load(tmpDotSnyk.Name())
+	require.NoError(t, err)
+
+	// load fixed findings
+	var findings testapi.FindingData
+	err = json.Unmarshal(findingWithSuppression, &findings)
+	require.NoError(t, err)
+
+	policy, err := transform.ExtendLocalPolicyFromSchema(lp, []testapi.FindingData{findings})
+	require.NoError(t, err)
+
+	assert.Equal(t, expectedPolicy, policy)
 }
 
 func timeMustParse(t *testing.T, val string) *time.Time {

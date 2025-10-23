@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/snyk/go-application-framework/pkg/configuration"
 
@@ -22,28 +22,28 @@ const policyFileName = ".snyk"
 // is found at the given location, an error is returned.
 func ResolvePolicyFile(ctx context.Context) (*os.File, error) {
 	cfg := cmdctx.Config(ctx)
-	dirOrFile := cfg.GetString(flags.FlagPolicyPath)
-	if dirOrFile == "" {
-		dirOrFile = cfg.GetString(configuration.INPUT_DIRECTORY)
+	policyPath := cfg.GetString(flags.FlagPolicyPath)
+	if policyPath == "" {
+		policyPath = cfg.GetString(configuration.INPUT_DIRECTORY)
 	}
-	if dirOrFile == "" {
+	if policyPath == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get current working directory: %w", err)
 		}
-		dirOrFile = cwd
+		policyPath = cwd
 	}
 
 	// if a directory was given, add the expected policy file name.
-	info, err := os.Stat(dirOrFile)
+	info, err := os.Stat(policyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find %s file: %w", policyFileName, err)
 	}
 	if info.IsDir() {
-		dirOrFile = path.Join(dirOrFile, policyFileName)
+		policyPath = filepath.Join(policyPath, policyFileName)
 	}
 
-	fd, err := os.Open(dirOrFile)
+	fd, err := os.Open(policyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open %s file: %w", policyFileName, err)
 	}

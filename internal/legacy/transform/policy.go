@@ -103,7 +103,7 @@ func ExtendLocalPolicyFromSchema(lp *localpolicy.Policy, findings []testapi.Find
 
 	var buf bytes.Buffer
 	if err := localpolicy.Marshal(&buf, lp); err != nil {
-		return "", fmt.Errorf("failed serializing local polize")
+		return "", fmt.Errorf("failed serializing local policy")
 	}
 
 	return buf.String(), nil

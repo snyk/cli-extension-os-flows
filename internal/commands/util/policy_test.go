@@ -2,7 +2,7 @@ package util_test
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/snyk/go-application-framework/pkg/configuration"
@@ -46,22 +46,26 @@ func TestResolvePolicyFile_WithDirectoryPath(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(dir) })
 
-	tmpPolicy, err := os.Create(path.Join(dir, ".snyk"))
+	tmpPolicy, err := os.Create(filepath.Join(dir, ".snyk"))
 	require.NoError(t, err)
 
 	cfg := configuration.New()
 	cfg.Set(configuration.INPUT_DIRECTORY, dir)
 	ctx := cmdctx.WithConfig(t.Context(), cfg)
 
-	fd, err := util.ResolvePolicyFile(ctx)
+	resolved, err := util.ResolvePolicyFile(ctx)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		tmpPolicy.Close()
-		fd.Close()
+		resolved.Close()
 	})
 
-	assert.Equal(t, fd.Name(), tmpPolicy.Name())
+	resolvedInfo, err := resolved.Stat()
+	require.NoError(t, err)
+	tmpPolicyInfo, err := tmpPolicy.Stat()
+	require.NoError(t, err)
+	assert.True(t, os.SameFile(resolvedInfo, tmpPolicyInfo), "policy fixture and resolved policy should be the same")
 }
 
 func TestGetLocalPolicy_BrokenPolicy(t *testing.T) {
@@ -69,7 +73,7 @@ func TestGetLocalPolicy_BrokenPolicy(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(dir) })
 
-	tmpPolicy, err := os.Create(path.Join(dir, ".snyk"))
+	tmpPolicy, err := os.Create(filepath.Join(dir, ".snyk"))
 	require.NoError(t, err)
 
 	_, err = tmpPolicy.WriteString(`¯\_(ツ)_/¯`)
