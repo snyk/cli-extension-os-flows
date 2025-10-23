@@ -82,7 +82,8 @@ format-tsp:
 	./node_modules/.bin/tsp format 'internal/definitions/**/*.tsp'
 
 .PHONY: format-go
-format-go: golangci-lint run --fix -v ./...
+format-go:
+	golangci-lint run --fix -v ./...
 
 .PHONY: generate
 generate: tsp-compile oapi-generate

@@ -11,12 +11,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/puzpuzpuz/xsync"
+	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	listsources "github.com/snyk/cli-extension-os-flows/internal/files"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/filters"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/uploadrevision"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 // Config contains configuration for the file upload client.
@@ -32,6 +34,7 @@ type HTTPClient struct {
 	filtersClient                filters.Client
 	cfg                          Config
 	filters                      Filters
+	logger                       *zerolog.Logger
 }
 
 // Client defines the interface for the high level file upload client.
@@ -55,6 +58,10 @@ func NewClient(httpClient *http.Client, cfg Config, opts ...Option) *HTTPClient 
 
 	for _, opt := range opts {
 		opt(client)
+	}
+
+	if client.logger == nil {
+		client.logger = util.Ptr(zerolog.Nop())
 	}
 
 	if client.uploadRevisionSealableClient == nil {
@@ -85,6 +92,7 @@ func NewClientFromInvocationContext(ictx workflow.InvocationContext, orgID uuid.
 			OrgID:     orgID,
 			IsFedRamp: cfg.GetBool(configuration.IS_FEDRAMP),
 		},
+		WithLogger(ictx.GetEnhancedLogger()),
 	)
 }
 
@@ -244,7 +252,7 @@ func (c *HTTPClient) addFileToRevision(ctx context.Context, revisionID RevisionI
 
 // addDirToRevision adds a directory and all its contents to an existing revision.
 func (c *HTTPClient) addDirToRevision(ctx context.Context, revisionID RevisionID, dirPath string, opts UploadOptions) (UploadResult, error) {
-	sources, err := listsources.ForPath(dirPath, nil, runtime.NumCPU())
+	sources, err := listsources.ForPath(dirPath, c.logger, runtime.NumCPU())
 	if err != nil {
 		return UploadResult{}, fmt.Errorf("failed to list files in directory %s: %w", dirPath, err)
 	}
