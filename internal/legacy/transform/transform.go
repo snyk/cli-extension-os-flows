@@ -436,6 +436,13 @@ func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*defin
 			fmt.Errorf("expected a depgraph subject but got something else: %w", err))
 	}
 
+	allVulnerabilities, err := FindingsToLegacyVulns(params.Findings, params.PackageManager, params.Logger)
+	if err != nil {
+		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting finding to legacy vuln: %w", err))
+	}
+
+	vulnReport := SeparateIgnoredVulnerabilities(allVulnerabilities, false)
+
 	res := definitions.LegacyVulnerabilityResponse{
 		Org:               params.OrgSlugOrID,
 		ProjectName:       params.ProjectName,
@@ -444,28 +451,12 @@ func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*defin
 		DisplayTargetFile: params.DisplayTargetFile,
 		UniqueCount:       params.UniqueCount,
 		DependencyCount:   int64(params.DepCount),
-		Vulnerabilities:   []definitions.Vulnerability{},
+		Vulnerabilities:   vulnReport.Vulnerabilities,
 		Ok:                len(params.Findings) == 0,
 		Filtered: definitions.Filtered{
-			Ignore: make([]definitions.Vulnerability, 0),
+			Ignore: vulnReport.Ignored,
 			Patch:  make([]string, 0),
 		},
-	}
-
-	for _, finding := range params.Findings {
-		vulns, err := FindingToLegacyVulns(&finding, params.Logger)
-		if err != nil {
-			return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting finding to legacy vuln: %w", err))
-		}
-
-		for i := range vulns {
-			// The package manager can be specific to the vulnerability. If it's not set,
-			// fall back to the one from the root of the dependency graph.
-			if vulns[i].PackageManager == nil {
-				vulns[i].PackageManager = &params.PackageManager
-			}
-			res.Vulnerabilities = append(res.Vulnerabilities, vulns[i])
-		}
 	}
 
 	remSummary, err := RemediationSummaryToLegacy(res.Vulnerabilities, params.RemediationSummary)
@@ -475,6 +466,34 @@ func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*defin
 	res.Remediation = remSummary
 
 	return &res, nil
+}
+
+// FindingsToLegacyVulns converts a list of findings into a list of legacy vulnerabilities.
+func FindingsToLegacyVulns(
+	findings []testapi.FindingData,
+	packageManager string,
+	logger *zerolog.Logger,
+) ([]definitions.Vulnerability, error) {
+	vulns := []definitions.Vulnerability{}
+	for _, finding := range findings {
+		findingVulns, err := FindingToLegacyVulns(&finding, logger)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range findingVulns {
+			vuln := findingVulns[i]
+			ensurePackageManager(&vuln, packageManager)
+			vulns = append(vulns, vuln)
+		}
+	}
+	return vulns, nil
+}
+
+func ensurePackageManager(vuln *definitions.Vulnerability, defaultPackageManager string) {
+	if vuln.PackageManager == nil {
+		vuln.PackageManager = &defaultPackageManager
+	}
 }
 
 // processCveProblem processes a CVE problem by extracting its identifier and adding it to the vulnerability.

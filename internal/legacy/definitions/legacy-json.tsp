@@ -88,6 +88,7 @@ model Vulnerability {
   reachability?: Reachability;
   reachablePaths?: ReachablePaths;
   upgradePath: UpgradePath[];
+  isIgnored?: boolean;
   isUpgradable: boolean;
   isPatchable: boolean;
   isPinnable?: boolean;

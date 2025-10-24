@@ -21,6 +21,7 @@
         Identifiers:            (*definitions.Identifiers)(nil),
         Insights:               (*definitions.Insights)(nil),
         IsDisputed:             (*bool)(nil),
+        IsIgnored:              (*bool)(nil),
         IsPatchable:            false,
         IsPinnable:             (*bool)(nil),
         IsRuntime:              (*bool)(nil),
