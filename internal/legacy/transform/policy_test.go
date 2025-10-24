@@ -7,10 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
@@ -21,6 +23,8 @@ var findingWithManagedPolicySuppression []byte
 
 //go:embed testdata/finding-with-local-policy-suppression-stub.json
 var findingWithLocalPolicySuppression []byte
+
+var nopLogger = zerolog.Nop()
 
 func TestLegacyPolicyToLocalIgnores(t *testing.T) {
 	p := &localpolicy.Policy{
@@ -85,6 +89,7 @@ func TestLegacyPolicyToLocalIgnores_NoIgnores(t *testing.T) {
 }
 
 func TestExtendLocalPolicyFromFindings_ManagedPolicy(t *testing.T) {
+	ctx := cmdctx.WithLogger(t.Context(), &nopLogger)
 	fixedPolicy := `version: v1.2.0
 ignore:
     SNYK-JS-EXPRESS-6474509:
@@ -120,13 +125,14 @@ patch: {}
 	err := json.Unmarshal(findingWithManagedPolicySuppression, &findings)
 	require.NoError(t, err)
 
-	policy, err := transform.ExtendLocalPolicyFromFindings(lp, []testapi.FindingData{findings})
+	policy, err := transform.ExtendLocalPolicyFromFindings(ctx, lp, []testapi.FindingData{findings})
 	require.NoError(t, err)
 
 	assert.Equal(t, expectedPolicy, policy)
 }
 
 func TestExtendLocalPolicyFromFindings_LocalPolicy(t *testing.T) {
+	ctx := cmdctx.WithLogger(t.Context(), &nopLogger)
 	fixedPolicy := `version: v1.2.0
 ignore:
     SNYK-JS-EXPRESS-6474509:
@@ -151,7 +157,7 @@ patch: {}
 	err := json.Unmarshal(findingWithLocalPolicySuppression, &findings)
 	require.NoError(t, err)
 
-	policy, err := transform.ExtendLocalPolicyFromFindings(lp, []testapi.FindingData{findings})
+	policy, err := transform.ExtendLocalPolicyFromFindings(ctx, lp, []testapi.FindingData{findings})
 	require.NoError(t, err)
 
 	assert.Equal(t, expectedPolicy, policy)

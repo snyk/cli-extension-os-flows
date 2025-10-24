@@ -2,11 +2,13 @@ package transform
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
 )
@@ -33,7 +35,8 @@ func LocalPolicyToSchema(lp *localpolicy.Policy) *[]testapi.LocalIgnore {
 
 // ExtendLocalPolicyFromFindings extends a local policy with the given findings.
 // If the given local policy is nil, a new policy will be created from scratch.
-func ExtendLocalPolicyFromFindings(lp *localpolicy.Policy, findings []testapi.FindingData) (string, error) {
+func ExtendLocalPolicyFromFindings(ctx context.Context, lp *localpolicy.Policy, findings []testapi.FindingData) (string, error) {
+	logger := cmdctx.Logger(ctx)
 	projectIgnores := make(map[string]*testapi.IgnoreDetails)
 
 	for _, finding := range findings {
@@ -48,6 +51,7 @@ func ExtendLocalPolicyFromFindings(lp *localpolicy.Policy, findings []testapi.Fi
 		}
 		// If no vuln ID could be extracted from the finding, skip it.
 		if vulnID == "" {
+			logger.Warn().Msgf("finding has no snyk vulnerability ID: %s", finding.Id)
 			continue
 		}
 
