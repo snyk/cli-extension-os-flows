@@ -523,6 +523,8 @@ components:
             anyOf:
               - type: string
               - type: boolean
+        isIgnored:
+          type: boolean
         isUpgradable:
           type: boolean
         isPatchable:
