@@ -17,38 +17,44 @@ import (
 
 const policyFileName = ".snyk"
 
-// ResolvePolicyFile resolves to a snyk policy file. The given path can either point at
-// a policy file or a directory which contains a .snyk file. If no policy
-// is found at the given location, an error is returned.
-func ResolvePolicyFile(ctx context.Context) (*os.File, error) {
+func resolvePolicyPath(ctx context.Context) (string, error) {
 	cfg := cmdctx.Config(ctx)
+
+	// take path from --policy-path
 	policyPath := cfg.GetString(flags.FlagPolicyPath)
+	// fallback on input directory
 	if policyPath == "" {
 		policyPath = cfg.GetString(configuration.INPUT_DIRECTORY)
 	}
+	// fallback on current working directory
 	if policyPath == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get current working directory: %w", err)
+			return "", fmt.Errorf("failed to get current working directory: %w", err)
 		}
 		policyPath = cwd
 	}
 
-	// if a directory was given, add the expected policy file name.
-	info, err := os.Stat(policyPath)
+	// append ".snyk" if it's a directory
+	policyPath, err := normalizePolicyFileName(policyPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find %s file: %w", policyFileName, err)
+		return "", err
 	}
+
+	return policyPath, nil
+}
+
+func normalizePolicyFileName(path string) (string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to access %q: %w", path, err)
+	}
+
 	if info.IsDir() {
-		policyPath = filepath.Join(policyPath, policyFileName)
+		return filepath.Join(path, policyFileName), nil
 	}
 
-	fd, err := os.Open(policyPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open %s file: %w", policyFileName, err)
-	}
-
-	return fd, nil
+	return path, nil
 }
 
 // GetLocalPolicy attempts to load a local policy file from disk. If no policy
@@ -57,21 +63,26 @@ func ResolvePolicyFile(ctx context.Context) (*os.File, error) {
 func GetLocalPolicy(ctx context.Context) (*localpolicy.Policy, error) {
 	logger := cmdctx.Logger(ctx)
 
-	policyFile, err := ResolvePolicyFile(ctx)
+	policyPath, err := resolvePolicyPath(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve local policy file: %w", err)
+	}
+
+	fd, err := os.Open(policyPath)
 	if err != nil {
 		var perr *fs.PathError
 		if errors.As(err, &perr) {
-			logger.Info().Msgf("No %s file found.", policyFileName)
+			logger.Info().Msg("No local policy file found.")
 			//nolint:nilnil // Intentionally returning a nil policy, because none could be found.
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to open %s file: %w", policyFileName, err)
+		return nil, fmt.Errorf("failed to open local policy: %w", err)
 	}
-	defer policyFile.Close()
+	defer fd.Close()
 
 	var p localpolicy.Policy
-	if err := localpolicy.Unmarshal(policyFile, &p); err != nil {
-		return nil, fmt.Errorf("failed to read %s file: %w", policyFileName, err)
+	if err := localpolicy.Unmarshal(fd, &p); err != nil {
+		return nil, fmt.Errorf("failed to read local policy: %w", err)
 	}
 	return &p, nil
 }

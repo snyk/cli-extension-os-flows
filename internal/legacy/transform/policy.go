@@ -31,9 +31,9 @@ func LocalPolicyToSchema(lp *localpolicy.Policy) *[]testapi.LocalIgnore {
 	return &ignores
 }
 
-// ExtendLocalPolicyFromSchema extends a local policy with the given findings.
+// ExtendLocalPolicyFromFindings extends a local policy with the given findings.
 // If the given local policy is nil, a new policy will be created from scratch.
-func ExtendLocalPolicyFromSchema(lp *localpolicy.Policy, findings []testapi.FindingData) (string, error) {
+func ExtendLocalPolicyFromFindings(lp *localpolicy.Policy, findings []testapi.FindingData) (string, error) {
 	projectIgnores := make(map[string]*testapi.IgnoreDetails)
 
 	for _, finding := range findings {
@@ -46,14 +46,15 @@ func ExtendLocalPolicyFromSchema(lp *localpolicy.Policy, findings []testapi.Find
 		if err != nil {
 			return "", fmt.Errorf("failed to get vulnerability ID from finding: %w", err)
 		}
-		// If no vuln ID could be extracted from the finding, skip it
+		// If no vuln ID could be extracted from the finding, skip it.
 		if vulnID == "" {
 			continue
 		}
 
 		managedPolicyRef, err := finding.Attributes.Suppression.Policy.AsManagedPolicyRef()
 		if err != nil {
-			return "", fmt.Errorf("failed to build managed policy from findings: %w", err)
+			// If it's not a managed policy ref, skip it.
+			continue
 		}
 
 		if finding.Relationships.Policy == nil {
@@ -103,7 +104,7 @@ func ExtendLocalPolicyFromSchema(lp *localpolicy.Policy, findings []testapi.Find
 
 	var buf bytes.Buffer
 	if err := localpolicy.Marshal(&buf, lp); err != nil {
-		return "", fmt.Errorf("failed serializing local policy")
+		return "", fmt.Errorf("failed serializing local policy: %w", err)
 	}
 
 	return buf.String(), nil

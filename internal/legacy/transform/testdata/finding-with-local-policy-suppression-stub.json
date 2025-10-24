@@ -1,0 +1,34 @@
+{
+  "attributes": {
+    "finding_type": "sca",
+    "problems": [
+      {
+        "id": "CVE-2025-48387",
+        "source": "cve"
+      },
+      {
+        "id": "SNYK-JS-TARFS-10293725",
+        "source": "snyk_vuln"
+      },
+      {
+        "id": "CWE-59",
+        "source": "cwe"
+      },
+      {
+        "id": "CWE-22",
+        "source": "cwe"
+      }
+    ],
+    "title": "Improper Link Resolution Before File Access ('Link Following')",
+    "suppression": {
+      "policy": "local_policy",
+      "justification": "none given",
+      "path": [
+        "*"
+      ],
+      "status": "ignored"
+    }
+  },
+  "id": "d94fa3b8-d0ef-4030-a8aa-874781e9b0b6",
+  "type": "findings"
+}

@@ -22,13 +22,11 @@
     "title": "Improper Link Resolution Before File Access ('Link Following')",
     "suppression": {
       "policy": {
-        "id": "676f3917-6d58-4104-a8e4-23e1fa82e50f",
-        "type": "managed_policy"
+        "id": "676f3917-6d58-4104-a8e4-23e1fa82e50f"
       }
     }
   },
   "id": "d94fa3b8-d0ef-4030-a8aa-874781e9b0b6",
-  "links": {},
   "relationships": {
     "policy": {
       "data": {

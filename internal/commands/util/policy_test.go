@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,30 +16,36 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 )
 
-func TestResolvePolicyFile_WithFilePath(t *testing.T) {
+var nopLogger = zerolog.Nop()
+
+func TestGetLocalPolicy_WithFilePath(t *testing.T) {
 	tmpDotSnyk, err := os.CreateTemp("", ".snyk")
 	require.NoError(t, err)
 	t.Cleanup(func() { os.Remove(tmpDotSnyk.Name()) })
+	_, err = tmpDotSnyk.WriteString("version: v1.0.0\n")
+	require.NoError(t, err)
 
 	cfg := configuration.New()
 	cfg.Set(flags.FlagPolicyPath, tmpDotSnyk.Name())
 	ctx := cmdctx.WithConfig(t.Context(), cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 
-	fd, err := util.ResolvePolicyFile(ctx)
+	policy, err := util.GetLocalPolicy(ctx)
 	require.NoError(t, err)
-	defer fd.Close()
 
-	assert.NotNil(t, fd)
+	assert.NotNil(t, policy)
+	assert.Equal(t, "v1.0.0", policy.Version)
 }
 
 func TestResolvePolicyFile_NonexistentFile(t *testing.T) {
 	cfg := configuration.New()
 	cfg.Set(flags.FlagPolicyPath, "testdata/does-not-exist.yaml")
 	ctx := cmdctx.WithConfig(t.Context(), cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 
-	_, err := util.ResolvePolicyFile(ctx)
+	_, err := util.GetLocalPolicy(ctx)
 
-	assert.ErrorContains(t, err, "failed to find .snyk file")
+	assert.ErrorContains(t, err, "failed to resolve local policy file")
 }
 
 func TestResolvePolicyFile_WithDirectoryPath(t *testing.T) {
@@ -49,23 +56,19 @@ func TestResolvePolicyFile_WithDirectoryPath(t *testing.T) {
 	tmpPolicy, err := os.Create(filepath.Join(dir, ".snyk"))
 	require.NoError(t, err)
 
+	_, err = tmpPolicy.WriteString("version: the-version\n")
+	require.NoError(t, err)
+
 	cfg := configuration.New()
 	cfg.Set(configuration.INPUT_DIRECTORY, dir)
 	ctx := cmdctx.WithConfig(t.Context(), cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 
-	resolved, err := util.ResolvePolicyFile(ctx)
+	policy, err := util.GetLocalPolicy(ctx)
 	require.NoError(t, err)
 
-	t.Cleanup(func() {
-		tmpPolicy.Close()
-		resolved.Close()
-	})
-
-	resolvedInfo, err := resolved.Stat()
-	require.NoError(t, err)
-	tmpPolicyInfo, err := tmpPolicy.Stat()
-	require.NoError(t, err)
-	assert.True(t, os.SameFile(resolvedInfo, tmpPolicyInfo), "policy fixture and resolved policy should be the same")
+	require.NotNil(t, policy)
+	assert.Equal(t, "the-version", policy.Version)
 }
 
 func TestGetLocalPolicy_BrokenPolicy(t *testing.T) {
@@ -82,6 +85,7 @@ func TestGetLocalPolicy_BrokenPolicy(t *testing.T) {
 	cfg := configuration.New()
 	cfg.Set(configuration.INPUT_DIRECTORY, dir)
 	ctx := cmdctx.WithConfig(t.Context(), cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 
 	policy, err := util.GetLocalPolicy(ctx)
 

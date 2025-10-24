@@ -480,7 +480,7 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 	if err != nil {
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("failed to get local policy: %w", err))
 	}
-	policyStr, err := ExtendLocalPolicyFromSchema(policy, params.Findings)
+	policyStr, err := ExtendLocalPolicyFromFindings(policy, params.Findings)
 	if err != nil {
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("failed to convert to local policy: %w", err))
 	}
