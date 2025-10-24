@@ -1,6 +1,8 @@
 package fileupload
 
 import (
+	"github.com/rs/zerolog"
+
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/filters"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/uploadrevision"
 )
@@ -19,5 +21,12 @@ func WithUploadRevisionSealableClient(client uploadrevision.SealableClient) Opti
 func WithFiltersClient(client filters.Client) Option {
 	return func(c *HTTPClient) {
 		c.filtersClient = client
+	}
+}
+
+// WithLogger allows injecting a custom logger instance.
+func WithLogger(logger *zerolog.Logger) Option {
+	return func(h *HTTPClient) {
+		h.logger = logger
 	}
 }
