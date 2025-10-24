@@ -17,6 +17,7 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
+	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/remediation"
 )
 
@@ -427,8 +428,45 @@ func hasSuppression(finding testapi.FindingData) bool {
 	return finding.Attributes.Suppression.Status != testapi.SuppressionStatusOther
 }
 
+func getSummaryWithoutSuppression() func(string, []testapi.FindingData, []string) []json_schemas.TestSummaryResult {
+	return func(issueType string, findings []testapi.FindingData, orderAsc []string) []json_schemas.TestSummaryResult {
+		strippedFindings := make([]testapi.FindingData, len(findings))
+		for i, f := range findings {
+			strippedFindings[i] = f
+			if strippedFindings[i].Attributes != nil {
+				strippedFindings[i].Attributes.Suppression = nil
+			}
+		}
+		return getSummaryResultsByIssueType(issueType, strippedFindings, orderAsc)
+	}
+}
+
+func applyIgnorePolicyOverrides(fnMap template.FuncMap, config configuration.Configuration) {
+	fnMap["isOpenFinding"] = isOpenFinding
+	fnMap["isPendingFinding"] = isPendingFinding
+	fnMap["isIgnoredFinding"] = isIgnoredFinding
+	fnMap["hasSuppression"] = hasSuppression
+
+	// When the --ignore-policy flag is set, all suppressions are ignored
+	if config.GetBool(flags.FlagIgnorePolicy) {
+		fnMap["isOpenFinding"] = func() func(_ any) bool {
+			return func(_ any) bool { return true }
+		}
+		fnMap["isPendingFinding"] = func() func(_ any) bool {
+			return func(_ any) bool { return false }
+		}
+		fnMap["isIgnoredFinding"] = func() func(_ any) bool {
+			return func(_ any) bool { return false }
+		}
+		fnMap["hasSuppression"] = func(_ testapi.FindingData) bool {
+			return false
+		}
+		fnMap["getSummaryResultsByIssueType"] = getSummaryWithoutSuppression()
+	}
+}
+
 // getCliTemplateFuncMap returns the template function map for CLI rendering.
-func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
+func getCliTemplateFuncMap(config configuration.Configuration, tmpl *template.Template) template.FuncMap {
 	fnMap := template.FuncMap{}
 	fnMap["box"] = func(s string) string { return boxStyle.Render(s) }
 	fnMap["toUpperCase"] = func(obj any) string {
@@ -458,10 +496,9 @@ func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
 	fnMap["renderToString"] = renderTemplateToString(tmpl)
 	fnMap["isLicenseFindingFilter"] = isLicenseFindingFilter
 	fnMap["isNotLicenseFindingFilter"] = isNotLicenseFindingFilter
-	fnMap["isOpenFinding"] = isOpenFinding
-	fnMap["isPendingFinding"] = isPendingFinding
-	fnMap["isIgnoredFinding"] = isIgnoredFinding
-	fnMap["hasSuppression"] = hasSuppression
+
+	applyIgnorePolicyOverrides(fnMap, config)
+
 	return fnMap
 }
 
