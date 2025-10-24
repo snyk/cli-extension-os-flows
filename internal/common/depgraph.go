@@ -15,6 +15,9 @@ const ContentLocationKey string = "Content-Location"
 // DepGraphWorkflowID is the identifier for the dependency graph workflow.
 var DepGraphWorkflowID = workflow.NewWorkflowIdentifier("depgraph")
 
+// SCAWorkflowID is the identifier for the SCA workflow.
+var SCAWorkflowID = workflow.NewWorkflowIdentifier("sca")
+
 // DepGraphResult contains the results of a dependency graph generation.
 type DepGraphResult struct {
 	DisplayTargetFiles []string
@@ -28,10 +31,19 @@ func GetDepGraph(ictx workflow.InvocationContext) (*DepGraphResult, error) {
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
 
-	logger.Println("Invoking depgraph workflow")
+	// Determine which workflow to use based on UV test flow flag
+	workflowID := DepGraphWorkflowID
+	uvTestFlowEnabled := config.GetBool("SNYK_ENABLE_EXPERIMENTAL_UV_SUPPORT")
+
+	if uvTestFlowEnabled {
+		logger.Info().Msg("UV test flow enabled, using SCA workflow")
+		workflowID = SCAWorkflowID
+	} else {
+		logger.Println("Invoking depgraph workflow")
+	}
 
 	depGraphConfig := config.Clone()
-	depGraphs, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)
+	depGraphs, err := engine.InvokeWithConfig(workflowID, depGraphConfig)
 	if err != nil {
 		return nil, errFactory.NewDepGraphWorkflowError(err)
 	}
