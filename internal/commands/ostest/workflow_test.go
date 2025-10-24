@@ -986,6 +986,7 @@ func createTempLegacyPolicy(t *testing.T, policy string) string {
 
 	fd, err := os.Create(filepath.Join(dir, ".snyk"))
 	require.NoError(t, err)
+	defer fd.Close()
 
 	_, err = fd.WriteString(policy)
 	require.NoError(t, err)

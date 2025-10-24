@@ -175,6 +175,7 @@ func createTempDotSnykFile(t *testing.T, contents string) *localpolicy.Policy {
 
 	tmpDotSnyk, err := os.CreateTemp("", ".snyk")
 	require.NoError(t, err)
+	defer tmpDotSnyk.Close()
 	t.Cleanup(func() { os.Remove(tmpDotSnyk.Name()) })
 
 	_, err = tmpDotSnyk.WriteString(contents)

@@ -21,6 +21,7 @@ var nopLogger = zerolog.Nop()
 func TestGetLocalPolicy_WithFilePath(t *testing.T) {
 	tmpDotSnyk, err := os.CreateTemp("", ".snyk")
 	require.NoError(t, err)
+	defer tmpDotSnyk.Close()
 	t.Cleanup(func() { os.Remove(tmpDotSnyk.Name()) })
 	_, err = tmpDotSnyk.WriteString("version: v1.0.0\n")
 	require.NoError(t, err)
@@ -55,6 +56,7 @@ func TestResolvePolicyFile_WithDirectoryPath(t *testing.T) {
 
 	tmpPolicy, err := os.Create(filepath.Join(dir, ".snyk"))
 	require.NoError(t, err)
+	defer tmpPolicy.Close()
 
 	_, err = tmpPolicy.WriteString("version: the-version\n")
 	require.NoError(t, err)
@@ -78,6 +80,7 @@ func TestGetLocalPolicy_BrokenPolicy(t *testing.T) {
 
 	tmpPolicy, err := os.Create(filepath.Join(dir, ".snyk"))
 	require.NoError(t, err)
+	defer tmpPolicy.Close()
 
 	_, err = tmpPolicy.WriteString(`¯\_(ツ)_/¯`)
 	require.NoError(t, err)
