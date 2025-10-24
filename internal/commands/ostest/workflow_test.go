@@ -417,35 +417,6 @@ func TestOSWorkflow_LegacyFlow(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestOSWorkflow_ForceLegacyFlowWithEnvVar(t *testing.T) {
-	t.Run("forces legacy flow when env var is set, even with unified flow flags", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		mockEngine := mocks.NewMockEngine(ctrl)
-		mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
-
-		// Setup: set the env var and all flags that would normally trigger the unified flow
-		config := mockInvocationCtx.GetConfiguration()
-		config.Set(ostest.ForceLegacyCLIEnvVar, true)
-		config.Set(ostest.FeatureFlagRiskScore, true)
-		config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
-		config.Set(flags.FlagRiskScoreThreshold, 500)
-
-		// Mock the legacy flow, which should be called despite the unified flow flags
-		mockEngine.EXPECT().
-			InvokeWithConfig(gomock.Any(), gomock.Any()).
-			Return([]workflow.Data{}, nil).
-			Times(1)
-
-		// Execute
-		_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
-
-		// Verify
-		assert.NoError(t, err)
-	})
-}
-
 // TestOSWorkflow_FlagCombinations tests various flag combinations to ensure correct routing
 // between the legacy, unified, and reachability test flows.
 func TestOSWorkflow_FlagCombinations(t *testing.T) {

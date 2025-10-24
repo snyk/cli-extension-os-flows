@@ -132,6 +132,14 @@ func (ef *ErrorFactory) NewReachabilityFilterWithoutReachabilityError() error {
 	)
 }
 
+// NewInvalidLegacyFlagError creates a new error for when
+// new flags are being passed to the legacy CLI.
+func (ef *ErrorFactory) NewInvalidLegacyFlagError(flag string) error {
+	return snyk_cli_errors.NewInvalidFlagOptionError(
+		fmt.Sprintf("The %s option can not be used with the legacy CLI", flag),
+	)
+}
+
 // NewUnsupportedFailOnValueError creates a new error for when
 // an unsupported value is provided to the --fail-on flag.
 func (ef *ErrorFactory) NewUnsupportedFailOnValueError(value string) *OSFlowsExtensionError {
