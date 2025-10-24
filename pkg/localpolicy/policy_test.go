@@ -21,6 +21,7 @@ func TestPolicy_New(t *testing.T) {
 	assert.NotNil(t, p)
 	assert.NotZero(t, p.Version)
 	assert.NotNil(t, p.Ignore)
+	assert.NotNil(t, p.Patch)
 }
 
 func TestPolicy_Unmarshal(t *testing.T) {
@@ -57,5 +58,17 @@ ignore:
         - '*':
             reason: none given
             disregardIfFixable: true
+patch: {}
 `, buf.String())
+}
+
+func TestPolicy_Load(t *testing.T) {
+	p, err := localpolicy.Load("testdata/ignore.yaml")
+	require.NoError(t, err)
+
+	assert.NotNil(t, p)
+	assert.Equal(t, "v1.0.0", p.Version)
+	assert.Len(t, p.Ignore, 5)
+	assert.NotNil(t, p.Patch)
+	assert.NotNil(t, (*p.Exclude)["global"])
 }

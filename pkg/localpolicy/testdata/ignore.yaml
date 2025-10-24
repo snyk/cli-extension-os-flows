@@ -22,4 +22,7 @@ ignore:
         reason: none given
         disregardIfFixable: true
 patch: {}
+exclude: 
+  global:
+    - path/to/file.ts
 version: v1.0.0
