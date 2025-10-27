@@ -121,6 +121,49 @@ model Vulnerability {
   socialTrendAlert?: boolean;
   patch?: string[];
   filtered?: VulnFiltered;
+  appliedPolicyRules?: AppliedPolicyRules;
+}
+
+model AppliedPolicyRules {
+  ignore: AppliedPolicyRulesIgnore;
+}
+
+model AppliedPolicyRulesIgnore {
+  id: string;
+  ignore: VulnFilteredIgnored;
+  policy: Policy;
+  rule: PolicyRule;
+  type: string;
+}
+
+model PolicyRule {
+  id: string;
+  type: string;
+  attributes: PolicyRuleAttributes;
+}
+
+model PolicyRuleAttributes {
+  actions: PolicyRuleAction[];
+  created: string;
+  modified: string;
+  name: string;
+  review: string;
+}
+
+model PolicyRuleAction {
+  type: string;
+  data: PolicyRuleActionData;
+}
+
+model PolicyRuleActionData {
+  ignore_type: string;
+  reason: string;
+  source: string;
+}
+
+model Policy {
+  id: string;
+  owner: string;
 }
 
 model VulnFiltered {
@@ -132,8 +175,19 @@ model VulnFilteredIgnored {
   expires: string;
   created: string;
   source: string;
-  path: string[];
+  path: Record<string>[];
+  ignoredBy: VulnFilteredIgnoredBy;
+  disregardIfFixable: boolean;
+  reasonType: string;
 }
+
+model VulnFilteredIgnoredBy {
+  id: string;
+  name: string;
+  email: string;
+  isGroupPolicy: boolean;
+}
+
 
 model CVSSDetail {
   assigner: string;

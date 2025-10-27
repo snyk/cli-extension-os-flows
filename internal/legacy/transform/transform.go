@@ -134,6 +134,10 @@ func FindingToLegacyVulns(
 
 	processRiskForVuln(&baseVuln, finding.Attributes.Risk)
 
+	if finding.Relationships != nil {
+		ProcessPolicyRelationshipsForVuln(&baseVuln, finding.Relationships.Policy, logger)
+	}
+
 	return processEvidencesAndRemediation(finding, &baseVuln, logger)
 }
 
