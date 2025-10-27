@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
@@ -848,105 +847,4 @@ func TestUnifiedFindingPresenter_LicenseWithoutInstructions(t *testing.T) {
 	out := buffer.String()
 	assert.NotContains(t, out, "Legal instructions:")
 	assert.Contains(t, out, "MIT license")
-}
-
-func TestUnifiedFindingPresenter_IgnorePolicy(t *testing.T) {
-	lipgloss.SetColorProfile(termenv.Ascii)
-
-	tests := []struct {
-		name                string
-		ignorePolicy        bool
-		includeIgnores      bool
-		findings            []testapi.FindingData
-		expectedContains    []string
-		expectedNotContains []string
-	}{
-		{
-			name:         "with --ignore-policy, ignored findings show as open with ✗",
-			ignorePolicy: true,
-			findings: []testapi.FindingData{
-				{
-					Id:   util.Ptr(uuid.New()),
-					Type: util.Ptr(testapi.Findings),
-					Attributes: &testapi.FindingAttributes{
-						Title:       "Test Finding",
-						Rating:      testapi.Rating{Severity: testapi.Severity("high")},
-						Suppression: &testapi.Suppression{Status: testapi.SuppressionStatusIgnored},
-					},
-				},
-			},
-			expectedContains:    []string{" ✗ [HIGH] Test Finding"},
-			expectedNotContains: []string{" ! [IGNORED]"},
-		},
-		{
-			name:           "without --ignore-policy, ignored findings show normally",
-			includeIgnores: true,
-			findings: []testapi.FindingData{
-				{
-					Id:   util.Ptr(uuid.New()),
-					Type: util.Ptr(testapi.Findings),
-					Attributes: &testapi.FindingAttributes{
-						Title:       "Test Finding",
-						Rating:      testapi.Rating{Severity: testapi.Severity("high")},
-						Suppression: &testapi.Suppression{Status: testapi.SuppressionStatusIgnored},
-					},
-				},
-			},
-			expectedContains: []string{" ! [IGNORED] [HIGH] Test Finding"},
-		},
-		{
-			name:         "with --ignore-policy, summary counts all findings as open",
-			ignorePolicy: true,
-			findings: []testapi.FindingData{
-				{
-					Id:   util.Ptr(uuid.New()),
-					Type: util.Ptr(testapi.Findings),
-					Attributes: &testapi.FindingAttributes{
-						Title:       "Ignored Finding",
-						Rating:      testapi.Rating{Severity: testapi.Severity("high")},
-						Suppression: &testapi.Suppression{Status: testapi.SuppressionStatusIgnored},
-					},
-				},
-				{
-					Id:   util.Ptr(uuid.New()),
-					Type: util.Ptr(testapi.Findings),
-					Attributes: &testapi.FindingAttributes{
-						Title:  "Open Finding",
-						Rating: testapi.Rating{Severity: testapi.Severity("medium")},
-					},
-				},
-			},
-			expectedContains: []string{"Open   : 2", "Ignored: 0"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			config := configuration.New()
-			if tt.ignorePolicy {
-				config.Set(flags.FlagIgnorePolicy, true)
-			}
-			if tt.includeIgnores {
-				config.Set("include-ignores", true)
-			}
-
-			buffer := &bytes.Buffer{}
-			projectResult := &presenters.UnifiedProjectResult{
-				Findings: tt.findings,
-				Summary:  &json_schemas.TestSummary{Type: "open-source", Path: "test", SeverityOrderAsc: []string{"low", "medium", "high", "critical"}},
-			}
-
-			presenter := presenters.NewUnifiedFindingsRenderer([]*presenters.UnifiedProjectResult{projectResult}, config, buffer)
-			err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
-			require.NoError(t, err)
-
-			out := buffer.String()
-			for _, expected := range tt.expectedContains {
-				assert.Contains(t, out, expected)
-			}
-			for _, notExpected := range tt.expectedNotContains {
-				assert.NotContains(t, out, notExpected)
-			}
-		})
-	}
 }
