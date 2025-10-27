@@ -70,6 +70,15 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 			Patch:  make([]string, 0),
 		},
 	}
+	totalVulnCount := len(vulnReport.Ignored) + len(vulnReport.Vulnerabilities)
+	switch totalVulnCount {
+	case 0:
+		res.Summary = "No known vulnerabilities"
+	case 1:
+		res.Summary = "1 vulnerable dependency path"
+	default:
+		res.Summary = fmt.Sprintf("%d vulnerable dependency paths", totalVulnCount)
+	}
 
 	remSummary, err := RemediationSummaryToLegacy(res.Vulnerabilities, params.RemediationSummary)
 	if err != nil {
