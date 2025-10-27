@@ -1,0 +1,716 @@
+{
+  "vulnerabilities": [
+    {
+      "id": "snyk:lic:golang:github.com:hashicorp:go-cleanhttp:MPL-2.0",
+      "type": "license",
+      "title": "MPL-2.0 license",
+      "semver": {
+        "vulnerable": [
+          ">=v0"
+        ],
+        "vulnerableHashes": [
+          "*"
+        ]
+      },
+      "license": "MPL-2.0",
+      "language": "golang",
+      "description": "MPL-2.0 license",
+      "packageName": "github.com/hashicorp/go-cleanhttp",
+      "creationTime": "2025-03-10T18:22:02.490Z",
+      "packageManager": "golang",
+      "publicationTime": "2025-03-10T18:22:02.490Z",
+      "severity": "medium",
+      "severityWithCritical": "medium",
+      "from": [
+        "github.com/snyk/sca-engine@0.0.0",
+        "github.com/snyk/sca-engine/pkg/v2/vulndata@2.2.2",
+        "github.com/hashicorp/go-retryablehttp@0.7.8",
+        "github.com/hashicorp/go-cleanhttp@0.5.2"
+      ],
+      "upgradePath": [],
+      "isUpgradable": false,
+      "isPatchable": false,
+      "name": "github.com/hashicorp/go-cleanhttp",
+      "version": "0.5.2"
+    },
+    {
+      "id": "snyk:lic:golang:github.com:hashicorp:go-cleanhttp:MPL-2.0",
+      "type": "license",
+      "title": "MPL-2.0 license",
+      "semver": {
+        "vulnerable": [
+          ">=v0"
+        ],
+        "vulnerableHashes": [
+          "*"
+        ]
+      },
+      "license": "MPL-2.0",
+      "language": "golang",
+      "description": "MPL-2.0 license",
+      "packageName": "github.com/hashicorp/go-cleanhttp",
+      "creationTime": "2025-03-10T18:22:02.490Z",
+      "packageManager": "golang",
+      "publicationTime": "2025-03-10T18:22:02.490Z",
+      "severity": "medium",
+      "severityWithCritical": "medium",
+      "from": [
+        "github.com/snyk/sca-engine@0.0.0",
+        "github.com/snyk/code-gateway/sdk/go/api@1.3.0",
+        "github.com/snyk/code-gateway/sdk/go/internal/client@1.3.0",
+        "github.com/snyk/go-code-integrations-common/observable_httpretry@1.0.1",
+        "github.com/hashicorp/go-cleanhttp@0.5.2"
+      ],
+      "upgradePath": [],
+      "isUpgradable": false,
+      "isPatchable": false,
+      "name": "github.com/hashicorp/go-cleanhttp",
+      "version": "0.5.2"
+    },
+    {
+      "id": "snyk:lic:golang:github.com:hashicorp:go-cleanhttp:MPL-2.0",
+      "type": "license",
+      "title": "MPL-2.0 license",
+      "semver": {
+        "vulnerable": [
+          ">=v0"
+        ],
+        "vulnerableHashes": [
+          "*"
+        ]
+      },
+      "license": "MPL-2.0",
+      "language": "golang",
+      "description": "MPL-2.0 license",
+      "packageName": "github.com/hashicorp/go-cleanhttp",
+      "creationTime": "2025-03-10T18:22:02.490Z",
+      "packageManager": "golang",
+      "publicationTime": "2025-03-10T18:22:02.490Z",
+      "severity": "medium",
+      "severityWithCritical": "medium",
+      "from": [
+        "github.com/snyk/sca-engine@0.0.0",
+        "github.com/snyk/sca-engine/pkg/v2/vulndata/fake@2.2.2",
+        "github.com/snyk/sca-engine/pkg/v2/vulndata@2.2.2",
+        "github.com/hashicorp/go-retryablehttp@0.7.8",
+        "github.com/hashicorp/go-cleanhttp@0.5.2"
+      ],
+      "upgradePath": [],
+      "isUpgradable": false,
+      "isPatchable": false,
+      "name": "github.com/hashicorp/go-cleanhttp",
+      "version": "0.5.2"
+    },
+    {
+      "id": "snyk:lic:golang:github.com:hashicorp:go-cleanhttp:MPL-2.0",
+      "type": "license",
+      "title": "MPL-2.0 license",
+      "semver": {
+        "vulnerable": [
+          ">=v0"
+        ],
+        "vulnerableHashes": [
+          "*"
+        ]
+      },
+      "license": "MPL-2.0",
+      "language": "golang",
+      "description": "MPL-2.0 license",
+      "packageName": "github.com/hashicorp/go-cleanhttp",
+      "creationTime": "2025-03-10T18:22:02.490Z",
+      "packageManager": "golang",
+      "publicationTime": "2025-03-10T18:22:02.490Z",
+      "severity": "medium",
+      "severityWithCritical": "medium",
+      "from": [
+        "github.com/snyk/sca-engine@0.0.0",
+        "github.com/snyk/sca-engine/pkg/v2/vulnservice@2.2.2",
+        "github.com/snyk/sca-engine/pkg/v2/vulndata@2.2.2",
+        "github.com/hashicorp/go-retryablehttp@0.7.8",
+        "github.com/hashicorp/go-cleanhttp@0.5.2"
+      ],
+      "upgradePath": [],
+      "isUpgradable": false,
+      "isPatchable": false,
+      "name": "github.com/hashicorp/go-cleanhttp",
+      "version": "0.5.2"
+    },
+    {
+      "id": "snyk:lic:golang:github.com:hashicorp:go-cleanhttp:MPL-2.0",
+      "type": "license",
+      "title": "MPL-2.0 license",
+      "semver": {
+        "vulnerable": [
+          ">=v0"
+        ],
+        "vulnerableHashes": [
+          "*"
+        ]
+      },
+      "license": "MPL-2.0",
+      "language": "golang",
+      "description": "MPL-2.0 license",
+      "packageName": "github.com/hashicorp/go-cleanhttp",
+      "creationTime": "2025-03-10T18:22:02.490Z",
+      "packageManager": "golang",
+      "publicationTime": "2025-03-10T18:22:02.490Z",
+      "severity": "medium",
+      "severityWithCritical": "medium",
+      "from": [
+        "github.com/snyk/sca-engine@0.0.0",
+        "github.com/snyk/sca-engine/pkg/v2/vulnservice/fake@2.2.2",
+        "github.com/snyk/sca-engine/pkg/v2/vulnservice@2.2.2",
+        "github.com/snyk/sca-engine/pkg/v2/vulndata@2.2.2",
+        "github.com/hashicorp/go-retryablehttp@0.7.8",
+        "github.com/hashicorp/go-cleanhttp@0.5.2"
+      ],
+      "upgradePath": [],
+      "isUpgradable": false,
+      "isPatchable": false,
+      "name": "github.com/hashicorp/go-cleanhttp",
+      "version": "0.5.2"
+    },
+    {
+      "id": "snyk:lic:golang:github.com:hashicorp:go-retryablehttp:MPL-2.0",
+      "type": "license",
+      "title": "MPL-2.0 license",
+      "semver": {
+        "vulnerable": [
+          ">=v0"
+        ],
+        "vulnerableHashes": [
+          "*"
+        ]
+      },
+      "license": "MPL-2.0",
+      "language": "golang",
+      "description": "MPL-2.0 license",
+      "packageName": "github.com/hashicorp/go-retryablehttp",
+      "creationTime": "2025-03-10T18:22:02.490Z",
+      "packageManager": "golang",
+      "publicationTime": "2025-03-10T18:22:02.490Z",
+      "severity": "medium",
+      "severityWithCritical": "medium",
+      "from": [
+        "github.com/snyk/sca-engine@0.0.0",
+        "github.com/snyk/sca-engine/pkg/v2/vulndata@2.2.2",
+        "github.com/hashicorp/go-retryablehttp@0.7.8"
+      ],
+      "upgradePath": [],
+      "isUpgradable": false,
+      "isPatchable": false,
+      "name": "github.com/hashicorp/go-retryablehttp",
+      "version": "0.7.8"
+    },
+    {
+      "id": "snyk:lic:golang:github.com:hashicorp:go-retryablehttp:MPL-2.0",
+      "type": "license",
+      "title": "MPL-2.0 license",
+      "semver": {
+        "vulnerable": [
+          ">=v0"
+        ],
+        "vulnerableHashes": [
+          "*"
+        ]
+      },
+      "license": "MPL-2.0",
+      "language": "golang",
+      "description": "MPL-2.0 license",
+      "packageName": "github.com/hashicorp/go-retryablehttp",
+      "creationTime": "2025-03-10T18:22:02.490Z",
+      "packageManager": "golang",
+      "publicationTime": "2025-03-10T18:22:02.490Z",
+      "severity": "medium",
+      "severityWithCritical": "medium",
+      "from": [
+        "github.com/snyk/sca-engine@0.0.0",
+        "github.com/snyk/sca-engine/pkg/v2/vulnservice@2.2.2",
+        "github.com/hashicorp/go-retryablehttp@0.7.8"
+      ],
+      "upgradePath": [],
+      "isUpgradable": false,
+      "isPatchable": false,
+      "name": "github.com/hashicorp/go-retryablehttp",
+      "version": "0.7.8"
+    },
+    {
+      "id": "snyk:lic:golang:github.com:hashicorp:go-retryablehttp:MPL-2.0",
+      "type": "license",
+      "title": "MPL-2.0 license",
+      "semver": {
+        "vulnerable": [
+          ">=v0"
+        ],
+        "vulnerableHashes": [
+          "*"
+        ]
+      },
+      "license": "MPL-2.0",
+      "language": "golang",
+      "description": "MPL-2.0 license",
+      "packageName": "github.com/hashicorp/go-retryablehttp",
+      "creationTime": "2025-03-10T18:22:02.490Z",
+      "packageManager": "golang",
+      "publicationTime": "2025-03-10T18:22:02.490Z",
+      "severity": "medium",
+      "severityWithCritical": "medium",
+      "from": [
+        "github.com/snyk/sca-engine@0.0.0",
+        "github.com/snyk/sca-engine/pkg/v2/vulndata/fake@2.2.2",
+        "github.com/snyk/sca-engine/pkg/v2/vulndata@2.2.2",
+        "github.com/hashicorp/go-retryablehttp@0.7.8"
+      ],
+      "upgradePath": [],
+      "isUpgradable": false,
+      "isPatchable": false,
+      "name": "github.com/hashicorp/go-retryablehttp",
+      "version": "0.7.8"
+    },
+    {
+      "id": "snyk:lic:golang:github.com:hashicorp:go-retryablehttp:MPL-2.0",
+      "type": "license",
+      "title": "MPL-2.0 license",
+      "semver": {
+        "vulnerable": [
+          ">=v0"
+        ],
+        "vulnerableHashes": [
+          "*"
+        ]
+      },
+      "license": "MPL-2.0",
+      "language": "golang",
+      "description": "MPL-2.0 license",
+      "packageName": "github.com/hashicorp/go-retryablehttp",
+      "creationTime": "2025-03-10T18:22:02.490Z",
+      "packageManager": "golang",
+      "publicationTime": "2025-03-10T18:22:02.490Z",
+      "severity": "medium",
+      "severityWithCritical": "medium",
+      "from": [
+        "github.com/snyk/sca-engine@0.0.0",
+        "github.com/snyk/sca-engine/pkg/v2/vulnservice@2.2.2",
+        "github.com/snyk/sca-engine/pkg/v2/vulndata@2.2.2",
+        "github.com/hashicorp/go-retryablehttp@0.7.8"
+      ],
+      "upgradePath": [],
+      "isUpgradable": false,
+      "isPatchable": false,
+      "name": "github.com/hashicorp/go-retryablehttp",
+      "version": "0.7.8"
+    },
+    {
+      "id": "snyk:lic:golang:github.com:hashicorp:go-retryablehttp:MPL-2.0",
+      "type": "license",
+      "title": "MPL-2.0 license",
+      "semver": {
+        "vulnerable": [
+          ">=v0"
+        ],
+        "vulnerableHashes": [
+          "*"
+        ]
+      },
+      "license": "MPL-2.0",
+      "language": "golang",
+      "description": "MPL-2.0 license",
+      "packageName": "github.com/hashicorp/go-retryablehttp",
+      "creationTime": "2025-03-10T18:22:02.490Z",
+      "packageManager": "golang",
+      "publicationTime": "2025-03-10T18:22:02.490Z",
+      "severity": "medium",
+      "severityWithCritical": "medium",
+      "from": [
+        "github.com/snyk/sca-engine@0.0.0",
+        "github.com/snyk/sca-engine/pkg/v2/vulnservice/fake@2.2.2",
+        "github.com/snyk/sca-engine/pkg/v2/vulnservice@2.2.2",
+        "github.com/hashicorp/go-retryablehttp@0.7.8"
+      ],
+      "upgradePath": [],
+      "isUpgradable": false,
+      "isPatchable": false,
+      "name": "github.com/hashicorp/go-retryablehttp",
+      "version": "0.7.8"
+    },
+    {
+      "id": "snyk:lic:golang:github.com:hashicorp:go-retryablehttp:MPL-2.0",
+      "type": "license",
+      "title": "MPL-2.0 license",
+      "semver": {
+        "vulnerable": [
+          ">=v0"
+        ],
+        "vulnerableHashes": [
+          "*"
+        ]
+      },
+      "license": "MPL-2.0",
+      "language": "golang",
+      "description": "MPL-2.0 license",
+      "packageName": "github.com/hashicorp/go-retryablehttp",
+      "creationTime": "2025-03-10T18:22:02.490Z",
+      "packageManager": "golang",
+      "publicationTime": "2025-03-10T18:22:02.490Z",
+      "severity": "medium",
+      "severityWithCritical": "medium",
+      "from": [
+        "github.com/snyk/sca-engine@0.0.0",
+        "github.com/snyk/sca-engine/pkg/v2/vulnservice/fake@2.2.2",
+        "github.com/snyk/sca-engine/pkg/v2/vulnservice@2.2.2",
+        "github.com/snyk/sca-engine/pkg/v2/vulndata@2.2.2",
+        "github.com/hashicorp/go-retryablehttp@0.7.8"
+      ],
+      "upgradePath": [],
+      "isUpgradable": false,
+      "isPatchable": false,
+      "name": "github.com/hashicorp/go-retryablehttp",
+      "version": "0.7.8"
+    }
+  ],
+  "ok": false,
+  "dependencyCount": 1098,
+  "org": "jacek.rzeniewicz",
+  "policy": "# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.\nversion: v1.25.1\n# ignores vulnerabilities until expiry date; change duration by modifying expiry date\nignore:\n  SNYK-GOLANG-GOPKGINYAMLV2-12330650:\n    - '*':\n        reason: there is no fix available\n        expires: 2025-12-30T17:31:05.877Z\n        created: 2023-11-30T17:31:05.884Z\n        source: cli\npatch: {}\n",
+  "isPrivate": true,
+  "licensesPolicy": {
+    "severities": {},
+    "orgLicenseRules": {
+      "AGPL-1.0": {
+        "licenseType": "AGPL-1.0",
+        "severity": "high",
+        "instructions": ""
+      },
+      "AGPL-3.0": {
+        "licenseType": "AGPL-3.0",
+        "severity": "high",
+        "instructions": ""
+      },
+      "Artistic-1.0": {
+        "licenseType": "Artistic-1.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "Artistic-2.0": {
+        "licenseType": "Artistic-2.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "CDDL-1.0": {
+        "licenseType": "CDDL-1.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "CPOL-1.02": {
+        "licenseType": "CPOL-1.02",
+        "severity": "high",
+        "instructions": ""
+      },
+      "EPL-1.0": {
+        "licenseType": "EPL-1.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "GPL-2.0": {
+        "licenseType": "GPL-2.0",
+        "severity": "high",
+        "instructions": ""
+      },
+      "GPL-3.0": {
+        "licenseType": "GPL-3.0",
+        "severity": "high",
+        "instructions": ""
+      },
+      "LGPL-2.0": {
+        "licenseType": "LGPL-2.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "LGPL-2.1": {
+        "licenseType": "LGPL-2.1",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "LGPL-3.0": {
+        "licenseType": "LGPL-3.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "MPL-1.1": {
+        "licenseType": "MPL-1.1",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "MPL-2.0": {
+        "licenseType": "MPL-2.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "MS-RL": {
+        "licenseType": "MS-RL",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "SimPL-2.0": {
+        "licenseType": "SimPL-2.0",
+        "severity": "high",
+        "instructions": ""
+      }
+    }
+  },
+  "packageManager": "gomodules",
+  "projectId": "e28ccd31-8cad-44c5-ac2b-5033407456b8",
+  "ignoreSettings": {
+    "adminOnly": false,
+    "reasonRequired": false,
+    "disregardFilesystemIgnores": false
+  },
+  "summary": "13 vulnerable dependency paths",
+  "filesystemPolicy": true,
+  "filtered": {
+    "ignore": [
+      {
+        "id": "SNYK-GOLANG-GOPKGINYAMLV2-12330650",
+        "title": "Information Exposure",
+        "CVSSv3": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+        "credit": [
+          "Silence-worker-02"
+        ],
+        "semver": {
+          "vulnerable": [
+            ">=0.0.0"
+          ],
+          "hashesRange": [
+            ">=v0.0.0"
+          ],
+          "vulnerableHashes": []
+        },
+        "exploit": "Not Defined",
+        "fixedIn": [],
+        "patches": [],
+        "insights": {
+          "triageAdvice": null
+        },
+        "language": "golang",
+        "severity": "medium",
+        "cvssScore": 6.9,
+        "functions": [],
+        "malicious": false,
+        "isDisputed": false,
+        "moduleName": "gopkg.in/yaml.v2",
+        "references": [
+          {
+            "url": "https://github.com/go-yaml/yaml/issues/1002",
+            "title": "GitHub Issue"
+          }
+        ],
+        "cvssDetails": [],
+        "cvssSources": [
+          {
+            "type": "primary",
+            "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N",
+            "assigner": "Snyk",
+            "severity": "medium",
+            "baseScore": 6.9,
+            "cvssVersion": "4.0",
+            "modificationTime": "2024-09-09T08:50:20.922924Z"
+          },
+          {
+            "type": "secondary",
+            "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+            "assigner": "Snyk",
+            "severity": "medium",
+            "baseScore": 5.3,
+            "cvssVersion": "3.1",
+            "modificationTime": "2024-09-09T08:50:20.922924Z"
+          }
+        ],
+        "description": "## Overview\n[gopkg.in/yaml.v2](https://github.com/go-yaml/yaml) is a YAML support package for the Go language.\n\nAffected versions of this package are vulnerable to Information Exposure test\n## Remediation\nThere is no fixed version for `gopkg.in/yaml.v2`.\n\n## References\n- [GitHub Issue](https://github.com/go-yaml/yaml/issues/1002)\n",
+        "epssDetails": null,
+        "identifiers": {
+          "CVE": [],
+          "CWE": [
+            "CWE-200"
+          ]
+        },
+        "packageName": "gopkg.in/yaml.v2",
+        "proprietary": false,
+        "creationTime": "2024-09-09T08:50:20.126716Z",
+        "functions_new": [],
+        "alternativeIds": [],
+        "disclosureTime": "2023-11-15T15:55:47.648000Z",
+        "exploitDetails": {
+          "sources": [],
+          "maturityLevels": [
+            {
+              "type": "secondary",
+              "level": "Not Defined",
+              "format": "CVSSv3"
+            },
+            {
+              "type": "primary",
+              "level": "Not Defined",
+              "format": "CVSSv4"
+            }
+          ]
+        },
+        "packageManager": "golang",
+        "publicationTime": "2024-09-09T08:50:20.460223Z",
+        "severityBasedOn": "CVSS",
+        "modificationTime": "2024-09-09T08:50:20.922924Z",
+        "socialTrendAlert": false,
+        "severityWithCritical": "medium",
+        "from": [
+          "github.com/snyk/sca-engine@0.0.0",
+          "github.com/snyk/rest-go-libs/v5/featureflag@5.16.1",
+          "github.com/snyk/vervet/v8@8.19.0",
+          "github.com/ghodss/yaml@1.0.0",
+          "gopkg.in/yaml.v2@2.4.0"
+        ],
+        "upgradePath": [],
+        "isUpgradable": false,
+        "isPatchable": false,
+        "name": "gopkg.in/yaml.v2",
+        "version": "2.4.0",
+        "filtered": {
+          "ignored": [
+            {
+              "reason": "there is no fix available",
+              "expires": "2025-12-30T17:31:05.877Z",
+              "created": "2023-11-30T17:31:05.884Z",
+              "source": "cli",
+              "path": [
+                "*"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "SNYK-GOLANG-GOPKGINYAMLV2-12330650",
+        "title": "Information Exposure",
+        "CVSSv3": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+        "credit": [
+          "Silence-worker-02"
+        ],
+        "semver": {
+          "vulnerable": [
+            ">=0.0.0"
+          ],
+          "hashesRange": [
+            ">=v0.0.0"
+          ],
+          "vulnerableHashes": []
+        },
+        "exploit": "Not Defined",
+        "fixedIn": [],
+        "patches": [],
+        "insights": {
+          "triageAdvice": null
+        },
+        "language": "golang",
+        "severity": "medium",
+        "cvssScore": 6.9,
+        "functions": [],
+        "malicious": false,
+        "isDisputed": false,
+        "moduleName": "gopkg.in/yaml.v2",
+        "references": [
+          {
+            "url": "https://github.com/go-yaml/yaml/issues/1002",
+            "title": "GitHub Issue"
+          }
+        ],
+        "cvssDetails": [],
+        "cvssSources": [
+          {
+            "type": "primary",
+            "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N",
+            "assigner": "Snyk",
+            "severity": "medium",
+            "baseScore": 6.9,
+            "cvssVersion": "4.0",
+            "modificationTime": "2024-09-09T08:50:20.922924Z"
+          },
+          {
+            "type": "secondary",
+            "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+            "assigner": "Snyk",
+            "severity": "medium",
+            "baseScore": 5.3,
+            "cvssVersion": "3.1",
+            "modificationTime": "2024-09-09T08:50:20.922924Z"
+          }
+        ],
+        "description": "## Overview\n[gopkg.in/yaml.v2](https://github.com/go-yaml/yaml) is a YAML support package for the Go language.\n\nAffected versions of this package are vulnerable to Information Exposure test\n## Remediation\nThere is no fixed version for `gopkg.in/yaml.v2`.\n\n## References\n- [GitHub Issue](https://github.com/go-yaml/yaml/issues/1002)\n",
+        "epssDetails": null,
+        "identifiers": {
+          "CVE": [],
+          "CWE": [
+            "CWE-200"
+          ]
+        },
+        "packageName": "gopkg.in/yaml.v2",
+        "proprietary": false,
+        "creationTime": "2024-09-09T08:50:20.126716Z",
+        "functions_new": [],
+        "alternativeIds": [],
+        "disclosureTime": "2023-11-15T15:55:47.648000Z",
+        "exploitDetails": {
+          "sources": [],
+          "maturityLevels": [
+            {
+              "type": "secondary",
+              "level": "Not Defined",
+              "format": "CVSSv3"
+            },
+            {
+              "type": "primary",
+              "level": "Not Defined",
+              "format": "CVSSv4"
+            }
+          ]
+        },
+        "packageManager": "golang",
+        "publicationTime": "2024-09-09T08:50:20.460223Z",
+        "severityBasedOn": "CVSS",
+        "modificationTime": "2024-09-09T08:50:20.922924Z",
+        "socialTrendAlert": false,
+        "severityWithCritical": "medium",
+        "from": [
+          "github.com/snyk/sca-engine@0.0.0",
+          "github.com/snyk/rest-go-libs/v5/openapi@5.16.1",
+          "github.com/snyk/vervet/v8@8.19.0",
+          "github.com/ghodss/yaml@1.0.0",
+          "gopkg.in/yaml.v2@2.4.0"
+        ],
+        "upgradePath": [],
+        "isUpgradable": false,
+        "isPatchable": false,
+        "name": "gopkg.in/yaml.v2",
+        "version": "2.4.0",
+        "filtered": {
+          "ignored": [
+            {
+              "reason": "there is no fix available",
+              "expires": "2025-12-30T17:31:05.877Z",
+              "created": "2023-11-30T17:31:05.884Z",
+              "source": "cli",
+              "path": [
+                "*"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "patch": []
+  },
+  "uniqueCount": 2,
+  "targetFile": "go.mod",
+  "projectName": "github.com/snyk/sca-engine",
+  "foundProjectCount": 7,
+  "displayTargetFile": "go.mod",
+  "hasUnknownVersions": true,
+  "path": "/Users/jck/workspace/sca-engine/snyk/sca-engine"
+}

@@ -3,6 +3,7 @@ package transform
 import (
 	"context"
 	"fmt"
+	"github.com/snyk/go-application-framework/pkg/utils"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -48,7 +49,7 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 			fmt.Errorf("expected a depgraph subject but got something else: %w", err))
 	}
 
-	allVulnerabilities, err := findingsToLegacyVulns(params.Findings, params.PackageManager, params.Logger)
+	allVulnerabilities, err := FindingsToLegacyVulns(params.Findings, params.PackageManager, params.Logger)
 	if err != nil {
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting finding to legacy vuln: %w", err))
 	}
@@ -99,7 +100,7 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 	return &res, nil
 }
 
-func findingsToLegacyVulns(
+func FindingsToLegacyVulns(
 	findings []testapi.FindingData,
 	packageManager string,
 	logger *zerolog.Logger,
@@ -127,9 +128,10 @@ func FindingToLegacyVulns(
 	logger *zerolog.Logger,
 ) ([]definitions.Vulnerability, error) {
 	baseVuln := definitions.Vulnerability{
-		Title:       finding.Attributes.Title,
-		Description: finding.Attributes.Description,
-		Severity:    definitions.VulnerabilitySeverity(finding.Attributes.Rating.Severity),
+		Title:                finding.Attributes.Title,
+		Description:          finding.Attributes.Description,
+		Severity:             definitions.VulnerabilitySeverity(finding.Attributes.Rating.Severity),
+		SeverityWithCritical: utils.Ptr(definitions.VulnerabilitySeverity(finding.Attributes.Rating.Severity)),
 	}
 	err := processProblemsForVuln(&baseVuln, finding.Attributes.Problems, logger)
 	if err != nil {
