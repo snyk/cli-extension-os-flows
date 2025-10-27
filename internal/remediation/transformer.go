@@ -19,6 +19,10 @@ func ShimFindingsToRemediationFindings(shimFindings []testapi.FindingData) (Find
 			continue
 		}
 
+		if isIgnored(sf) {
+			continue
+		}
+
 		pkg, err := packageFromFinding(sf)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get finding package: %w", err)
@@ -53,6 +57,10 @@ func ShimFindingsToRemediationFindings(shimFindings []testapi.FindingData) (Find
 		})
 	}
 	return findings, nil
+}
+
+func isIgnored(sf testapi.FindingData) bool {
+	return sf.Attributes.Suppression != nil && sf.Attributes.Suppression.Status == testapi.SuppressionStatusIgnored
 }
 
 type snykProblem struct {

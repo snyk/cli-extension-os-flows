@@ -108,7 +108,7 @@ func NewUnifiedFindingsRenderer(
 				if err != nil {
 					return nil, nil, fmt.Errorf("failed to parse template for %s: %w", DefaultMimeType, err)
 				}
-				functionMapMimeType := getCliTemplateFuncMap(tmpl)
+				functionMapMimeType := getCliTemplateFuncMap(config, tmpl)
 				return tmpl, functionMapMimeType, nil
 			},
 		},

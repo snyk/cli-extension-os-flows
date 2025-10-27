@@ -266,6 +266,7 @@ type Vulnerability struct {
 	Identifiers            *Identifiers                     `json:"identifiers,omitempty"`
 	Insights               *Insights                        `json:"insights,omitempty"`
 	IsDisputed             *bool                            `json:"isDisputed,omitempty"`
+	IsIgnored              *bool                            `json:"isIgnored,omitempty"`
 	IsPatchable            bool                             `json:"isPatchable"`
 	IsPinnable             *bool                            `json:"isPinnable,omitempty"`
 	IsRuntime              *bool                            `json:"isRuntime,omitempty"`
