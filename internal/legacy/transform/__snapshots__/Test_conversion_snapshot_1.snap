@@ -1,0 +1,213 @@
+[
+  {
+    "CVSSv3": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+    "alternativeIds": [],
+    "appliedPolicyRules": {
+      "ignore": {
+        "id": "00000000-dead-beef-0000-000000000000",
+        "ignore": {
+          "path": [
+            {
+              "module": "*"
+            }
+          ],
+          "reason": "THIS IS A TEST",
+          "reasonType": "not-vulnerable",
+          "source": "unknown",
+          "ignoredBy": {
+            "email": null,
+            "id": "e4c284d4-a75e-4ec5-b5d0-d2d14f8fa48e",
+            "isGroupPolicy": true,
+            "name": "Ignored by security policy"
+          },
+          "disregardIfFixable": false,
+          "created": "2025-10-21T10:38:28.323Z"
+        },
+        "policy": {
+          "id": "e4c284d4-a75e-4ec5-b5d0-d2d14f8fa48e",
+          "owner": "group"
+        },
+        "rule": {
+          "attributes": {
+            "actions": [
+              {
+                "data": {
+                  "ignore_type": "not-vulnerable",
+                  "reason": "THIS IS A TEST",
+                  "source": "unknown"
+                },
+                "type": "ignore"
+              }
+            ],
+            "created": "2025-10-21T10:38:28.323194Z",
+            "modified": "2025-10-21T10:38:28.323194Z",
+            "name": "Rule 1",
+            "review": "not-required"
+          },
+          "id": "00000000-dead-beef-0000-000000000000",
+          "type": "policy_rule"
+        },
+        "type": "ignore"
+      }
+    },
+    "creationTime": "2021-09-30T14:25:50.130236Z",
+    "credit": [
+      "ready-research"
+    ],
+    "cvssDetails": [],
+    "cvssScore": 5.3,
+    "cvssSources": [
+      {
+        "assigner": "Snyk",
+        "baseScore": 5.3,
+        "cvssVersion": "3.1",
+        "modificationTime": "2024-03-06T14:05:17.158281Z",
+        "severity": "medium",
+        "type": "primary",
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+      }
+    ],
+    "description": "some description",
+    "disclosureTime": "2021-09-30T14:22:21.000000Z",
+    "epssDetails": null,
+    "exploit": "Not Defined",
+    "exploitDetails": {
+      "maturityLevels": [
+        {
+          "type": "secondary",
+          "level": "Not Defined",
+          "format": "CVSSv3"
+        },
+        {
+          "type": "primary",
+          "level": "Not Defined",
+          "format": "CVSSv4"
+        }
+      ],
+      "sources": []
+    },
+    "filtered": {
+      "ignored": [
+        {
+          "created": "2025-10-21T10:38:28.323Z",
+          "disregardIfFixable": false,
+          "ignoredBy": {
+            "email": null,
+            "id": "e4c284d4-a75e-4ec5-b5d0-d2d14f8fa48e",
+            "isGroupPolicy": true,
+            "name": "Ignored by security policy"
+          },
+          "path": [
+            "[object Object]"
+          ],
+          "reason": "THIS IS A TEST",
+          "reasonType": "not-vulnerable",
+          "source": "unknown"
+        }
+      ]
+    },
+    "fixedIn": [
+      "3.14.3"
+    ],
+    "from": [
+      "goof@1.0.1",
+      "tap@5.8.0",
+      "nyc@6.6.1",
+      "istanbul@0.4.3",
+      "handlebars@4.0.5",
+      "uglify-js@2.6.2"
+    ],
+    "functions": [],
+    "functions_new": [],
+    "id": "SNYK-JS-UGLIFYJS-1727251",
+    "identifiers": {
+      "CVE": [],
+      "CWE": [
+        "CWE-1333"
+      ]
+    },
+    "ignores": [
+      {
+        "created": "2025-10-21T10:38:28.323Z",
+        "disregardIfFixable": false,
+        "ignoredBy": {
+          "id": "e4c284d4-a75e-4ec5-b5d0-d2d14f8fa48e",
+          "name": "Ignored by security policy",
+          "email": null,
+          "isGroupPolicy": true
+        },
+        "path": [
+          {
+            "module": "*"
+          }
+        ],
+        "reason": "THIS IS A TEST",
+        "reasonType": "not-vulnerable",
+        "source": "unknown"
+      }
+    ],
+    "insights": {
+      "triageAdvice": null
+    },
+    "isDisputed": false,
+    "isIgnored": true,
+    "isPatchable": false,
+    "isUpgradable": true,
+    "language": "js",
+    "malicious": false,
+    "matchedPolicyRules": [],
+    "modificationTime": "2024-03-06T14:05:17.158281Z",
+    "moduleName": "uglify-js",
+    "name": "uglify-js",
+    "packageManager": "npm",
+    "packageName": "uglify-js",
+    "patches": [],
+    "proprietary": false,
+    "publicationTime": "2021-11-09T18:42:15.313328Z",
+    "references": [
+      {
+        "title": "website",
+        "url": "https://uglify.js"
+      }
+    ],
+    "securityPolicyMetaData": {
+      "ignore": {
+        "created": "2025-10-21T10:38:28.323Z",
+        "disregardIfFixable": false,
+        "ignoredBy": {
+          "email": null,
+          "id": "e4c284d4-a75e-4ec5-b5d0-d2d14f8fa48e",
+          "isGroupPolicy": true,
+          "name": "Ignored by security policy"
+        },
+        "path": [
+          {
+            "module": "*"
+          }
+        ],
+        "reason": "THIS IS A TEST",
+        "reasonType": "not-vulnerable",
+        "source": "unknown"
+      }
+    },
+    "semver": {
+      "vulnerable": [
+        "<3.14.3"
+      ]
+    },
+    "severity": "medium",
+    "severityBasedOn": "CVSS",
+    "severityWithCritical": "medium",
+    "socialTrendAlert": false,
+    "title": "Regular Expression Denial of Service (ReDoS)",
+    "upgradePath": [
+      false,
+      "tap@5.8.0",
+      "nyc@6.6.1",
+      "istanbul@0.4.5",
+      "handlebars@4.7.8",
+      "uglify-js@3.19.3"
+    ],
+    "version": "2.6.2"
+  }
+]

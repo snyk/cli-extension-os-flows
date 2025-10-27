@@ -6,6 +6,32 @@ tags: []
 paths: {}
 components:
   schemas:
+    AppliedPolicyRules:
+      type: object
+      required:
+        - ignore
+      properties:
+        ignore:
+          $ref: '#/components/schemas/AppliedPolicyRulesIgnore'
+    AppliedPolicyRulesIgnore:
+      type: object
+      required:
+        - id
+        - ignore
+        - policy
+        - rule
+        - type
+      properties:
+        id:
+          type: string
+        ignore:
+          $ref: '#/components/schemas/VulnFilteredIgnored'
+        policy:
+          $ref: '#/components/schemas/Policy'
+        rule:
+          $ref: '#/components/schemas/PolicyRule'
+        type:
+          type: string
     CVSSDetail:
       type: object
       required:
@@ -331,6 +357,73 @@ components:
             type: string
         upgradeTo:
           type: string
+    Policy:
+      type: object
+      required:
+        - id
+        - owner
+      properties:
+        id:
+          type: string
+        owner:
+          type: string
+    PolicyRule:
+      type: object
+      required:
+        - id
+        - type
+        - attributes
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/PolicyRuleAttributes'
+    PolicyRuleAction:
+      type: object
+      required:
+        - type
+        - data
+      properties:
+        type:
+          type: string
+        data:
+          $ref: '#/components/schemas/PolicyRuleActionData'
+    PolicyRuleActionData:
+      type: object
+      required:
+        - ignore_type
+        - reason
+        - source
+      properties:
+        ignore_type:
+          type: string
+        reason:
+          type: string
+        source:
+          type: string
+    PolicyRuleAttributes:
+      type: object
+      required:
+        - actions
+        - created
+        - modified
+        - name
+        - review
+      properties:
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PolicyRuleAction'
+        created:
+          type: string
+        modified:
+          type: string
+        name:
+          type: string
+        review:
+          type: string
     Reachability:
       type: string
       enum:
@@ -445,6 +538,9 @@ components:
         - created
         - source
         - path
+        - ignoredBy
+        - disregardIfFixable
+        - reasonType
       properties:
         reason:
           type: string
@@ -457,7 +553,31 @@ components:
         path:
           type: array
           items:
-            type: string
+            type: object
+            additionalProperties:
+              type: string
+        ignoredBy:
+          $ref: '#/components/schemas/VulnFilteredIgnoredBy'
+        disregardIfFixable:
+          type: boolean
+        reasonType:
+          type: string
+    VulnFilteredIgnoredBy:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - isGroupPolicy
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        isGroupPolicy:
+          type: boolean
     Vulnerability:
       type: object
       required:
@@ -613,6 +733,8 @@ components:
             type: string
         filtered:
           $ref: '#/components/schemas/VulnFiltered'
+        appliedPolicyRules:
+          $ref: '#/components/schemas/AppliedPolicyRules'
     VulnerabilitySeverity:
       type: string
       enum:

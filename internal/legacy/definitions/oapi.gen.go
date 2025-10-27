@@ -31,6 +31,20 @@ const (
 	Other   VulnerabilityType = "other"
 )
 
+// AppliedPolicyRules defines model for AppliedPolicyRules.
+type AppliedPolicyRules struct {
+	Ignore AppliedPolicyRulesIgnore `json:"ignore"`
+}
+
+// AppliedPolicyRulesIgnore defines model for AppliedPolicyRulesIgnore.
+type AppliedPolicyRulesIgnore struct {
+	Id     string              `json:"id"`
+	Ignore VulnFilteredIgnored `json:"ignore"`
+	Policy Policy              `json:"policy"`
+	Rule   PolicyRule          `json:"rule"`
+	Type   string              `json:"type"`
+}
+
 // CVSSDetail defines model for CVSSDetail.
 type CVSSDetail struct {
 	Assigner         string   `json:"assigner"`
@@ -184,6 +198,41 @@ type PinRemediation struct {
 	Vulns        []string `json:"vulns"`
 }
 
+// Policy defines model for Policy.
+type Policy struct {
+	Id    string `json:"id"`
+	Owner string `json:"owner"`
+}
+
+// PolicyRule defines model for PolicyRule.
+type PolicyRule struct {
+	Attributes PolicyRuleAttributes `json:"attributes"`
+	Id         string               `json:"id"`
+	Type       string               `json:"type"`
+}
+
+// PolicyRuleAction defines model for PolicyRuleAction.
+type PolicyRuleAction struct {
+	Data PolicyRuleActionData `json:"data"`
+	Type string               `json:"type"`
+}
+
+// PolicyRuleActionData defines model for PolicyRuleActionData.
+type PolicyRuleActionData struct {
+	IgnoreType string `json:"ignore_type"`
+	Reason     string `json:"reason"`
+	Source     string `json:"source"`
+}
+
+// PolicyRuleAttributes defines model for PolicyRuleAttributes.
+type PolicyRuleAttributes struct {
+	Actions  []PolicyRuleAction `json:"actions"`
+	Created  string             `json:"created"`
+	Modified string             `json:"modified"`
+	Name     string             `json:"name"`
+	Review   string             `json:"review"`
+}
+
 // Reachability defines model for Reachability.
 type Reachability string
 
@@ -236,17 +285,29 @@ type VulnFiltered struct {
 
 // VulnFilteredIgnored defines model for VulnFilteredIgnored.
 type VulnFilteredIgnored struct {
-	Created string   `json:"created"`
-	Expires string   `json:"expires"`
-	Path    []string `json:"path"`
-	Reason  string   `json:"reason"`
-	Source  string   `json:"source"`
+	Created            string                `json:"created"`
+	DisregardIfFixable bool                  `json:"disregardIfFixable"`
+	Expires            string                `json:"expires"`
+	IgnoredBy          VulnFilteredIgnoredBy `json:"ignoredBy"`
+	Path               []map[string]string   `json:"path"`
+	Reason             string                `json:"reason"`
+	ReasonType         string                `json:"reasonType"`
+	Source             string                `json:"source"`
+}
+
+// VulnFilteredIgnoredBy defines model for VulnFilteredIgnoredBy.
+type VulnFilteredIgnoredBy struct {
+	Email         string `json:"email"`
+	Id            string `json:"id"`
+	IsGroupPolicy bool   `json:"isGroupPolicy"`
+	Name          string `json:"name"`
 }
 
 // Vulnerability defines model for Vulnerability.
 type Vulnerability struct {
 	CVSSv3                 *string                          `json:"CVSSv3,omitempty"`
 	AlternativeIds         *[]string                        `json:"alternativeIds,omitempty"`
+	AppliedPolicyRules     *AppliedPolicyRules              `json:"appliedPolicyRules,omitempty"`
 	CreationTime           string                           `json:"creationTime"`
 	Credit                 *[]string                        `json:"credit,omitempty"`
 	CvssDetails            *[]CVSSDetail                    `json:"cvssDetails,omitempty"`
