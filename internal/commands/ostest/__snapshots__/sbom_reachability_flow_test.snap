@@ -1,87 +1,91 @@
 
 [Test_RunSbomReachabilityFlow_JSON - 1]
-{
- "dependencyCount": 0,
- "displayTargetFile": "./testdata/bom.json",
- "filesystemPolicy": false,
- "filtered": {
-  "ignore": [],
-  "patch": []
- },
- "hasUnknownVersions": false,
- "ignoreSettings": {
-  "adminOnly": false,
-  "autoApproveIgnores": false,
-  "disregardFilesystemIgnores": false,
-  "reasonRequired": false
- },
- "isPrivate": false,
- "licensesPolicy": {
-  "orgLicenseRules": null,
-  "severities": null
- },
- "ok": false,
- "org": "test-org-slug",
- "packageManager": "",
- "policy": "",
- "projectName": "",
- "remediation": {
-  "ignore": null,
-  "pin": {},
-  "unresolved": [],
-  "upgrade": {
-   "foo@0.0.0": {
-    "upgradeTo": "foo@1.0.0",
-    "upgrades": [
+[
+ {
+  "dependencyCount": 0,
+  "displayTargetFile": "./testdata/bom.json",
+  "filesystemPolicy": false,
+  "filtered": {
+   "ignore": [],
+   "patch": []
+  },
+  "hasUnknownVersions": false,
+  "ignoreSettings": {
+   "adminOnly": false,
+   "autoApproveIgnores": false,
+   "disregardFilesystemIgnores": false,
+   "reasonRequired": false
+  },
+  "isPrivate": false,
+  "licensesPolicy": {
+   "orgLicenseRules": null,
+   "severities": null
+  },
+  "ok": false,
+  "org": "test-org-slug",
+  "packageManager": "",
+  "path": "testdata",
+  "policy": "",
+  "projectName": "",
+  "remediation": {
+   "ignore": null,
+   "pin": {},
+   "unresolved": [],
+   "upgrade": {
+    "foo@0.0.0": {
+     "upgradeTo": "foo@1.0.0",
+     "upgrades": [
+      "foo@0.0.0"
+     ],
+     "vulns": [
+      "snyk-vuln-123"
+     ]
+    }
+   }
+  },
+  "summary": "",
+  "uniqueCount": 1,
+  "vulnerabilities": [
+   {
+    "creationTime": "2025-07-28T17:11:43.000000Z",
+    "cvssScore": 0,
+    "description": "Test vulnerability description",
+    "disclosureTime": "2025-07-28T17:11:43.000000Z",
+    "epssDetails": null,
+    "from": [
+     "root@1.0.0",
      "foo@0.0.0"
     ],
-    "vulns": [
-     "snyk-vuln-123"
-    ]
+    "id": "snyk-vuln-123",
+    "isPatchable": false,
+    "isUpgradable": true,
+    "language": "js",
+    "malicious": true,
+    "modificationTime": "2025-07-28T17:11:43.000000Z",
+    "name": "foo",
+    "packageManager": "npm",
+    "packageName": "foo",
+    "publicationTime": "2025-07-28T17:11:43.000000Z",
+    "reachability": "reachable",
+    "riskScore": 80,
+    "severity": "high",
+    "socialTrendAlert": false,
+    "title": "Test High Severity Finding",
+    "upgradePath": [
+     false,
+     "foo@1.0.0"
+    ],
+    "version": "0.0.0"
    }
-  }
- },
- "summary": "",
- "uniqueCount": 1,
- "vulnerabilities": [
-  {
-   "creationTime": "2025-07-28T17:11:43.000000Z",
-   "cvssScore": 0,
-   "description": "Test vulnerability description",
-   "disclosureTime": "2025-07-28T17:11:43.000000Z",
-   "epssDetails": null,
-   "from": [
-    "root@1.0.0",
-    "foo@0.0.0"
-   ],
-   "id": "snyk-vuln-123",
-   "isPatchable": false,
-   "isUpgradable": true,
-   "language": "js",
-   "malicious": true,
-   "modificationTime": "2025-07-28T17:11:43.000000Z",
-   "name": "foo",
-   "packageManager": "npm",
-   "packageName": "foo",
-   "publicationTime": "2025-07-28T17:11:43.000000Z",
-   "reachability": "reachable",
-   "riskScore": 80,
-   "severity": "high",
-   "socialTrendAlert": false,
-   "title": "Test High Severity Finding",
-   "upgradePath": [
-    false,
-    "foo@1.0.0"
-   ],
-   "version": "0.0.0"
-  }
- ]
-}
+  ]
+ }
+]
 ---
 
 [Test_RunSbomReachabilityFlow_JSON - 2]
 {
  "artifacts": 0,
+ "path": "testdata",
  "results": [
   {
    "ignored": 0,
@@ -103,6 +107,7 @@
 [Test_RunSbomReachabilityFlow_HumanReadable - 1]
 {
  "artifacts": 0,
+ "path": "testdata",
  "results": [
   {
    "ignored": 0,
@@ -118,5 +123,157 @@
   "critical"
  ],
  "type": "open-source"
+}
+---
+
+[Test_RunSbomReachabilityFlow_JSON - 3]
+[
+ {}
+]
+---
+
+[Test_RunSbomReachabilityFlow_HumanReadable - 2]
+[
+ {}
+]
+---
+
+[Test_RunSbomReachabilityFlow_HumanReadable - 3]
+[
+ {
+  "attributes": {
+   "cause_of_failure": false,
+   "description": "Test vulnerability description",
+   "evidence": [
+    {
+     "reachability": "function",
+     "source": "reachability"
+    },
+    {
+     "path": [
+      {
+       "name": "root",
+       "version": "1.0.0"
+      },
+      {
+       "name": "foo",
+       "version": "0.0.0"
+      }
+     ],
+     "source": "dependency_path"
+    }
+   ],
+   "finding_type": "sca",
+   "key": "TEST-FINDING-KEY",
+   "locations": [
+    {
+     "package": {
+      "name": "foo",
+      "version": "0.0.0"
+     },
+     "type": "package"
+    }
+   ],
+   "problems": [
+    {
+     "created_at": "2025-07-28T17:11:43+03:00",
+     "credits": null,
+     "cvss_base_score": 0,
+     "cvss_sources": null,
+     "cvss_vector": "",
+     "disclosed_at": "2025-07-28T17:11:43+03:00",
+     "ecosystem": {
+      "language": "js",
+      "package_manager": "npm",
+      "type": "build"
+     },
+     "exploit_details": {
+      "maturity_levels": null,
+      "sources": null
+     },
+     "initially_fixed_in_versions": null,
+     "is_fixable": false,
+     "is_malicious": true,
+     "is_social_media_trending": false,
+     "modified_at": "2025-07-28T17:11:43+03:00",
+     "package_name": "foo",
+     "package_version": "0.0.0",
+     "published_at": "2025-07-28T17:11:43+03:00",
+     "references": null,
+     "severity": "",
+     "source": "snyk_vuln"
+    }
+   ],
+   "rating": {
+    "severity": "high"
+   },
+   "risk": {
+    "risk_score": {
+     "value": 80
+    }
+   },
+   "title": "Test High Severity Finding"
+  },
+  "relationships": {
+   "fix": {
+    "data": {
+     "attributes": {
+      "actions": {
+       "package_name": "foo",
+       "type": "upgrade_package",
+       "upgrade_paths": [
+        {
+         "dependency_path": [
+          {
+           "name": "root",
+           "version": "1.0.0"
+          },
+          {
+           "name": "foo",
+           "version": "1.0.0"
+          }
+         ],
+         "is_drop": false
+        }
+       ]
+      },
+      "outcome": "fully_resolved"
+     },
+     "type": ""
+    }
+   }
+  },
+  "type": "findings"
+ }
+]
+---
+
+[Test_RunSbomReachabilityFlow_HumanReadable - 4]
+{
+ "dependencyCount": 0,
+ "displayTargetFile": "./testdata/bom.json",
+ "packageManager": "",
+ "projectName": "",
+ "summary": {
+  "artifacts": 0,
+  "path": "testdata",
+  "results": [
+   {
+    "ignored": 0,
+    "open": 1,
+    "severity": "high",
+    "total": 1
+   }
+  ],
+  "severity_order_asc": [
+   "low",
+   "medium",
+   "high",
+   "critical"
+  ],
+  "type": "open-source"
+ },
+ "uniqueCount": 1,
+ "vulnerablePathsCount": 1
 }
 ---

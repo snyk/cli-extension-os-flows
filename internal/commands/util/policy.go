@@ -8,8 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/snyk/go-application-framework/pkg/configuration"
-
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
@@ -17,14 +15,14 @@ import (
 
 const policyFileName = ".snyk"
 
-func resolvePolicyPath(ctx context.Context) (string, error) {
+func resolvePolicyPath(ctx context.Context, inputDir string) (string, error) {
 	cfg := cmdctx.Config(ctx)
 
 	// take path from --policy-path
 	policyPath := cfg.GetString(flags.FlagPolicyPath)
 	// fallback on input directory
 	if policyPath == "" {
-		policyPath = cfg.GetString(configuration.INPUT_DIRECTORY)
+		policyPath = inputDir
 	}
 	// fallback on current working directory
 	if policyPath == "" {
@@ -60,10 +58,10 @@ func normalizePolicyFileName(path string) (string, error) {
 // GetLocalPolicy attempts to load a local policy file from disk. If no policy
 // file is found, nil is returned. An error is returned if opening or reading the
 // policy file fails.
-func GetLocalPolicy(ctx context.Context) (*localpolicy.Policy, error) {
+func GetLocalPolicy(ctx context.Context, inputDir string) (*localpolicy.Policy, error) {
 	logger := cmdctx.Logger(ctx)
 
-	policyPath, err := resolvePolicyPath(ctx)
+	policyPath, err := resolvePolicyPath(ctx, inputDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve local policy file: %w", err)
 	}

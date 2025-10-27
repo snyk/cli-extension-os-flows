@@ -39,6 +39,7 @@ var ErrNoSummaryData = std_errors.New("no summary data to create")
 // Returns legacy JSON and/or human-readable workflow data, depending on parameters.
 func RunTest(
 	ctx context.Context,
+	targetDir string,
 	testClient testapi.TestClient,
 	subject testapi.TestSubjectCreate,
 	projectName string,
@@ -56,8 +57,6 @@ func RunTest(
 	if err != nil {
 		return nil, nil, err
 	}
-
-	targetDir := cfg.GetString(configuration.INPUT_DIRECTORY)
 
 	orgSlugOrID := cfg.GetString(configuration.ORGANIZATION_SLUG)
 	if orgSlugOrID == "" {

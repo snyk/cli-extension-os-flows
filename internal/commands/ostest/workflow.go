@@ -30,6 +30,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
+	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
@@ -140,18 +141,19 @@ func handleSBOMReachabilityFlow(
 	testClient testapi.TestClient,
 	orgID, sbom, sourceDir string,
 	localPolicy *testapi.LocalPolicy,
-) ([]workflow.Data, error) {
+) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	bsClient := setupBundlestoreClient(ctx)
 	return RunSbomReachabilityFlow(ctx, testClient, sbom, sourceDir, bsClient, orgID, localPolicy)
 }
 
 func handleDepgraphReachabilityFlow(
 	ctx context.Context,
+	inputDir string,
 	testClient testapi.TestClient,
 	orgUUID uuid.UUID,
 	sourceDir string,
 	localPolicy *testapi.LocalPolicy,
-) ([]workflow.Data, error) {
+) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	ictx := cmdctx.Ictx(ctx)
 	cfg := cmdctx.Config(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
@@ -164,10 +166,10 @@ func handleDepgraphReachabilityFlow(
 	progressBar.SetTitle("Uploading source code...")
 	scanID, err := reachability.GetReachabilityID(ctx, orgUUID, sourceDir, rc, fuClient)
 	if err != nil {
-		return nil, fmt.Errorf("failed to analyze source code: %w", err)
+		return nil, nil, fmt.Errorf("failed to analyze source code: %w", err)
 	}
 
-	return RunUnifiedTestFlow(ctx, testClient, orgUUID.String(), localPolicy, &scanID)
+	return RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID.String(), localPolicy, &scanID)
 }
 
 func convertReachabilityFilterToSchema(reachabilityFilter string) *testapi.ReachabilityFilter {
@@ -248,8 +250,8 @@ func getFailOnPolicy(ctx context.Context) (supportedFailOnPolicy, error) {
 	return failOnPolicy, nil
 }
 
-func getLocalIgnores(ctx context.Context) (*[]testapi.LocalIgnore, error) {
-	policy, err := cmdutil.GetLocalPolicy(ctx)
+func getLocalIgnores(ctx context.Context, inputDir string) (*[]testapi.LocalIgnore, error) {
+	policy, err := cmdutil.GetLocalPolicy(ctx, inputDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get local ignores: %w", err)
 	}
@@ -261,7 +263,7 @@ func getLocalIgnores(ctx context.Context) (*[]testapi.LocalIgnore, error) {
 }
 
 // CreateLocalPolicy will create a local policy only if risk score or severity threshold or reachability filters are specified in the config.
-func CreateLocalPolicy(cmdCtx context.Context) (*testapi.LocalPolicy, error) {
+func CreateLocalPolicy(cmdCtx context.Context, inputDir string) (*testapi.LocalPolicy, error) {
 	riskScoreThreshold := getRiskScoreThreshold(cmdCtx)
 	severityThreshold := getSeverityThreshold(cmdCtx)
 	reachabilityFilter := getReachabilityFilter(cmdCtx)
@@ -269,7 +271,7 @@ func CreateLocalPolicy(cmdCtx context.Context) (*testapi.LocalPolicy, error) {
 	if err != nil {
 		return nil, err
 	}
-	localIgnores, err := getLocalIgnores(cmdCtx)
+	localIgnores, err := getLocalIgnores(cmdCtx, inputDir)
 	if err != nil {
 		return nil, err
 	}
@@ -292,6 +294,15 @@ func CreateLocalPolicy(cmdCtx context.Context) (*testapi.LocalPolicy, error) {
 		FailOnUpgradable:   failOnPolicy.onUpgradable,
 		Ignores:            localIgnores,
 	}, nil
+}
+
+func getSourceDir(cfg configuration.Configuration, inputDir string) string {
+	sourceDir := cfg.GetString(flags.FlagSourceDir)
+	if sourceDir != "" {
+		return sourceDir
+	}
+
+	return inputDir
 }
 
 // OSWorkflow is the entry point for the Open Source Test workflow.
@@ -341,36 +352,52 @@ func OSWorkflow(
 		return code_workflow.EntryPointLegacy(ictx)
 	}
 
-	// Reachability
-	sourceDir := cfg.GetString(flags.FlagSourceDir)
-	if sourceDir == "" {
-		sourceDir = cfg.GetString(configuration.INPUT_DIRECTORY)
-	}
-	if sourceDir == "" {
-		sourceDir = "."
-	}
-
 	sbom := cfg.GetString(flags.FlagSBOM)
-
-	localPolicy, err := CreateLocalPolicy(ctx)
-	if err != nil {
-		return nil, err
-	}
 
 	testClient, err := setupTestClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// Route to the appropriate flow based on flags
-	switch flow {
-	case SBOMReachabilityFlow:
-		return handleSBOMReachabilityFlow(ctx, testClient, orgID, sbom, sourceDir, localPolicy)
-	case DepgraphReachabilityFlow:
-		return handleDepgraphReachabilityFlow(ctx, testClient, orgUUID, sourceDir, localPolicy)
-	case DepgraphFlow:
-		return RunUnifiedTestFlow(ctx, testClient, orgID, localPolicy, nil)
-	default:
-		return nil, fmt.Errorf("unknown test flow: %s", flow)
+	inputDirs := cfg.GetStringSlice(configuration.INPUT_DIRECTORY)
+	if len(inputDirs) > 1 && sbom != "" {
+		//nolint:wrapcheck // No need to wrap error factory errors.
+		return nil, errFactory.NewSBOMTestWithMultiplePathsError()
 	}
+
+	allLegacyFindings := []definitions.LegacyVulnerabilityResponse{}
+	allOutputData := []workflow.Data{}
+	for _, inputDir := range inputDirs {
+		// Reachability
+		sourceDir := getSourceDir(cfg, inputDir)
+
+		localPolicy, err := CreateLocalPolicy(ctx, inputDir)
+		if err != nil {
+			return nil, err
+		}
+
+		// Route to the appropriate flow based on flags
+		var legacyFindings []definitions.LegacyVulnerabilityResponse
+		var outputData []workflow.Data
+		var flowErr error
+		switch flow {
+		case SBOMReachabilityFlow:
+			legacyFindings, outputData, flowErr = handleSBOMReachabilityFlow(ctx, testClient, orgID, sbom, sourceDir, localPolicy)
+		case DepgraphReachabilityFlow:
+			legacyFindings, outputData, flowErr = handleDepgraphReachabilityFlow(ctx, inputDir, testClient, orgUUID, sourceDir, localPolicy)
+		case DepgraphFlow:
+			legacyFindings, outputData, flowErr = RunUnifiedTestFlow(ctx, inputDir, testClient, orgID, localPolicy, nil)
+		default:
+			flowErr = fmt.Errorf("unknown test flow: %s", flow)
+		}
+
+		if flowErr != nil {
+			return nil, flowErr
+		}
+
+		allLegacyFindings = append(allLegacyFindings, legacyFindings...)
+		allOutputData = append(allOutputData, outputData...)
+	}
+
+	return handleOutput(ctx, allLegacyFindings, allOutputData)
 }
