@@ -48,7 +48,7 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 			fmt.Errorf("expected a depgraph subject but got something else: %w", err))
 	}
 
-	allVulnerabilities, err := findingsToLegacyVulns(params.Findings, params.PackageManager, params.Logger)
+	allVulnerabilities, err := FindingsToLegacyVulns(params.Findings, params.PackageManager, params.Logger)
 	if err != nil {
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting finding to legacy vuln: %w", err))
 	}
@@ -90,7 +90,7 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 	return &res, nil
 }
 
-func findingsToLegacyVulns(
+func FindingsToLegacyVulns(
 	findings []testapi.FindingData,
 	packageManager string,
 	logger *zerolog.Logger,

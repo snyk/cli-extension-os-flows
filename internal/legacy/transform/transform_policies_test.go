@@ -1,6 +1,9 @@
 package transform_test
 
 import (
+	"encoding/json"
+	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -20,6 +23,45 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/util/testfactories"
 )
+
+type FindingsResponse struct {
+	Data []testapi.FindingData `json:"data"`
+}
+
+func Test_projectLevelIntegration(t *testing.T) {
+	buf, err := os.ReadFile("testdata/projectIgnore-findings.json")
+	require.NoError(t, err)
+
+	var response FindingsResponse
+	err = json.Unmarshal(buf, &response)
+	require.NoError(t, err)
+
+	vulns, err := transform.FindingsToLegacyVulns(response.Data, "package-manager", utils.Ptr(zerolog.Nop()))
+
+	index := slices.IndexFunc(vulns, func(vuln definitions.Vulnerability) bool {
+		return vuln.Id == "SNYK-GOLANG-GOPKGINYAMLV2-12330650"
+	})
+	vuln := vulns[index]
+
+	require.NotNil(t, vuln.Filtered)
+	require.NotNil(t, vuln.Filtered.Ignored)
+	require.Len(t, *vuln.Filtered.Ignored, 1)
+	ignored := (*vuln.Filtered.Ignored)[0]
+	assert.Equal(t, "the ignore reason", ignored.Reason)
+	assert.Equal(t, "not-vulnerable", ignored.ReasonType)
+	assert.Equal(t, "api", ignored.Source)
+	assert.Equal(t, "2025-08-28T07:35:48.637Z", ignored.Created)
+	assert.Equal(t, "2025-11-05T23:00:00Z", ignored.Expires)
+	assert.Equal(t, false, ignored.DisregardIfFixable)
+
+	require.Len(t, ignored.Path, 1)
+	assert.Equal(t, "*", ignored.Path[0]["module"])
+
+	assert.Equal(t, "ea77548d-5444-407b-8d03-85d8bf5b8146", ignored.IgnoredBy.Id)
+	assert.Equal(t, "Test User", ignored.IgnoredBy.Name)
+	assert.Equal(t, "test.user@example.com", ignored.IgnoredBy.Email)
+	assert.Equal(t, false, ignored.IgnoredBy.IsGroupPolicy)
+}
 
 func Test_projectLevelIgnore(t *testing.T) {
 	relationship := testfactories.NewShimPolicyRelationship(func(rel *testapiinline.PolicyRelationship) {
