@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/workflow"
@@ -22,19 +23,19 @@ func RunSbomReachabilityFlow(
 	bsClient bundlestore.Client,
 	orgID string,
 	localPolicy *testapi.LocalPolicy,
-) ([]workflow.Data, error) {
+) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
 
 	if err := validateDirectory(ctx, sourceCodePath); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	progressBar.SetTitle("Uploading SBOM document...")
 	sbomBundleHash, err := bsClient.UploadSBOM(ctx, sbomPath)
 	if err != nil {
 		logger.Error().Err(err).Str("sbomPath", sbomPath).Msg("Failed to upload SBOM")
-		return nil, fmt.Errorf("failed to upload SBOM: %w", err)
+		return nil, nil, fmt.Errorf("failed to upload SBOM: %w", err)
 	}
 	logger.Println("sbomBundleHash", sbomBundleHash)
 
@@ -43,7 +44,7 @@ func RunSbomReachabilityFlow(
 	if err != nil {
 		//nolint:goconst // sourceCodePath is ok
 		logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("Failed to upload SBOM")
-		return nil, fmt.Errorf("failed to upload source code: %w", err)
+		return nil, nil, fmt.Errorf("failed to upload source code: %w", err)
 	}
 	logger.Println("sourceCodeBundleHash", sourceCodeBundleHash)
 
@@ -62,12 +63,13 @@ func RunSbomReachabilityFlow(
 	})
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed to create SBOM reachability test subject")
-		return nil, fmt.Errorf("failed to create sbom test reachability subject: %w", err)
+		return nil, nil, fmt.Errorf("failed to create sbom test reachability subject: %w", err)
 	}
 
-	findings, summary, err := RunTest(ctx, testClient, subject, "", "", int(0), sbomPath, orgID, localPolicy)
+	targetDir := filepath.Dir(sbomPath)
+	findings, summary, err := RunTest(ctx, targetDir, testClient, subject, "", "", int(0), sbomPath, orgID, localPolicy)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var allLegacyFindings []definitions.LegacyVulnerabilityResponse
@@ -75,7 +77,7 @@ func RunSbomReachabilityFlow(
 		allLegacyFindings = append(allLegacyFindings, *findings)
 	}
 
-	return handleOutput(ctx, allLegacyFindings, summary)
+	return allLegacyFindings, summary, nil
 }
 
 // validateDirectory checks if the given path exists and contains files.

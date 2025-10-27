@@ -53,11 +53,12 @@ func enrichWithIgnorePolicy(depgraphs []*testapi.IoSnykApiV1testdepgraphRequestD
 // RunUnifiedTestFlow handles the unified test API flow.
 func RunUnifiedTestFlow(
 	ctx context.Context,
+	inputDir string,
 	testClient testapi.TestClient,
 	orgID string,
 	localPolicy *testapi.LocalPolicy,
 	reachabilityScanID *reachability.ID,
-) ([]workflow.Data, error) {
+) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	ictx := cmdctx.Ictx(ctx)
 	cfg := cmdctx.Config(ctx)
 	logger := cmdctx.Logger(ctx)
@@ -67,9 +68,9 @@ func RunUnifiedTestFlow(
 
 	progressBar.SetTitle("Listing dependencies...")
 	// Create depgraphs and get their associated target files
-	depGraphs, displayTargetFiles, err := createDepGraphs(ictx)
+	depGraphs, displayTargetFiles, err := createDepGraphs(ictx, inputDir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	enrichWithScanID(depGraphs, reachabilityScanID)
@@ -77,6 +78,7 @@ func RunUnifiedTestFlow(
 
 	allLegacyFindings, allOutputData, err := testAllDepGraphs(
 		ctx,
+		inputDir,
 		testClient,
 		orgID,
 		localPolicy,
@@ -84,10 +86,10 @@ func RunUnifiedTestFlow(
 		displayTargetFiles,
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return handleOutput(ctx, allLegacyFindings, allOutputData)
+	return allLegacyFindings, allOutputData, err
 }
 
 // testProcessor contains the context and dependencies for running a depGraph test.
@@ -100,6 +102,7 @@ type testProcessor struct {
 // runDepGraphTest runs a test for a single depGraph.
 func (p *testProcessor) runDepGraphTest(
 	ctx context.Context,
+	targetDir string,
 	depGraph *testapi.IoSnykApiV1testdepgraphRequestDepGraph,
 	displayTargetFile string,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
@@ -113,7 +116,7 @@ func (p *testProcessor) runDepGraphTest(
 	depCount := max(0, len(depGraph.Pkgs)-1)
 
 	return RunTest(
-		ctx, p.testClient, subject, projectName, packageManager, depCount,
+		ctx, targetDir, p.testClient, subject, projectName, packageManager, depCount,
 		displayTargetFile, p.orgID, p.localPolicy,
 	)
 }
@@ -122,6 +125,7 @@ func (p *testProcessor) runDepGraphTest(
 // Returns legacy JSON and/or human-readable workflow data, depending on parameters.
 func testAllDepGraphs(
 	ctx context.Context,
+	targetDir string,
 	testClient testapi.TestClient,
 	orgID string,
 	localPolicy *testapi.LocalPolicy,
@@ -162,7 +166,7 @@ func testAllDepGraphs(
 				displayTargetFile = displayTargetFiles[i]
 			}
 
-			legacyFinding, outputData, err := processor.runDepGraphTest(gctx, depGraph, displayTargetFile)
+			legacyFinding, outputData, err := processor.runDepGraphTest(gctx, targetDir, depGraph, displayTargetFile)
 			if err != nil {
 				return err
 			}
@@ -321,8 +325,8 @@ func prepareJSONOutput(
 }
 
 // createDepGraphs creates depgraphs from the file parameter in the context.
-func createDepGraphs(ictx workflow.InvocationContext) ([]*testapi.IoSnykApiV1testdepgraphRequestDepGraph, []string, error) {
-	depGraphResult, err := service.GetDepGraph(ictx)
+func createDepGraphs(ictx workflow.InvocationContext, inputDir string) ([]*testapi.IoSnykApiV1testdepgraphRequestDepGraph, []string, error) {
+	depGraphResult, err := service.GetDepGraph(ictx, inputDir)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get dependency graph: %w", err)
 	}

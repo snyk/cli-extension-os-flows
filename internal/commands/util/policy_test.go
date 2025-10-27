@@ -31,7 +31,7 @@ func TestGetLocalPolicy_WithFilePath(t *testing.T) {
 	ctx := cmdctx.WithConfig(t.Context(), cfg)
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 
-	policy, err := util.GetLocalPolicy(ctx)
+	policy, err := util.GetLocalPolicy(ctx, ".")
 	require.NoError(t, err)
 
 	assert.NotNil(t, policy)
@@ -44,7 +44,7 @@ func TestResolvePolicyFile_NonexistentFile(t *testing.T) {
 	ctx := cmdctx.WithConfig(t.Context(), cfg)
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 
-	_, err := util.GetLocalPolicy(ctx)
+	_, err := util.GetLocalPolicy(ctx, ".")
 
 	assert.ErrorContains(t, err, "failed to resolve local policy file")
 }
@@ -62,11 +62,10 @@ func TestResolvePolicyFile_WithDirectoryPath(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := configuration.New()
-	cfg.Set(configuration.INPUT_DIRECTORY, dir)
 	ctx := cmdctx.WithConfig(t.Context(), cfg)
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 
-	policy, err := util.GetLocalPolicy(ctx)
+	policy, err := util.GetLocalPolicy(ctx, dir)
 	require.NoError(t, err)
 
 	require.NotNil(t, policy)
@@ -79,11 +78,10 @@ func TestResolvePolicyFile_NoPolicyFile(t *testing.T) {
 	t.Cleanup(func() { os.RemoveAll(dir) })
 
 	cfg := configuration.New()
-	cfg.Set(configuration.INPUT_DIRECTORY, dir)
 	ctx := cmdctx.WithConfig(t.Context(), cfg)
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 
-	policy, err := util.GetLocalPolicy(ctx)
+	policy, err := util.GetLocalPolicy(ctx, dir)
 
 	assert.Nil(t, policy)
 	assert.NoError(t, err)
@@ -102,11 +100,10 @@ func TestGetLocalPolicy_BrokenPolicy(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := configuration.New()
-	cfg.Set(configuration.INPUT_DIRECTORY, dir)
 	ctx := cmdctx.WithConfig(t.Context(), cfg)
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 
-	policy, err := util.GetLocalPolicy(ctx)
+	policy, err := util.GetLocalPolicy(ctx, dir)
 
 	require.Nil(t, policy)
 	var terr *yaml.TypeError

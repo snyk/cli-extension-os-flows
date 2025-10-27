@@ -97,7 +97,7 @@ func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
 				mockConfig.Set(flags.FlagFailOn, tt.failOnValue)
 			}
 
-			localPolicy, err := ostest.CreateLocalPolicy(ctx)
+			localPolicy, err := ostest.CreateLocalPolicy(ctx, ".")
 			require.NoError(t, err)
 
 			require.NotNil(t, localPolicy)
@@ -135,7 +135,7 @@ func TestOSWorkflow_CreateLocalPolicy_UnsupportedFailOnValue(t *testing.T) {
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	localPolicy, err := ostest.CreateLocalPolicy(ctx)
+	localPolicy, err := ostest.CreateLocalPolicy(ctx, ".")
 	require.Error(t, err)
 	assert.Nil(t, localPolicy)
 	assert.Contains(t, err.Error(), "Unsupported value 'unsupported' for --fail-on flag")
@@ -157,7 +157,7 @@ func TestOSWorkflow_CreateLocalPolicy_NoValues(t *testing.T) {
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	localPolicy, err := ostest.CreateLocalPolicy(ctx)
+	localPolicy, err := ostest.CreateLocalPolicy(ctx, ".")
 	require.NoError(t, err)
 
 	assert.Nil(t, localPolicy)
@@ -179,7 +179,7 @@ func TestOSWorkflow_CreateLocalPolicy_RiskScoreOverflow(t *testing.T) {
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	localPolicy, err := ostest.CreateLocalPolicy(ctx)
+	localPolicy, err := ostest.CreateLocalPolicy(ctx, ".")
 	require.NoError(t, err)
 	require.NotNil(t, localPolicy)
 
@@ -204,7 +204,7 @@ func TestOSWorkflow_CreateLocalPolicy_SeverityThresholdDefaultsToNone(t *testing
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	localPolicy, err := ostest.CreateLocalPolicy(ctx)
+	localPolicy, err := ostest.CreateLocalPolicy(ctx, ".")
 	require.NoError(t, err)
 	require.NotNil(t, localPolicy)
 
@@ -232,7 +232,7 @@ func TestOSWorkflow_CreateLocalPolicy_ReachabilityFilterDefaultBehavior(t *testi
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	localPolicy, err := ostest.CreateLocalPolicy(ctx)
+	localPolicy, err := ostest.CreateLocalPolicy(ctx, ".")
 	require.NoError(t, err)
 	require.NotNil(t, localPolicy)
 
@@ -300,7 +300,7 @@ func TestOSWorkflow_CreateLocalPolicy_ReachabilityFilter(t *testing.T) {
 			ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 			ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-			localPolicy, err := ostest.CreateLocalPolicy(ctx)
+			localPolicy, err := ostest.CreateLocalPolicy(ctx, ".")
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectFilter, localPolicy.ReachabilityFilter != nil)
 
@@ -327,7 +327,7 @@ func TestOSWorkflow_CreateLocalPolicy_NoLegacyPolicy(t *testing.T) {
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	localPolicy, _ := ostest.CreateLocalPolicy(ctx)
+	localPolicy, _ := ostest.CreateLocalPolicy(ctx, ".")
 	require.NotNil(t, localPolicy)
 	assert.Nil(t, localPolicy.Ignores)
 }
@@ -358,7 +358,7 @@ ignore:
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	localPolicy, _ := ostest.CreateLocalPolicy(ctx)
+	localPolicy, _ := ostest.CreateLocalPolicy(ctx, dir)
 	require.NotNil(t, localPolicy)
 	require.NotNil(t, localPolicy.Ignores)
 	assert.Len(t, *localPolicy.Ignores, 1)
@@ -390,7 +390,7 @@ ignore:
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	localPolicy, _ := ostest.CreateLocalPolicy(ctx)
+	localPolicy, _ := ostest.CreateLocalPolicy(ctx, ".")
 	require.NotNil(t, localPolicy)
 	require.NotNil(t, localPolicy.Ignores)
 	assert.Len(t, *localPolicy.Ignores, 1)
@@ -585,7 +585,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 
 			// Verify
 			if test.expectedError != "" {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), test.expectedError, "Expected error to contain: %s", test.expectedError)
 			} else {
 				assert.NoError(t, err)
@@ -605,6 +605,7 @@ func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engin
 	mockConfig.Set(configuration.ORGANIZATION, uuid.New().String())
 	mockConfig.Set(configuration.ORGANIZATION_SLUG, "some-org")
 	mockConfig.Set(configuration.API_URL, mockServerURL)
+	mockConfig.Set(configuration.INPUT_DIRECTORY, []string{"."})
 
 	// Initialize with default values for our flags
 	mockConfig.Set(flags.FlagRiskScoreThreshold, -1)
@@ -822,31 +823,16 @@ func (s *mockAPIState) handleGetFindings(w http.ResponseWriter, _ *http.Request)
 	require.NoError(s.t, err)
 }
 
-// TestOSWorkflow_AllProjects_UnifiedFlow tests the behavior of the OS workflow
-// when the --all-projects flag is used with the unified test flow.
+// TestOSWorkflow_MultipleProjects_UnifiedFlow tests the behavior of the OS worfklow
+// when multiple projects are being tested.
 // It verifies that multiple dependency graphs are processed and their results are aggregated.
-func TestOSWorkflow_AllProjects_UnifiedFlow(t *testing.T) {
+func TestOSWorkflow_MultipleProjects_UnifiedFlow(t *testing.T) {
 	// Setup
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockAPI := newMockAPIState(t)
 	defer mockAPI.Close()
-
-	mockEngine := mocks.NewMockEngine(ctrl)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockAPI.URL())
-
-	// Configure for --all-projects and unified flow
-	config := mockInvocationCtx.GetConfiguration()
-	config.Set(ostest.FeatureFlagRiskScore, true)
-	config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
-	config.Set(flags.FlagAllProjects, true)
-	config.Set(outputworkflow.OutputConfigKeyJSON, true)
-
-	// Temporarily reduce the poll interval for this test to avoid timeouts.
-	originalPollInterval := ostest.PollInterval
-	ostest.PollInterval = testapi.MinPollInterval
-	t.Cleanup(func() { ostest.PollInterval = originalPollInterval })
 
 	// Mock depgraph workflow to return two depgraphs
 	depGraph1Bytes, err := json.Marshal(testapi.IoSnykApiV1testdepgraphRequestDepGraph{
@@ -886,46 +872,95 @@ func TestOSWorkflow_AllProjects_UnifiedFlow(t *testing.T) {
 	mockData2.EXPECT().GetPayload().Return(depGraph2Bytes).AnyTimes()
 	mockData2.EXPECT().GetMetaData(common.ContentLocationKey).Return("proj2/pom.xml", nil).AnyTimes()
 
-	depGraphs := []workflow.Data{mockData1, mockData2}
+	tcs := map[string]struct {
+		setupTest func(workflow.InvocationContext, *mocks.MockEngine)
+	}{
+		"--all-projects": {
+			setupTest: func(ictx workflow.InvocationContext, engine *mocks.MockEngine) {
+				config := ictx.GetConfiguration()
+				config.Set(ostest.FeatureFlagRiskScore, true)
+				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				config.Set(outputworkflow.OutputConfigKeyJSON, true)
 
-	mockEngine.EXPECT().
-		InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
-		Return(depGraphs, nil).
-		Times(1)
+				config.Set(flags.FlagAllProjects, true)
 
-	// Execute
-	results, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
+				depGraphs := []workflow.Data{mockData1, mockData2}
+				engine.EXPECT().
+					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
+					Return(depGraphs, nil).
+					Times(1)
+			},
+		},
+		"multiple paths": {
+			setupTest: func(ictx workflow.InvocationContext, engine *mocks.MockEngine) {
+				config := ictx.GetConfiguration()
+				config.Set(ostest.FeatureFlagRiskScore, true)
+				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				config.Set(outputworkflow.OutputConfigKeyJSON, true)
+				// Explicitly set --policy-path to avoid looking it up in inexistent directories
+				config.Set(flags.FlagPolicyPath, ".")
 
-	// Verify
-	require.NoError(t, err)
-	require.NotEmpty(t, results)
+				config.Set(configuration.INPUT_DIRECTORY, []string{"firstPath", "secondPath"})
 
-	var jsonOutputs []workflow.Data
-	var summaryOutputs []workflow.Data
-	for _, r := range results {
-		if r.GetContentType() == ostest.ApplicationJSONContentType {
-			jsonOutputs = append(jsonOutputs, r)
-		} else if r.GetContentType() == content_type.TEST_SUMMARY {
-			summaryOutputs = append(summaryOutputs, r)
-		}
+				depGraph1 := []workflow.Data{mockData1}
+				engine.EXPECT().
+					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
+					Return(depGraph1, nil)
+
+				depGraph2 := []workflow.Data{mockData2}
+				engine.EXPECT().
+					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
+					Return(depGraph2, nil)
+			},
+		},
 	}
 
-	// Should have 1 JSON output (as an array of results) and 2 summary outputs (no findings, empty summaries)
-	assert.Len(t, jsonOutputs, 1)
-	assert.Len(t, summaryOutputs, 2)
+	for tcName, tcs := range tcs {
+		t.Run(tcName, func(t *testing.T) {
+			mockEngine := mocks.NewMockEngine(ctrl)
+			mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockAPI.URL())
+			tcs.setupTest(mockInvocationCtx, mockEngine)
 
-	// Verify JSON output is an array of 2 results
-	var legacyResults []definitions.LegacyVulnerabilityResponse
-	payload, ok := jsonOutputs[0].GetPayload().([]byte)
-	require.True(t, ok, "Payload is not of type []byte")
-	unmarshalErr := json.Unmarshal(payload, &legacyResults)
-	require.NoError(t, unmarshalErr, "Failed to unmarshal legacy vulnerability responses")
-	assert.Len(t, legacyResults, 2)
+			// Temporarily reduce the poll interval for this test to avoid timeouts.
+			originalPollInterval := ostest.PollInterval
+			ostest.PollInterval = testapi.MinPollInterval
+			t.Cleanup(func() { ostest.PollInterval = originalPollInterval })
 
-	// The order is not guaranteed, so we check for presence
-	projectNames := []string{legacyResults[0].ProjectName, legacyResults[1].ProjectName}
-	assert.Contains(t, projectNames, "proj1")
-	assert.Contains(t, projectNames, "proj2")
+			// Execute
+			results, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
+
+			// Verify
+			require.NoError(t, err)
+			require.NotEmpty(t, results)
+
+			var jsonOutputs []workflow.Data
+			var summaryOutputs []workflow.Data
+			for _, r := range results {
+				if r.GetContentType() == ostest.ApplicationJSONContentType {
+					jsonOutputs = append(jsonOutputs, r)
+				} else if r.GetContentType() == content_type.TEST_SUMMARY {
+					summaryOutputs = append(summaryOutputs, r)
+				}
+			}
+
+			// Should have 1 JSON output (as an array of results) and 2 summary outputs (no findings, empty summaries)
+			assert.Len(t, jsonOutputs, 1)
+			assert.Len(t, summaryOutputs, 2)
+
+			// Verify JSON output is an array of 2 results
+			var legacyResults []definitions.LegacyVulnerabilityResponse
+			payload, ok := jsonOutputs[0].GetPayload().([]byte)
+			require.True(t, ok, "Payload is not of type []byte")
+			unmarshalErr := json.Unmarshal(payload, &legacyResults)
+			require.NoError(t, unmarshalErr, "Failed to unmarshal legacy vulnerability responses")
+			assert.Len(t, legacyResults, 2)
+
+			// The order is not guaranteed, so we check for presence
+			projectNames := []string{legacyResults[0].ProjectName, legacyResults[1].ProjectName}
+			assert.Contains(t, projectNames, "proj1")
+			assert.Contains(t, projectNames, "proj2")
+		})
+	}
 }
 
 func TestOSWorkflow_ReachabilityFilterValidation(t *testing.T) {

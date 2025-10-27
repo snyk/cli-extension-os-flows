@@ -132,6 +132,14 @@ func (ef *ErrorFactory) NewReachabilityFilterWithoutReachabilityError() error {
 	)
 }
 
+// NewSBOMTestWithMultiplePathsError creates a new error for when
+// the --sbom flag is used and multie paths are passed to the test command.
+func (ef *ErrorFactory) NewSBOMTestWithMultiplePathsError() error {
+	return snyk_cli_errors.NewInvalidFlagOptionError(
+		"The `--sbom` flag is not supported when providing multiple paths to the `test` command.",
+	)
+}
+
 // NewInvalidLegacyFlagError creates a new error for when
 // new flags are being passed to the legacy CLI.
 func (ef *ErrorFactory) NewInvalidLegacyFlagError(flag string) error {

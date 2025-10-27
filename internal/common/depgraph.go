@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -22,7 +23,7 @@ type DepGraphResult struct {
 }
 
 // GetDepGraph retrieves the dependency graph for the given invocation context.
-func GetDepGraph(ictx workflow.InvocationContext) (*DepGraphResult, error) {
+func GetDepGraph(ictx workflow.InvocationContext, inputDir string) (*DepGraphResult, error) {
 	engine := ictx.GetEngine()
 	config := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
@@ -31,6 +32,8 @@ func GetDepGraph(ictx workflow.InvocationContext) (*DepGraphResult, error) {
 	logger.Println("Invoking depgraph workflow")
 
 	depGraphConfig := config.Clone()
+	// Overriding the INPUT_DIRECTORY flag which the depgraph workflow will use to extract the depgraphs.
+	depGraphConfig.Set(configuration.INPUT_DIRECTORY, inputDir)
 	depGraphs, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)
 	if err != nil {
 		return nil, errFactory.NewDepGraphWorkflowError(err)

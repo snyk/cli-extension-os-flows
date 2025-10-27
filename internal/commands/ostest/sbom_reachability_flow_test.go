@@ -2,6 +2,7 @@
 package ostest_test
 
 import (
+	"encoding/json"
 	"regexp"
 	"testing"
 	"time"
@@ -30,8 +31,8 @@ import (
 
 //go:generate go run github.com/golang/mock/mockgen -package=mocks -destination=../../mocks/mock_bundlestore_client.go github.com/snyk/cli-extension-os-flows/internal/bundlestore Client
 
-// pathRgxp is used for replacing the "path" in the output for snapshot consistency.
-var pathRgxp = regexp.MustCompile(`\s*,?"path"\s*:\s*"[^"]*",?`)
+// idRgxp is used for replacing the "id" in the output for snapshot consistency.
+var idRgxp = regexp.MustCompile(`\s*,?"id"\s*:\s*"[^"]*"?`)
 
 var nopLogger = zerolog.Nop()
 
@@ -49,20 +50,27 @@ func Test_RunSbomReachabilityFlow_JSON(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
-	result, err := ostest.RunSbomReachabilityFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil)
-
+	legacyJSON, outputData, err := ostest.RunSbomReachabilityFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil)
 	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Len(t, result, 2)                                                                // Should return legacy data + summary data
-	require.Contains(t, result[0].GetContentType(), "application/json")                      // legacy data
-	require.Contains(t, result[1].GetContentType(), "application/json; schema=test-summary") // summary data
 
-	legacyJSON, ok := result[0].GetPayload().([]byte)
+	require.NotNil(t, legacyJSON)
+	jsonBytes, err := json.Marshal(legacyJSON)
+	require.NoError(t, err)
+	snaps.MatchJSON(t, jsonBytes)
+
+	require.NotNil(t, outputData)
+	// Output data should contain standard summary and unified model test result
+	require.Len(t, outputData, 2)
+
+	require.Contains(t, "application/json; schema=test-summary", outputData[0].GetContentType())
+	summary, ok := outputData[0].GetPayload().([]byte)
 	require.True(t, ok)
-	legacySummary, ok := result[1].GetPayload().([]byte)
+	snaps.MatchJSON(t, summary)
+
+	require.Contains(t, content_type.UFM_RESULT, outputData[1].GetContentType()) // test result data
+	testResult, ok := outputData[1].GetPayload().([]testapi.TestResult)
 	require.True(t, ok)
-	snaps.MatchJSON(t, pathRgxp.ReplaceAll(legacyJSON, nil))
-	snaps.MatchJSON(t, pathRgxp.ReplaceAll(legacySummary, nil))
+	snaps.MatchJSON(t, testResult)
 }
 
 func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
@@ -79,17 +87,33 @@ func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
-	result, err := ostest.RunSbomReachabilityFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil)
-
+	legacyJSON, outputData, err := ostest.RunSbomReachabilityFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil)
 	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Len(t, result, 2)
-	require.Contains(t, "application/json; schema=test-summary", result[0].GetContentType())
-	require.Contains(t, content_type.UFM_RESULT, result[1].GetContentType())
 
-	legacySummary, ok := result[0].GetPayload().([]byte)
+	require.Nil(t, legacyJSON)
+	require.NotNil(t, outputData)
+	// Output data should contain standard summary, unified model test result, local unified findings and local unified summary
+	require.Len(t, outputData, 4)
+
+	require.Contains(t, "application/json; schema=test-summary", outputData[0].GetContentType())
+	summary, ok := outputData[0].GetPayload().([]byte)
 	require.True(t, ok)
-	snaps.MatchJSON(t, pathRgxp.ReplaceAll(legacySummary, nil))
+	snaps.MatchJSON(t, summary)
+
+	require.Contains(t, content_type.UFM_RESULT, outputData[1].GetContentType()) // test result data
+	testResult, ok := outputData[1].GetPayload().([]testapi.TestResult)
+	require.True(t, ok)
+	snaps.MatchJSON(t, testResult)
+
+	require.Contains(t, "application/json; schema=local-unified-finding", outputData[2].GetContentType())
+	localFindings, ok := outputData[2].GetPayload().([]byte)
+	require.True(t, ok)
+	snaps.MatchJSON(t, idRgxp.ReplaceAll(localFindings, nil))
+
+	require.Contains(t, "application/json; schema=local-unified-summary", outputData[3].GetContentType())
+	localSummary, ok := outputData[3].GetPayload().([]byte)
+	require.True(t, ok)
+	snaps.MatchJSON(t, localSummary)
 }
 
 //nolint:gocritic // Not important for tests.

@@ -77,7 +77,7 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 	}
 	res.Remediation = remSummary
 
-	policy, err := cmdutil.GetLocalPolicy(ctx)
+	policy, err := cmdutil.GetLocalPolicy(ctx, params.TargetDir)
 	if err != nil {
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("failed to get local policy: %w", err))
 	}
