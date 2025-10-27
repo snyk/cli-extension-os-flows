@@ -38,6 +38,104 @@ type SnykSchemaToLegacyParams struct {
 	Logger             *zerolog.Logger
 }
 
+// ConvertSnykSchemaFindingsToLegacy is a function that converts snyk schema findings into
+// the legacy vulnerability response structure for the snyk cli.
+func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*definitions.LegacyVulnerabilityResponse, error) {
+	if _, err := params.TestResult.GetTestSubject().AsDepGraphSubject(); err != nil {
+		return nil, params.ErrFactory.NewLegacyJSONTransformerError(
+			fmt.Errorf("expected a depgraph subject but got something else: %w", err))
+	}
+
+	allVulnerabilities, err := findingsToLegacyVulns(params.Findings, params.PackageManager, params.Logger)
+	if err != nil {
+		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting finding to legacy vuln: %w", err))
+	}
+
+	vulnReport := SeparateIgnoredVulnerabilities(allVulnerabilities, false)
+
+	res := definitions.LegacyVulnerabilityResponse{
+		Org:               params.OrgSlugOrID,
+		ProjectName:       params.ProjectName,
+		Path:              params.TargetDir,
+		PackageManager:    params.PackageManager,
+		DisplayTargetFile: params.DisplayTargetFile,
+		UniqueCount:       params.UniqueCount,
+		DependencyCount:   int64(params.DepCount),
+		Vulnerabilities:   vulnReport.Vulnerabilities,
+		Ok:                len(params.Findings) == 0,
+		Filtered: definitions.Filtered{
+			Ignore: vulnReport.Ignored,
+			Patch:  make([]string, 0),
+		},
+	}
+
+	remSummary, err := RemediationSummaryToLegacy(res.Vulnerabilities, params.RemediationSummary)
+	if err != nil {
+		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("failed to compute remediation summary: %w", err))
+	}
+	res.Remediation = remSummary
+
+	return &res, nil
+}
+
+func findingsToLegacyVulns(
+	findings []testapi.FindingData,
+	packageManager string,
+	logger *zerolog.Logger,
+) ([]definitions.Vulnerability, error) {
+	vulns := []definitions.Vulnerability{}
+	for _, finding := range findings {
+		findingVulns, err := FindingToLegacyVulns(&finding, logger)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range findingVulns {
+			vuln := findingVulns[i]
+			ensurePackageManager(&vuln, packageManager)
+			vulns = append(vulns, vuln)
+		}
+	}
+	return vulns, nil
+}
+
+// FindingToLegacyVulns is the beginning of the workflow in converting a snyk schema finding into
+// a legacy vulnerability to provide legacy json outputs.
+func FindingToLegacyVulns(
+	finding *testapi.FindingData,
+	logger *zerolog.Logger,
+) ([]definitions.Vulnerability, error) {
+	baseVuln := definitions.Vulnerability{
+		Title:       finding.Attributes.Title,
+		Description: finding.Attributes.Description,
+		Severity:    definitions.VulnerabilitySeverity(finding.Attributes.Rating.Severity),
+	}
+	err := processProblemsForVuln(&baseVuln, finding.Attributes.Problems, logger)
+	if err != nil {
+		return nil, fmt.Errorf("handling problem for finding: %w", err)
+	}
+
+	err = processLocationsForVuln(&baseVuln, finding.Attributes.Locations, logger)
+	if err != nil {
+		return nil, fmt.Errorf("processing location for finding: %w", err)
+	}
+
+	processRiskForVuln(&baseVuln, finding.Attributes.Risk)
+
+	return processEvidencesAndRemediation(finding, &baseVuln, logger)
+}
+
+func processProblemsForVuln(baseVuln *definitions.Vulnerability, problems []testapi.Problem, logger *zerolog.Logger) error {
+	for i := range problems {
+		problem := problems[i]
+		err := ProcessProblemForVuln(baseVuln, &problem, logger)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ProcessProblemForVuln is responsible for decorating the vulnerability with information provided
 // by the problems in the finding.
 func ProcessProblemForVuln(
@@ -247,6 +345,17 @@ func setVulnEpssDetails(vuln *definitions.Vulnerability, snykEpssDetails *testap
 	}
 }
 
+func processLocationsForVuln(vuln *definitions.Vulnerability, locations []testapi.FindingLocation, logger *zerolog.Logger) error {
+	for i := range locations {
+		location := locations[i]
+		err := ProcessLocationForVuln(vuln, &location, logger)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ProcessLocationForVuln is responsible for decorating the legacy vulnerability
 // with information from the finding's location data.
 func ProcessLocationForVuln(
@@ -321,36 +430,6 @@ func ProcessEvidenceForFinding(vuln *definitions.Vulnerability, ev *testapi.Evid
 		}
 	}
 	return nil
-}
-
-// FindingToLegacyVulns is the beginning of the workflow in converting a snyk schema finding into
-// a legacy vulnerability to provide legacy json outputs.
-func FindingToLegacyVulns(
-	finding *testapi.FindingData,
-	logger *zerolog.Logger,
-) ([]definitions.Vulnerability, error) {
-	baseVuln := definitions.Vulnerability{Description: finding.Attributes.Description}
-	for _, problem := range finding.Attributes.Problems {
-		err := ProcessProblemForVuln(&baseVuln, &problem, logger)
-		if err != nil {
-			return nil, fmt.Errorf("handling problem for finding: %w", err)
-		}
-	}
-
-	for _, location := range finding.Attributes.Locations {
-		err := ProcessLocationForVuln(&baseVuln, &location, logger)
-		if err != nil {
-			return nil, fmt.Errorf("processing location for finding: %w", err)
-		}
-	}
-
-	baseVuln.Title = finding.Attributes.Title
-	baseVuln.Severity = definitions.VulnerabilitySeverity(string(finding.Attributes.Rating.Severity))
-	if finding.Attributes.Risk.RiskScore != nil {
-		baseVuln.RiskScore = &finding.Attributes.Risk.RiskScore.Value
-	}
-
-	return processEvidencesAndRemediation(finding, &baseVuln, logger)
 }
 
 func processEvidencesAndRemediation(
@@ -428,71 +507,15 @@ func processOtherEvidence(vuln *definitions.Vulnerability, otherEvidences []test
 	return nil
 }
 
-// ConvertSnykSchemaFindingsToLegacy is a function that converts snyk schema findings into
-// the legacy vulnerability response structure for the snyk cli.
-func ConvertSnykSchemaFindingsToLegacy(params *SnykSchemaToLegacyParams) (*definitions.LegacyVulnerabilityResponse, error) {
-	if _, err := params.TestResult.GetTestSubject().AsDepGraphSubject(); err != nil {
-		return nil, params.ErrFactory.NewLegacyJSONTransformerError(
-			fmt.Errorf("expected a depgraph subject but got something else: %w", err))
-	}
-
-	allVulnerabilities, err := FindingsToLegacyVulns(params.Findings, params.PackageManager, params.Logger)
-	if err != nil {
-		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting finding to legacy vuln: %w", err))
-	}
-
-	vulnReport := SeparateIgnoredVulnerabilities(allVulnerabilities, false)
-
-	res := definitions.LegacyVulnerabilityResponse{
-		Org:               params.OrgSlugOrID,
-		ProjectName:       params.ProjectName,
-		Path:              params.TargetDir,
-		PackageManager:    params.PackageManager,
-		DisplayTargetFile: params.DisplayTargetFile,
-		UniqueCount:       params.UniqueCount,
-		DependencyCount:   int64(params.DepCount),
-		Vulnerabilities:   vulnReport.Vulnerabilities,
-		Ok:                len(params.Findings) == 0,
-		Filtered: definitions.Filtered{
-			Ignore: vulnReport.Ignored,
-			Patch:  make([]string, 0),
-		},
-	}
-
-	remSummary, err := RemediationSummaryToLegacy(res.Vulnerabilities, params.RemediationSummary)
-	if err != nil {
-		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("failed to compute remediation summary: %w", err))
-	}
-	res.Remediation = remSummary
-
-	return &res, nil
-}
-
-// FindingsToLegacyVulns converts a list of findings into a list of legacy vulnerabilities.
-func FindingsToLegacyVulns(
-	findings []testapi.FindingData,
-	packageManager string,
-	logger *zerolog.Logger,
-) ([]definitions.Vulnerability, error) {
-	vulns := []definitions.Vulnerability{}
-	for _, finding := range findings {
-		findingVulns, err := FindingToLegacyVulns(&finding, logger)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := range findingVulns {
-			vuln := findingVulns[i]
-			ensurePackageManager(&vuln, packageManager)
-			vulns = append(vulns, vuln)
-		}
-	}
-	return vulns, nil
-}
-
 func ensurePackageManager(vuln *definitions.Vulnerability, defaultPackageManager string) {
 	if vuln.PackageManager == nil {
 		vuln.PackageManager = &defaultPackageManager
+	}
+}
+
+func processRiskForVuln(vuln *definitions.Vulnerability, risk testapi.Risk) {
+	if risk.RiskScore != nil {
+		vuln.RiskScore = &risk.RiskScore.Value
 	}
 }
 
