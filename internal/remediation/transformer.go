@@ -7,7 +7,6 @@ import (
 )
 
 // ShimFindingsToRemediationFindings will convert testapi findings to remediation findings.
-// Ignored findings are excluded by default.
 func ShimFindingsToRemediationFindings(shimFindings []testapi.FindingData) (Findings, error) {
 	var findings Findings
 	for _, sf := range shimFindings {
