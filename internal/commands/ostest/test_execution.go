@@ -211,7 +211,7 @@ func prepareOutput(
 	// Prepare legacy JSON response if any JSON output is requested.
 	if wantsAnyJSON {
 		var err error
-		legacyVulnResponse, err = transform.ConvertSnykSchemaFindingsToLegacy(params)
+		legacyVulnResponse, err = transform.ConvertSnykSchemaFindingsToLegacy(ctx, params)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error converting snyk schema findings to legacy json: %w", err)
 		}

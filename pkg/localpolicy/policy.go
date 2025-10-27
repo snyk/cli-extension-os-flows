@@ -3,6 +3,7 @@ package localpolicy
 import (
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -16,6 +17,7 @@ func New() *Policy {
 	return &Policy{
 		Version: specVersion,
 		Ignore:  make(RuleSet),
+		Patch:   make(RuleSet),
 	}
 }
 
@@ -35,11 +37,27 @@ func Marshal(w io.Writer, p *Policy) error {
 	return nil
 }
 
+// Load loads a policy from a given file path.
+func Load(path string) (*Policy, error) {
+	fd, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open policy file: %w", err)
+	}
+	defer fd.Close()
+	var p Policy
+	if err := Unmarshal(fd, &p); err != nil {
+		return nil, fmt.Errorf("failed to load policy: %w", err)
+	}
+	return &p, nil
+}
+
 // Policy models the legacy .snyk policy.
 type Policy struct {
-	Version       string    `yaml:"version"`
-	FailThreshold *Severity `yaml:"failThreshold,omitempty"`
-	Ignore        RuleSet   `yaml:"ignore,omitempty"`
+	Version       string          `yaml:"version"`
+	FailThreshold *Severity       `yaml:"failThreshold,omitempty"`
+	Ignore        RuleSet         `yaml:"ignore"`
+	Patch         RuleSet         `yaml:"patch"`
+	Exclude       *map[string]any `yaml:"exclude,omitempty"`
 }
 
 // Severity models an issues severity level.
@@ -64,17 +82,22 @@ type RuleEntry map[string]*Rule
 
 // Rule models an actual policy rule.
 type Rule struct {
-	Created   *time.Time `yaml:"created,omitempty"`
-	Expires   *time.Time `yaml:"expires,omitempty"`
-	IgnoredBy *struct {
-		Email *string `yaml:"email,omitempty"`
-		Name  *string `yaml:"name,omitempty"`
-	} `yaml:"ignoredBy,omitempty"`
+	Created            *time.Time  `yaml:"created,omitempty"`
+	Expires            *time.Time  `yaml:"expires,omitempty"`
+	Patched            *time.Time  `yaml:"patched,omitempty"`
+	IgnoredBy          *IgnoredBy  `yaml:"ignoredBy,omitempty"`
 	Reason             *string     `yaml:"reason,omitempty"`
 	ReasonType         *ReasonType `yaml:"reasonType,omitempty"`
 	Source             *string     `yaml:"source,omitempty"`
 	From               *string     `yaml:"from,omitempty"`
 	DisregardIfFixable *bool       `yaml:"disregardIfFixable,omitempty"`
+}
+
+// IgnoredBy models the user who applied a project-level ignore.
+type IgnoredBy struct {
+	Email *string `yaml:"email,omitempty"`
+	Name  *string `yaml:"name,omitempty"`
+	ID    *string `yaml:"id,omitempty"`
 }
 
 // ReasonType is an enum of known categories for why a rule was applied.

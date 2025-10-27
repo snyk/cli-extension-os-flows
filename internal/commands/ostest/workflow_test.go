@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -984,8 +984,9 @@ func createTempLegacyPolicy(t *testing.T, policy string) string {
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(dir) })
 
-	fd, err := os.Create(path.Join(dir, ".snyk"))
+	fd, err := os.Create(filepath.Join(dir, ".snyk"))
 	require.NoError(t, err)
+	defer fd.Close()
 
 	_, err = fd.WriteString(policy)
 	require.NoError(t, err)

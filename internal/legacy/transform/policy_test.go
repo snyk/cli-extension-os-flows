@@ -1,17 +1,30 @@
 package transform_test
 
 import (
+	_ "embed"
+	"encoding/json"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
 )
+
+//go:embed testdata/finding-with-managed-policy-suppression-stub.json
+var findingWithManagedPolicySuppression []byte
+
+//go:embed testdata/finding-with-local-policy-suppression-stub.json
+var findingWithLocalPolicySuppression []byte
+
+var nopLogger = zerolog.Nop()
 
 func TestLegacyPolicyToLocalIgnores(t *testing.T) {
 	p := &localpolicy.Policy{
@@ -75,9 +88,101 @@ func TestLegacyPolicyToLocalIgnores_NoIgnores(t *testing.T) {
 	assert.Nil(t, lp)
 }
 
+func TestExtendLocalPolicyFromFindings_ManagedPolicy(t *testing.T) {
+	ctx := cmdctx.WithLogger(t.Context(), &nopLogger)
+	fixedPolicy := `version: v1.2.0
+ignore:
+    SNYK-JS-EXPRESS-6474509:
+        - goof@1.0.0 > express@1.2.3:
+            expires: 2025-06-03T07:41:24Z
+            reason: none given
+patch: {}
+`
+	expectedPolicy := `version: v1.2.0
+ignore:
+    SNYK-JS-EXPRESS-6474509:
+        - goof@1.0.0 > express@1.2.3:
+            expires: 2025-06-03T07:41:24Z
+            reason: none given
+    SNYK-JS-TARFS-10293725:
+        - '*':
+            created: 2025-06-03T07:41:24Z
+            expires: 2025-06-03T07:41:24Z
+            ignoredBy:
+                email: janedoe@example.com
+                name: Jane Doe
+                id: 082c9473-b58c-4936-bf44-46131e3ffdb9
+            reason: This is a test suppression
+            reasonType: wont-fix
+            source: api
+patch: {}
+`
+	// create temporary .snyk file
+	lp := createTempDotSnykFile(t, fixedPolicy)
+
+	// load fixed findings
+	var findings testapi.FindingData
+	err := json.Unmarshal(findingWithManagedPolicySuppression, &findings)
+	require.NoError(t, err)
+
+	policy, err := transform.ExtendLocalPolicyFromFindings(ctx, lp, []testapi.FindingData{findings})
+	require.NoError(t, err)
+
+	assert.Equal(t, expectedPolicy, policy)
+}
+
+func TestExtendLocalPolicyFromFindings_LocalPolicy(t *testing.T) {
+	ctx := cmdctx.WithLogger(t.Context(), &nopLogger)
+	fixedPolicy := `version: v1.2.0
+ignore:
+    SNYK-JS-EXPRESS-6474509:
+        - goof@1.0.0 > express@1.2.3:
+            expires: 2025-06-03T07:41:24Z
+            reason: none given
+patch: {}
+`
+	expectedPolicy := `version: v1.2.0
+ignore:
+    SNYK-JS-EXPRESS-6474509:
+        - goof@1.0.0 > express@1.2.3:
+            expires: 2025-06-03T07:41:24Z
+            reason: none given
+patch: {}
+`
+	// create temporary .snyk file
+	lp := createTempDotSnykFile(t, fixedPolicy)
+
+	// load fixed findings
+	var findings testapi.FindingData
+	err := json.Unmarshal(findingWithLocalPolicySuppression, &findings)
+	require.NoError(t, err)
+
+	policy, err := transform.ExtendLocalPolicyFromFindings(ctx, lp, []testapi.FindingData{findings})
+	require.NoError(t, err)
+
+	assert.Equal(t, expectedPolicy, policy)
+}
+
 func timeMustParse(t *testing.T, val string) *time.Time {
 	t.Helper()
 	parsed, err := time.Parse(time.RFC3339Nano, val)
 	require.NoError(t, err)
 	return &parsed
+}
+
+func createTempDotSnykFile(t *testing.T, contents string) *localpolicy.Policy {
+	t.Helper()
+
+	tmpDotSnyk, err := os.CreateTemp("", ".snyk")
+	require.NoError(t, err)
+	defer tmpDotSnyk.Close()
+	t.Cleanup(func() { os.Remove(tmpDotSnyk.Name()) })
+
+	_, err = tmpDotSnyk.WriteString(contents)
+	require.NoError(t, err)
+
+	lp, err := localpolicy.Load(tmpDotSnyk.Name())
+	require.NoError(t, err)
+
+	return lp
 }
