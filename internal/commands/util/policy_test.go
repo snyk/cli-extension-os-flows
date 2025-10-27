@@ -73,6 +73,22 @@ func TestResolvePolicyFile_WithDirectoryPath(t *testing.T) {
 	assert.Equal(t, "the-version", policy.Version)
 }
 
+func TestResolvePolicyFile_NoPolicyFile(t *testing.T) {
+	dir, err := os.MkdirTemp("", "snyk-policy")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(dir) })
+
+	cfg := configuration.New()
+	cfg.Set(configuration.INPUT_DIRECTORY, dir)
+	ctx := cmdctx.WithConfig(t.Context(), cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+
+	policy, err := util.GetLocalPolicy(ctx)
+
+	assert.Nil(t, policy)
+	assert.NoError(t, err)
+}
+
 func TestGetLocalPolicy_BrokenPolicy(t *testing.T) {
 	dir, err := os.MkdirTemp("", "snyk-policy")
 	require.NoError(t, err)

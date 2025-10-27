@@ -82,7 +82,7 @@ func ExtendLocalPolicyFromFindings(ctx context.Context, lp *localpolicy.Policy, 
 	}
 
 	if lp == nil {
-		// If there is no local policy and the are no project-level ignores,
+		// If there is no local policy and there are no project-level ignores,
 		// return an empty string.
 		if len(projectIgnores) == 0 {
 			return "", nil
