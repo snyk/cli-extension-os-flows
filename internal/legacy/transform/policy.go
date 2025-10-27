@@ -40,12 +40,7 @@ func ExtendLocalPolicyFromFindings(ctx context.Context, lp *localpolicy.Policy, 
 	projectIgnores := make(map[string]*testapi.IgnoreDetails)
 
 	for _, finding := range findings {
-		// If the finding does not have a suppression policy, skip it
-		if finding.Attributes.Suppression == nil || finding.Attributes.Suppression.Policy == nil {
-			continue
-		}
-
-		vulnID, err := vulnIDFromFinding(finding)
+		vulnID, err := vulnIDFromFinding(&finding)
 		if err != nil {
 			return "", fmt.Errorf("failed to get vulnerability ID from finding: %w", err)
 		}
@@ -55,29 +50,12 @@ func ExtendLocalPolicyFromFindings(ctx context.Context, lp *localpolicy.Policy, 
 			continue
 		}
 
-		managedPolicyRef, err := finding.Attributes.Suppression.Policy.AsManagedPolicyRef()
+		ignores, err := getIgnoresFromFinding(&finding)
 		if err != nil {
-			// If it's not a managed policy ref, skip it.
-			continue
+			return "", fmt.Errorf("failed to transform ignores: %w", err)
 		}
-
-		if finding.Relationships.Policy == nil {
-			continue
-		}
-		policies := finding.Relationships.Policy.Data.Attributes.Policies
-
-		// Go through related policies and find the applied one.
-		for _, policy := range policies {
-			if managedPolicyRef.Id != policy.Id {
-				continue
-			}
-
-			ignore, err := policy.AppliedPolicy.AsIgnore()
-			if err != nil {
-				return "", fmt.Errorf("failed to build ignore from applied policy: %w", err)
-			}
-
-			projectIgnores[vulnID] = &ignore.Ignore
+		for _, ignore := range ignores {
+			projectIgnores[vulnID] = ignore
 		}
 	}
 
@@ -114,7 +92,40 @@ func ExtendLocalPolicyFromFindings(ctx context.Context, lp *localpolicy.Policy, 
 	return buf.String(), nil
 }
 
-func vulnIDFromFinding(finding testapi.FindingData) (string, error) {
+func getIgnoresFromFinding(finding *testapi.FindingData) ([]*testapi.IgnoreDetails, error) {
+	ignores := []*testapi.IgnoreDetails{}
+
+	if finding.Attributes.Suppression == nil ||
+		finding.Attributes.Suppression.Policy == nil ||
+		finding.Relationships == nil ||
+		finding.Relationships.Policy == nil {
+		return ignores, nil
+	}
+
+	managedPolicyRef, err := finding.Attributes.Suppression.Policy.AsManagedPolicyRef()
+	if err != nil {
+		//nolint:nilerr // An error is expected for non-managed suppressions and can be swallowed here.
+		return ignores, nil
+	}
+
+	// Go through related policies and find the applied one.
+	for _, policy := range finding.Relationships.Policy.Data.Attributes.Policies {
+		if managedPolicyRef.Id != policy.Id {
+			continue
+		}
+
+		ignore, err := policy.AppliedPolicy.AsIgnore()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build ignore from applied policy: %w", err)
+		}
+
+		ignores = append(ignores, &ignore.Ignore)
+	}
+
+	return ignores, nil
+}
+
+func vulnIDFromFinding(finding *testapi.FindingData) (string, error) {
 	for _, problem := range finding.Attributes.Problems {
 		dis, err := problem.Discriminator()
 		if err != nil {
