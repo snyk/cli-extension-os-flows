@@ -16,6 +16,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
+	"github.com/snyk/cli-extension-os-flows/internal/testutil"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
@@ -917,6 +918,46 @@ func TestUnifiedFindingPresenter_IgnorePolicy(t *testing.T) {
 				},
 			},
 			expectedContains: []string{"Open   : 2", "Ignored: 0"},
+		},
+		{
+			name: "without --ignore-policy, remediation excludes ignored findings",
+			findings: []testapi.FindingData{
+				testutil.NewFinding(t,
+					testutil.WithTitle("Open Vulnerability"),
+					testutil.WithVulnID("SNYK-JS-ACORN-001"),
+					testutil.WithSeverity(testapi.SeverityHigh),
+					testutil.WithUpgradeFix("acorn", "5.7.4"),
+				),
+				testutil.NewFinding(t,
+					testutil.WithTitle("Ignored Vulnerability"),
+					testutil.WithVulnID("SNYK-JS-ACORN-002"),
+					testutil.WithSeverity(testapi.SeverityMedium),
+					testutil.WithSuppression(&testapi.Suppression{Status: testapi.SuppressionStatusIgnored}),
+					testutil.WithUpgradeFix("acorn", "5.7.4"),
+				),
+			},
+			expectedContains:    []string{"Issues with no direct upgrade or patch:", "Open Vulnerability"},
+			expectedNotContains: []string{"Ignored Vulnerability"},
+		},
+		{
+			name:         "with --ignore-policy, remediation includes ignored findings",
+			ignorePolicy: true,
+			findings: []testapi.FindingData{
+				testutil.NewFinding(t,
+					testutil.WithTitle("Open Vulnerability"),
+					testutil.WithVulnID("SNYK-JS-ACORN-001"),
+					testutil.WithSeverity(testapi.SeverityHigh),
+					testutil.WithUpgradeFix("acorn", "5.7.4"),
+				),
+				testutil.NewFinding(t,
+					testutil.WithTitle("Ignored Vulnerability"),
+					testutil.WithVulnID("SNYK-JS-ACORN-002"),
+					testutil.WithSeverity(testapi.SeverityMedium),
+					testutil.WithSuppression(&testapi.Suppression{Status: testapi.SuppressionStatusIgnored}),
+					testutil.WithUpgradeFix("acorn", "5.7.4"),
+				),
+			},
+			expectedContains: []string{"Issues with no direct upgrade or patch:", "Open Vulnerability", "Ignored Vulnerability"},
 		},
 	}
 
