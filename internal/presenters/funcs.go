@@ -428,16 +428,36 @@ func hasSuppression(finding testapi.FindingData) bool {
 	return finding.Attributes.Suppression.Status != testapi.SuppressionStatusOther
 }
 
+func stripSuppressions(findings []testapi.FindingData) []testapi.FindingData {
+	stripped := make([]testapi.FindingData, len(findings))
+	for i, f := range findings {
+		stripped[i] = f
+		if stripped[i].Attributes != nil {
+			stripped[i].Attributes.Suppression = nil
+		}
+	}
+	return stripped
+}
+
 func getSummaryWithoutSuppression() func(string, []testapi.FindingData, []string) []json_schemas.TestSummaryResult {
 	return func(issueType string, findings []testapi.FindingData, orderAsc []string) []json_schemas.TestSummaryResult {
-		strippedFindings := make([]testapi.FindingData, len(findings))
-		for i, f := range findings {
-			strippedFindings[i] = f
-			if strippedFindings[i].Attributes != nil {
-				strippedFindings[i].Attributes.Suppression = nil
-			}
+		return getSummaryResultsByIssueType(issueType, stripSuppressions(findings), orderAsc)
+	}
+}
+
+func getRemediationSummaryWithoutSuppression() func([]testapi.FindingData) remediation.Summary {
+	return func(findings []testapi.FindingData) remediation.Summary {
+		remFindings, err := remediation.ShimFindingsToRemediationFindings(stripSuppressions(findings))
+		if err != nil {
+			panic(err)
 		}
-		return getSummaryResultsByIssueType(issueType, strippedFindings, orderAsc)
+
+		summary, err := remediation.FindingsToRemediationSummary(remFindings)
+		if err != nil {
+			panic(err)
+		}
+
+		return summary
 	}
 }
 
@@ -447,8 +467,10 @@ func applyIgnorePolicyOverrides(fnMap template.FuncMap, config configuration.Con
 	fnMap["isIgnoredFinding"] = isIgnoredFinding
 	fnMap["hasSuppression"] = hasSuppression
 
+	ignorePolicy := config.GetBool(flags.FlagIgnorePolicy)
+
 	// When the --ignore-policy flag is set, all suppressions are ignored
-	if config.GetBool(flags.FlagIgnorePolicy) {
+	if ignorePolicy {
 		fnMap["isOpenFinding"] = func() func(_ any) bool {
 			return func(_ any) bool { return true }
 		}
@@ -462,6 +484,7 @@ func applyIgnorePolicyOverrides(fnMap template.FuncMap, config configuration.Con
 			return false
 		}
 		fnMap["getSummaryResultsByIssueType"] = getSummaryWithoutSuppression()
+		fnMap["getRemediationSummary"] = getRemediationSummaryWithoutSuppression()
 	}
 }
 
