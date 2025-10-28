@@ -697,6 +697,67 @@ func TestUnifiedFindingPresenter_Ignored_ShownInIgnoredSectionWithBang(t *testin
 	assert.Contains(t, out, " ! [IGNORED] [MEDIUM] Ignored Suppression Finding")
 }
 
+func TestUnifiedFindingPresenter_IgnoredFindingsNotCountedInSummary(t *testing.T) {
+	config := configuration.New()
+	buffer := &bytes.Buffer{}
+
+	depPathEv := testapi.Evidence{}
+	err := depPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path: []testapi.Package{
+			{Name: "root", Version: "1.0.0"},
+			{Name: "vulnerable-pkg", Version: "1.0.0"},
+		},
+		Source: testapi.DependencyPath,
+	})
+	require.NoError(t, err)
+
+	// One open finding with 1 vulnerable path
+	openFinding := testapi.FindingData{
+		Id:   util.Ptr(uuid.New()),
+		Type: util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{
+			Title:    "Open Vulnerability",
+			Rating:   testapi.Rating{Severity: testapi.Severity("high")},
+			Evidence: []testapi.Evidence{depPathEv},
+		},
+	}
+
+	// One ignored finding with 1 vulnerable path (should not be counted)
+	ignoredFinding := testapi.FindingData{
+		Id:   util.Ptr(uuid.New()),
+		Type: util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{
+			Title:       "Ignored Vulnerability",
+			Rating:      testapi.Rating{Severity: testapi.Severity("critical")},
+			Suppression: &testapi.Suppression{Status: testapi.SuppressionStatusIgnored},
+			Evidence:    []testapi.Evidence{depPathEv},
+		},
+	}
+
+	projectResult := &presenters.UnifiedProjectResult{
+		Findings:             []testapi.FindingData{openFinding, ignoredFinding},
+		DependencyCount:      1,
+		VulnerablePathsCount: 1, // Only count paths from open findings
+		Summary: &json_schemas.TestSummary{
+			Type:             "open-source",
+			SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+			Results: []json_schemas.TestSummaryResult{
+				{Severity: "high", Open: 1, Total: 1},
+				{Severity: "critical", Ignored: 1, Total: 1},
+			},
+		},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer([]*presenters.UnifiedProjectResult{projectResult}, config, buffer)
+	err = presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	assert.NoError(t, err)
+
+	out := buffer.String()
+
+	assert.Contains(t, out, "found 1 issue")
+	assert.Contains(t, out, "1 vulnerable path")
+}
+
 // verifies that license instructions appear in output.
 func TestUnifiedFindingPresenter_LicenseInstructions(t *testing.T) {
 	config := configuration.New()

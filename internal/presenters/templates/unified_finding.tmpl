@@ -173,16 +173,14 @@
 {{- range .Results}}
     {{- template "header"  . }}
 
-    {{- $totalIssues := 0 }}
-    {{- range $res := .Summary.Results }}
-        {{- $totalIssues = add $totalIssues $res.Total }}
-    {{- end }}
+    {{- $openFindings := .Findings | filterFinding (isOpenFinding) }}
+    {{- $openIssuesCount := len $openFindings }}
 
     {{- if gt .DependencyCount 0 -}}
-        {{- if eq $totalIssues 0 -}}
+        {{- if eq $openIssuesCount 0 -}}
             {{- printf "\n✔ Tested %d dependencies for known issues, no vulnerable paths found.\n" .DependencyCount | renderGreen -}}
         {{- else -}}
-            {{- printf "\nTested %d dependencies for known issues, found %d issues, %d vulnerable paths.\n" .DependencyCount $totalIssues .VulnerablePathsCount -}}
+            {{- printf "\nTested %d dependencies for known issues, found %d issues, %d vulnerable paths.\n" .DependencyCount $openIssuesCount .VulnerablePathsCount -}}
         {{- end -}}
     {{- end }}
 
