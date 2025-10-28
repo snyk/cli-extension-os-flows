@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -305,6 +306,27 @@ func getSourceDir(cfg configuration.Configuration, inputDir string) string {
 	return inputDir
 }
 
+func getInputDirectories(ctx context.Context) ([]string, error) {
+	cfg := cmdctx.Config(ctx)
+	sbom := cfg.GetString(flags.FlagSBOM)
+	errFactory := cmdctx.ErrorFactory(ctx)
+
+	inputDirs := cfg.GetStringSlice(configuration.INPUT_DIRECTORY)
+	if len(inputDirs) > 1 && sbom != "" {
+		//nolint:wrapcheck // No need to wrap error factory errors.
+		return nil, errFactory.NewSBOMTestWithMultiplePathsError()
+	}
+	if len(inputDirs) == 0 {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("failed to determine working directory: %w", err)
+		}
+		inputDirs = []string{cwd}
+	}
+
+	return inputDirs, nil
+}
+
 // OSWorkflow is the entry point for the Open Source Test workflow.
 func OSWorkflow(
 	ictx workflow.InvocationContext,
@@ -359,10 +381,9 @@ func OSWorkflow(
 		return nil, err
 	}
 
-	inputDirs := cfg.GetStringSlice(configuration.INPUT_DIRECTORY)
-	if len(inputDirs) > 1 && sbom != "" {
-		//nolint:wrapcheck // No need to wrap error factory errors.
-		return nil, errFactory.NewSBOMTestWithMultiplePathsError()
+	inputDirs, err := getInputDirectories(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	allLegacyFindings := []definitions.LegacyVulnerabilityResponse{}
