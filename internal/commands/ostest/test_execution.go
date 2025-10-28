@@ -664,6 +664,10 @@ func calculateVulnerablePathsCount(findings []testapi.FindingData) int {
 		if finding.Attributes == nil {
 			continue
 		}
+		if finding.Attributes.Suppression != nil &&
+			finding.Attributes.Suppression.Status == testapi.SuppressionStatusIgnored {
+			continue
+		}
 		for _, evidence := range finding.Attributes.Evidence {
 			if disc, err := evidence.Discriminator(); err == nil && disc == string(testapi.DependencyPath) {
 				count++
