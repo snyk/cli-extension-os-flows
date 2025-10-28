@@ -1,0 +1,13 @@
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/vanilla-findings.json:generic-api-key:185
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/vanilla-findings.json:generic-api-key:401
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/projectIgnore-findings.json:generic-api-key:174
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/projectIgnore-findings.json:generic-api-key:280
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/projectIgnore-findings.json:generic-api-key:561
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/policyGroupIgnore-findings.json:generic-api-key:185
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/policyGroupIgnore-findings.json:generic-api-key:401
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/policyGroupIgnore-findings.json:generic-api-key:507
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/policySeverityChange-findings.json:generic-api-key:64
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/policySeverityChange-findings.json:generic-api-key:604
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/bothProjectAndGroupIgnores-findings.json:generic-api-key:185
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/bothProjectAndGroupIgnores-findings.json:generic-api-key:291
+290a5a0635286c8f959f3a5b9bdf4f986c591bec:internal/legacy/transform/testdata/bothProjectAndGroupIgnores-findings.json:generic-api-key:616
