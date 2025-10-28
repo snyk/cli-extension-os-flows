@@ -7,6 +7,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 )
 
@@ -30,11 +31,11 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) (*DepGraphRes
 	errFactory := errors.NewErrorFactory(logger)
 
 	depGraphConfig := config.Clone()
-	experimentalUvSupportEnabled := config.GetBool("SNYK_ENABLE_EXPERIMENTAL_UV_SUPPORT")
+	experimentalUvSupportEnabled := config.GetBool(constants.EnableExperimentalUvSupportEnvVar)
 
 	if experimentalUvSupportEnabled {
-		logger.Info().Msg("experimental uv support enabled, using SBOM resolution in depgraph workflow")
-		depGraphConfig.Set("use-sbom-resolve", true)
+		logger.Info().Msg("Experimental uv support enabled, using SBOM resolution in depgraph workflow")
+		depGraphConfig.Set("use-sbom-resolution", true)
 	} else {
 		logger.Println("Invoking depgraph workflow")
 	}

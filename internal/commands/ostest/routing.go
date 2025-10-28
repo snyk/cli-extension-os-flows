@@ -8,6 +8,7 @@ import (
 	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
@@ -117,8 +118,8 @@ func RouteToFlow(ctx context.Context, orgUUID uuid.UUID, sc settings.Client) (Fl
 	sbomReachabilityTest := reachability && sbom != ""
 	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
 
-	experimentalUvSupport := cfg.GetBool(EnableExperimentalUvSupportEnvVar)
-	forceLegacyTest := cfg.GetBool(ForceLegacyCLIEnvVar)
+	experimentalUvSupport := cfg.GetBool(constants.EnableExperimentalUvSupportEnvVar)
+	forceLegacyTest := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
 	requiresLegacy := cfg.GetBool(flags.FlagPrintGraph) ||
 		cfg.GetBool(flags.FlagPrintDeps) ||
 		cfg.GetBool(flags.FlagPrintDepPaths) ||

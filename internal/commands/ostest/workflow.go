@@ -54,12 +54,6 @@ const FeatureFlagRiskScore = "feature_flag_experimental_risk_score"
 // FeatureFlagRiskScoreInCLI is used to gate the risk score feature in the CLI.
 const FeatureFlagRiskScoreInCLI = "feature_flag_experimental_risk_score_in_cli"
 
-// ForceLegacyCLIEnvVar is an internal environment variable to force the legacy CLI flow.
-const ForceLegacyCLIEnvVar = "SNYK_FORCE_LEGACY_CLI"
-
-// EnableExperimentalUvSupportEnvVar is an internal environment variable to enable support for testing UV projects.
-const EnableExperimentalUvSupportEnvVar = "SNYK_ENABLE_EXPERIMENTAL_UV_SUPPORT"
-
 // PollInterval is the polling interval for the test API. It is exported to be configurable in tests.
 var PollInterval = 2 * time.Second
 

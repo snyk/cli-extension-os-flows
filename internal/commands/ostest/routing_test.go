@@ -12,6 +12,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
 )
@@ -80,7 +81,7 @@ func Test_RouteToFlow_LegacyCLIFlow(t *testing.T) {
 	t.Run("when env var is set", func(t *testing.T) {
 		t.Parallel()
 		cfg := defaultConfig.Clone()
-		cfg.Set(ostest.ForceLegacyCLIEnvVar, true)
+		cfg.Set(constants.ForceLegacyCLIEnvVar, true)
 
 		ctx := t.Context()
 		ctx = cmdctx.WithConfig(ctx, cfg)

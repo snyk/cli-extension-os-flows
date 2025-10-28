@@ -28,6 +28,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	common "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
@@ -565,15 +566,15 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			expectedError: "The feature you are trying to use is not available for your organization",
 		},
 		{
-			name: "UV test flow enabled, expects depgraph workflow with use-sbom-resolve flag",
+			name: "UV test flow enabled, expects depgraph workflow with use-sbom-resolutionflag",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
-				config.Set(ostest.EnableExperimentalUvSupportEnvVar, true)
+				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
 					DoAndReturn(func(_ workflow.Identifier, cfg configuration.Configuration) ([]workflow.Data, error) {
-						// Verify that use-sbom-resolve flag is set
-						if !cfg.GetBool("use-sbom-resolve") {
-							return nil, fmt.Errorf("expected use-sbom-resolve flag to be set")
+						// Verify that use-sbom-resolution flag is set
+						if !cfg.GetBool("use-sbom-resolution") {
+							return nil, fmt.Errorf("Expected use-sbom-resolution flag to be set")
 						}
 						return nil, assert.AnError
 					}).
@@ -584,8 +585,8 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 		{
 			name: "UV test flow disabled, depgraph calls legacy internally",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
-				config.Set(ostest.EnableExperimentalUvSupportEnvVar, false)
-				// When UV is disabled, depgraph workflow is called without use-sbom-resolve flag
+				config.Set(constants.EnableExperimentalUvSupportEnvVar, false)
+				// When UV is disabled, depgraph workflow is called without use-sbom-resolution flag
 				// Then depgraph internally calls legacycli
 				mockEngine.EXPECT().
 					InvokeWithConfig(gomock.Any(), gomock.Any()).
