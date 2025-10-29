@@ -203,5 +203,6 @@ func fixFromFinding(sf testapi.FindingData) (Fix, error) {
 			}), nil
 		}
 	}
-	return NewUnresolvedFix(), nil
+	//nolint:nilnil // nil is a valid value and will be returned if fix is found in the finding.
+	return nil, nil
 }

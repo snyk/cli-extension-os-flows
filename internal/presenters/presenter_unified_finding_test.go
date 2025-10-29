@@ -1,3 +1,4 @@
+//nolint:revive // Interferes with inline types from testapi.
 package presenters_test
 
 import (
@@ -245,6 +246,64 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 					return []testapi.Problem{p}
 				}(),
 			},
+			Relationships: &struct {
+				Asset *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+				} "json:\"asset,omitempty\""
+				Fix *struct {
+					Data *struct {
+						Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID              "json:\"id\""
+						Type       string                 "json:\"type\""
+					} "json:\"data,omitempty\""
+				} "json:\"fix,omitempty\""
+				Org *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+				} "json:\"org,omitempty\""
+				Policy *struct {
+					Data *struct {
+						Attributes *testapi.PolicyAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID                 "json:\"id\""
+						Type       string                    "json:\"type\""
+					} "json:\"data,omitempty\""
+					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+				} "json:\"policy,omitempty\""
+				Test *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+				} "json:\"test,omitempty\""
+			}{
+				Fix: &struct {
+					Data *struct {
+						Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID              "json:\"id\""
+						Type       string                 "json:\"type\""
+					} "json:\"data,omitempty\""
+				}{
+					Data: &struct {
+						Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID              "json:\"id\""
+						Type       string                 "json:\"type\""
+					}{
+						Attributes: &testapi.FixAttributes{
+							Outcome: testapi.Unresolved,
+						},
+					},
+				},
+			},
 		}
 
 		licProblemID := "snyk:lic:npm:web3-core:LGPL-3.0"
@@ -273,6 +332,64 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 					assert.NoError(t, err)
 					return []testapi.Problem{p}
 				}(),
+			},
+			Relationships: &struct {
+				Asset *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+				} "json:\"asset,omitempty\""
+				Fix *struct {
+					Data *struct {
+						Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID              "json:\"id\""
+						Type       string                 "json:\"type\""
+					} "json:\"data,omitempty\""
+				} "json:\"fix,omitempty\""
+				Org *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+				} "json:\"org,omitempty\""
+				Policy *struct {
+					Data *struct {
+						Attributes *testapi.PolicyAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID                 "json:\"id\""
+						Type       string                    "json:\"type\""
+					} "json:\"data,omitempty\""
+					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+				} "json:\"policy,omitempty\""
+				Test *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+				} "json:\"test,omitempty\""
+			}{
+				Fix: &struct {
+					Data *struct {
+						Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID              "json:\"id\""
+						Type       string                 "json:\"type\""
+					} "json:\"data,omitempty\""
+				}{
+					Data: &struct {
+						Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID              "json:\"id\""
+						Type       string                 "json:\"type\""
+					}{
+						Attributes: &testapi.FixAttributes{
+							Outcome: testapi.Unresolved,
+						},
+					},
+				},
 			},
 		}
 
@@ -371,6 +488,64 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 					return []testapi.Problem{p}
 				}(),
 			},
+			Relationships: &struct {
+				Asset *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+				} "json:\"asset,omitempty\""
+				Fix *struct {
+					Data *struct {
+						Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID              "json:\"id\""
+						Type       string                 "json:\"type\""
+					} "json:\"data,omitempty\""
+				} "json:\"fix,omitempty\""
+				Org *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+				} "json:\"org,omitempty\""
+				Policy *struct {
+					Data *struct {
+						Attributes *testapi.PolicyAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID                 "json:\"id\""
+						Type       string                    "json:\"type\""
+					} "json:\"data,omitempty\""
+					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+				} "json:\"policy,omitempty\""
+				Test *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+				} "json:\"test,omitempty\""
+			}{
+				Fix: &struct {
+					Data *struct {
+						Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID              "json:\"id\""
+						Type       string                 "json:\"type\""
+					} "json:\"data,omitempty\""
+				}{
+					Data: &struct {
+						Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID              "json:\"id\""
+						Type       string                 "json:\"type\""
+					}{
+						Attributes: &testapi.FixAttributes{
+							Outcome: testapi.Unresolved,
+						},
+					},
+				},
+			},
 		}
 
 		projectResult := &presenters.UnifiedProjectResult{
@@ -450,6 +625,64 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 					assert.NoError(t, err)
 					return []testapi.Problem{p}
 				}(),
+			},
+			Relationships: &struct {
+				Asset *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+				} "json:\"asset,omitempty\""
+				Fix *struct {
+					Data *struct {
+						Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID              "json:\"id\""
+						Type       string                 "json:\"type\""
+					} "json:\"data,omitempty\""
+				} "json:\"fix,omitempty\""
+				Org *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+				} "json:\"org,omitempty\""
+				Policy *struct {
+					Data *struct {
+						Attributes *testapi.PolicyAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID                 "json:\"id\""
+						Type       string                    "json:\"type\""
+					} "json:\"data,omitempty\""
+					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+				} "json:\"policy,omitempty\""
+				Test *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
+					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
+				} "json:\"test,omitempty\""
+			}{
+				Fix: &struct {
+					Data *struct {
+						Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID              "json:\"id\""
+						Type       string                 "json:\"type\""
+					} "json:\"data,omitempty\""
+				}{
+					Data: &struct {
+						Attributes *testapi.FixAttributes "json:\"attributes,omitempty\""
+						Id         uuid.UUID              "json:\"id\""
+						Type       string                 "json:\"type\""
+					}{
+						Attributes: &testapi.FixAttributes{
+							Outcome: testapi.Unresolved,
+						},
+					},
+				},
 			},
 		}
 

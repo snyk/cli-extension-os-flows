@@ -110,6 +110,10 @@ func processPinAction(vuln *definitions.Vulnerability, act *testapi.Action) erro
 
 // RemediationSummaryToLegacy will convert a remediation.Summary into the legacy `--json` remediation field.
 func RemediationSummaryToLegacy(legacyVulns []definitions.Vulnerability, remSummary remediation.Summary) (*definitions.Remediation, error) {
+	if len(remSummary.Unresolved) == 0 && len(remSummary.Pins) == 0 && len(remSummary.Upgrades) == 0 {
+		//nolint:nilnil // nil is a valid value and will be returned if no remediation information is provided.
+		return nil, nil
+	}
 	summary := definitions.Remediation{
 		Pin:        make(map[string]definitions.PinRemediation),
 		Upgrade:    make(map[string]definitions.RemediationUpgradeInfo),
