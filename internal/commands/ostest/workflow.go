@@ -346,7 +346,8 @@ func OSWorkflow(
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	defer progressBar.Clear()
 
-	useLegacy, err := ShouldUseLegacyFlow(ctx)
+	flowCfg := ParseFlowConfig(cfg)
+	useLegacy, err := ShouldUseLegacyFlow(ctx, flowCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +371,7 @@ func OSWorkflow(
 
 	// Determine which new flow to use
 	sc := setupSettingsClient(ctx)
-	flow, err := RouteToFlow(ctx, orgUUID, sc)
+	flow, err := RouteToFlow(ctx, flowCfg, orgUUID, sc)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
+	"github.com/snyk/go-application-framework/pkg/configuration"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
@@ -101,11 +102,24 @@ func validateReachability(
 	return nil
 }
 
-// ShouldUseLegacyFlow determines if the command should route to legacy CLI based on flags.
-func ShouldUseLegacyFlow(ctx context.Context) (bool, error) {
-	cfg := cmdctx.Config(ctx)
-	errFactory := cmdctx.ErrorFactory(ctx)
+// FlowConfig holds parsed configuration for flow routing decisions.
+type FlowConfig struct {
+	FFRiskScore           bool
+	FFRiskScoreInCLI      bool
+	RiskScoreFFsEnabled   bool
+	RiskScoreThreshold    int
+	RiskScoreTest         bool
+	Reachability          bool
+	SBOM                  string
+	SBOMReachabilityTest  bool
+	ReachabilityFilter    string
+	ExperimentalUvSupport bool
+	ForceLegacyTest       bool
+	RequiresLegacy        bool
+}
 
+// ParseFlowConfig reads and parses all flow-related configuration flags.
+func ParseFlowConfig(cfg configuration.Configuration) FlowConfig {
 	ffRiskScore := cfg.GetBool(FeatureFlagRiskScore)
 	ffRiskScoreInCLI := cfg.GetBool(FeatureFlagRiskScoreInCLI)
 	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
@@ -114,6 +128,7 @@ func ShouldUseLegacyFlow(ctx context.Context) (bool, error) {
 
 	reachability := cfg.GetBool(flags.FlagReachability)
 	sbom := cfg.GetString(flags.FlagSBOM)
+	sbomReachabilityTest := reachability && sbom != ""
 	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
 
 	experimentalUvSupport := cfg.GetBool(constants.EnableExperimentalUvSupportEnvVar)
@@ -123,60 +138,77 @@ func ShouldUseLegacyFlow(ctx context.Context) (bool, error) {
 		cfg.GetBool(flags.FlagPrintDepPaths) ||
 		cfg.GetBool(flags.FlagUnmanaged)
 
+	return FlowConfig{
+		FFRiskScore:           ffRiskScore,
+		FFRiskScoreInCLI:      ffRiskScoreInCLI,
+		RiskScoreFFsEnabled:   riskScoreFFsEnabled,
+		RiskScoreThreshold:    riskScoreThreshold,
+		RiskScoreTest:         riskScoreTest,
+		Reachability:          reachability,
+		SBOM:                  sbom,
+		SBOMReachabilityTest:  sbomReachabilityTest,
+		ReachabilityFilter:    reachabilityFilter,
+		ExperimentalUvSupport: experimentalUvSupport,
+		ForceLegacyTest:       forceLegacyTest,
+		RequiresLegacy:        requiresLegacy,
+	}
+}
+
+// ShouldUseLegacyFlow determines if the command should route to legacy CLI based on flags.
+func ShouldUseLegacyFlow(ctx context.Context, fc FlowConfig) (bool, error) {
+	errFactory := cmdctx.ErrorFactory(ctx)
+	logger := cmdctx.Logger(ctx)
+
 	err := validateLegacyCLIOptions(
-		forceLegacyTest,
-		requiresLegacy,
-		riskScoreThreshold,
-		reachability,
-		sbom,
-		reachabilityFilter,
+		fc.ForceLegacyTest,
+		fc.RequiresLegacy,
+		fc.RiskScoreThreshold,
+		fc.Reachability,
+		fc.SBOM,
+		fc.ReachabilityFilter,
 		errFactory,
 	)
 	if err != nil {
 		return false, err
 	}
 
-	hasNewFeatures := riskScoreTest || reachability || sbom != "" || reachabilityFilter != "" || experimentalUvSupport
-	useLegacy := forceLegacyTest || requiresLegacy || !hasNewFeatures
+	hasNewFeatures := fc.RiskScoreTest || fc.Reachability || fc.SBOM != "" || fc.ReachabilityFilter != "" || fc.ExperimentalUvSupport
+	useLegacy := fc.ForceLegacyTest || fc.RequiresLegacy || !hasNewFeatures
+
+	logger.Debug().Msgf(
+		"Using legacy flow: %t. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %t. Experimental uv Support: %t.",
+		useLegacy,
+		fc.ForceLegacyTest,
+		fc.SBOMReachabilityTest,
+		fc.RiskScoreTest,
+		fc.ExperimentalUvSupport,
+	)
+
 	return useLegacy, nil
 }
 
-// RouteToFlow determines which new flow to use (assumes legacy check already done).
-func RouteToFlow(ctx context.Context, orgUUID uuid.UUID, sc settings.Client) (Flow, error) {
+// RouteToFlow determines which new flow to use.
+func RouteToFlow(ctx context.Context, fc FlowConfig, orgUUID uuid.UUID, sc settings.Client) (Flow, error) {
 	cfg := cmdctx.Config(ctx)
 	errFactory := cmdctx.ErrorFactory(ctx)
 
-	ffRiskScore := cfg.GetBool(FeatureFlagRiskScore)
-	ffRiskScoreInCLI := cfg.GetBool(FeatureFlagRiskScoreInCLI)
-	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
-	riskScoreThreshold := cfg.GetInt(flags.FlagRiskScoreThreshold)
-	err := validateRiskScore(riskScoreThreshold, riskScoreFFsEnabled, ffRiskScore, errFactory)
+	err := validateRiskScore(fc.RiskScoreThreshold, fc.RiskScoreFFsEnabled, fc.FFRiskScore, errFactory)
 	if err != nil {
 		return "", err
 	}
 
-	reachability := cfg.GetBool(flags.FlagReachability)
-	sbom := cfg.GetString(flags.FlagSBOM)
-	sbomReachabilityTest := reachability && sbom != ""
-	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
-
-	if !reachability && reachabilityFilter != "" {
-		return "", errFactory.NewReachabilityFilterWithoutReachabilityError() //nolint:wrapcheck // errFactory already wraps the error
-	}
-
-	// Validate reachability settings
-	err = validateReachability(ctx, reachability, sc, orgUUID, reachabilityFilter, errFactory)
+	err = validateReachability(ctx, fc.Reachability, sc, orgUUID, fc.ReachabilityFilter, errFactory)
 	if err != nil {
 		return "", err
 	}
 
 	switch {
-	case sbomReachabilityTest:
+	case fc.SBOMReachabilityTest:
 		if !cfg.GetBool(FeatureFlagSBOMTestReachability) {
 			return "", errFactory.NewFeatureNotPermittedError(FeatureFlagSBOMTestReachability)
 		}
 		return SBOMReachabilityFlow, nil
-	case reachability:
+	case fc.Reachability:
 		if !cfg.GetBool(FeatureFlagReachabilityForCLI) {
 			return "", errFactory.NewFeatureNotPermittedError(FeatureFlagReachabilityForCLI)
 		}
