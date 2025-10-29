@@ -43,11 +43,10 @@ func setupSettingsClient(t *testing.T) settings.Client {
 	return sc
 }
 
-func Test_RouteToFlow_LegacyCLIFlow(t *testing.T) {
+func Test_ShouldUseLegacyFlow(t *testing.T) {
 	t.Parallel()
 	defaultConfig := configuration.New()
 	defaultConfig.Set(flags.FlagRiskScoreThreshold, -1)
-	sc := setupSettingsClient(t)
 	newOptions := map[string]func(configuration.Configuration) configuration.Configuration{
 		"--reachability": func(cfg configuration.Configuration) configuration.Configuration {
 			newCfg := cfg.Clone()
@@ -88,10 +87,10 @@ func Test_RouteToFlow_LegacyCLIFlow(t *testing.T) {
 		ctx = cmdctx.WithLogger(ctx, &nopLogger)
 		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-		flow, err := ostest.RouteToFlow(ctx, orgID, sc)
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx)
 		require.NoError(t, err)
 
-		assert.Equal(t, ostest.LegacyFlow, flow)
+		assert.True(t, useLegacy)
 
 		for name, newOption := range newOptions {
 			t.Run(fmt.Sprintf("should fail when %s is/are set", name), func(t *testing.T) {
@@ -101,7 +100,7 @@ func Test_RouteToFlow_LegacyCLIFlow(t *testing.T) {
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
 				ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-				_, err := ostest.RouteToFlow(ctx, orgID, sc)
+				_, err := ostest.ShouldUseLegacyFlow(ctx)
 
 				assert.ErrorContains(t, err, "Invalid flag option")
 			})
@@ -122,10 +121,10 @@ func Test_RouteToFlow_LegacyCLIFlow(t *testing.T) {
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
 				ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-				flow, err := ostest.RouteToFlow(ctx, orgID, sc)
+				useLegacy, err := ostest.ShouldUseLegacyFlow(ctx)
 				require.NoError(t, err)
 
-				assert.Equal(t, ostest.LegacyFlow, flow)
+				assert.True(t, useLegacy)
 			})
 
 			for name, newOption := range newOptions {
@@ -136,7 +135,7 @@ func Test_RouteToFlow_LegacyCLIFlow(t *testing.T) {
 					ctx = cmdctx.WithLogger(ctx, &nopLogger)
 					ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-					_, err := ostest.RouteToFlow(ctx, orgID, sc)
+					_, err := ostest.ShouldUseLegacyFlow(ctx)
 
 					assert.ErrorContains(t, err, "Invalid flag option")
 				})
@@ -153,10 +152,10 @@ func Test_RouteToFlow_LegacyCLIFlow(t *testing.T) {
 		ctx = cmdctx.WithLogger(ctx, &nopLogger)
 		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-		flow, err := ostest.RouteToFlow(ctx, orgID, sc)
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx)
 		require.NoError(t, err)
 
-		assert.Equal(t, ostest.LegacyFlow, flow)
+		assert.True(t, useLegacy)
 	})
 }
 

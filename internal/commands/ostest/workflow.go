@@ -346,29 +346,33 @@ func OSWorkflow(
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	defer progressBar.Clear()
 
-	logger.Info().Msg("Getting preferred organization ID")
+	useLegacy, err := ShouldUseLegacyFlow(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if useLegacy {
+		//nolint:errcheck // We don't need to fail the command due to UI errors.
+		progressBar.Clear()
+		return code_workflow.EntryPointLegacy(ictx)
+	}
+
 	orgID := cfg.GetString(configuration.ORGANIZATION)
 	if orgID == "" {
 		logger.Error().Msg("No organization ID provided")
 		return nil, errFactory.NewEmptyOrgError()
 	}
+
 	orgUUID, err := uuid.Parse(orgID)
 	if err != nil {
-		return nil, fmt.Errorf("orgID is not a valid UUID: %w", err)
+		return nil, errFactory.NewInvalidOrgIDError(orgID)
 	}
 
+	// Determine which new flow to use
 	sc := setupSettingsClient(ctx)
 	flow, err := RouteToFlow(ctx, orgUUID, sc)
 	if err != nil {
 		return nil, err
-	}
-
-	// Legacy test fallthrough
-	if flow == LegacyFlow {
-		// clear the progress bar early as to not interfere with the legacy command
-		//nolint:errcheck // We don't need to fail the command due to UI errors.
-		progressBar.Clear()
-		return code_workflow.EntryPointLegacy(ictx)
 	}
 
 	sbom := cfg.GetString(flags.FlagSBOM)

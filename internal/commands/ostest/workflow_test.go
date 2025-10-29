@@ -418,6 +418,77 @@ func TestOSWorkflow_LegacyFlow(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestOSWorkflow_OrgIDHandling(t *testing.T) {
+	tests := []struct {
+		name          string
+		setupConfig   func(config configuration.Configuration)
+		setupEngine   func(mockEngine *mocks.MockEngine)
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "Legacy flow without org ID should route to legacy",
+			setupConfig: func(config configuration.Configuration) {
+				config.Set(configuration.ORGANIZATION, "")
+			},
+			setupEngine: func(mockEngine *mocks.MockEngine) {
+				mockEngine.EXPECT().
+					InvokeWithConfig(legacyWorkflowID, gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			},
+			expectError: false,
+		},
+		{
+			name: "New flow without org ID should fail with org error",
+			setupConfig: func(config configuration.Configuration) {
+				config.Set(configuration.ORGANIZATION, "")
+				config.Set(ostest.FeatureFlagRiskScore, true)
+				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+			},
+			setupEngine: func(_ *mocks.MockEngine) {
+			},
+			expectError:   true,
+			errorContains: "Snyk failed to infer an organization ID",
+		},
+		{
+			name: "New flow with invalid org ID should fail with invalid org error",
+			setupConfig: func(config configuration.Configuration) {
+				config.Set(configuration.ORGANIZATION, "not-a-valid-uuid")
+				config.Set(ostest.FeatureFlagRiskScore, true)
+				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+			},
+			setupEngine: func(_ *mocks.MockEngine) {
+			},
+			expectError:   true,
+			errorContains: "not valid",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockEngine := mocks.NewMockEngine(ctrl)
+			mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+			config := mockInvocationCtx.GetConfiguration()
+
+			tt.setupConfig(config)
+			tt.setupEngine(mockEngine)
+
+			_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorContains)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 // TestOSWorkflow_FlagCombinations tests various flag combinations to ensure correct routing
 // between the legacy, unified, and reachability test flows.
 func TestOSWorkflow_FlagCombinations(t *testing.T) {

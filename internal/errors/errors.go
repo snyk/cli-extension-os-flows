@@ -58,6 +58,15 @@ func (ef *ErrorFactory) NewEmptyOrgError() *OSFlowsExtensionError {
 	)
 }
 
+// NewInvalidOrgIDError creates a new error for when the organization ID is not a valid UUID.
+func (ef *ErrorFactory) NewInvalidOrgIDError(orgID string) *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("invalid organization ID: %s", orgID),
+		fmt.Sprintf("The provided organization ID '%s' is not valid. "+
+			"Please provide a valid organization ID via the `--org` flag.", orgID),
+	)
+}
+
 // NewMissingFilenameFlagError creates a new error for when the required file flag is missing.
 func (ef *ErrorFactory) NewMissingFilenameFlagError() *OSFlowsExtensionError {
 	return ef.newErr(
