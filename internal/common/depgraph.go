@@ -7,6 +7,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 )
 
@@ -29,9 +30,16 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) (*DepGraphRes
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
 
-	logger.Println("Invoking depgraph workflow")
-
 	depGraphConfig := config.Clone()
+	experimentalUvSupportEnabled := config.GetBool(constants.EnableExperimentalUvSupportEnvVar)
+
+	if experimentalUvSupportEnabled {
+		logger.Info().Msg("Experimental uv support enabled, using SBOM resolution in depgraph workflow")
+		depGraphConfig.Set("use-sbom-resolution", true)
+	} else {
+		logger.Println("Invoking depgraph workflow")
+	}
+
 	// Overriding the INPUT_DIRECTORY flag which the depgraph workflow will use to extract the depgraphs.
 	depGraphConfig.Set(configuration.INPUT_DIRECTORY, inputDir)
 	depGraphs, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)

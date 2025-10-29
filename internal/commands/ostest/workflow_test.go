@@ -28,6 +28,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	common "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
@@ -563,6 +564,36 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 				config.Set(flags.FlagReachability, true)
 			},
 			expectedError: "The feature you are trying to use is not available for your organization",
+		},
+		{
+			name: "UV test flow enabled, expects depgraph workflow with use-sbom-resolutionflag",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
+				mockEngine.EXPECT().
+					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
+					DoAndReturn(func(_ workflow.Identifier, cfg configuration.Configuration) ([]workflow.Data, error) {
+						// Verify that use-sbom-resolution flag is set
+						if !cfg.GetBool("use-sbom-resolution") {
+							return nil, fmt.Errorf("Expected use-sbom-resolution flag to be set")
+						}
+						return nil, assert.AnError
+					}).
+					Times(1)
+			},
+			expectedError: "failed to get dependency graph",
+		},
+		{
+			name: "UV test flow disabled, depgraph calls legacy internally",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(constants.EnableExperimentalUvSupportEnvVar, false)
+				// When UV is disabled, depgraph workflow is called without use-sbom-resolution flag
+				// Then depgraph internally calls legacycli
+				mockEngine.EXPECT().
+					InvokeWithConfig(gomock.Any(), gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			},
+			expectedError: "", // No error, should succeed via legacy path
 		},
 	}
 

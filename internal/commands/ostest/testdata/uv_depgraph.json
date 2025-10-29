@@ -1,0 +1,41 @@
+{
+    "schemaVersion": "1.2.0",
+    "pkgManager": {
+        "name": "pip"
+    },
+    "pkgs": [
+        {
+            "id": "test-uv-project@1.0.0",
+            "info": {
+                "name": "test-uv-project",
+                "version": "1.0.0"
+            }
+        },
+        {
+            "id": "flask@2.3.0",
+            "info": {
+                "name": "flask",
+                "version": "2.3.0"
+            }
+        }
+    ],
+    "graph": {
+        "rootNodeId": "root-node",
+        "nodes": [
+            {
+                "nodeId": "root-node",
+                "pkgId": "test-uv-project@1.0.0",
+                "deps": [
+                    {
+                        "nodeId": "flask@2.3.0"
+                    }
+                ]
+            },
+            {
+                "nodeId": "flask@2.3.0",
+                "pkgId": "flask@2.3.0",
+                "deps": []
+            }
+        ]
+    }
+}

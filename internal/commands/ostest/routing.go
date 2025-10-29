@@ -8,6 +8,7 @@ import (
 	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
@@ -117,7 +118,8 @@ func RouteToFlow(ctx context.Context, orgUUID uuid.UUID, sc settings.Client) (Fl
 	sbomReachabilityTest := reachability && sbom != ""
 	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
 
-	forceLegacyTest := cfg.GetBool(ForceLegacyCLIEnvVar)
+	experimentalUvSupport := cfg.GetBool(constants.EnableExperimentalUvSupportEnvVar)
+	forceLegacyTest := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
 	requiresLegacy := cfg.GetBool(flags.FlagPrintGraph) ||
 		cfg.GetBool(flags.FlagPrintDeps) ||
 		cfg.GetBool(flags.FlagPrintDepPaths) ||
@@ -147,12 +149,13 @@ func RouteToFlow(ctx context.Context, orgUUID uuid.UUID, sc settings.Client) (Fl
 	}
 
 	switch {
-	case forceLegacyTest || requiresLegacy || (!riskScoreTest && !reachability && sbom == ""):
+	case forceLegacyTest || requiresLegacy || (!riskScoreTest && !reachability && sbom == "" && !experimentalUvSupport):
 		logger.Debug().Msgf(
-			"Using legacy flow. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %t.",
+			"Using legacy flow. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %t. Experimental uv Support: %t.",
 			forceLegacyTest,
 			sbomReachabilityTest,
 			riskScoreTest,
+			experimentalUvSupport,
 		)
 		return LegacyFlow, nil
 	case sbomReachabilityTest:
