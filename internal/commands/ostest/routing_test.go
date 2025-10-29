@@ -43,11 +43,10 @@ func setupSettingsClient(t *testing.T) settings.Client {
 	return sc
 }
 
-func Test_RouteToFlow_LegacyCLIFlow(t *testing.T) {
+func Test_ShouldUseLegacyFlow(t *testing.T) {
 	t.Parallel()
 	defaultConfig := configuration.New()
 	defaultConfig.Set(flags.FlagRiskScoreThreshold, -1)
-	sc := setupSettingsClient(t)
 	newOptions := map[string]func(configuration.Configuration) configuration.Configuration{
 		"--reachability": func(cfg configuration.Configuration) configuration.Configuration {
 			newCfg := cfg.Clone()
@@ -88,20 +87,23 @@ func Test_RouteToFlow_LegacyCLIFlow(t *testing.T) {
 		ctx = cmdctx.WithLogger(ctx, &nopLogger)
 		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-		flow, err := ostest.RouteToFlow(ctx, orgID, sc)
+		flowCfg := ostest.ParseFlowConfig(cfg)
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
 		require.NoError(t, err)
 
-		assert.Equal(t, ostest.LegacyFlow, flow)
+		assert.True(t, useLegacy)
 
 		for name, newOption := range newOptions {
 			t.Run(fmt.Sprintf("should fail when %s is/are set", name), func(t *testing.T) {
 				t.Parallel()
+				testCfg := newOption(cfg.Clone())
 				ctx := t.Context()
-				ctx = cmdctx.WithConfig(ctx, newOption(cfg.Clone()))
+				ctx = cmdctx.WithConfig(ctx, testCfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
 				ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-				_, err := ostest.RouteToFlow(ctx, orgID, sc)
+				flowCfg := ostest.ParseFlowConfig(testCfg)
+				_, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
 
 				assert.ErrorContains(t, err, "Invalid flag option")
 			})
@@ -117,26 +119,30 @@ func Test_RouteToFlow_LegacyCLIFlow(t *testing.T) {
 
 			t.Run(fmt.Sprintf("--% should route to legacy command", legacyOption), func(t *testing.T) {
 				t.Parallel()
+				testCfg := cfg.Clone()
 				ctx := t.Context()
-				ctx = cmdctx.WithConfig(ctx, cfg.Clone())
+				ctx = cmdctx.WithConfig(ctx, testCfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
 				ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-				flow, err := ostest.RouteToFlow(ctx, orgID, sc)
+				flowCfg := ostest.ParseFlowConfig(testCfg)
+				useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
 				require.NoError(t, err)
 
-				assert.Equal(t, ostest.LegacyFlow, flow)
+				assert.True(t, useLegacy)
 			})
 
 			for name, newOption := range newOptions {
 				t.Run(fmt.Sprintf("should fail when %s is/are set", name), func(t *testing.T) {
 					t.Parallel()
+					testCfg := newOption(cfg.Clone())
 					ctx := t.Context()
-					ctx = cmdctx.WithConfig(ctx, newOption(cfg.Clone()))
+					ctx = cmdctx.WithConfig(ctx, testCfg)
 					ctx = cmdctx.WithLogger(ctx, &nopLogger)
 					ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-					_, err := ostest.RouteToFlow(ctx, orgID, sc)
+					flowCfg := ostest.ParseFlowConfig(testCfg)
+					_, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
 
 					assert.ErrorContains(t, err, "Invalid flag option")
 				})
@@ -153,10 +159,11 @@ func Test_RouteToFlow_LegacyCLIFlow(t *testing.T) {
 		ctx = cmdctx.WithLogger(ctx, &nopLogger)
 		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-		flow, err := ostest.RouteToFlow(ctx, orgID, sc)
+		flowCfg := ostest.ParseFlowConfig(cfg)
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
 		require.NoError(t, err)
 
-		assert.Equal(t, ostest.LegacyFlow, flow)
+		assert.True(t, useLegacy)
 	})
 }
 
@@ -256,8 +263,10 @@ func Test_RouteToFlow_SBOMReachabilityFlow(t *testing.T) {
 		t.Run(tcName, func(t *testing.T) {
 			t.Parallel()
 			ctx := tc.ctx(t.Context())
+			cfg := cmdctx.Config(ctx)
+			flowCfg := ostest.ParseFlowConfig(cfg)
 
-			flow, err := ostest.RouteToFlow(ctx, tc.orgID, sc)
+			flow, err := ostest.RouteToFlow(ctx, flowCfg, tc.orgID, sc)
 
 			if tc.expectErrorContains == "" {
 				require.NoError(t, err)
@@ -360,8 +369,10 @@ func Test_RouteToFlow_ReachabilityFlow(t *testing.T) {
 		t.Run(tcName, func(t *testing.T) {
 			t.Parallel()
 			ctx := tc.ctx(t.Context())
+			cfg := cmdctx.Config(ctx)
+			flowCfg := ostest.ParseFlowConfig(cfg)
 
-			flow, err := ostest.RouteToFlow(ctx, tc.orgID, sc)
+			flow, err := ostest.RouteToFlow(ctx, flowCfg, tc.orgID, sc)
 
 			if tc.expectErrorContains == "" {
 				require.NoError(t, err)
@@ -445,8 +456,10 @@ func Test_RouteToFlow_RiskScoreFlow(t *testing.T) {
 		t.Run(tcName, func(t *testing.T) {
 			t.Parallel()
 			ctx := tc.ctx(t.Context())
+			cfg := cmdctx.Config(ctx)
+			flowCfg := ostest.ParseFlowConfig(cfg)
 
-			flow, err := ostest.RouteToFlow(ctx, orgID, sc)
+			flow, err := ostest.RouteToFlow(ctx, flowCfg, orgID, sc)
 
 			if tc.expectErrorContains == "" {
 				require.NoError(t, err)
