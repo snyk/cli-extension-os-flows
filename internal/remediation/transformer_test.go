@@ -6,6 +6,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/stretchr/testify/require"
 
+	testapiinline "github.com/snyk/cli-extension-os-flows/internal/util/testapi"
 	"github.com/snyk/cli-extension-os-flows/internal/util/testfactories"
 
 	"github.com/snyk/cli-extension-os-flows/internal/remediation"
@@ -44,13 +45,13 @@ func Test_ShimFindingsToRemediationFindings(t *testing.T) {
 					newDependencyPath("goof@1.0.0", "@snyk/nodejs-runtime-agent@1.43.0", "acorn@5.7.1"),
 				},
 				FixedInVersions: []string{"5.7.4", "6.4.1", "7.1.1"},
-				Fix:             remediation.UnresolvedFix{},
+				Fix:             nil,
 				PackageManager:  "npm",
 			},
 		}, res)
 	})
 
-	t.Run("finding with license problem", func(t *testing.T) {
+	t.Run("finding with license problem (ecosystem without remediation)", func(t *testing.T) {
 		inputFindings := []testapi.FindingData{
 			{
 				Attributes: &testapi.FindingAttributes{
@@ -63,6 +64,53 @@ func Test_ShimFindingsToRemediationFindings(t *testing.T) {
 					},
 					Locations: []testapi.FindingLocation{testfactories.NewShimPackageLocation(t, "acorn@5.7.1")},
 					Problems:  []testapi.Problem{testfactories.NewShimLicenseProblem(t, "npm:lic:foo-bar", "js", "npm")},
+				},
+			},
+		}
+
+		res, err := remediation.ShimFindingsToRemediationFindings(inputFindings)
+		require.NoError(t, err)
+
+		require.Equal(t, remediation.Findings{
+			{
+				Package: newPackage("acorn@5.7.1"),
+				Vulnerability: remediation.Vulnerability{
+					ID:       "npm:lic:foo-bar",
+					Name:     "BSD-3-Clause",
+					Severity: remediation.SeverityHigh,
+				},
+				DependencyPaths: []remediation.DependencyPath{
+					newDependencyPath("goof@1.0.0", "@snyk/nodejs-runtime-agent@1.43.0", "acorn@5.7.1"),
+				},
+				FixedInVersions: []string{},
+				Fix:             nil,
+				PackageManager:  "npm",
+			},
+		}, res)
+	})
+
+	t.Run("finding with license problem (ecosystem with remediation)", func(t *testing.T) {
+		inputFindings := []testapi.FindingData{
+			{
+				Attributes: &testapi.FindingAttributes{
+					Title: "BSD-3-Clause",
+					Rating: testapi.Rating{
+						Severity: testapi.SeverityHigh,
+					},
+					Evidence: []testapi.Evidence{
+						testfactories.NewShimDependencyPathEvidence(t, "goof@1.0.0", "@snyk/nodejs-runtime-agent@1.43.0", "acorn@5.7.1"),
+					},
+					Locations: []testapi.FindingLocation{testfactories.NewShimPackageLocation(t, "acorn@5.7.1")},
+					Problems:  []testapi.Problem{testfactories.NewShimLicenseProblem(t, "npm:lic:foo-bar", "js", "npm")},
+				},
+				Relationships: &testapiinline.FindingRelationship{
+					Fix: &testapiinline.RelationshipFix{
+						Data: &testapiinline.FixData{
+							Attributes: &testapi.FixAttributes{
+								Outcome: testapi.Unresolved,
+							},
+						},
+					},
 				},
 			},
 		}

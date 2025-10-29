@@ -14,17 +14,13 @@ import (
 )
 
 func Test_RemediationSummaryToLegacy(t *testing.T) {
-	t.Run("empty remediation summary results in empty legacy summary", func(t *testing.T) {
+	t.Run("empty remediation summary results in nil legacy summary", func(t *testing.T) {
 		remSummary := remediation.Summary{}
 
 		summary, err := transform.RemediationSummaryToLegacy([]definitions.Vulnerability{}, remSummary)
 		require.NoError(t, err)
 
-		assert.Equal(t, &definitions.Remediation{
-			Pin:        map[string]definitions.PinRemediation{},
-			Upgrade:    map[string]definitions.RemediationUpgradeInfo{},
-			Unresolved: []definitions.Vulnerability{},
-		}, summary)
+		assert.Nil(t, summary)
 	})
 
 	t.Run("remediation summary with pins results in valid legacy summary", func(t *testing.T) {

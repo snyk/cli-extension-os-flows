@@ -19,6 +19,24 @@ func Test_FindingsToRemediationSummary(t *testing.T) {
 		equalSummaries(t, remediation.Summary{}, summary)
 	})
 
+	t.Run("a finding containing no fix action returns empty summary", func(t *testing.T) {
+		summary, err := remediation.FindingsToRemediationSummary([]*remediation.Finding{
+			{
+				Vulnerability: aVulnerabilityWithID("VULN_ID"),
+				Package:       newPackage("vulnerable@1.0.0"),
+				DependencyPaths: []remediation.DependencyPath{
+					newDependencyPath("root@1.0.0", "direct-1@1.0.0", "vulnerable@1.0.0"),
+				},
+				FixedInVersions: []string{"1.0.1", "2.0.0"},
+				PackageManager:  "npm",
+				Fix:             nil,
+			},
+		})
+
+		require.NoError(t, err)
+		equalSummaries(t, remediation.Summary{}, summary)
+	})
+
 	t.Run("pins", func(t *testing.T) {
 		// Since pins are meant to hoist the vulnerable version to the fixed one, there won't be leftover paths on the
 		// vulnerable version, thus, pins can only be fully resolved fixes.
@@ -713,7 +731,7 @@ func Test_FindingsToRemediationSummary(t *testing.T) {
 	})
 
 	t.Run("unresolved", func(t *testing.T) {
-		t.Run("a finding containing no fix action returns valid summary", func(t *testing.T) {
+		t.Run("a finding containing an unresolved fix action returns valid summary", func(t *testing.T) {
 			summary, err := remediation.FindingsToRemediationSummary([]*remediation.Finding{
 				{
 					Vulnerability: aVulnerabilityWithID("VULN_ID"),
