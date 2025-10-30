@@ -32,7 +32,7 @@ func errorLevelToStyle(errLevel string) lipgloss.Style {
 		Foreground(lipgloss.Color("15"))
 
 	if errLevel == "warn" {
-		style.
+		style = style.
 			Background(lipgloss.Color("3")).
 			Foreground(lipgloss.Color("0"))
 	}
@@ -64,7 +64,7 @@ func RenderError(ctx context.Context, err *snyk_errors.Error) string {
 
 		body = append(body, lipgloss.JoinHorizontal(lipgloss.Top,
 			label.Render(""),
-			value.Copy().Width(valueStyleWidth).Render(desc),
+			value.Width(valueStyleWidth).Render(desc),
 		))
 	}
 
@@ -72,7 +72,7 @@ func RenderError(ctx context.Context, err *snyk_errors.Error) string {
 		detailValue := lipgloss.NewStyle().PaddingLeft(3).PaddingRight(1)
 		body = append(body, lipgloss.JoinHorizontal(lipgloss.Top,
 			label.Render("\n"),
-			detailValue.Copy().Width(valueStyleWidth).Render("\n"+err.Detail),
+			detailValue.Width(valueStyleWidth).Render("\n"+err.Detail),
 		))
 	}
 
