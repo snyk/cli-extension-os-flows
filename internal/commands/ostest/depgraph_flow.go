@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/snyk/cli-extension-os-flows/internal/util"
+
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
@@ -30,23 +32,23 @@ const (
 	ignorePolicyField = "ignorePolicy"
 )
 
-func enrichWithScanID(depgraphs []*testapi.IoSnykApiV1testdepgraphRequestDepGraph, reachabilityScanID *reachability.ID) {
+func enrichWithScanID(depgraphs []DepGraphWithMeta, reachabilityScanID *reachability.ID) {
 	if reachabilityScanID == nil {
 		return
 	}
 
 	for _, dg := range depgraphs {
-		dg.Set(scanIDField, reachabilityScanID.String())
+		dg.Payload.Set(scanIDField, reachabilityScanID.String())
 	}
 }
 
-func enrichWithIgnorePolicy(depgraphs []*testapi.IoSnykApiV1testdepgraphRequestDepGraph, ignorePolicy bool) {
+func enrichWithIgnorePolicy(depgraphs []DepGraphWithMeta, ignorePolicy bool) {
 	if !ignorePolicy {
 		return
 	}
 
 	for _, dg := range depgraphs {
-		dg.Set(ignorePolicyField, ignorePolicy)
+		dg.Payload.Set(ignorePolicyField, ignorePolicy)
 	}
 }
 
@@ -68,7 +70,7 @@ func RunUnifiedTestFlow(
 
 	progressBar.SetTitle("Listing dependencies...")
 	// Create depgraphs and get their associated target files
-	depGraphs, displayTargetFiles, err := createDepGraphs(ictx, inputDir)
+	depGraphs, err := createDepGraphs(ictx, inputDir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -83,7 +85,6 @@ func RunUnifiedTestFlow(
 		orgID,
 		localPolicy,
 		depGraphs,
-		displayTargetFiles,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -103,21 +104,20 @@ type testProcessor struct {
 func (p *testProcessor) runDepGraphTest(
 	ctx context.Context,
 	targetDir string,
-	depGraph *testapi.IoSnykApiV1testdepgraphRequestDepGraph,
-	displayTargetFile string,
+	depGraph DepGraphWithMeta,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	subject, err := createTestSubject(depGraph, displayTargetFile)
+	subject, err := createTestSubject(depGraph)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	projectName := getProjectName(ctx, depGraph)
-	packageManager := depGraph.PkgManager.Name
-	depCount := max(0, len(depGraph.Pkgs)-1)
+	packageManager := depGraph.Payload.PkgManager.Name
+	depCount := max(0, len(depGraph.Payload.Pkgs)-1)
 
 	return RunTest(
 		ctx, targetDir, p.testClient, subject, projectName, packageManager, depCount,
-		displayTargetFile, p.orgID, p.localPolicy,
+		depGraph.DisplayTargetFile, p.orgID, p.localPolicy,
 	)
 }
 
@@ -129,8 +129,7 @@ func testAllDepGraphs(
 	testClient testapi.TestClient,
 	orgID string,
 	localPolicy *testapi.LocalPolicy,
-	depGraphs []*testapi.IoSnykApiV1testdepgraphRequestDepGraph,
-	displayTargetFiles []string,
+	depGraphs []DepGraphWithMeta,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	cfg := cmdctx.Config(ctx)
 	logger := cmdctx.Logger(ctx)
@@ -161,12 +160,8 @@ func testAllDepGraphs(
 				}
 			}()
 			depGraph := depGraphs[i]
-			displayTargetFile := ""
-			if i < len(displayTargetFiles) {
-				displayTargetFile = displayTargetFiles[i]
-			}
 
-			legacyFinding, outputData, err := processor.runDepGraphTest(gctx, targetDir, depGraph, displayTargetFile)
+			legacyFinding, outputData, err := processor.runDepGraphTest(gctx, targetDir, depGraph)
 			if err != nil {
 				return err
 			}
@@ -197,15 +192,12 @@ func testAllDepGraphs(
 }
 
 // createTestSubject creates a test subject from a depGraph and display target file.
-func createTestSubject(
-	depGraph *testapi.IoSnykApiV1testdepgraphRequestDepGraph,
-	displayTargetFile string,
-) (testapi.TestSubjectCreate, error) {
+func createTestSubject(depGraph DepGraphWithMeta) (testapi.TestSubjectCreate, error) {
 	depGraphSubject := testapi.DepGraphSubjectCreate{
 		Type:     testapi.DepGraphSubjectCreateTypeDepGraph,
-		DepGraph: *depGraph,
+		DepGraph: *depGraph.Payload,
 		Locator: testapi.LocalPathLocator{
-			Paths: []string{displayTargetFile},
+			Paths: []string{depGraph.DisplayTargetFile},
 			Type:  testapi.LocalPath,
 		},
 	}
@@ -218,16 +210,13 @@ func createTestSubject(
 	return subject, nil
 }
 
-func getProjectName(
-	ctx context.Context,
-	depGraph *testapi.IoSnykApiV1testdepgraphRequestDepGraph,
-) string {
+func getProjectName(ctx context.Context, depGraph DepGraphWithMeta) string {
 	cfg := cmdctx.Config(ctx)
 	// Project name assigned as follows: --project-name || config project name || scannedProject?.depTree?.name
 	// TODO: use project name from Config file
 	projectName := cfg.GetString(flags.FlagProjectName)
-	if projectName == "" && len(depGraph.Pkgs) > 0 {
-		projectName = depGraph.Pkgs[0].Info.Name
+	if projectName == "" && len(depGraph.Payload.Pkgs) > 0 {
+		projectName = depGraph.Payload.Pkgs[0].Info.Name
 	}
 	return projectName
 }
@@ -325,26 +314,34 @@ func prepareJSONOutput(
 }
 
 // createDepGraphs creates depgraphs from the file parameter in the context.
-func createDepGraphs(ictx workflow.InvocationContext, inputDir string) ([]*testapi.IoSnykApiV1testdepgraphRequestDepGraph, []string, error) {
-	depGraphResult, err := service.GetDepGraph(ictx, inputDir)
+func createDepGraphs(ictx workflow.InvocationContext, inputDir string) ([]DepGraphWithMeta, error) {
+	rawDepGraphs, err := service.GetDepGraph(ictx, inputDir)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get dependency graph: %w", err)
+		return nil, fmt.Errorf("failed to get dependency graph: %w", err)
 	}
 
-	if len(depGraphResult.DepGraphBytes) == 0 {
-		return nil, nil, fmt.Errorf("no dependency graphs found")
+	if len(rawDepGraphs) == 0 {
+		return nil, fmt.Errorf("no dependency graphs found")
 	}
 
-	depGraphs := make([]*testapi.IoSnykApiV1testdepgraphRequestDepGraph, len(depGraphResult.DepGraphBytes))
-	for i, depGraphBytes := range depGraphResult.DepGraphBytes {
-		var depGraphStruct testapi.IoSnykApiV1testdepgraphRequestDepGraph
-		err = json.Unmarshal(depGraphBytes, &depGraphStruct)
-		if err != nil {
-			return nil, nil,
-				fmt.Errorf("unmarshaling depGraph from args failed: %w", err)
-		}
-		depGraphs[i] = &depGraphStruct
-	}
+	//nolint:wrapcheck // Error from parseRawDepGraph is already descriptive
+	return util.MapWithErr(rawDepGraphs, parseRawDepGraph)
+}
 
-	return depGraphs, depGraphResult.DisplayTargetFiles, nil
+func parseRawDepGraph(rawDepGraph service.RawDepGraphWithMeta) (DepGraphWithMeta, error) {
+	var depGraphStruct testapi.IoSnykApiV1testdepgraphRequestDepGraph
+	err := json.Unmarshal(rawDepGraph.Payload, &depGraphStruct)
+	if err != nil {
+		return DepGraphWithMeta{}, fmt.Errorf("unmarshaling depGraph from args failed: %w", err)
+	}
+	return DepGraphWithMeta{
+		Payload:           &depGraphStruct,
+		DisplayTargetFile: rawDepGraph.DisplayTargetFile,
+	}, nil
+}
+
+// DepGraphWithMeta encapsulates a dependency graph and its metadata.
+type DepGraphWithMeta struct {
+	Payload           *testapi.IoSnykApiV1testdepgraphRequestDepGraph
+	DisplayTargetFile string
 }
