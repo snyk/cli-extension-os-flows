@@ -7,6 +7,8 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
+	"github.com/snyk/cli-extension-os-flows/internal/util"
+
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 )
@@ -17,14 +19,14 @@ const ContentLocationKey string = "Content-Location"
 // DepGraphWorkflowID is the identifier for the dependency graph workflow.
 var DepGraphWorkflowID = workflow.NewWorkflowIdentifier("depgraph")
 
-// DepGraphResult contains the results of a dependency graph generation.
-type DepGraphResult struct {
-	DisplayTargetFiles []string
-	DepGraphBytes      []json.RawMessage
+// RawDepGraphWithMeta contains the results of a dependency graph generation.
+type RawDepGraphWithMeta struct {
+	DisplayTargetFile string
+	Payload           json.RawMessage
 }
 
 // GetDepGraph retrieves the dependency graph for the given invocation context.
-func GetDepGraph(ictx workflow.InvocationContext, inputDir string) (*DepGraphResult, error) {
+func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGraphWithMeta, error) {
 	engine := ictx.GetEngine()
 	config := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
@@ -42,33 +44,34 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) (*DepGraphRes
 
 	// Overriding the INPUT_DIRECTORY flag which the depgraph workflow will use to extract the depgraphs.
 	depGraphConfig.Set(configuration.INPUT_DIRECTORY, inputDir)
-	depGraphs, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)
+	depGraphsData, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)
 	if err != nil {
 		return nil, errFactory.NewDepGraphWorkflowError(err)
 	}
 
-	numGraphs := len(depGraphs)
-	logger.Printf("Generating documents for %d depgraph(s)\n", numGraphs)
-	depGraphBytesList := make([]json.RawMessage, numGraphs)
-	displayTargetFiles := make([]string, numGraphs)
-	for i, depGraph := range depGraphs {
-		depGraphBytes, err := getPayloadBytes(depGraph)
-		if err != nil {
-			return nil, errFactory.NewDepGraphWorkflowError(err)
-		}
-		depGraphBytesList[i] = depGraphBytes
-
-		displayTargetFile, err := getContentLocation(depGraph)
-		if err != nil {
-			logger.Warn().Err(err).Msg("could not get display target file from depgraph data")
-			displayTargetFile = ""
-		}
-		displayTargetFiles[i] = displayTargetFile
+	logger.Printf("Generating documents for %d depgraph(s)\n", len(depGraphsData))
+	depGraphs, err := util.MapWithErr(depGraphsData, workflowOutputToRawDepGraphWithMeta)
+	if err != nil {
+		return nil, errFactory.NewDepGraphWorkflowError(err)
 	}
 
-	return &DepGraphResult{
-		DisplayTargetFiles: displayTargetFiles,
-		DepGraphBytes:      depGraphBytesList,
+	return depGraphs, nil
+}
+
+func workflowOutputToRawDepGraphWithMeta(data workflow.Data) (RawDepGraphWithMeta, error) {
+	depGraphBytes, err := getPayloadBytes(data)
+	if err != nil {
+		return RawDepGraphWithMeta{}, err
+	}
+
+	displayTargetFile, err := getContentLocation(data)
+	if err != nil {
+		return RawDepGraphWithMeta{}, fmt.Errorf("could not get display target file from depgraph data")
+	}
+
+	return RawDepGraphWithMeta{
+		Payload:           depGraphBytes,
+		DisplayTargetFile: displayTargetFile,
 	}, nil
 }
 
