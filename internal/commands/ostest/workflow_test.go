@@ -968,11 +968,15 @@ func TestOSWorkflow_MultipleProjects_UnifiedFlow(t *testing.T) {
 
 	mockData1 := mocks.NewMockData(ctrl)
 	mockData1.EXPECT().GetPayload().Return(depGraph1Bytes).AnyTimes()
-	mockData1.EXPECT().GetMetaData(common.ContentLocationKey).Return("proj1/package.json", nil).AnyTimes()
+	mockData1.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj1/package.json", nil).AnyTimes()
+	mockData1.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("", nil).AnyTimes()
+	mockData1.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
 
 	mockData2 := mocks.NewMockData(ctrl)
 	mockData2.EXPECT().GetPayload().Return(depGraph2Bytes).AnyTimes()
-	mockData2.EXPECT().GetMetaData(common.ContentLocationKey).Return("proj2/pom.xml", nil).AnyTimes()
+	mockData2.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj2/pom.xml", nil).AnyTimes()
+	mockData2.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("", nil).AnyTimes()
+	mockData2.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
 
 	tcs := map[string]struct {
 		setupTest func(workflow.InvocationContext, *mocks.MockEngine)

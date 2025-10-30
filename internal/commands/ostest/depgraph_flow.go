@@ -324,19 +324,31 @@ func createDepGraphs(ictx workflow.InvocationContext, inputDir string) ([]DepGra
 		return nil, fmt.Errorf("no dependency graphs found")
 	}
 
-	//nolint:wrapcheck // Error from parseRawDepGraph is already descriptive
-	return util.MapWithErr(rawDepGraphs, parseRawDepGraph)
+	//nolint:wrapcheck // Error from ParseDepGraph is already descriptive
+	return util.MapWithErr(rawDepGraphs, ParseDepGraph)
 }
 
-func parseRawDepGraph(rawDepGraph service.RawDepGraphWithMeta) (DepGraphWithMeta, error) {
-	var depGraphStruct testapi.IoSnykApiV1testdepgraphRequestDepGraph
-	err := json.Unmarshal(rawDepGraph.Payload, &depGraphStruct)
+// ParseDepGraph parses a raw depgraph into a DepGraphWithMeta.
+func ParseDepGraph(rawDepGraph service.RawDepGraphWithMeta) (DepGraphWithMeta, error) {
+	var payload testapi.IoSnykApiV1testdepgraphRequestDepGraph
+	err := json.Unmarshal(rawDepGraph.Payload, &payload)
 	if err != nil {
 		return DepGraphWithMeta{}, fmt.Errorf("unmarshaling depGraph from args failed: %w", err)
 	}
+
+	if payload.AdditionalProperties == nil {
+		payload.AdditionalProperties = map[string]interface{}{}
+	}
+	if rawDepGraph.TargetFileFromPlugin != nil {
+		payload.AdditionalProperties["targetFile"] = *rawDepGraph.TargetFileFromPlugin
+	}
+	if rawDepGraph.Target != nil {
+		payload.AdditionalProperties["target"] = json.RawMessage(rawDepGraph.Target)
+	}
+
 	return DepGraphWithMeta{
-		Payload:           &depGraphStruct,
-		DisplayTargetFile: rawDepGraph.DisplayTargetFile,
+		Payload:           &payload,
+		DisplayTargetFile: rawDepGraph.NormalisedTargetFile,
 	}, nil
 }
 
