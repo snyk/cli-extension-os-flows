@@ -98,7 +98,7 @@ func setupSBOMResolutionIntegrationTest(
 		"application/json",
 		depGraphBytes,
 	)
-	depGraphData.SetMetaData("Content-Location", "uv.lock")
+	depGraphData.SetMetaData(common.NormalisedTargetFileKey, "uv.lock")
 
 	mockEngine.EXPECT().
 		InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).

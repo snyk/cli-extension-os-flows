@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/snyk/go-application-framework/pkg/configuration"
@@ -13,16 +12,27 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 )
 
-// ContentLocationKey is the workflow data's local file relative to its scan path.
-const ContentLocationKey string = "Content-Location"
+// NormalisedTargetFileKey is used by the dep graph workflow to embed the target file path in the workflow data.
+const NormalisedTargetFileKey = "normalisedTargetFile"
+
+// TargetFileFromPluginKey is used by the dep graph workflow to embed the unnormalised target file path in the workflow data.
+const TargetFileFromPluginKey = "targetFileFromPlugin"
+
+// TargetKey is used by the dep graph workflow to embed the target object in the workflow data.
+const TargetKey = "target"
 
 // DepGraphWorkflowID is the identifier for the dependency graph workflow.
 var DepGraphWorkflowID = workflow.NewWorkflowIdentifier("depgraph")
 
+// ConfigFlagPruneDepGraphs can be passed to the dep graph workflow in order to enable pruning.
+var ConfigFlagPruneDepGraphs = "prune-graph"
+
 // RawDepGraphWithMeta contains the results of a dependency graph generation.
 type RawDepGraphWithMeta struct {
-	DisplayTargetFile string
-	Payload           json.RawMessage
+	Payload              []byte
+	NormalisedTargetFile string
+	TargetFileFromPlugin *string
+	Target               []byte
 }
 
 // GetDepGraph retrieves the dependency graph for the given invocation context.
@@ -45,12 +55,13 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 	// Overriding the INPUT_DIRECTORY flag which the depgraph workflow will use to extract the depgraphs.
 	depGraphConfig.Set(configuration.INPUT_DIRECTORY, inputDir)
 	depGraphsData, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)
+	depGraphConfig.Set(ConfigFlagPruneDepGraphs, true)
 	if err != nil {
 		return nil, errFactory.NewDepGraphWorkflowError(err)
 	}
 
 	logger.Printf("Generating documents for %d depgraph(s)\n", len(depGraphsData))
-	depGraphs, err := util.MapWithErr(depGraphsData, workflowOutputToRawDepGraphWithMeta)
+	depGraphs, err := util.MapWithErr(depGraphsData, WorkflowOutputToRawDepGraphWithMeta)
 	if err != nil {
 		return nil, errFactory.NewDepGraphWorkflowError(err)
 	}
@@ -58,29 +69,35 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 	return depGraphs, nil
 }
 
-func workflowOutputToRawDepGraphWithMeta(data workflow.Data) (RawDepGraphWithMeta, error) {
+// WorkflowOutputToRawDepGraphWithMeta converts a workflow output to a RawDepGraphWithMeta.
+func WorkflowOutputToRawDepGraphWithMeta(data workflow.Data) (RawDepGraphWithMeta, error) {
 	depGraphBytes, err := getPayloadBytes(data)
 	if err != nil {
 		return RawDepGraphWithMeta{}, err
 	}
 
-	displayTargetFile, err := getContentLocation(data)
+	displayTargetFile, err := getNormalisedTargetFile(data)
 	if err != nil {
 		return RawDepGraphWithMeta{}, fmt.Errorf("could not get display target file from depgraph data")
 	}
 
+	targetFileFromPlugin := optionalMetaDataString(data, TargetFileFromPluginKey)
+	target := optionalMetaDataBytes(data, TargetKey)
+
 	return RawDepGraphWithMeta{
-		Payload:           depGraphBytes,
-		DisplayTargetFile: displayTargetFile,
+		Payload:              depGraphBytes,
+		NormalisedTargetFile: displayTargetFile,
+		TargetFileFromPlugin: targetFileFromPlugin,
+		Target:               target,
 	}, nil
 }
 
-func getContentLocation(data workflow.Data) (string, error) {
-	location, err := data.GetMetaData(ContentLocationKey)
+func getNormalisedTargetFile(data workflow.Data) (string, error) {
+	value, err := data.GetMetaData(NormalisedTargetFileKey)
 	if err != nil {
-		return "", fmt.Errorf("failed to get content location: %w", err)
+		return "", fmt.Errorf("failed to get dep graph meta field: %w", err)
 	}
-	return location, nil
+	return value, nil
 }
 
 func getPayloadBytes(data workflow.Data) ([]byte, error) {
@@ -90,4 +107,20 @@ func getPayloadBytes(data workflow.Data) ([]byte, error) {
 		return nil, fmt.Errorf("invalid payload type (want []byte, got %T)", payload)
 	}
 	return bytes, nil
+}
+
+func optionalMetaDataString(data workflow.Data, key string) *string {
+	value, err := data.GetMetaData(key)
+	if err != nil {
+		return nil
+	}
+	return &value
+}
+
+func optionalMetaDataBytes(data workflow.Data, key string) []byte {
+	strValue := optionalMetaDataString(data, key)
+	if strValue == nil {
+		return nil
+	}
+	return []byte(*strValue)
 }

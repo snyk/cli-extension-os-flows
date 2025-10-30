@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/snyk/go-application-framework/pkg/utils"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
@@ -102,7 +105,9 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 		require.NoError(t, err)
 		d := gafmocks.NewMockData(ctrl)
 		d.EXPECT().GetPayload().Return(bytes).AnyTimes()
-		d.EXPECT().GetMetaData(common.ContentLocationKey).Return("proj/package.json", nil).AnyTimes()
+		d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj/package.json", nil).AnyTimes()
+		d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("proj/package.json", nil).AnyTimes()
+		d.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
 		depGraphDatas = append(depGraphDatas, d)
 	}
 
@@ -171,7 +176,9 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 		require.NoError(t, err)
 		d := gafmocks.NewMockData(ctrl)
 		d.EXPECT().GetPayload().Return(bytes).AnyTimes()
-		d.EXPECT().GetMetaData(common.ContentLocationKey).Return("proj/package.json", nil).AnyTimes()
+		d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj/package.json", nil).AnyTimes()
+		d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("proj/package.json", nil).AnyTimes()
+		d.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
 		depGraphDatas = append(depGraphDatas, d)
 	}
 	mockEngine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return(depGraphDatas, nil).Times(1)
@@ -234,7 +241,9 @@ func Test_RunUnifiedTestFlow_WithIgnorePolicyFlag(t *testing.T) {
 	require.NoError(t, err)
 	d := gafmocks.NewMockData(ctrl)
 	d.EXPECT().GetPayload().Return(bytes).AnyTimes()
-	d.EXPECT().GetMetaData(common.ContentLocationKey).Return("proj/package.json", nil).AnyTimes()
+	d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj/package.json", nil).AnyTimes()
+	d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("proj/package.json", nil).AnyTimes()
+	d.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
 
 	mockEngine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return([]workflow.Data{d}, nil).Times(1)
 
@@ -314,7 +323,9 @@ func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
 		require.NoError(t, err)
 		d := gafmocks.NewMockData(ctrl)
 		d.EXPECT().GetPayload().Return(bytes).AnyTimes()
-		d.EXPECT().GetMetaData(common.ContentLocationKey).Return("proj/package.json", nil).AnyTimes()
+		d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj/package.json", nil).AnyTimes()
+		d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("proj/package.json", nil).AnyTimes()
+		d.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
 		depGraphDatas = append(depGraphDatas, d)
 	}
 	mockEngine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return(depGraphDatas, nil).Times(1)
@@ -362,4 +373,36 @@ func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
 		count := canceledCount.Load()
 		t.Fatalf("expected at least one canceled sibling, got %d", count)
 	}
+}
+
+func TestMappingTargetParamsToDepGraph(t *testing.T) {
+	rawDepGraph := common.RawDepGraphWithMeta{
+		Payload:              []byte(`{}`),
+		NormalisedTargetFile: "some normalised target file",
+		TargetFileFromPlugin: utils.Ptr("some target file from plugin"),
+		Target:               []byte(`{ "remoteUrl":"https://remote.url", "branch":"main"}`),
+	}
+
+	depGraph, err := ostest.ParseDepGraph(rawDepGraph)
+
+	require.NoError(t, err)
+	require.Equal(t, "some normalised target file", depGraph.DisplayTargetFile)
+	require.NotNil(t, depGraph.Payload)
+	assert.Equal(t, "some target file from plugin", depGraph.Payload.AdditionalProperties["targetFile"])
+	assert.Equal(t, json.RawMessage(`{ "remoteUrl":"https://remote.url", "branch":"main"}`), depGraph.Payload.AdditionalProperties["target"])
+}
+
+func TestMappingTargetParamsToDepGraph_WhenOptionalPropertiesAreMissing(t *testing.T) {
+	rawDepGraph := common.RawDepGraphWithMeta{
+		Payload:              []byte(`{}`),
+		NormalisedTargetFile: "some normalised target file",
+	}
+
+	depGraph, err := ostest.ParseDepGraph(rawDepGraph)
+
+	require.NoError(t, err)
+	require.Equal(t, "some normalised target file", depGraph.DisplayTargetFile)
+	require.NotNil(t, depGraph.Payload)
+	assert.Nil(t, depGraph.Payload.AdditionalProperties["targetFile"])
+	assert.Nil(t, depGraph.Payload.AdditionalProperties["target"])
 }
