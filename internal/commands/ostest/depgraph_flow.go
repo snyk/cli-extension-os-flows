@@ -28,8 +28,10 @@ import (
 const maxConcurrentTests = 5
 
 const (
-	scanIDField       = "reachabilityScanId"
-	ignorePolicyField = "ignorePolicy"
+	scanIDField              = "reachabilityScanId"
+	ignorePolicyField        = "ignorePolicy"
+	projectNameOverrideField = "projectNameOverride"
+	targetReferenceField     = "targetReference"
 )
 
 func enrichWithScanID(depgraphs []DepGraphWithMeta, reachabilityScanID *reachability.ID) {
@@ -49,6 +51,26 @@ func enrichWithIgnorePolicy(depgraphs []DepGraphWithMeta, ignorePolicy bool) {
 
 	for _, dg := range depgraphs {
 		dg.Payload.Set(ignorePolicyField, ignorePolicy)
+	}
+}
+
+func enrichWithProjectNameOverride(depgraphs []DepGraphWithMeta, projectName string) {
+	if projectName == "" {
+		return
+	}
+
+	for _, dg := range depgraphs {
+		dg.Payload.Set(projectNameOverrideField, projectName)
+	}
+}
+
+func enrichWithTargetReference(depgraphs []DepGraphWithMeta, targetReference string) {
+	if targetReference == "" {
+		return
+	}
+
+	for _, dg := range depgraphs {
+		dg.Payload.Set(targetReferenceField, targetReference)
 	}
 }
 
@@ -77,6 +99,8 @@ func RunUnifiedTestFlow(
 
 	enrichWithScanID(depGraphs, reachabilityScanID)
 	enrichWithIgnorePolicy(depGraphs, cfg.GetBool(flags.FlagIgnorePolicy))
+	enrichWithProjectNameOverride(depGraphs, cfg.GetString(flags.FlagProjectName))
+	enrichWithTargetReference(depGraphs, cfg.GetString(flags.FlagTargetReference))
 
 	allLegacyFindings, allOutputData, err := testAllDepGraphs(
 		ctx,
