@@ -54,8 +54,8 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 
 	// Overriding the INPUT_DIRECTORY flag which the depgraph workflow will use to extract the depgraphs.
 	depGraphConfig.Set(configuration.INPUT_DIRECTORY, inputDir)
-	depGraphsData, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)
 	depGraphConfig.Set(ConfigFlagPruneDepGraphs, true)
+	depGraphsData, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)
 	if err != nil {
 		return nil, errFactory.NewDepGraphWorkflowError(err)
 	}
