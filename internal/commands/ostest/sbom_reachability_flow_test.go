@@ -208,9 +208,9 @@ func setupTest(t *testing.T, ctrl *gomock.Controller, jsonOutput bool) (
 		Title:          "Test High Severity Finding",
 	}
 
-	act := testapi.Action{}
-	act.FromUpgradePackageAction(testapi.UpgradePackageAction{
-		Type:        testapi.UpgradePackage,
+	act := testapi.FixAction{}
+	act.FromUpgradePackageAdvice(testapi.UpgradePackageAdvice{
+		Format:      testapi.UpgradePackageAdviceFormatUpgradePackageAdvice,
 		PackageName: "foo",
 		UpgradePaths: []testapi.UpgradePath{
 			{
@@ -295,7 +295,7 @@ func setupTest(t *testing.T, ctrl *gomock.Controller, jsonOutput bool) (
 				}{
 					Attributes: &testapi.FixAttributes{
 						Outcome: testapi.FullyResolved,
-						Actions: &act,
+						Action:  &act,
 					},
 				},
 			},

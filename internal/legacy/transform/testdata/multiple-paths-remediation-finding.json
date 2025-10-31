@@ -164,7 +164,9 @@
     "fix": {
       "data": {
         "attributes": {
-          "actions": {
+          "outcome": "fully_resolved",
+          "action": {
+            "format": "upgrade_package_advice",
             "package_name": "tar-fs",
             "upgrade_version": "2.1.3",
             "upgrade_paths": [
@@ -211,8 +213,7 @@
                 ],
                 "is_drop": false
               }
-            ],
-            "type": "upgrade_package"
+            ]
           }
         }
       }

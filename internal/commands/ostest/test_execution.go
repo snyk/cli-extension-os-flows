@@ -404,8 +404,8 @@ func consolidateFindingFix(existing, additional testapi.FindingData, pkgManager 
 	if existing.Relationships.Fix == nil {
 		existing.Relationships.Fix = additional.Relationships.Fix
 	} else {
-		efAction := existing.Relationships.Fix.Data.Attributes.Actions
-		afAction := additional.Relationships.Fix.Data.Attributes.Actions
+		efAction := existing.Relationships.Fix.Data.Attributes.Action
+		afAction := additional.Relationships.Fix.Data.Attributes.Action
 
 		action, err := mergeFixActions(efAction, afAction, pkgManager)
 		if err != nil {
@@ -416,13 +416,13 @@ func consolidateFindingFix(existing, additional testapi.FindingData, pkgManager 
 			existing.Relationships.Fix.Data.Attributes.Outcome,
 			additional.Relationships.Fix.Data.Attributes.Outcome,
 		)
-		existing.Relationships.Fix.Data.Attributes.Actions = action
+		existing.Relationships.Fix.Data.Attributes.Action = action
 	}
 
 	return &existing, nil
 }
 
-func mergeFixActions(a1, a2 *testapi.Action, pkgManager string) (*testapi.Action, error) {
+func mergeFixActions(a1, a2 *testapi.FixAction, pkgManager string) (*testapi.FixAction, error) {
 	a1Type, err := a1.Discriminator()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get action discriminator: %w", err)
@@ -438,31 +438,31 @@ func mergeFixActions(a1, a2 *testapi.Action, pkgManager string) (*testapi.Action
 	}
 
 	switch a1Type {
-	case string(testapi.UpgradePackage):
-		a1UpgradeAction, err := a1.AsUpgradePackageAction()
+	case string(testapi.UpgradePackageAdviceFormatUpgradePackageAdvice):
+		a1UpgradeAction, err := a1.AsUpgradePackageAdvice()
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert finding action to upgrade action: %w", err)
 		}
 
-		a2UpgradeAction, err := a2.AsUpgradePackageAction()
+		a2UpgradeAction, err := a2.AsUpgradePackageAdvice()
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert finding action to upgrade action: %w", err)
 		}
 
 		a1UpgradeAction.UpgradePaths = append(a1UpgradeAction.UpgradePaths, a2UpgradeAction.UpgradePaths...)
-		action := &testapi.Action{}
-		err = action.FromUpgradePackageAction(a1UpgradeAction)
+		action := &testapi.FixAction{}
+		err = action.FromUpgradePackageAdvice(a1UpgradeAction)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert upgrade action to finding action: %w", err)
 		}
 		return action, nil
-	case string(testapi.PinPackage):
-		a1PinAction, err := a1.AsPinPackageAction()
+	case string(testapi.PinPackageAdviceFormatPinPackageAdvice):
+		a1PinAction, err := a1.AsPinPackageAdvice()
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert finding action to pin action: %w", err)
 		}
 
-		a2PinAction, err := a2.AsPinPackageAction()
+		a2PinAction, err := a2.AsPinPackageAdvice()
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert finding action to pin action: %w", err)
 		}
@@ -472,8 +472,8 @@ func mergeFixActions(a1, a2 *testapi.Action, pkgManager string) (*testapi.Action
 			return nil, fmt.Errorf("failed to determine maximum pin version: %w", err)
 		}
 		a1PinAction.PinVersion = maxVersion
-		action := &testapi.Action{}
-		err = action.FromPinPackageAction(a1PinAction)
+		action := &testapi.FixAction{}
+		err = action.FromPinPackageAdvice(a1PinAction)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert pin action to finding action: %w", err)
 		}

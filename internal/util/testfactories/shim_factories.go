@@ -154,11 +154,11 @@ func NewShimUpgradeRelationship(
 ) *testapiinline.FindingRelationship {
 	t.Helper()
 
-	act := testapi.Action{}
-	err := act.FromUpgradePackageAction(testapi.UpgradePackageAction{
+	act := testapi.FixAction{}
+	err := act.FromUpgradePackageAdvice(testapi.UpgradePackageAdvice{
+		Format:       testapi.UpgradePackageAdviceFormatUpgradePackageAdvice,
 		PackageName:  pkgName,
 		UpgradePaths: upgradePaths,
-		Type:         testapi.UpgradePackage,
 	})
 	require.NoError(t, err)
 
@@ -167,7 +167,7 @@ func NewShimUpgradeRelationship(
 			Data: &testapiinline.FixData{
 				Attributes: &testapi.FixAttributes{
 					Outcome: outcome,
-					Actions: &act,
+					Action:  &act,
 				},
 			},
 		},
@@ -178,12 +178,12 @@ func NewShimUpgradeRelationship(
 func NewShimPinRelationship(t *testing.T, pkg string) *testapiinline.FindingRelationship {
 	t.Helper()
 
-	act := testapi.Action{}
+	act := testapi.FixAction{}
 	name, version := legacyUtils.SplitNameAndVersion(pkg)
-	err := act.FromPinPackageAction(testapi.PinPackageAction{
+	err := act.FromPinPackageAdvice(testapi.PinPackageAdvice{
+		Format:      testapi.PinPackageAdviceFormatPinPackageAdvice,
 		PackageName: name,
 		PinVersion:  version,
-		Type:        testapi.PinPackage,
 	})
 	require.NoError(t, err)
 
@@ -192,7 +192,7 @@ func NewShimPinRelationship(t *testing.T, pkg string) *testapiinline.FindingRela
 			Data: &testapiinline.FixData{
 				Attributes: &testapi.FixAttributes{
 					Outcome: testapi.FullyResolved,
-					Actions: &act,
+					Action:  &act,
 				},
 			},
 		},

@@ -307,8 +307,9 @@ func TestProcessRemediationForFinding(t *testing.T) {
 			Version:     "1.4.8",
 		}
 
-		upa := testapi.Action{}
-		upa.FromUpgradePackageAction(testapi.UpgradePackageAction{
+		upa := testapi.FixAction{}
+		upa.FromUpgradePackageAdvice(testapi.UpgradePackageAdvice{
+			Format:      testapi.UpgradePackageAdviceFormatUpgradePackageAdvice,
 			PackageName: "bar",
 			UpgradePaths: []testapi.UpgradePath{
 				{
@@ -329,11 +330,10 @@ func TestProcessRemediationForFinding(t *testing.T) {
 					IsDrop: false,
 				},
 			},
-			Type: testapi.UpgradePackage,
 		})
 
 		upf := f
-		upf.Relationships.Fix.Data.Attributes.Actions = &upa
+		upf.Relationships.Fix.Data.Attributes.Action = &upa
 
 		root := definitions.Vulnerability_UpgradePath_Item{}
 		root.FromVulnerabilityUpgradePath1(false)
@@ -361,8 +361,9 @@ func TestProcessRemediationForFinding(t *testing.T) {
 			Version:     "1.4.8",
 		}
 
-		upaDrop := testapi.Action{}
-		upaDrop.FromUpgradePackageAction(testapi.UpgradePackageAction{
+		upaDrop := testapi.FixAction{}
+		upaDrop.FromUpgradePackageAdvice(testapi.UpgradePackageAdvice{
+			Format:      testapi.UpgradePackageAdviceFormatUpgradePackageAdvice,
 			PackageName: "foo",
 			UpgradePaths: []testapi.UpgradePath{
 				{
@@ -379,11 +380,10 @@ func TestProcessRemediationForFinding(t *testing.T) {
 					IsDrop: true,
 				},
 			},
-			Type: testapi.UpgradePackage,
 		})
 
 		upf := f
-		upf.Relationships.Fix.Data.Attributes.Actions = &upaDrop
+		upf.Relationships.Fix.Data.Attributes.Action = &upaDrop
 
 		root := definitions.Vulnerability_UpgradePath_Item{}
 		root.FromVulnerabilityUpgradePath1(false)
@@ -414,15 +414,15 @@ func TestProcessRemediationForFinding(t *testing.T) {
 			}),
 		}
 
-		ppa := testapi.Action{}
-		ppa.FromPinPackageAction(testapi.PinPackageAction{
+		ppa := testapi.FixAction{}
+		ppa.FromPinPackageAdvice(testapi.PinPackageAdvice{
+			Format:      testapi.PinPackageAdviceFormatPinPackageAdvice,
 			PackageName: "baz",
 			PinVersion:  "4.5.6",
-			Type:        testapi.PinPackage,
 		})
 
 		ppf := f
-		ppf.Relationships.Fix.Data.Attributes.Actions = &ppa
+		ppf.Relationships.Fix.Data.Attributes.Action = &ppa
 
 		err := transform.ProcessRemediationForFinding(&vuln, &ppf, &logger)
 		require.NoError(t, err)

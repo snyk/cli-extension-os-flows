@@ -163,15 +163,15 @@ func fixFromFinding(sf testapi.FindingData) (Fix, error) {
 			return NewUnresolvedFix(), nil
 		}
 
-		action := sf.Relationships.Fix.Data.Attributes.Actions
+		action := sf.Relationships.Fix.Data.Attributes.Action
 		disc, err := action.Discriminator()
 		if err != nil {
 			return nil, fmt.Errorf("error getting action discriminator: %w", err)
 		}
 
 		switch disc {
-		case string(testapi.UpgradePackage):
-			uAction, err := action.AsUpgradePackageAction()
+		case string(testapi.UpgradePackageAdviceFormatUpgradePackageAdvice):
+			uAction, err := action.AsUpgradePackageAdvice()
 			if err != nil {
 				return NewUnresolvedFix(), err
 			}
@@ -190,8 +190,8 @@ func fixFromFinding(sf testapi.FindingData) (Fix, error) {
 				PackageName:  uAction.PackageName,
 				UpgradePaths: uPaths,
 			}), nil
-		case string(testapi.PinPackage):
-			pAction, err := action.AsPinPackageAction()
+		case string(testapi.PinPackageAdviceFormatPinPackageAdvice):
+			pAction, err := action.AsPinPackageAdvice()
 			if err != nil {
 				return NewUnresolvedFix(), err
 			}

@@ -24,23 +24,23 @@ func ProcessRemediationForFinding(
 		finding.Relationships.Fix == nil ||
 		finding.Relationships.Fix.Data == nil ||
 		finding.Relationships.Fix.Data.Attributes == nil ||
-		finding.Relationships.Fix.Data.Attributes.Actions == nil {
+		finding.Relationships.Fix.Data.Attributes.Action == nil {
 		return nil
 	}
 
-	act := finding.Relationships.Fix.Data.Attributes.Actions
+	act := finding.Relationships.Fix.Data.Attributes.Action
 	disc, err := act.Discriminator()
 	if err != nil {
 		return fmt.Errorf("failed to get action discriminator: %w", err)
 	}
 
 	switch disc {
-	case string(testapi.UpgradePackage):
+	case string(testapi.UpgradePackageAdviceFormatUpgradePackageAdvice):
 		err := processUpgradeAction(vuln, act, logger)
 		if err != nil {
 			return fmt.Errorf("failed to process upgrade action: %w", err)
 		}
-	case string(testapi.PinPackage):
+	case string(testapi.PinPackageAdviceFormatPinPackageAdvice):
 		err := processPinAction(vuln, act)
 		if err != nil {
 			return fmt.Errorf("failed to process pin action: %w", err)
@@ -52,8 +52,8 @@ func ProcessRemediationForFinding(
 	return nil
 }
 
-func processUpgradeAction(vuln *definitions.Vulnerability, act *testapi.Action, logger *zerolog.Logger) error {
-	upa, err := act.AsUpgradePackageAction()
+func processUpgradeAction(vuln *definitions.Vulnerability, act *testapi.FixAction, logger *zerolog.Logger) error {
+	upa, err := act.AsUpgradePackageAdvice()
 	if err != nil {
 		return fmt.Errorf("failed to convert action to upgrade action: %w", err)
 	}
@@ -93,8 +93,8 @@ func processUpgradeAction(vuln *definitions.Vulnerability, act *testapi.Action, 
 	return nil
 }
 
-func processPinAction(vuln *definitions.Vulnerability, act *testapi.Action) error {
-	ppa, err := act.AsPinPackageAction()
+func processPinAction(vuln *definitions.Vulnerability, act *testapi.FixAction) error {
+	ppa, err := act.AsPinPackageAdvice()
 	if err != nil {
 		return fmt.Errorf("failed to convert action to pin action: %w", err)
 	}
