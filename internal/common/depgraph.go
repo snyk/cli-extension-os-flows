@@ -24,8 +24,8 @@ const TargetKey = "target"
 // DepGraphWorkflowID is the identifier for the dependency graph workflow.
 var DepGraphWorkflowID = workflow.NewWorkflowIdentifier("depgraph")
 
-// ConfigFlagPruneDepGraphs can be passed to the dep graph workflow in order to enable pruning.
-var ConfigFlagPruneDepGraphs = "prune-graph"
+// ConfigFlagEffectiveDepGraphs can be passed to the dep graph workflow in order to enable effective, possibly pruned dependency graphs.
+var ConfigFlagEffectiveDepGraphs = "effective-graph"
 
 // RawDepGraphWithMeta contains the results of a dependency graph generation.
 type RawDepGraphWithMeta struct {
@@ -54,7 +54,7 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 
 	// Overriding the INPUT_DIRECTORY flag which the depgraph workflow will use to extract the depgraphs.
 	depGraphConfig.Set(configuration.INPUT_DIRECTORY, inputDir)
-	depGraphConfig.Set(ConfigFlagPruneDepGraphs, true)
+	depGraphConfig.Set(ConfigFlagEffectiveDepGraphs, true)
 	depGraphsData, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)
 	if err != nil {
 		return nil, errFactory.NewDepGraphWorkflowError(err)
