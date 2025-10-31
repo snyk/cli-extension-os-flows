@@ -1,0 +1,582 @@
+{
+  "data": [
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n[gopkg.in/yaml.v2](https://github.com/go-yaml/yaml) is a YAML support package for the Go language.\n\nAffected versions of this package are vulnerable to Information Exposure test\n## Remediation\nThere is no fixed version for `gopkg.in/yaml.v2`.\n\n## References\n- [GitHub Issue](https://github.com/go-yaml/yaml/issues/1002)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/rest-go-libs/v5/openapi",
+                "version": "5.16.1"
+              },
+              {
+                "name": "github.com/snyk/vervet/v8",
+                "version": "8.19.0"
+              },
+              {
+                "name": "github.com/ghodss/yaml",
+                "version": "1.0.0"
+              },
+              {
+                "name": "gopkg.in/yaml.v2",
+                "version": "2.4.0"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          },
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/rest-go-libs/v5/featureflag",
+                "version": "5.16.1"
+              },
+              {
+                "name": "github.com/snyk/vervet/v8",
+                "version": "8.19.0"
+              },
+              {
+                "name": "github.com/ghodss/yaml",
+                "version": "1.0.0"
+              },
+              {
+                "name": "gopkg.in/yaml.v2",
+                "version": "2.4.0"
+              }
+            ],
+            "source": "dependency_path"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "174f34a7-9890-45a1-bf80-64e06e0ede60",
+        "locations": [
+          {
+            "package": {
+              "name": "gopkg.in/yaml.v2",
+              "version": "2.4.0"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "\u003e=0.0.0"
+            ],
+            "created_at": "2024-09-09T08:50:20.126716Z",
+            "credits": [
+              "Silence-worker-02"
+            ],
+            "cvss_base_score": 6.9,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "4.0",
+                "modified_at": "2024-09-09T08:50:20.922924Z",
+                "severity": "medium",
+                "type": "primary",
+                "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N"
+              },
+              {
+                "assigner": "Snyk",
+                "base_score": 5.3,
+                "cvss_version": "3.1",
+                "modified_at": "2024-09-09T08:50:20.922924Z",
+                "severity": "medium",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+              }
+            ],
+            "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N",
+            "disclosed_at": "2023-11-15T15:55:47.648Z",
+            "ecosystem": {
+              "language": "golang",
+              "package_manager": "golang",
+              "type": "build"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-GOLANG-GOPKGINYAMLV2-12330650",
+            "initially_fixed_in_versions": [],
+            "is_fixable": false,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2024-09-09T08:50:20.922924Z",
+            "package_name": "gopkg.in/yaml.v2",
+            "package_version": "",
+            "published_at": "2024-09-09T08:50:20.460223Z",
+            "references": [
+              {
+                "title": "GitHub Issue",
+                "url": "https://github.com/go-yaml/yaml/issues/1002"
+              }
+            ],
+            "severity": "medium",
+            "source": "snyk_vuln"
+          },
+          {
+            "id": "CWE-200",
+            "source": "cwe"
+          }
+        ],
+        "rating": {
+          "severity": "medium"
+        },
+        "risk": {},
+        "suppression": {
+          "created_at": "2025-10-27T17:36:07.116Z",
+          "expires_at": "2025-11-08T00:00:00Z",
+          "justification": "Project level ignore until a fix or date",
+          "path": [
+            "*"
+          ],
+          "policy": {
+            "id": "16e12b6e-0cd6-4f83-9936-1d27a065f8db"
+          },
+          "status": "ignored"
+        },
+        "title": "Information Exposure"
+      },
+      "id": "174f34a7-9890-45a1-bf80-64e06e0ede60",
+      "links": {},
+      "relationships": {
+        "policy": {
+          "data": {
+            "attributes": {
+              "policies": [
+                {
+                  "applied_policy": {
+                    "action_type": "ignore",
+                    "ignore": {
+                      "created": "2025-10-27T17:36:07.116Z",
+                      "disregard_if_fixable": true,
+                      "expires": "2025-11-08T00:00:00Z",
+                      "ignored_by": {
+                        "email": "first.last@snyk.io",
+                        "id": "0b515878-ae96-4c25-8389-d63cc552990e",
+                        "name": "First Last"
+                      },
+                      "path": [
+                        "*"
+                      ],
+                      "reason": "Project level ignore until a fix or date",
+                      "reason_type": "temporary-ignore",
+                      "source": "api"
+                    }
+                  },
+                  "id": "16e12b6e-0cd6-4f83-9936-1d27a065f8db",
+                  "type": "legacy_policy_snapshot"
+                }
+              ]
+            },
+            "id": "4fe334a9-88d2-4825-9c62-d038ff97a50c",
+            "type": "policies"
+          },
+          "links": {}
+        }
+      },
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "MPL-2.0 license",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/hashicorp/go-retryablehttp",
+                "version": "0.7.8"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "not_applicable",
+            "source": "reachability"
+          },
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata/fake",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/hashicorp/go-retryablehttp",
+                "version": "0.7.8"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice/fake",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/hashicorp/go-retryablehttp",
+                "version": "0.7.8"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/hashicorp/go-retryablehttp",
+                "version": "0.7.8"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice/fake",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/hashicorp/go-retryablehttp",
+                "version": "0.7.8"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/hashicorp/go-retryablehttp",
+                "version": "0.7.8"
+              }
+            ],
+            "source": "dependency_path"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "1fc01aae-a718-4c00-b759-3d86e519414a",
+        "locations": [
+          {
+            "package": {
+              "name": "github.com/hashicorp/go-retryablehttp",
+              "version": "0.7.8"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "\u003e=v0"
+            ],
+            "created_at": "2025-03-10T18:22:02.49Z",
+            "ecosystem": {
+              "language": "golang",
+              "package_manager": "golang",
+              "type": "build"
+            },
+            "id": "snyk:lic:golang:github.com:hashicorp:go-retryablehttp:MPL-2.0",
+            "instructions": [],
+            "license": "MPL-2.0",
+            "package_name": "github.com/hashicorp/go-retryablehttp",
+            "package_version": "",
+            "published_at": "2025-03-10T18:22:02.49Z",
+            "severity": "medium",
+            "source": "snyk_license"
+          }
+        ],
+        "rating": {
+          "severity": "medium"
+        },
+        "risk": {},
+        "title": "MPL-2.0 license"
+      },
+      "id": "1fc01aae-a718-4c00-b759-3d86e519414a",
+      "links": {},
+      "relationships": {},
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "MPL-2.0 license",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/code-gateway/sdk/go/api",
+                "version": "1.3.0"
+              },
+              {
+                "name": "github.com/snyk/code-gateway/sdk/go/internal/client",
+                "version": "1.3.0"
+              },
+              {
+                "name": "github.com/snyk/go-code-integrations-common/observable_httpretry",
+                "version": "1.0.1"
+              },
+              {
+                "name": "github.com/hashicorp/go-cleanhttp",
+                "version": "0.5.2"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata/fake",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/hashicorp/go-retryablehttp",
+                "version": "0.7.8"
+              },
+              {
+                "name": "github.com/hashicorp/go-cleanhttp",
+                "version": "0.5.2"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "not_applicable",
+            "source": "reachability"
+          },
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/hashicorp/go-retryablehttp",
+                "version": "0.7.8"
+              },
+              {
+                "name": "github.com/hashicorp/go-cleanhttp",
+                "version": "0.5.2"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice/fake",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/hashicorp/go-retryablehttp",
+                "version": "0.7.8"
+              },
+              {
+                "name": "github.com/hashicorp/go-cleanhttp",
+                "version": "0.5.2"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/hashicorp/go-retryablehttp",
+                "version": "0.7.8"
+              },
+              {
+                "name": "github.com/hashicorp/go-cleanhttp",
+                "version": "0.5.2"
+              }
+            ],
+            "source": "dependency_path"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "aa44ee98-2f36-44d0-9648-d9abee87aeb9",
+        "locations": [
+          {
+            "package": {
+              "name": "github.com/hashicorp/go-cleanhttp",
+              "version": "0.5.2"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "\u003e=v0"
+            ],
+            "created_at": "2025-03-10T18:22:02.49Z",
+            "ecosystem": {
+              "language": "golang",
+              "package_manager": "golang",
+              "type": "build"
+            },
+            "id": "snyk:lic:golang:github.com:hashicorp:go-cleanhttp:MPL-2.0",
+            "instructions": [],
+            "license": "MPL-2.0",
+            "package_name": "github.com/hashicorp/go-cleanhttp",
+            "package_version": "",
+            "published_at": "2025-03-10T18:22:02.49Z",
+            "severity": "medium",
+            "source": "snyk_license"
+          }
+        ],
+        "rating": {
+          "severity": "medium"
+        },
+        "risk": {},
+        "title": "MPL-2.0 license"
+      },
+      "id": "aa44ee98-2f36-44d0-9648-d9abee87aeb9",
+      "links": {},
+      "relationships": {},
+      "type": "findings"
+    }
+  ],
+  "jsonapi": {
+    "version": "1.0"
+  },
+  "links": {
+    "first": "/orgs/c3e3b0e1-842c-4e1c-b5ed-59074c8bfc78/tests/3de87f01-0c0d-4ef7-9b62-cf5054a0c3d4/findings?version=2024-10-15\u0026limit=100",
+    "self": "/orgs/c3e3b0e1-842c-4e1c-b5ed-59074c8bfc78/tests/3de87f01-0c0d-4ef7-9b62-cf5054a0c3d4/findings?version=2024-10-15\u0026limit=100"
+  },
+  "meta": {
+    "count": 3,
+    "order": "asc",
+    "sorted-by": "id"
+  }
+}
