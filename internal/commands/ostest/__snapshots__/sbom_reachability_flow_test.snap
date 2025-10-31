@@ -218,9 +218,9 @@
    "fix": {
     "data": {
      "attributes": {
-      "actions": {
+      "action": {
+       "format": "upgrade_package_advice",
        "package_name": "foo",
-       "type": "upgrade_package",
        "upgrade_paths": [
         {
          "dependency_path": [
