@@ -443,8 +443,8 @@ func TestOSWorkflow_OrgIDHandling(t *testing.T) {
 			name: "New flow without org ID should fail with org error",
 			setupConfig: func(config configuration.Configuration) {
 				config.Set(configuration.ORGANIZATION, "")
-				config.Set(ostest.FeatureFlagRiskScore, true)
-				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				config.Set(constants.FeatureFlagRiskScore, true)
+				config.Set(constants.FeatureFlagRiskScoreInCLI, true)
 			},
 			setupEngine: func(_ *mocks.MockEngine) {
 			},
@@ -455,8 +455,8 @@ func TestOSWorkflow_OrgIDHandling(t *testing.T) {
 			name: "New flow with invalid org ID should fail with invalid org error",
 			setupConfig: func(config configuration.Configuration) {
 				config.Set(configuration.ORGANIZATION, "not-a-valid-uuid")
-				config.Set(ostest.FeatureFlagRiskScore, true)
-				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				config.Set(constants.FeatureFlagRiskScore, true)
+				config.Set(constants.FeatureFlagRiskScoreInCLI, true)
 			},
 			setupEngine: func(_ *mocks.MockEngine) {
 			},
@@ -500,8 +500,8 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 		{
 			name: "Risk score FFs enabled, expects unified flow (depgraph error)",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
-				config.Set(ostest.FeatureFlagRiskScore, true)
-				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				config.Set(constants.FeatureFlagRiskScore, true)
+				config.Set(constants.FeatureFlagRiskScoreInCLI, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
 					Return(nil, assert.AnError).
@@ -521,7 +521,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			name: "Risk Score Threshold set, CLI Risk Score FF disabled",
 			setup: func(config configuration.Configuration, _ *mocks.MockEngine) {
 				config.Set(flags.FlagRiskScoreThreshold, 700)
-				config.Set(ostest.FeatureFlagRiskScore, true)
+				config.Set(constants.FeatureFlagRiskScore, true)
 				// Assuming ostest.FeatureFlagRiskScoreInCLI is false by default
 			},
 			expectedError: "The feature you are trying to use is not available for your organization",
@@ -530,8 +530,8 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			name: "Risk Score Threshold set, both Risk Score FFs enabled, expects depgraph error",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				config.Set(flags.FlagRiskScoreThreshold, 700)
-				config.Set(ostest.FeatureFlagRiskScore, true)
-				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				config.Set(constants.FeatureFlagRiskScore, true)
+				config.Set(constants.FeatureFlagRiskScoreInCLI, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
 					Return(nil, assert.AnError).
@@ -551,8 +551,8 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 		{
 			name: "Severity threshold set with FFs enabled, expects depgraph error",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
-				config.Set(ostest.FeatureFlagRiskScore, true)
-				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				config.Set(constants.FeatureFlagRiskScore, true)
+				config.Set(constants.FeatureFlagRiskScoreInCLI, true)
 				config.Set(flags.FlagSeverityThreshold, "high")
 				mockEngine.EXPECT().
 					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
@@ -566,8 +566,8 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				config.Set(flags.FlagRiskScoreThreshold, 500)
 				config.Set(flags.FlagSeverityThreshold, "medium")
-				config.Set(ostest.FeatureFlagRiskScore, true)
-				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				config.Set(constants.FeatureFlagRiskScore, true)
+				config.Set(constants.FeatureFlagRiskScoreInCLI, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
 					Return(nil, assert.AnError).
@@ -600,7 +600,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 		{
 			name: "Only one risk score FF enabled, uses legacy flow",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
-				config.Set(ostest.FeatureFlagRiskScore, true)
+				config.Set(constants.FeatureFlagRiskScore, true)
 				// ffRiskScoreInCLI is false by default
 				mockEngine.EXPECT().
 					InvokeWithConfig(gomock.Any(), gomock.Any()).
@@ -612,7 +612,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 		{
 			name: "Only CLI risk score FF enabled, uses legacy flow",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
-				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				config.Set(constants.FeatureFlagRiskScoreInCLI, true)
 				// ffRiskScore is false by default
 				mockEngine.EXPECT().
 					InvokeWithConfig(gomock.Any(), gomock.Any()).
@@ -624,7 +624,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 		{
 			name: "CLI Reachability FF enabled, expects unified flow (depgraph error)",
 			setup: func(config configuration.Configuration, _ *mocks.MockEngine) {
-				config.Set(ostest.FeatureFlagReachabilityForCLI, true)
+				config.Set(constants.FeatureFlagReachabilityForCLI, true)
 				config.Set(flags.FlagReachability, true)
 			},
 			expectedError: "failed to upload source code",
@@ -984,8 +984,8 @@ func TestOSWorkflow_MultipleProjects_UnifiedFlow(t *testing.T) {
 		"--all-projects": {
 			setupTest: func(ictx workflow.InvocationContext, engine *mocks.MockEngine) {
 				config := ictx.GetConfiguration()
-				config.Set(ostest.FeatureFlagRiskScore, true)
-				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				config.Set(constants.FeatureFlagRiskScore, true)
+				config.Set(constants.FeatureFlagRiskScoreInCLI, true)
 				config.Set(outputworkflow.OutputConfigKeyJSON, true)
 
 				config.Set(flags.FlagAllProjects, true)
@@ -1000,8 +1000,8 @@ func TestOSWorkflow_MultipleProjects_UnifiedFlow(t *testing.T) {
 		"multiple paths": {
 			setupTest: func(ictx workflow.InvocationContext, engine *mocks.MockEngine) {
 				config := ictx.GetConfiguration()
-				config.Set(ostest.FeatureFlagRiskScore, true)
-				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				config.Set(constants.FeatureFlagRiskScore, true)
+				config.Set(constants.FeatureFlagRiskScoreInCLI, true)
 				config.Set(outputworkflow.OutputConfigKeyJSON, true)
 				// Explicitly set --policy-path to avoid looking it up in inexistent directories
 				config.Set(flags.FlagPolicyPath, ".")

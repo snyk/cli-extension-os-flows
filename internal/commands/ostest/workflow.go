@@ -28,6 +28,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	cmdutil "github.com/snyk/cli-extension-os-flows/internal/commands/util"
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
@@ -41,18 +42,6 @@ import (
 
 // WorkflowID is the identifier for the Open Source Test workflow.
 var WorkflowID = workflow.NewWorkflowIdentifier("test")
-
-// FeatureFlagReachabilityForCLI is used to gate the legacy monitor reachability feature.
-const FeatureFlagReachabilityForCLI = "feature_flag_monitor_reachability"
-
-// FeatureFlagSBOMTestReachability is used to gate the sbom test reachability feature.
-const FeatureFlagSBOMTestReachability = "feature_flag_sbom_test_reachability"
-
-// FeatureFlagRiskScore is used to gate the risk score feature.
-const FeatureFlagRiskScore = "feature_flag_experimental_risk_score"
-
-// FeatureFlagRiskScoreInCLI is used to gate the risk score feature in the CLI.
-const FeatureFlagRiskScoreInCLI = "feature_flag_experimental_risk_score_in_cli"
 
 // PollInterval is the polling interval for the test API. It is exported to be configurable in tests.
 var PollInterval = 2 * time.Second
@@ -73,12 +62,12 @@ func RegisterWorkflows(e workflow.Engine) error {
 	}
 
 	// Reachability FF.
-	config_utils.AddFeatureFlagToConfig(e, FeatureFlagReachabilityForCLI, "reachabilityForCli")
-	config_utils.AddFeatureFlagToConfig(e, FeatureFlagSBOMTestReachability, "sbomTestReachability")
+	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagReachabilityForCLI, "reachabilityForCli")
+	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagSBOMTestReachability, "sbomTestReachability")
 
 	// Risk score FFs.
-	config_utils.AddFeatureFlagToConfig(e, FeatureFlagRiskScore, "useExperimentalRiskScore")
-	config_utils.AddFeatureFlagToConfig(e, FeatureFlagRiskScoreInCLI, "useExperimentalRiskScoreInCLI")
+	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagRiskScore, "useExperimentalRiskScore")
+	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagRiskScoreInCLI, "useExperimentalRiskScoreInCLI")
 
 	return nil
 }

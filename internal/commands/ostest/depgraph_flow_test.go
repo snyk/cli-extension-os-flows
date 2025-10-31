@@ -24,6 +24,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	common "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 )
@@ -74,8 +75,8 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
 
 	cfg := configuration.New()
-	cfg.Set(ostest.FeatureFlagRiskScore, true)
-	cfg.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+	cfg.Set(constants.FeatureFlagRiskScore, true)
+	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
 	cfg.Set(flags.FlagAllProjects, true)
 	// Ensure the effective limit is the default (5)
 	cfg.Set(configuration.MAX_THREADS, 99)
@@ -149,8 +150,8 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 	cfg := configuration.New()
 	// Ensure a predictable bound lower than the default 5
 	cfg.Set(configuration.MAX_THREADS, 3)
-	cfg.Set(ostest.FeatureFlagRiskScore, true)
-	cfg.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+	cfg.Set(constants.FeatureFlagRiskScore, true)
+	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
 	cfg.Set(flags.FlagAllProjects, true)
 
 	logger := zerolog.Nop()
@@ -216,8 +217,8 @@ func Test_RunUnifiedTestFlow_WithIgnorePolicyFlag(t *testing.T) {
 	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
 
 	cfg := configuration.New()
-	cfg.Set(ostest.FeatureFlagRiskScore, true)
-	cfg.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+	cfg.Set(constants.FeatureFlagRiskScore, true)
+	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
 	cfg.Set(flags.FlagIgnorePolicy, true)
 
 	logger := zerolog.Nop()
@@ -297,8 +298,8 @@ func Test_RunUnifiedTestFlow_WithProjectNameOverride(t *testing.T) {
 	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
 
 	cfg := configuration.New()
-	cfg.Set(ostest.FeatureFlagRiskScore, true)
-	cfg.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+	cfg.Set(constants.FeatureFlagRiskScore, true)
+	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
 	cfg.Set(flags.FlagProjectName, "my-custom-project-name")
 
 	logger := zerolog.Nop()
@@ -378,8 +379,8 @@ func Test_RunUnifiedTestFlow_WithTargetReference(t *testing.T) {
 	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
 
 	cfg := configuration.New()
-	cfg.Set(ostest.FeatureFlagRiskScore, true)
-	cfg.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+	cfg.Set(constants.FeatureFlagRiskScore, true)
+	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
 	cfg.Set(flags.FlagTargetReference, "feature-branch-123")
 
 	logger := zerolog.Nop()
@@ -459,8 +460,8 @@ func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
 	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
 
 	cfg := configuration.New()
-	cfg.Set(ostest.FeatureFlagRiskScore, true)
-	cfg.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+	cfg.Set(constants.FeatureFlagRiskScore, true)
+	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
 	cfg.Set(flags.FlagAllProjects, true)
 
 	logger := zerolog.Nop()
