@@ -183,7 +183,7 @@ func Test_RouteToFlow_SBOMReachabilityFlow(t *testing.T) {
 				cfg := defaultConfig.Clone()
 				cfg.Set(flags.FlagSBOM, "sbom.json")
 				cfg.Set(flags.FlagReachability, true)
-				cfg.Set(ostest.FeatureFlagSBOMTestReachability, true)
+				cfg.Set(constants.FeatureFlagSBOMTestReachability, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -200,7 +200,7 @@ func Test_RouteToFlow_SBOMReachabilityFlow(t *testing.T) {
 				cfg.Set(flags.FlagSBOM, "sbom.json")
 				cfg.Set(flags.FlagReachability, true)
 				cfg.Set(flags.FlagReachabilityFilter, "reachable")
-				cfg.Set(ostest.FeatureFlagSBOMTestReachability, true)
+				cfg.Set(constants.FeatureFlagSBOMTestReachability, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -231,7 +231,7 @@ func Test_RouteToFlow_SBOMReachabilityFlow(t *testing.T) {
 				cfg := defaultConfig.Clone()
 				cfg.Set(flags.FlagSBOM, "sbom.json")
 				cfg.Set(flags.FlagReachability, true)
-				cfg.Set(ostest.FeatureFlagSBOMTestReachability, true)
+				cfg.Set(constants.FeatureFlagSBOMTestReachability, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -247,7 +247,7 @@ func Test_RouteToFlow_SBOMReachabilityFlow(t *testing.T) {
 				cfg := defaultConfig.Clone()
 				cfg.Set(flags.FlagSBOM, "sbom.json")
 				cfg.Set(flags.FlagReachability, true)
-				cfg.Set(ostest.FeatureFlagSBOMTestReachability, true)
+				cfg.Set(constants.FeatureFlagSBOMTestReachability, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -293,7 +293,7 @@ func Test_RouteToFlow_ReachabilityFlow(t *testing.T) {
 			ctx: func(ctx context.Context) context.Context {
 				cfg := defaultConfig.Clone()
 				cfg.Set(flags.FlagReachability, true)
-				cfg.Set(ostest.FeatureFlagReachabilityForCLI, true)
+				cfg.Set(constants.FeatureFlagReachabilityForCLI, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -309,7 +309,7 @@ func Test_RouteToFlow_ReachabilityFlow(t *testing.T) {
 				cfg := defaultConfig.Clone()
 				cfg.Set(flags.FlagReachability, true)
 				cfg.Set(flags.FlagReachabilityFilter, "reachable")
-				cfg.Set(ostest.FeatureFlagReachabilityForCLI, true)
+				cfg.Set(constants.FeatureFlagReachabilityForCLI, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -338,7 +338,7 @@ func Test_RouteToFlow_ReachabilityFlow(t *testing.T) {
 			ctx: func(ctx context.Context) context.Context {
 				cfg := defaultConfig.Clone()
 				cfg.Set(flags.FlagReachability, true)
-				cfg.Set(ostest.FeatureFlagReachabilityForCLI, true)
+				cfg.Set(constants.FeatureFlagReachabilityForCLI, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -353,7 +353,7 @@ func Test_RouteToFlow_ReachabilityFlow(t *testing.T) {
 			ctx: func(ctx context.Context) context.Context {
 				cfg := defaultConfig.Clone()
 				cfg.Set(flags.FlagReachability, true)
-				cfg.Set(ostest.FeatureFlagReachabilityForCLI, true)
+				cfg.Set(constants.FeatureFlagReachabilityForCLI, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -397,8 +397,8 @@ func Test_RouteToFlow_RiskScoreFlow(t *testing.T) {
 		"should route to depgraph flow when risk score FFs are enabled": {
 			ctx: func(ctx context.Context) context.Context {
 				cfg := defaultConfig.Clone()
-				cfg.Set(ostest.FeatureFlagRiskScore, true)
-				cfg.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				cfg.Set(constants.FeatureFlagRiskScore, true)
+				cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -411,8 +411,8 @@ func Test_RouteToFlow_RiskScoreFlow(t *testing.T) {
 		"should route to depgraph flow when --risk-score-threshold is set and risk score FFs are enabled": {
 			ctx: func(ctx context.Context) context.Context {
 				cfg := defaultConfig.Clone()
-				cfg.Set(ostest.FeatureFlagRiskScore, true)
-				cfg.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				cfg.Set(constants.FeatureFlagRiskScore, true)
+				cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
 				cfg.Set(flags.FlagRiskScoreThreshold, 100)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
@@ -426,7 +426,7 @@ func Test_RouteToFlow_RiskScoreFlow(t *testing.T) {
 		"should fail when --risk-score-threshold is set and risk score FF is missing": {
 			ctx: func(ctx context.Context) context.Context {
 				cfg := defaultConfig.Clone()
-				cfg.Set(ostest.FeatureFlagRiskScoreInCLI, true)
+				cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
 				cfg.Set(flags.FlagRiskScoreThreshold, 100)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
@@ -440,7 +440,7 @@ func Test_RouteToFlow_RiskScoreFlow(t *testing.T) {
 		"should fail when --risk-score-threshold is set and risk score in the CLI FF is missing": {
 			ctx: func(ctx context.Context) context.Context {
 				cfg := defaultConfig.Clone()
-				cfg.Set(ostest.FeatureFlagRiskScore, true)
+				cfg.Set(constants.FeatureFlagRiskScore, true)
 				cfg.Set(flags.FlagRiskScoreThreshold, 100)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)

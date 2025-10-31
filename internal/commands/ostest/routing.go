@@ -67,9 +67,9 @@ func validateRiskScore(riskScoreThreshold int, riskScoreFFsEnabled, ffRiskScore 
 	// The user tried to use a risk score threshold without the required feature flags.
 	// Return a specific error for the first missing flag found.
 	if !ffRiskScore {
-		return errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScore)
+		return errFactory.NewFeatureNotPermittedError(constants.FeatureFlagRiskScore)
 	}
-	return errFactory.NewFeatureNotPermittedError(FeatureFlagRiskScoreInCLI)
+	return errFactory.NewFeatureNotPermittedError(constants.FeatureFlagRiskScoreInCLI)
 }
 
 func validateReachability(
@@ -120,8 +120,8 @@ type FlowConfig struct {
 
 // ParseFlowConfig reads and parses all flow-related configuration flags.
 func ParseFlowConfig(cfg configuration.Configuration) FlowConfig {
-	ffRiskScore := cfg.GetBool(FeatureFlagRiskScore)
-	ffRiskScoreInCLI := cfg.GetBool(FeatureFlagRiskScoreInCLI)
+	ffRiskScore := cfg.GetBool(constants.FeatureFlagRiskScore)
+	ffRiskScoreInCLI := cfg.GetBool(constants.FeatureFlagRiskScoreInCLI)
 	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
 	riskScoreThreshold := cfg.GetInt(flags.FlagRiskScoreThreshold)
 	riskScoreTest := riskScoreFFsEnabled || riskScoreThreshold != -1
@@ -204,13 +204,13 @@ func RouteToFlow(ctx context.Context, fc FlowConfig, orgUUID uuid.UUID, sc setti
 
 	switch {
 	case fc.SBOMReachabilityTest:
-		if !cfg.GetBool(FeatureFlagSBOMTestReachability) {
-			return "", errFactory.NewFeatureNotPermittedError(FeatureFlagSBOMTestReachability)
+		if !cfg.GetBool(constants.FeatureFlagSBOMTestReachability) {
+			return "", errFactory.NewFeatureNotPermittedError(constants.FeatureFlagSBOMTestReachability)
 		}
 		return SBOMReachabilityFlow, nil
 	case fc.Reachability:
-		if !cfg.GetBool(FeatureFlagReachabilityForCLI) {
-			return "", errFactory.NewFeatureNotPermittedError(FeatureFlagReachabilityForCLI)
+		if !cfg.GetBool(constants.FeatureFlagReachabilityForCLI) {
+			return "", errFactory.NewFeatureNotPermittedError(constants.FeatureFlagReachabilityForCLI)
 		}
 		return DepgraphReachabilityFlow, nil
 	default:

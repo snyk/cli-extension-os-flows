@@ -13,6 +13,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
@@ -22,9 +23,6 @@ import (
 
 // WorkflowID is the identifier for the Open Source Monitor workflow.
 var WorkflowID = workflow.NewWorkflowIdentifier("monitor")
-
-// FeatureFlagReachabilityForCLI is used to gate the legacy monitor reachability feature.
-const FeatureFlagReachabilityForCLI = "feature_flag_monitor_reachability"
 
 // RegisterWorkflows registers the "monitor" workflow.
 func RegisterWorkflows(e workflow.Engine) error {
@@ -40,7 +38,7 @@ func RegisterWorkflows(e workflow.Engine) error {
 	}
 
 	// Reachability FF.
-	config_utils.AddFeatureFlagToConfig(e, FeatureFlagReachabilityForCLI, "reachabilityForCli")
+	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagReachabilityForCLI, "reachabilityForCli")
 
 	return nil
 }
@@ -71,9 +69,9 @@ func runReachabilityScan(ctx context.Context) (uuid.UUID, error) {
 		)
 	}
 
-	ffReachabilityInCLI := cfg.GetBool(FeatureFlagReachabilityForCLI)
+	ffReachabilityInCLI := cfg.GetBool(constants.FeatureFlagReachabilityForCLI)
 	if !ffReachabilityInCLI {
-		return uuid.Nil, errFactory.NewFeatureNotPermittedError(FeatureFlagReachabilityForCLI)
+		return uuid.Nil, errFactory.NewFeatureNotPermittedError(constants.FeatureFlagReachabilityForCLI)
 	}
 
 	sourceDir := cfg.GetString(flags.FlagSourceDir)
