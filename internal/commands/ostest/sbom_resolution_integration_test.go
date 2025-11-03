@@ -125,6 +125,7 @@ func setupSBOMResolutionIntegrationTest(
 			result := gafclientmocks.NewMockTestResult(ctrl)
 			result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
 			result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
+			result.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
 			handle.EXPECT().Result().Return(result).Times(1)
 
 			return handle, nil

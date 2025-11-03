@@ -170,7 +170,7 @@ func Test_RunTest_ErrorsWhenFindingsError(t *testing.T) {
 	var subject testapi.TestSubjectCreate
 	_ = subject.FromDepGraphSubjectCreate(testapi.DepGraphSubjectCreate{Type: testapi.DepGraphSubjectCreateTypeDepGraph})
 
-	_, _, err := ostest.RunTest(ctx, ".", mockTestClient, subject, "", "", 0, "", "org", nil)
+	_, _, err := ostest.RunTest(ctx, ".", mockTestClient, subject, "", "", 0, "", "", "org", nil)
 	require.Error(t, err)
 }
 
@@ -199,6 +199,6 @@ func Test_RunTest_ErrorsWhenFindingsIncomplete(t *testing.T) {
 	var subject testapi.TestSubjectCreate
 	_ = subject.FromDepGraphSubjectCreate(testapi.DepGraphSubjectCreate{Type: testapi.DepGraphSubjectCreateTypeDepGraph})
 
-	_, _, err := ostest.RunTest(ctx, ".", mockTestClient, subject, "", "", 0, "", "org", nil)
+	_, _, err := ostest.RunTest(ctx, ".", mockTestClient, subject, "", "", 0, "", "", "org", nil)
 	require.Error(t, err)
 }

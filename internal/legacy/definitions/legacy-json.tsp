@@ -291,6 +291,7 @@ model LegacyVulnerabilityResponse {
   ok: boolean;
   dependencyCount: int64;
   foundProjectCount?: int32;
+  projectId?: string;
   org: string;
   policy: string;
   isPrivate: boolean;

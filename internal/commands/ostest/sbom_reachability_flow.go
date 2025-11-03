@@ -67,7 +67,7 @@ func RunSbomReachabilityFlow(
 	}
 
 	targetDir := filepath.Dir(sbomPath)
-	findings, summary, err := RunTest(ctx, targetDir, testClient, subject, "", "", int(0), sbomPath, orgID, localPolicy)
+	findings, summary, err := RunTest(ctx, targetDir, testClient, subject, "", "", int(0), sbomPath, sbomPath, orgID, localPolicy)
 	if err != nil {
 		return nil, nil, err
 	}

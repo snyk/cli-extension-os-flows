@@ -27,6 +27,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/mocks"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -package=mocks -destination=../../mocks/mock_bundlestore_client.go github.com/snyk/cli-extension-os-flows/internal/bundlestore Client
@@ -336,6 +337,14 @@ func setupTest(t *testing.T, ctrl *gomock.Controller, jsonOutput bool) (
 	mockTestResult.EXPECT().GetTestSubject().Return(testSubject).AnyTimes()
 	mockTestResult.EXPECT().GetEffectiveSummary().Return(summary).AnyTimes()
 	mockTestResult.EXPECT().GetRawSummary().Return(summary).AnyTimes()
+	var tsl testapi.TestSubjectLocator
+	projectID := uuid.MustParse("5c520c95-a964-4de0-9284-02a16f9f88d5")
+	err = tsl.FromProjectEntityLocator(testapi.ProjectEntityLocator{
+		ProjectId: projectID,
+		Type:      testapi.ProjectEntity,
+	})
+	require.NoError(t, err)
+	mockTestResult.EXPECT().GetSubjectLocators().Return(util.Ptr([]testapi.TestSubjectLocator{tsl})).AnyTimes()
 
 	// Mock TestHandle
 	mockTestHandle := gafclientmocks.NewMockTestHandle(ctrl)

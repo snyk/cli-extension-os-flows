@@ -969,14 +969,19 @@ func TestOSWorkflow_MultipleProjects_UnifiedFlow(t *testing.T) {
 	mockData1 := mocks.NewMockData(ctrl)
 	mockData1.EXPECT().GetPayload().Return(depGraph1Bytes).AnyTimes()
 	mockData1.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj1/package.json", nil).AnyTimes()
-	mockData1.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("", nil).AnyTimes()
+	mockData1.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("package.json", nil).AnyTimes()
 	mockData1.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
 
 	mockData2 := mocks.NewMockData(ctrl)
 	mockData2.EXPECT().GetPayload().Return(depGraph2Bytes).AnyTimes()
 	mockData2.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj2/pom.xml", nil).AnyTimes()
-	mockData2.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("", nil).AnyTimes()
+	mockData2.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("pom.xml", nil).AnyTimes()
 	mockData2.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
+
+	dir := createTempLegacyPolicy(t, `
+version: v1.0.0
+ignore: {}
+`)
 
 	tcs := map[string]struct {
 		setupTest func(workflow.InvocationContext, *mocks.MockEngine)
@@ -989,6 +994,7 @@ func TestOSWorkflow_MultipleProjects_UnifiedFlow(t *testing.T) {
 				config.Set(outputworkflow.OutputConfigKeyJSON, true)
 
 				config.Set(flags.FlagAllProjects, true)
+				config.Set(flags.FlagPolicyPath, dir)
 
 				depGraphs := []workflow.Data{mockData1, mockData2}
 				engine.EXPECT().
@@ -1004,7 +1010,7 @@ func TestOSWorkflow_MultipleProjects_UnifiedFlow(t *testing.T) {
 				config.Set(ostest.FeatureFlagRiskScoreInCLI, true)
 				config.Set(outputworkflow.OutputConfigKeyJSON, true)
 				// Explicitly set --policy-path to avoid looking it up in inexistent directories
-				config.Set(flags.FlagPolicyPath, ".")
+				config.Set(flags.FlagPolicyPath, dir)
 
 				config.Set(configuration.INPUT_DIRECTORY, []string{"firstPath", "secondPath"})
 
@@ -1060,6 +1066,12 @@ func TestOSWorkflow_MultipleProjects_UnifiedFlow(t *testing.T) {
 			unmarshalErr := json.Unmarshal(payload, &legacyResults)
 			require.NoError(t, unmarshalErr, "Failed to unmarshal legacy vulnerability responses")
 			assert.Len(t, legacyResults, 2)
+
+			assert.Equal(t, "package.json", *legacyResults[0].TargetFile)
+			assert.Equal(t, "pom.xml", *legacyResults[1].TargetFile)
+
+			assert.True(t, legacyResults[0].FilesystemPolicy)
+			assert.True(t, legacyResults[1].FilesystemPolicy)
 
 			// The order is not guaranteed, so we check for presence
 			projectNames := []string{legacyResults[0].ProjectName, legacyResults[1].ProjectName}

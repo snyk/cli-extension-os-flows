@@ -227,6 +227,8 @@ components:
         foundProjectCount:
           type: integer
           format: int32
+        projectId:
+          type: string
         org:
           type: string
         policy:

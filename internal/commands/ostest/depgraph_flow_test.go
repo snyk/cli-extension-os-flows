@@ -56,6 +56,7 @@ func mockConcurrentStartTest(ctrl *gomock.Controller, n int, current, peak *atom
 		result := gafclientmocks.NewMockTestResult(ctrl)
 		result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
 		result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
+		result.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
 		handle.EXPECT().Result().Return(result).Times(1)
 		return handle, nil
 	}).Times(n)
@@ -266,6 +267,7 @@ func Test_RunUnifiedTestFlow_WithIgnorePolicyFlag(t *testing.T) {
 		result := gafclientmocks.NewMockTestResult(ctrl)
 		result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
 		result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
+		result.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
 		handle.EXPECT().Result().Return(result).Times(1)
 
 		return handle, nil
@@ -347,6 +349,7 @@ func Test_RunUnifiedTestFlow_WithProjectNameOverride(t *testing.T) {
 		result := gafclientmocks.NewMockTestResult(ctrl)
 		result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
 		result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
+		result.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
 		handle.EXPECT().Result().Return(result).Times(1)
 
 		return handle, nil
@@ -428,6 +431,7 @@ func Test_RunUnifiedTestFlow_WithTargetReference(t *testing.T) {
 		result := gafclientmocks.NewMockTestResult(ctrl)
 		result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
 		result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
+		result.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
 		handle.EXPECT().Result().Return(result).Times(1)
 
 		return handle, nil

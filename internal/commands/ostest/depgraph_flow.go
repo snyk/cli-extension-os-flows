@@ -140,8 +140,17 @@ func (p *testProcessor) runDepGraphTest(
 	depCount := max(0, len(depGraph.Payload.Pkgs)-1)
 
 	return RunTest(
-		ctx, targetDir, p.testClient, subject, projectName, packageManager, depCount,
-		depGraph.DisplayTargetFile, p.orgID, p.localPolicy,
+		ctx,
+		targetDir,
+		p.testClient,
+		subject,
+		projectName,
+		packageManager,
+		depCount,
+		depGraph.TargetFileFromPlugin,
+		depGraph.DisplayTargetFile,
+		p.orgID,
+		p.localPolicy,
 	)
 }
 
@@ -179,7 +188,7 @@ func testAllDepGraphs(
 		g.Go(func() (err error) {
 			defer func() {
 				if pErr := recover(); pErr != nil {
-					logger.Error().Err(fmt.Errorf("panic: %v", pErr)).Msg("unexpected error occurred")
+					logger.Error().Stack().Err(fmt.Errorf("panic: %v", pErr)).Msg("unexpected error occurred")
 					err = errors.Join(err, errors.New("unexpected error occurred"))
 				}
 			}()
@@ -354,6 +363,7 @@ func createDepGraphs(ictx workflow.InvocationContext, inputDir string) ([]DepGra
 
 // ParseDepGraph parses a raw depgraph into a DepGraphWithMeta.
 func ParseDepGraph(rawDepGraph service.RawDepGraphWithMeta) (DepGraphWithMeta, error) {
+	var targetFile string
 	var payload testapi.IoSnykApiV1testdepgraphRequestDepGraph
 	err := json.Unmarshal(rawDepGraph.Payload, &payload)
 	if err != nil {
@@ -364,20 +374,23 @@ func ParseDepGraph(rawDepGraph service.RawDepGraphWithMeta) (DepGraphWithMeta, e
 		payload.AdditionalProperties = map[string]interface{}{}
 	}
 	if rawDepGraph.TargetFileFromPlugin != nil {
-		payload.AdditionalProperties["targetFile"] = *rawDepGraph.TargetFileFromPlugin
+		targetFile = *rawDepGraph.TargetFileFromPlugin
+		payload.Set("targetFile", targetFile)
 	}
 	if rawDepGraph.Target != nil {
-		payload.AdditionalProperties["target"] = json.RawMessage(rawDepGraph.Target)
+		payload.Set("target", json.RawMessage(rawDepGraph.Target))
 	}
 
 	return DepGraphWithMeta{
-		Payload:           &payload,
-		DisplayTargetFile: rawDepGraph.NormalisedTargetFile,
+		Payload:              &payload,
+		DisplayTargetFile:    rawDepGraph.NormalisedTargetFile,
+		TargetFileFromPlugin: targetFile,
 	}, nil
 }
 
 // DepGraphWithMeta encapsulates a dependency graph and its metadata.
 type DepGraphWithMeta struct {
-	Payload           *testapi.IoSnykApiV1testdepgraphRequestDepGraph
-	DisplayTargetFile string
+	Payload              *testapi.IoSnykApiV1testdepgraphRequestDepGraph
+	DisplayTargetFile    string
+	TargetFileFromPlugin string
 }
