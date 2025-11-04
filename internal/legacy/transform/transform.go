@@ -28,6 +28,7 @@ const (
 type SnykSchemaToLegacyParams struct {
 	Findings           []testapi.FindingData
 	RemediationSummary remediation.Summary
+	ProjectID          *string
 	TestResult         testapi.TestResult
 	OrgSlugOrID        string
 	ProjectName        string
@@ -35,6 +36,7 @@ type SnykSchemaToLegacyParams struct {
 	TargetDir          string
 	UniqueCount        int32
 	DepCount           int
+	TargetFile         string
 	DisplayTargetFile  string
 	ErrFactory         *errors.ErrorFactory
 	Logger             *zerolog.Logger
@@ -57,9 +59,11 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 
 	res := definitions.LegacyVulnerabilityResponse{
 		Org:               params.OrgSlugOrID,
+		ProjectId:         params.ProjectID,
 		ProjectName:       params.ProjectName,
 		Path:              params.TargetDir,
 		PackageManager:    params.PackageManager,
+		TargetFile:        &params.TargetFile,
 		DisplayTargetFile: params.DisplayTargetFile,
 		UniqueCount:       params.UniqueCount,
 		DependencyCount:   int64(params.DepCount),
@@ -90,6 +94,11 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 	if err != nil {
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("failed to get local policy: %w", err))
 	}
+
+	if policy != nil {
+		res.FilesystemPolicy = true
+	}
+
 	policyStr, err := ExtendLocalPolicyFromFindings(ctx, policy, params.Findings)
 	if err != nil {
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("failed to convert to local policy: %w", err))

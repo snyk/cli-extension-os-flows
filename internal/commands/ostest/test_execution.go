@@ -23,6 +23,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 	"github.com/snyk/cli-extension-os-flows/internal/remediation"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/semver"
 )
 
@@ -45,6 +46,7 @@ func RunTest(
 	projectName string,
 	packageManager string,
 	depCount int,
+	targetFile string,
 	displayTargetFile string,
 	orgID string,
 	localPolicy *testapi.LocalPolicy,
@@ -91,8 +93,14 @@ func RunTest(
 		return nil, nil, fmt.Errorf("failed to compute remediation summary: %w", err)
 	}
 
+	projectID, err := getTestProjectID(finalResult)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to extract project ID: %w", err)
+	}
+
 	legacyParams := &transform.SnykSchemaToLegacyParams{
 		Findings:           allFindingsData,
+		ProjectID:          projectID,
 		RemediationSummary: remSummary,
 		TestResult:         finalResult,
 		OrgSlugOrID:        orgSlugOrID,
@@ -101,12 +109,39 @@ func RunTest(
 		TargetDir:          targetDir,
 		UniqueCount:        uniqueCount,
 		DepCount:           depCount,
+		TargetFile:         targetFile,
 		DisplayTargetFile:  displayTargetFile,
 		ErrFactory:         errFactory,
 		Logger:             logger,
 	}
 
 	return prepareOutput(ctx, consolidatedFindings, standardSummary, summaryData, legacyParams, vulnerablePathsCount)
+}
+
+func getTestProjectID(result testapi.TestResult) (*string, error) {
+	locators := result.GetSubjectLocators()
+	if locators == nil {
+		//nolint:nilnil // Nil is a proper value to be returned, indicating a missing project id.
+		return nil, nil
+	}
+
+	for _, loc := range *locators {
+		disc, err := loc.Discriminator()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get subject locator discriminator: %w", err)
+		}
+		if disc != string(testapi.ProjectEntity) {
+			continue
+		}
+		peLoc, err := loc.AsProjectEntityLocator()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert subject locator to project entity locator: %w", err)
+		}
+		return util.Ptr(peLoc.ProjectId.String()), nil
+	}
+
+	//nolint:nilnil // Nil is a proper value to be returned, indicating a missing project id.
+	return nil, nil
 }
 
 // executeTest runs the test and returns the results.

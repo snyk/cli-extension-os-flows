@@ -143,6 +143,7 @@ type LegacyVulnerabilityResponse struct {
 	PackageManager     string          `json:"packageManager"`
 	Path               string          `json:"path"`
 	Policy             string          `json:"policy"`
+	ProjectId          *string         `json:"projectId,omitempty"`
 	ProjectName        string          `json:"projectName"`
 	Remediation        *Remediation    `json:"remediation,omitempty"`
 	Summary            string          `json:"summary"`
