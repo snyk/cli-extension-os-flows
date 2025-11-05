@@ -335,7 +335,11 @@ func OSWorkflow(
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	defer progressBar.Clear()
 
-	flowCfg := ParseFlowConfig(cfg)
+	flowCfg, err := ParseFlowConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse provided configuration: %w", err)
+	}
+
 	useLegacy, err := ShouldUseLegacyFlow(ctx, flowCfg)
 	if err != nil {
 		return nil, err

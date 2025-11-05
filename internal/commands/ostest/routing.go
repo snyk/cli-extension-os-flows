@@ -2,7 +2,9 @@ package ostest
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 
 	"github.com/google/uuid"
 	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
@@ -10,7 +12,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
-	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	internalErrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
 )
@@ -33,7 +35,7 @@ func validateLegacyCLIOptions(
 	reachability bool,
 	sbom,
 	reachabilityFilter string,
-	errFactory *errors.ErrorFactory,
+	errFactory *internalErrors.ErrorFactory,
 ) error {
 	if !forceLegacyTest && !requiresLegacy {
 		return nil
@@ -59,7 +61,7 @@ func validateLegacyCLIOptions(
 	return nil
 }
 
-func validateRiskScore(riskScoreThreshold int, riskScoreFFsEnabled, ffRiskScore bool, errFactory *errors.ErrorFactory) error {
+func validateRiskScore(riskScoreThreshold int, riskScoreFFsEnabled, ffRiskScore bool, errFactory *internalErrors.ErrorFactory) error {
 	if riskScoreThreshold == -1 || riskScoreFFsEnabled {
 		return nil
 	}
@@ -78,7 +80,7 @@ func validateReachability(
 	sc settings.Client,
 	orgUUID uuid.UUID,
 	reachabilityFilter string,
-	errFactory *errors.ErrorFactory,
+	errFactory *internalErrors.ErrorFactory,
 ) error {
 	if !reachability {
 		// Validate that --reachability-filter is not used without --reachability
@@ -118,8 +120,20 @@ type FlowConfig struct {
 	RequiresLegacy        bool
 }
 
+func doesPathExist(path string) (bool, error) {
+	_, err := os.Stat(path)
+	// If we got no error, it means the path exists.
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, fmt.Errorf("failed to stat path %s: %w", path, err)
+}
+
 // ParseFlowConfig reads and parses all flow-related configuration flags.
-func ParseFlowConfig(cfg configuration.Configuration) FlowConfig {
+func ParseFlowConfig(cfg configuration.Configuration) (FlowConfig, error) {
 	ffRiskScore := cfg.GetBool(constants.FeatureFlagRiskScore)
 	ffRiskScoreInCLI := cfg.GetBool(constants.FeatureFlagRiskScoreInCLI)
 	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
@@ -138,6 +152,22 @@ func ParseFlowConfig(cfg configuration.Configuration) FlowConfig {
 		cfg.GetBool(flags.FlagPrintDepPaths) ||
 		cfg.GetBool(flags.FlagUnmanaged)
 
+	// The legacy `snyk test` command supports testing packages directly. e.g `snyk test lodash`.
+	// The way the command determines if an argument is a package and not a path
+	// is by checking if the argument is a valid local path.
+	// https://github.com/snyk/cli/blob/c63a7ac7d5dfc9ebfcff077d9922533062873119/src/lib/snyk-test/run-test.ts#L605
+	paths := cfg.GetStringSlice(configuration.INPUT_DIRECTORY)
+	for _, pth := range paths {
+		exists, err := doesPathExist(pth)
+		if err != nil {
+			return FlowConfig{}, err
+		}
+		if !exists {
+			requiresLegacy = true
+			break
+		}
+	}
+
 	return FlowConfig{
 		FFRiskScore:           ffRiskScore,
 		FFRiskScoreInCLI:      ffRiskScoreInCLI,
@@ -151,7 +181,7 @@ func ParseFlowConfig(cfg configuration.Configuration) FlowConfig {
 		ExperimentalUvSupport: experimentalUvSupport,
 		ForceLegacyTest:       forceLegacyTest,
 		RequiresLegacy:        requiresLegacy,
-	}
+	}, nil
 }
 
 // ShouldUseLegacyFlow determines if the command should route to legacy CLI based on flags.
