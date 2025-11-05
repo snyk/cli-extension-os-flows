@@ -165,7 +165,7 @@
 {{- end }} {{/* end summary */}}
 
 {{- define "remediationDetails" }}
-{{- printf "  ✗ %s %s in %s\n"  (printf "%s %s" (.Vulnerability.Name | bold) (printf "[%s Severity]" (.Vulnerability.Severity | capitalize) | renderInSeverityColor) | renderInSeverityColor) (printf "[https://security.snyk.io/vulns/%s]" .Vulnerability.ID) (.VulnerablePackage.Name | bold) -}}
+{{- printf "  ✗ %s %s in %s\n"  (printf "%s %s" (.Vulnerability.Name | bold) (printf "[%s Severity]" (.Vulnerability.Severity | capitalize) | renderInSeverityColor) | renderInSeverityColor) (printf "[https://security.snyk.io/vuln/%s]" .Vulnerability.ID) (.VulnerablePackage.Name | bold) -}}
 {{- printf "    introduced by %s\n" (getRemediationIntroducedByWithCount .) -}}
 {{- end }}
 

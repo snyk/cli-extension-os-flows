@@ -1009,10 +1009,9 @@ ignore: {}
 				config.Set(constants.FeatureFlagRiskScore, true)
 				config.Set(constants.FeatureFlagRiskScoreInCLI, true)
 				config.Set(outputworkflow.OutputConfigKeyJSON, true)
-				// Explicitly set --policy-path to avoid looking it up in inexistent directories
 				config.Set(flags.FlagPolicyPath, dir)
 
-				config.Set(configuration.INPUT_DIRECTORY, []string{"firstPath", "secondPath"})
+				config.Set(configuration.INPUT_DIRECTORY, []string{".", "."})
 
 				depGraph1 := []workflow.Data{mockData1}
 				engine.EXPECT().
@@ -1133,10 +1132,7 @@ func TestOSWorkflow_ReachabilityFilterValidation(t *testing.T) {
 func createTempLegacyPolicy(t *testing.T, policy string) string {
 	t.Helper()
 
-	dir, err := os.MkdirTemp("", "snyktest")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(dir) })
-
+	dir := t.TempDir()
 	fd, err := os.Create(filepath.Join(dir, ".snyk"))
 	require.NoError(t, err)
 	defer fd.Close()

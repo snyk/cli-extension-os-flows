@@ -87,7 +87,8 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 		ctx = cmdctx.WithLogger(ctx, &nopLogger)
 		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-		flowCfg := ostest.ParseFlowConfig(cfg)
+		flowCfg, err := ostest.ParseFlowConfig(cfg)
+		require.NoError(t, err)
 		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
 		require.NoError(t, err)
 
@@ -102,8 +103,9 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
 				ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-				flowCfg := ostest.ParseFlowConfig(testCfg)
-				_, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+				flowCfg, err := ostest.ParseFlowConfig(testCfg)
+				require.NoError(t, err)
+				_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg)
 
 				assert.ErrorContains(t, err, "Invalid flag option")
 			})
@@ -125,7 +127,8 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
 				ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-				flowCfg := ostest.ParseFlowConfig(testCfg)
+				flowCfg, err := ostest.ParseFlowConfig(testCfg)
+				require.NoError(t, err)
 				useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
 				require.NoError(t, err)
 
@@ -141,8 +144,9 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 					ctx = cmdctx.WithLogger(ctx, &nopLogger)
 					ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-					flowCfg := ostest.ParseFlowConfig(testCfg)
-					_, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+					flowCfg, err := ostest.ParseFlowConfig(testCfg)
+					require.NoError(t, err)
+					_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg)
 
 					assert.ErrorContains(t, err, "Invalid flag option")
 				})
@@ -159,7 +163,26 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 		ctx = cmdctx.WithLogger(ctx, &nopLogger)
 		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 
-		flowCfg := ostest.ParseFlowConfig(cfg)
+		flowCfg, err := ostest.ParseFlowConfig(cfg)
+		require.NoError(t, err)
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+		require.NoError(t, err)
+
+		assert.True(t, useLegacy)
+	})
+
+	t.Run("when a package name is provided", func(t *testing.T) {
+		t.Parallel()
+		cfg := defaultConfig.Clone()
+		defaultConfig.Set(configuration.INPUT_DIRECTORY, []string{"lodash@1.2.3"})
+
+		ctx := t.Context()
+		ctx = cmdctx.WithConfig(ctx, cfg)
+		ctx = cmdctx.WithLogger(ctx, &nopLogger)
+		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+		flowCfg, err := ostest.ParseFlowConfig(cfg)
+		require.NoError(t, err)
 		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
 		require.NoError(t, err)
 
@@ -264,7 +287,8 @@ func Test_RouteToFlow_SBOMReachabilityFlow(t *testing.T) {
 			t.Parallel()
 			ctx := tc.ctx(t.Context())
 			cfg := cmdctx.Config(ctx)
-			flowCfg := ostest.ParseFlowConfig(cfg)
+			flowCfg, err := ostest.ParseFlowConfig(cfg)
+			require.NoError(t, err)
 
 			flow, err := ostest.RouteToFlow(ctx, flowCfg, tc.orgID, sc)
 
@@ -370,7 +394,8 @@ func Test_RouteToFlow_ReachabilityFlow(t *testing.T) {
 			t.Parallel()
 			ctx := tc.ctx(t.Context())
 			cfg := cmdctx.Config(ctx)
-			flowCfg := ostest.ParseFlowConfig(cfg)
+			flowCfg, err := ostest.ParseFlowConfig(cfg)
+			require.NoError(t, err)
 
 			flow, err := ostest.RouteToFlow(ctx, flowCfg, tc.orgID, sc)
 
@@ -457,7 +482,8 @@ func Test_RouteToFlow_RiskScoreFlow(t *testing.T) {
 			t.Parallel()
 			ctx := tc.ctx(t.Context())
 			cfg := cmdctx.Config(ctx)
-			flowCfg := ostest.ParseFlowConfig(cfg)
+			flowCfg, err := ostest.ParseFlowConfig(cfg)
+			require.NoError(t, err)
 
 			flow, err := ostest.RouteToFlow(ctx, flowCfg, orgID, sc)
 
