@@ -24,9 +24,9 @@ License issues: 1
 
                                        
 Issues with no direct upgrade or patch:
-  ✗ High severity vulnerability [High Severity] [https://security.snyk.io/vulns/SNYK-JS-VM2-5537100] in foo
+  ✗ High severity vulnerability [High Severity] [https://security.snyk.io/vuln/SNYK-JS-VM2-5537100] in foo
     introduced by root@0.0.0 > foo@1.0.0
-  ✗ LGPL-3.0 license [Medium Severity] [https://security.snyk.io/vulns/snyk:lic:npm:web3-core:LGPL-3.0] in foo
+  ✗ LGPL-3.0 license [Medium Severity] [https://security.snyk.io/vuln/snyk:lic:npm:web3-core:LGPL-3.0] in foo
     introduced by root@0.0.0 > foo@1.0.0
 
 ╭─────────────────────────────────────────────────────────╮
@@ -68,7 +68,7 @@ License issues: 1
 
                                        
 Issues with no direct upgrade or patch:
-  ✗ GPL-3.0 OR MIT license [High Severity] [https://security.snyk.io/vulns/snyk:lic:npm:dual-pkg:GPL-3.0-OR-MIT] in foo
+  ✗ GPL-3.0 OR MIT license [High Severity] [https://security.snyk.io/vuln/snyk:lic:npm:dual-pkg:GPL-3.0-OR-MIT] in foo
     introduced by root@0.0.0 > foo@1.0.0
 
 ╭─────────────────────────────────────────────────────────╮
@@ -103,7 +103,7 @@ License issues: 1
 
                                        
 Issues with no direct upgrade or patch:
-  ✗ Apache-2.0 license [Medium Severity] [https://security.snyk.io/vulns/snyk:lic:npm:test-pkg:Apache-2.0] in foo
+  ✗ Apache-2.0 license [Medium Severity] [https://security.snyk.io/vuln/snyk:lic:npm:test-pkg:Apache-2.0] in foo
     introduced by root@0.0.0 > foo@1.0.0
 
 ╭─────────────────────────────────────────────────────────╮
