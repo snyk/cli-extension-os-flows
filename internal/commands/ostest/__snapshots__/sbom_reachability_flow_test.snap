@@ -71,6 +71,7 @@
     "reachability": "reachable",
     "riskScore": 80,
     "severity": "high",
+    "severityWithCritical": "high",
     "socialTrendAlert": false,
     "title": "Test High Severity Finding",
     "upgradePath": [
