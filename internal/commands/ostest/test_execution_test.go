@@ -67,7 +67,7 @@ func Test_NewSummaryDataFromFindings(t *testing.T) {
 		assert.Equal(t, "critical", summaryStruct.Results[0].Severity)
 	})
 
-	t.Run("multiple findings are all considered open", func(t *testing.T) {
+	t.Run("multiple open findings are all considered open", func(t *testing.T) {
 		findings := []testapi.FindingData{
 			{
 				Attributes: &testapi.FindingAttributes{
@@ -117,6 +117,122 @@ func Test_NewSummaryDataFromFindings(t *testing.T) {
 		assert.Equal(t, 1, summary.Results[1].Total)
 		assert.Equal(t, 1, summary.Results[1].Open)
 		assert.Equal(t, 0, summary.Results[1].Ignored)
+	})
+
+	t.Run("multiple findings are correctly considered open or ignored", func(t *testing.T) {
+		findings := []testapi.FindingData{
+			{
+				Attributes: &testapi.FindingAttributes{
+					Rating: testapi.Rating{
+						Severity: testapi.SeverityHigh,
+					},
+				},
+			},
+			{
+				Attributes: &testapi.FindingAttributes{
+					Rating: testapi.Rating{
+						Severity: testapi.SeverityHigh,
+					},
+					Suppression: &testapi.Suppression{
+						Status: testapi.SuppressionStatusIgnored,
+					},
+				},
+			},
+			{
+				Attributes: &testapi.FindingAttributes{
+					Rating: testapi.Rating{
+						Severity: testapi.SeverityMedium,
+					},
+				},
+			},
+		}
+
+		summaryStruct, data, err := ostest.NewSummaryDataFromFindings(findings, path)
+		require.NoError(t, err)
+		require.NotNil(t, data)
+		require.NotNil(t, summaryStruct)
+
+		// Verify content type is set correctly
+		assert.Equal(t, content_type.TEST_SUMMARY, data.GetContentType())
+
+		var summary json_schemas.TestSummary
+		payload, ok := data.GetPayload().([]byte)
+		require.True(t, ok)
+		err = json.Unmarshal(payload, &summary)
+		require.NoError(t, err)
+
+		require.Len(t, summary.Results, 2)
+		// Results are sorted by severity descending
+		assert.Equal(t, "high", summary.Results[0].Severity)
+		assert.Equal(t, 2, summary.Results[0].Total)
+		assert.Equal(t, 1, summary.Results[0].Open)
+		assert.Equal(t, 1, summary.Results[0].Ignored)
+
+		assert.Equal(t, "medium", summary.Results[1].Severity)
+		assert.Equal(t, 1, summary.Results[1].Total)
+		assert.Equal(t, 1, summary.Results[1].Open)
+		assert.Equal(t, 0, summary.Results[1].Ignored)
+	})
+
+	t.Run("multiple ignored findings are all considered ignored", func(t *testing.T) {
+		findings := []testapi.FindingData{
+			{
+				Attributes: &testapi.FindingAttributes{
+					Rating: testapi.Rating{
+						Severity: testapi.SeverityHigh,
+					},
+					Suppression: &testapi.Suppression{
+						Status: testapi.SuppressionStatusIgnored,
+					},
+				},
+			},
+			{
+				Attributes: &testapi.FindingAttributes{
+					Rating: testapi.Rating{
+						Severity: testapi.SeverityHigh,
+					},
+					Suppression: &testapi.Suppression{
+						Status: testapi.SuppressionStatusIgnored,
+					},
+				},
+			},
+			{
+				Attributes: &testapi.FindingAttributes{
+					Rating: testapi.Rating{
+						Severity: testapi.SeverityMedium,
+					},
+					Suppression: &testapi.Suppression{
+						Status: testapi.SuppressionStatusIgnored,
+					},
+				},
+			},
+		}
+
+		summaryStruct, data, err := ostest.NewSummaryDataFromFindings(findings, path)
+		require.NoError(t, err)
+		require.NotNil(t, data)
+		require.NotNil(t, summaryStruct)
+
+		// Verify content type is set correctly
+		assert.Equal(t, content_type.TEST_SUMMARY, data.GetContentType())
+
+		var summary json_schemas.TestSummary
+		payload, ok := data.GetPayload().([]byte)
+		require.True(t, ok)
+		err = json.Unmarshal(payload, &summary)
+		require.NoError(t, err)
+
+		require.Len(t, summary.Results, 2)
+		// Results are sorted by severity descending
+		assert.Equal(t, "high", summary.Results[0].Severity)
+		assert.Equal(t, 2, summary.Results[0].Total)
+		assert.Equal(t, 0, summary.Results[0].Open)
+		assert.Equal(t, 2, summary.Results[0].Ignored)
+
+		assert.Equal(t, "medium", summary.Results[1].Severity)
+		assert.Equal(t, 1, summary.Results[1].Total)
+		assert.Equal(t, 0, summary.Results[1].Open)
+		assert.Equal(t, 1, summary.Results[1].Ignored)
 	})
 
 	t.Run("nil findings slice returns an empty summary", func(t *testing.T) {

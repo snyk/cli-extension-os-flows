@@ -281,6 +281,11 @@ func prepareOutput(
 	return legacyVulnResponse, outputData, nil
 }
 
+type severityCount struct {
+	total   int
+	ignored int
+}
+
 // NewSummaryDataFromFindings creates a workflow.Data object containing a json_schemas.TestSummary
 // from a list of findings. This is used for downstream processing, like determining
 // the CLI exit code.
@@ -299,22 +304,34 @@ func NewSummaryDataFromFindings(
 		return testSummary, NewWorkflowData(content_type.TEST_SUMMARY, summaryBytes), nil
 	}
 
-	severityCounts := make(map[string]int)
+	severityCounts := make(map[string]severityCount)
 	for _, finding := range findings {
 		if finding.Attributes == nil {
 			continue
 		}
+
 		severity := string(finding.Attributes.Rating.Severity)
-		severityCounts[severity]++
+		sevCount, ok := severityCounts[severity]
+		if !ok {
+			sevCount = severityCount{}
+		}
+
+		sevCount.total++
+		if finding.Attributes.Suppression != nil &&
+			finding.Attributes.Suppression.Status == testapi.SuppressionStatusIgnored {
+			sevCount.ignored++
+		}
+
+		severityCounts[severity] = sevCount
 	}
 
 	summaryResults := make([]json_schemas.TestSummaryResult, 0, len(severityCounts))
-	for severity, count := range severityCounts {
+	for severity, sevCount := range severityCounts {
 		summaryResults = append(summaryResults, json_schemas.TestSummaryResult{
 			Severity: severity,
-			Total:    count,
-			Open:     count, // For this summary, all found issues are considered open.
-			Ignored:  0,
+			Total:    sevCount.total,
+			Open:     sevCount.total - sevCount.ignored,
+			Ignored:  sevCount.ignored,
 		})
 	}
 
