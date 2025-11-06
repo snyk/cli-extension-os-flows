@@ -6,10 +6,9 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
-	"github.com/snyk/cli-extension-os-flows/internal/util"
-
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 // NormalisedTargetFileKey is used by the dep graph workflow to embed the target file path in the workflow data.
@@ -44,12 +43,17 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 
 	depGraphConfig := config.Clone()
 	experimentalUvSupportEnabled := config.GetBool(constants.EnableExperimentalUvSupportEnvVar)
+	uvLockExists := util.HasUvLockFile(inputDir, logger)
 
-	if experimentalUvSupportEnabled {
-		logger.Info().Msg("Experimental uv support enabled, using SBOM resolution in depgraph workflow")
+	if experimentalUvSupportEnabled && uvLockExists {
+		logger.Info().Msg("Experimental uv support enabled and uv.lock found, using SBOM resolution in depgraph workflow")
 		depGraphConfig.Set("use-sbom-resolution", true)
 	} else {
-		logger.Println("Invoking depgraph workflow")
+		if experimentalUvSupportEnabled && !uvLockExists {
+			logger.Info().Msg("Experimental uv support enabled but uv.lock not found, using standard depgraph workflow")
+		} else {
+			logger.Info().Msg("Invoking depgraph workflow")
+		}
 	}
 
 	// Overriding the INPUT_DIRECTORY flag which the depgraph workflow will use to extract the depgraphs.

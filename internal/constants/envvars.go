@@ -17,3 +17,6 @@ const FeatureFlagRiskScore = "internal_snyk_cli_experimental_risk_score"
 
 // FeatureFlagRiskScoreInCLI is used to gate the risk score feature in the CLI.
 const FeatureFlagRiskScoreInCLI = "internal_snyk_cli_experimental_risk_score_in_cli"
+
+// UvLockFileName is the name of the UV lock file.
+const UvLockFileName = "uv.lock"
