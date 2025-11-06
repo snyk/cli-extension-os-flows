@@ -6,31 +6,84 @@ tags: []
 paths: {}
 components:
   schemas:
-    AppliedPolicyRules:
+    AbstractPolicyRule:
       type: object
       required:
-        - ignore
+        - id
+        - type
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+    AbstractRuleAttributes:
+      type: object
+      required:
+        - created
+        - modified
+        - name
+        - review
+      properties:
+        created:
+          type: string
+        modified:
+          type: string
+        name:
+          type: string
+        review:
+          type: string
+    AppliedPolicyRules:
+      type: object
       properties:
         ignore:
           $ref: '#/components/schemas/AppliedPolicyRulesIgnore'
+        severityChange:
+          $ref: '#/components/schemas/AppliedPolicyRulesSeverityChange'
+        severity-override:
+          $ref: '#/components/schemas/AppliedPolicyRulesSeverityChange'
     AppliedPolicyRulesIgnore:
       type: object
       required:
         - id
+        - type
         - ignore
         - policy
         - rule
-        - type
       properties:
         id:
+          type: string
+        type:
           type: string
         ignore:
           $ref: '#/components/schemas/VulnFilteredIgnored'
         policy:
           $ref: '#/components/schemas/Policy'
         rule:
-          $ref: '#/components/schemas/PolicyRule'
+          $ref: '#/components/schemas/IgnorePolicyRule'
+    AppliedPolicyRulesSeverityChange:
+      type: object
+      required:
+        - id
+        - type
+        - rule
+        - policy
+        - originalSeverity
+        - severity
+        - newSeverity
+      properties:
+        id:
+          type: string
         type:
+          type: string
+        rule:
+          $ref: '#/components/schemas/SeverityChangePolicyRule'
+        policy:
+          $ref: '#/components/schemas/Policy'
+        originalSeverity:
+          type: string
+        severity:
+          type: string
+        newSeverity:
           type: string
     CVSSDetail:
       type: object
@@ -172,6 +225,63 @@ components:
           type: array
           items:
             type: string
+    IgnorePolicyRule:
+      type: object
+      required:
+        - id
+        - type
+        - attributes
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/IgnorePolicyRuleAttributes'
+    IgnorePolicyRuleAction:
+      type: object
+      required:
+        - type
+        - data
+      properties:
+        type:
+          type: string
+        data:
+          $ref: '#/components/schemas/IgnorePolicyRuleActionData'
+    IgnorePolicyRuleActionData:
+      type: object
+      required:
+        - ignore_type
+        - reason
+        - source
+      properties:
+        ignore_type:
+          type: string
+        reason:
+          type: string
+        source:
+          type: string
+    IgnorePolicyRuleAttributes:
+      type: object
+      required:
+        - created
+        - modified
+        - name
+        - review
+        - actions
+      properties:
+        created:
+          type: string
+        modified:
+          type: string
+        name:
+          type: string
+        review:
+          type: string
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/IgnorePolicyRuleAction'
     IgnoreSettings:
       type: object
       required:
@@ -369,63 +479,6 @@ components:
           type: string
         owner:
           type: string
-    PolicyRule:
-      type: object
-      required:
-        - id
-        - type
-        - attributes
-      properties:
-        id:
-          type: string
-        type:
-          type: string
-        attributes:
-          $ref: '#/components/schemas/PolicyRuleAttributes'
-    PolicyRuleAction:
-      type: object
-      required:
-        - type
-        - data
-      properties:
-        type:
-          type: string
-        data:
-          $ref: '#/components/schemas/PolicyRuleActionData'
-    PolicyRuleActionData:
-      type: object
-      required:
-        - ignore_type
-        - reason
-        - source
-      properties:
-        ignore_type:
-          type: string
-        reason:
-          type: string
-        source:
-          type: string
-    PolicyRuleAttributes:
-      type: object
-      required:
-        - actions
-        - created
-        - modified
-        - name
-        - review
-      properties:
-        actions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PolicyRuleAction'
-        created:
-          type: string
-        modified:
-          type: string
-        name:
-          type: string
-        review:
-          type: string
     Reachability:
       type: string
       enum:
@@ -510,6 +563,13 @@ components:
           type: array
           items:
             type: string
+    SecurityPolicyMetaData:
+      type: object
+      required:
+        - ignore
+      properties:
+        ignore:
+          $ref: '#/components/schemas/VulnFilteredIgnored'
     SemVerInfo:
       type: object
       required:
@@ -525,6 +585,57 @@ components:
             type: string
     Severity:
       type: object
+    SeverityChangePolicyRule:
+      type: object
+      required:
+        - id
+        - type
+        - attributes
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/SeverityChangePolicyRuleAttributes'
+    SeverityChangePolicyRuleAction:
+      type: object
+      required:
+        - type
+        - data
+      properties:
+        type:
+          type: string
+        data:
+          $ref: '#/components/schemas/SeverityChangePolicyRuleActionData'
+    SeverityChangePolicyRuleActionData:
+      type: object
+      required:
+        - severity
+      properties:
+        severity:
+          type: string
+    SeverityChangePolicyRuleAttributes:
+      type: object
+      required:
+        - created
+        - modified
+        - name
+        - review
+        - actions
+      properties:
+        created:
+          type: string
+        modified:
+          type: string
+        name:
+          type: string
+        review:
+          type: string
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeverityChangePolicyRuleAction'
     VulnFiltered:
       type: object
       properties:
@@ -540,9 +651,6 @@ components:
         - created
         - source
         - path
-        - ignoredBy
-        - disregardIfFixable
-        - reasonType
       properties:
         reason:
           type: string
@@ -554,10 +662,7 @@ components:
           type: string
         path:
           type: array
-          items:
-            type: object
-            additionalProperties:
-              type: string
+          items: {}
         ignoredBy:
           $ref: '#/components/schemas/VulnFilteredIgnoredBy'
         disregardIfFixable:
@@ -578,6 +683,7 @@ components:
           type: string
         email:
           type: string
+          nullable: true
         isGroupPolicy:
           type: boolean
     Vulnerability:
@@ -627,6 +733,8 @@ components:
         severity:
           $ref: '#/components/schemas/VulnerabilitySeverity'
         severityWithCritical:
+          $ref: '#/components/schemas/VulnerabilitySeverity'
+        originalSeverity:
           $ref: '#/components/schemas/VulnerabilitySeverity'
         riskScore:
           type: integer
@@ -737,6 +845,8 @@ components:
           $ref: '#/components/schemas/VulnFiltered'
         appliedPolicyRules:
           $ref: '#/components/schemas/AppliedPolicyRules'
+        securityPolicyMetaData:
+          $ref: '#/components/schemas/SecurityPolicyMetaData'
     VulnerabilitySeverity:
       type: string
       enum:

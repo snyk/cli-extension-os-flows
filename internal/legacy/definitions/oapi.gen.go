@@ -31,9 +31,25 @@ const (
 	Other   VulnerabilityType = "other"
 )
 
+// AbstractPolicyRule defines model for AbstractPolicyRule.
+type AbstractPolicyRule struct {
+	Id   string `json:"id"`
+	Type string `json:"type"`
+}
+
+// AbstractRuleAttributes defines model for AbstractRuleAttributes.
+type AbstractRuleAttributes struct {
+	Created  string `json:"created"`
+	Modified string `json:"modified"`
+	Name     string `json:"name"`
+	Review   string `json:"review"`
+}
+
 // AppliedPolicyRules defines model for AppliedPolicyRules.
 type AppliedPolicyRules struct {
-	Ignore AppliedPolicyRulesIgnore `json:"ignore"`
+	Ignore           *AppliedPolicyRulesIgnore         `json:"ignore,omitempty"`
+	SeverityOverride *AppliedPolicyRulesSeverityChange `json:"severity-override,omitempty"`
+	SeverityChange   *AppliedPolicyRulesSeverityChange `json:"severityChange,omitempty"`
 }
 
 // AppliedPolicyRulesIgnore defines model for AppliedPolicyRulesIgnore.
@@ -41,8 +57,19 @@ type AppliedPolicyRulesIgnore struct {
 	Id     string              `json:"id"`
 	Ignore VulnFilteredIgnored `json:"ignore"`
 	Policy Policy              `json:"policy"`
-	Rule   PolicyRule          `json:"rule"`
+	Rule   IgnorePolicyRule    `json:"rule"`
 	Type   string              `json:"type"`
+}
+
+// AppliedPolicyRulesSeverityChange defines model for AppliedPolicyRulesSeverityChange.
+type AppliedPolicyRulesSeverityChange struct {
+	Id               string                   `json:"id"`
+	NewSeverity      string                   `json:"newSeverity"`
+	OriginalSeverity string                   `json:"originalSeverity"`
+	Policy           Policy                   `json:"policy"`
+	Rule             SeverityChangePolicyRule `json:"rule"`
+	Severity         string                   `json:"severity"`
+	Type             string                   `json:"type"`
 }
 
 // CVSSDetail defines model for CVSSDetail.
@@ -112,6 +139,35 @@ type Identifiers struct {
 	GHSA        *[]string `json:"GHSA,omitempty"`
 	NSP         *[]string `json:"NSP,omitempty"`
 	SNYK        *[]string `json:"SNYK,omitempty"`
+}
+
+// IgnorePolicyRule defines model for IgnorePolicyRule.
+type IgnorePolicyRule struct {
+	Attributes IgnorePolicyRuleAttributes `json:"attributes"`
+	Id         string                     `json:"id"`
+	Type       string                     `json:"type"`
+}
+
+// IgnorePolicyRuleAction defines model for IgnorePolicyRuleAction.
+type IgnorePolicyRuleAction struct {
+	Data IgnorePolicyRuleActionData `json:"data"`
+	Type string                     `json:"type"`
+}
+
+// IgnorePolicyRuleActionData defines model for IgnorePolicyRuleActionData.
+type IgnorePolicyRuleActionData struct {
+	IgnoreType string `json:"ignore_type"`
+	Reason     string `json:"reason"`
+	Source     string `json:"source"`
+}
+
+// IgnorePolicyRuleAttributes defines model for IgnorePolicyRuleAttributes.
+type IgnorePolicyRuleAttributes struct {
+	Actions  []IgnorePolicyRuleAction `json:"actions"`
+	Created  string                   `json:"created"`
+	Modified string                   `json:"modified"`
+	Name     string                   `json:"name"`
+	Review   string                   `json:"review"`
 }
 
 // IgnoreSettings defines model for IgnoreSettings.
@@ -205,35 +261,6 @@ type Policy struct {
 	Owner string `json:"owner"`
 }
 
-// PolicyRule defines model for PolicyRule.
-type PolicyRule struct {
-	Attributes PolicyRuleAttributes `json:"attributes"`
-	Id         string               `json:"id"`
-	Type       string               `json:"type"`
-}
-
-// PolicyRuleAction defines model for PolicyRuleAction.
-type PolicyRuleAction struct {
-	Data PolicyRuleActionData `json:"data"`
-	Type string               `json:"type"`
-}
-
-// PolicyRuleActionData defines model for PolicyRuleActionData.
-type PolicyRuleActionData struct {
-	IgnoreType string `json:"ignore_type"`
-	Reason     string `json:"reason"`
-	Source     string `json:"source"`
-}
-
-// PolicyRuleAttributes defines model for PolicyRuleAttributes.
-type PolicyRuleAttributes struct {
-	Actions  []PolicyRuleAction `json:"actions"`
-	Created  string             `json:"created"`
-	Modified string             `json:"modified"`
-	Name     string             `json:"name"`
-	Review   string             `json:"review"`
-}
-
 // Reachability defines model for Reachability.
 type Reachability string
 
@@ -270,6 +297,11 @@ type RemediationUpgradeInfo struct {
 	Vulns     []string `json:"vulns"`
 }
 
+// SecurityPolicyMetaData defines model for SecurityPolicyMetaData.
+type SecurityPolicyMetaData struct {
+	Ignore VulnFilteredIgnored `json:"ignore"`
+}
+
 // SemVerInfo defines model for SemVerInfo.
 type SemVerInfo struct {
 	Vulnerable       []string  `json:"vulnerable"`
@@ -279,6 +311,33 @@ type SemVerInfo struct {
 // Severity defines model for Severity.
 type Severity = map[string]interface{}
 
+// SeverityChangePolicyRule defines model for SeverityChangePolicyRule.
+type SeverityChangePolicyRule struct {
+	Attributes SeverityChangePolicyRuleAttributes `json:"attributes"`
+	Id         string                             `json:"id"`
+	Type       string                             `json:"type"`
+}
+
+// SeverityChangePolicyRuleAction defines model for SeverityChangePolicyRuleAction.
+type SeverityChangePolicyRuleAction struct {
+	Data SeverityChangePolicyRuleActionData `json:"data"`
+	Type string                             `json:"type"`
+}
+
+// SeverityChangePolicyRuleActionData defines model for SeverityChangePolicyRuleActionData.
+type SeverityChangePolicyRuleActionData struct {
+	Severity string `json:"severity"`
+}
+
+// SeverityChangePolicyRuleAttributes defines model for SeverityChangePolicyRuleAttributes.
+type SeverityChangePolicyRuleAttributes struct {
+	Actions  []SeverityChangePolicyRuleAction `json:"actions"`
+	Created  string                           `json:"created"`
+	Modified string                           `json:"modified"`
+	Name     string                           `json:"name"`
+	Review   string                           `json:"review"`
+}
+
 // VulnFiltered defines model for VulnFiltered.
 type VulnFiltered struct {
 	Ignored *[]VulnFilteredIgnored `json:"ignored,omitempty"`
@@ -286,22 +345,22 @@ type VulnFiltered struct {
 
 // VulnFilteredIgnored defines model for VulnFilteredIgnored.
 type VulnFilteredIgnored struct {
-	Created            string                `json:"created"`
-	DisregardIfFixable bool                  `json:"disregardIfFixable"`
-	Expires            string                `json:"expires"`
-	IgnoredBy          VulnFilteredIgnoredBy `json:"ignoredBy"`
-	Path               []map[string]string   `json:"path"`
-	Reason             string                `json:"reason"`
-	ReasonType         string                `json:"reasonType"`
-	Source             string                `json:"source"`
+	Created            string                 `json:"created"`
+	DisregardIfFixable *bool                  `json:"disregardIfFixable,omitempty"`
+	Expires            string                 `json:"expires"`
+	IgnoredBy          *VulnFilteredIgnoredBy `json:"ignoredBy,omitempty"`
+	Path               []interface{}          `json:"path"`
+	Reason             string                 `json:"reason"`
+	ReasonType         *string                `json:"reasonType,omitempty"`
+	Source             string                 `json:"source"`
 }
 
 // VulnFilteredIgnoredBy defines model for VulnFilteredIgnoredBy.
 type VulnFilteredIgnoredBy struct {
-	Email         string `json:"email"`
-	Id            string `json:"id"`
-	IsGroupPolicy bool   `json:"isGroupPolicy"`
-	Name          string `json:"name"`
+	Email         *string `json:"email"`
+	Id            string  `json:"id"`
+	IsGroupPolicy bool    `json:"isGroupPolicy"`
+	Name          string  `json:"name"`
 }
 
 // Vulnerability defines model for Vulnerability.
@@ -340,6 +399,7 @@ type Vulnerability struct {
 	ModificationTime       *string                          `json:"modificationTime,omitempty"`
 	ModuleName             *string                          `json:"moduleName,omitempty"`
 	Name                   string                           `json:"name"`
+	OriginalSeverity       *VulnerabilitySeverity           `json:"originalSeverity,omitempty"`
 	PackageManager         *string                          `json:"packageManager,omitempty"`
 	PackageName            *string                          `json:"packageName,omitempty"`
 	PackagePopularityRank  *int32                           `json:"packagePopularityRank,omitempty"`
@@ -351,6 +411,7 @@ type Vulnerability struct {
 	ReachablePaths         *ReachablePaths                  `json:"reachablePaths,omitempty"`
 	References             *[]Reference                     `json:"references,omitempty"`
 	RiskScore              *uint16                          `json:"riskScore,omitempty"`
+	SecurityPolicyMetaData *SecurityPolicyMetaData          `json:"securityPolicyMetaData,omitempty"`
 	Semver                 *SemVerInfo                      `json:"semver,omitempty"`
 	Severity               VulnerabilitySeverity            `json:"severity"`
 	SeverityBasedOn        *string                          `json:"severityBasedOn,omitempty"`

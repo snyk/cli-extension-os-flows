@@ -10,5 +10,6 @@ regex = '''snyk(-[a-zA-Z]+)+:[a-zA-Z0-9]+'''
 description = "global allow list"
 paths = [
   '''.bin''',
-  'test/jwt/jwt_private_key.pem'
+  'test/jwt/jwt_private_key.pem',
+  'internal/legacy/transform/testdata'
 ]

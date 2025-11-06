@@ -98,6 +98,7 @@
       ]
     },
     "severity": "high",
+    "severityWithCritical": "high",
     "socialTrendAlert": false,
     "title": "Improper Link Resolution Before File Access ('Link Following')",
     "upgradePath": [
@@ -207,6 +208,7 @@
       ]
     },
     "severity": "high",
+    "severityWithCritical": "high",
     "socialTrendAlert": false,
     "title": "Improper Link Resolution Before File Access ('Link Following')",
     "upgradePath": [

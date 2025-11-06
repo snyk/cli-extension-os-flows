@@ -83,6 +83,7 @@ model Vulnerability {
   publicationTime?: string;
   severity: VulnerabilitySeverity;
   severityWithCritical?: VulnerabilitySeverity;
+  originalSeverity?: VulnerabilitySeverity;
   riskScore?: uint16;
   from: string[];
   reachability?: Reachability;
@@ -122,40 +123,80 @@ model Vulnerability {
   patch?: string[];
   filtered?: VulnFiltered;
   appliedPolicyRules?: AppliedPolicyRules;
+  securityPolicyMetaData?: SecurityPolicyMetaData;
+}
+
+model SecurityPolicyMetaData {
+  ignore: VulnFilteredIgnored;
 }
 
 model AppliedPolicyRules {
-  ignore: AppliedPolicyRulesIgnore;
+  ignore?: AppliedPolicyRulesIgnore;
+  severityChange?: AppliedPolicyRulesSeverityChange;
+  "severity-override"?: AppliedPolicyRulesSeverityChange;
 }
 
 model AppliedPolicyRulesIgnore {
   id: string;
+  type: string;
   ignore: VulnFilteredIgnored;
   policy: Policy;
-  rule: PolicyRule;
-  type: string;
+  rule: IgnorePolicyRule;
 }
 
-model PolicyRule {
+model AppliedPolicyRulesSeverityChange {
   id: string;
   type: string;
-  attributes: PolicyRuleAttributes;
+  rule: SeverityChangePolicyRule;
+  policy: Policy;
+  originalSeverity: string;
+  severity: string;
+  newSeverity: string;
 }
 
-model PolicyRuleAttributes {
-  actions: PolicyRuleAction[];
+model AbstractPolicyRule {
+  id: string;
+  type: string;
+}
+
+model IgnorePolicyRule is AbstractPolicyRule {
+  attributes: IgnorePolicyRuleAttributes;
+}
+
+model SeverityChangePolicyRule is AbstractPolicyRule {
+  attributes: SeverityChangePolicyRuleAttributes;
+}
+
+model AbstractRuleAttributes {
   created: string;
   modified: string;
   name: string;
   review: string;
 }
 
-model PolicyRuleAction {
-  type: string;
-  data: PolicyRuleActionData;
+model IgnorePolicyRuleAttributes is AbstractRuleAttributes {
+  actions: IgnorePolicyRuleAction[];
 }
 
-model PolicyRuleActionData {
+model SeverityChangePolicyRuleAttributes is AbstractRuleAttributes {
+  actions: SeverityChangePolicyRuleAction[];
+}
+
+model SeverityChangePolicyRuleAction {
+  type: string;
+  data: SeverityChangePolicyRuleActionData;
+}
+
+model SeverityChangePolicyRuleActionData {
+  severity: string;
+}
+
+model IgnorePolicyRuleAction {
+  type: string;
+  data: IgnorePolicyRuleActionData;
+}
+
+model IgnorePolicyRuleActionData {
   ignore_type: string;
   reason: string;
   source: string;
@@ -175,16 +216,16 @@ model VulnFilteredIgnored {
   expires: string;
   created: string;
   source: string;
-  path: Record<string>[];
-  ignoredBy: VulnFilteredIgnoredBy;
-  disregardIfFixable: boolean;
-  reasonType: string;
+  path: unknown[];
+  ignoredBy?: VulnFilteredIgnoredBy;
+  disregardIfFixable?: boolean;
+  reasonType?: string;
 }
 
 model VulnFilteredIgnoredBy {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   isGroupPolicy: boolean;
 }
 
