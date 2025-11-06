@@ -56,7 +56,7 @@ func TestHasUvLockFile(t *testing.T) {
 	})
 }
 
-func TestHasNestedUvLockFile(t *testing.T) {
+func TestHasUvLockFileInAnyDir(t *testing.T) {
 	t.Parallel()
 	nopLogger := zerolog.Nop()
 
@@ -69,7 +69,7 @@ func TestHasNestedUvLockFile(t *testing.T) {
 		err := os.WriteFile(uvLockPath, []byte("# test"), 0o600)
 		require.NoError(t, err)
 
-		result := util.HasNestedUvLockFile([]string{dir1, dir2}, &nopLogger)
+		result := util.HasUvLockFileInAnyDir([]string{dir1, dir2}, &nopLogger)
 		assert.True(t, result)
 	})
 
@@ -82,7 +82,7 @@ func TestHasNestedUvLockFile(t *testing.T) {
 		err := os.WriteFile(uvLockPath, []byte("# test"), 0o600)
 		require.NoError(t, err)
 
-		result := util.HasNestedUvLockFile([]string{dir1, dir2}, &nopLogger)
+		result := util.HasUvLockFileInAnyDir([]string{dir1, dir2}, &nopLogger)
 		assert.True(t, result)
 	})
 
@@ -99,7 +99,7 @@ func TestHasNestedUvLockFile(t *testing.T) {
 		err = os.WriteFile(uvLockPath2, []byte("# test"), 0o600)
 		require.NoError(t, err)
 
-		result := util.HasNestedUvLockFile([]string{dir1, dir2}, &nopLogger)
+		result := util.HasUvLockFileInAnyDir([]string{dir1, dir2}, &nopLogger)
 		assert.True(t, result)
 	})
 
@@ -108,14 +108,14 @@ func TestHasNestedUvLockFile(t *testing.T) {
 		dir1 := t.TempDir()
 		dir2 := t.TempDir()
 
-		result := util.HasNestedUvLockFile([]string{dir1, dir2}, &nopLogger)
+		result := util.HasUvLockFileInAnyDir([]string{dir1, dir2}, &nopLogger)
 		assert.False(t, result)
 	})
 
 	t.Run("returns false for empty directory list", func(t *testing.T) {
 		t.Parallel()
 
-		result := util.HasNestedUvLockFile([]string{}, &nopLogger)
+		result := util.HasUvLockFileInAnyDir([]string{}, &nopLogger)
 		assert.False(t, result)
 	})
 
@@ -128,7 +128,7 @@ func TestHasNestedUvLockFile(t *testing.T) {
 		err := os.WriteFile(uvLockPath, []byte("# test"), 0o600)
 		require.NoError(t, err)
 
-		result := util.HasNestedUvLockFile([]string{nonExistentDir, dir1}, &nopLogger)
+		result := util.HasUvLockFileInAnyDir([]string{nonExistentDir, dir1}, &nopLogger)
 		assert.True(t, result)
 	})
 }

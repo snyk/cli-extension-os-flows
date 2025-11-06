@@ -28,8 +28,8 @@ func HasUvLockFile(dir string, logger *zerolog.Logger) bool {
 	return false
 }
 
-// HasNestedUvLockFile checks if any of the input directories contains a uv.lock file.
-func HasNestedUvLockFile(inputDirs []string, logger *zerolog.Logger) bool {
+// HasUvLockFileInAnyDir checks if any of the input directories contains a uv.lock file.
+func HasUvLockFileInAnyDir(inputDirs []string, logger *zerolog.Logger) bool {
 	for _, inputDir := range inputDirs {
 		if HasUvLockFile(inputDir, logger) {
 			return true
