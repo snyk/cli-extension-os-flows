@@ -169,7 +169,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+		_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
 		require.Error(t, err)
 		var catalogErr snyk_errors.Error
 		require.ErrorAs(t, err, &catalogErr)
@@ -191,7 +191,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+		_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
 		require.Error(t, err)
 		var catalogErr snyk_errors.Error
 		require.ErrorAs(t, err, &catalogErr)
