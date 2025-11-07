@@ -29,43 +29,43 @@ const (
 	DepgraphFlow             Flow = "depgraph"
 )
 
-type cliOptions struct {
-	forceLegacyTest    bool
-	requiresLegacy     bool
-	riskScoreThreshold int
-	reachability       bool
-	sbom               string
-	reachabilityFilter string
-	unmanaged          bool
-}
-
 func validateLegacyCLIOptions(
-	opts cliOptions,
+	fc *FlowConfig,
 	errFactory *internalErrors.ErrorFactory,
 ) error {
-	if !opts.forceLegacyTest && !opts.requiresLegacy {
+	if !fc.ForceLegacyTest && !fc.RequiresLegacy {
 		return nil
 	}
 
 	invalidFlags := []string{}
 
-	if opts.unmanaged && opts.reachability {
-		invalidFlags = append(invalidFlags, "reachability", "unmanaged")
-	} else if opts.reachability {
-		invalidFlags = append(invalidFlags, "reachability")
+	if fc.Unmanaged && fc.Reachability {
+		invalidFlags = append(invalidFlags, flags.FlagReachability, flags.FlagUnmanaged)
+	} else if fc.Reachability {
+		invalidFlags = append(invalidFlags, flags.FlagReachability)
 	}
 
-	if opts.riskScoreThreshold != -1 {
-		invalidFlags = append(invalidFlags, "risk-score-threshold")
+	if fc.RiskScoreThreshold != -1 {
+		invalidFlags = append(invalidFlags, flags.FlagRiskScoreThreshold)
 	}
-	if opts.reachabilityFilter != "" {
-		invalidFlags = append(invalidFlags, "reachability-filter")
+	if fc.ReachabilityFilter != "" {
+		invalidFlags = append(invalidFlags, flags.FlagReachabilityFilter)
 	}
-	if opts.sbom != "" {
-		invalidFlags = append(invalidFlags, "sbom")
+	if fc.SBOM != "" {
+		invalidFlags = append(invalidFlags, flags.FlagSBOM)
+	}
+
+	for i, flag := range invalidFlags {
+		invalidFlags[i] = fmt.Sprintf("--%s", flag)
 	}
 
 	if len(invalidFlags) > 0 {
+		// User invoking command with a target package, e.g. snyk test lodash
+		if fc.TargetPackage != "" {
+			//nolint:wrapcheck // No need to wrap error factory errors.
+			return errFactory.NewInvalidArgCombinationError(fc.TargetPackage, invalidFlags...)
+		}
+
 		//nolint:wrapcheck // No need to wrap error factory errors.
 		return errFactory.NewInvalidLegacyFlagError(invalidFlags...)
 	}
@@ -131,6 +131,7 @@ type FlowConfig struct {
 	ForceLegacyTest       bool
 	RequiresLegacy        bool
 	Unmanaged             bool
+	TargetPackage         string
 }
 
 func doesPathExist(path string) (bool, error) {
@@ -146,7 +147,7 @@ func doesPathExist(path string) (bool, error) {
 }
 
 // ParseFlowConfig reads and parses all flow-related configuration flags.
-func ParseFlowConfig(cfg configuration.Configuration) (FlowConfig, error) {
+func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	ffRiskScore := cfg.GetBool(constants.FeatureFlagRiskScore)
 	ffRiskScoreInCLI := cfg.GetBool(constants.FeatureFlagRiskScoreInCLI)
 	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
@@ -165,6 +166,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (FlowConfig, error) {
 		cfg.GetBool(flags.FlagPrintDeps) ||
 		cfg.GetBool(flags.FlagPrintDepPaths) ||
 		unmanaged
+	var targetPackage string
 
 	// The legacy `snyk test` command supports testing packages directly. e.g `snyk test lodash`.
 	// The way the command determines if an argument is a package and not a path
@@ -174,15 +176,16 @@ func ParseFlowConfig(cfg configuration.Configuration) (FlowConfig, error) {
 	for _, pth := range paths {
 		exists, err := doesPathExist(pth)
 		if err != nil {
-			return FlowConfig{}, err
+			return nil, err
 		}
 		if !exists {
 			requiresLegacy = true
+			targetPackage = pth
 			break
 		}
 	}
 
-	return FlowConfig{
+	return &FlowConfig{
 		FFRiskScore:           ffRiskScore,
 		FFRiskScoreInCLI:      ffRiskScoreInCLI,
 		RiskScoreFFsEnabled:   riskScoreFFsEnabled,
@@ -196,25 +199,16 @@ func ParseFlowConfig(cfg configuration.Configuration) (FlowConfig, error) {
 		ForceLegacyTest:       forceLegacyTest,
 		RequiresLegacy:        requiresLegacy,
 		Unmanaged:             unmanaged,
+		TargetPackage:         targetPackage,
 	}, nil
 }
 
 // ShouldUseLegacyFlow determines if the command should route to legacy CLI based on flags.
-func ShouldUseLegacyFlow(ctx context.Context, fc FlowConfig, inputDirs []string) (bool, error) {
+func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string) (bool, error) {
 	errFactory := cmdctx.ErrorFactory(ctx)
 	logger := cmdctx.Logger(ctx)
 
-	opts := cliOptions{
-		forceLegacyTest:    fc.ForceLegacyTest,
-		requiresLegacy:     fc.RequiresLegacy,
-		riskScoreThreshold: fc.RiskScoreThreshold,
-		reachability:       fc.Reachability,
-		sbom:               fc.SBOM,
-		reachabilityFilter: fc.ReachabilityFilter,
-		unmanaged:          fc.Unmanaged,
-	}
-	err := validateLegacyCLIOptions(opts, errFactory)
-	if err != nil {
+	if err := validateLegacyCLIOptions(fc, errFactory); err != nil {
 		return false, err
 	}
 
@@ -237,7 +231,7 @@ func ShouldUseLegacyFlow(ctx context.Context, fc FlowConfig, inputDirs []string)
 }
 
 // RouteToFlow determines which new flow to use.
-func RouteToFlow(ctx context.Context, fc FlowConfig, orgUUID uuid.UUID, sc settings.Client) (Flow, error) {
+func RouteToFlow(ctx context.Context, fc *FlowConfig, orgUUID uuid.UUID, sc settings.Client) (Flow, error) {
 	cfg := cmdctx.Config(ctx)
 	errFactory := cmdctx.ErrorFactory(ctx)
 

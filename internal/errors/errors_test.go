@@ -17,14 +17,14 @@ func TestNewInvalidLegacyFlagError(t *testing.T) {
 	errorFactory := errors.NewErrorFactory(&logger)
 
 	t.Run("single flag", func(t *testing.T) {
-		err := errorFactory.NewInvalidLegacyFlagError("reachability")
+		err := errorFactory.NewInvalidLegacyFlagError("--reachability")
 		var catalogErr snyk_errors.Error
 		require.ErrorAs(t, err, &catalogErr)
-		assert.Equal(t, "The option --reachability cannot be used with the legacy CLI.", catalogErr.Detail)
+		assert.Equal(t, "The option --reachability cannot be used in this way.", catalogErr.Detail)
 	})
 
 	t.Run("two flags", func(t *testing.T) {
-		err := errorFactory.NewInvalidLegacyFlagError("reachability", "unmanaged")
+		err := errorFactory.NewInvalidLegacyFlagError("--reachability", "--unmanaged")
 
 		var catalogErr snyk_errors.Error
 		require.ErrorAs(t, err, &catalogErr)
@@ -32,7 +32,7 @@ func TestNewInvalidLegacyFlagError(t *testing.T) {
 	})
 
 	t.Run("three flags", func(t *testing.T) {
-		err := errorFactory.NewInvalidLegacyFlagError("reachability", "unmanaged", "all-projects")
+		err := errorFactory.NewInvalidLegacyFlagError("--reachability", "--unmanaged", "--all-projects")
 		var catalogErr snyk_errors.Error
 		require.ErrorAs(t, err, &catalogErr)
 		assert.Equal(t, "The options --reachability, --unmanaged, --all-projects cannot be used together.", catalogErr.Detail)
