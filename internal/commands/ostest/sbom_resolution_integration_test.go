@@ -23,6 +23,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 // TestSBOMResolutionIntegration_DepGraphsPassedToUnifiedTestAPI verifies that when the UV test flow
@@ -30,6 +31,9 @@ import (
 func TestSBOMResolutionIntegration_DepGraphsPassedToUnifiedTestAPI(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+
+	// Create temp directory with uv.lock file
+	tempDir := util.CreateTempDirWithUvLock(t)
 
 	ctx := context.Background()
 	mockIctx, mockTestClient, mockDepGraph, orgID, cfg, testLogger := setupSBOMResolutionIntegrationTest(t, ctrl)
@@ -45,7 +49,7 @@ func TestSBOMResolutionIntegration_DepGraphsPassedToUnifiedTestAPI(t *testing.T)
 
 	_, _, err := ostest.RunUnifiedTestFlow(
 		ctx,
-		".",
+		tempDir,
 		mockTestClient,
 		orgID,
 		nil,

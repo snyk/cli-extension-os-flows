@@ -637,8 +637,11 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			expectedError: "The feature you are trying to use is not available for your organization",
 		},
 		{
-			name: "UV test flow enabled, expects depgraph workflow with use-sbom-resolutionflag",
+			name: "UV test flow enabled with uv.lock file should use depgraph workflow with SBOM resolution",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				// Create temp directory with uv.lock file
+				tempDir := util.CreateTempDirWithUvLock(t)
+				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
 				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
@@ -654,17 +657,35 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			expectedError: "failed to get dependency graph",
 		},
 		{
-			name: "UV test flow disabled, depgraph calls legacy internally",
+			name: "UV test flow enabled without uv.lock file should fall back to legacy flow",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
-				config.Set(constants.EnableExperimentalUvSupportEnvVar, false)
-				// When UV is disabled, depgraph workflow is called without use-sbom-resolution flag
-				// Then depgraph internally calls legacycli
+				// Create temp directory without uv.lock file
+				tempDir := t.TempDir()
+				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
+				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
+
+				// Should route directly to legacy flow (not depgraph workflow)
 				mockEngine.EXPECT().
-					InvokeWithConfig(gomock.Any(), gomock.Any()).
+					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
+					Times(0)
+				mockEngine.EXPECT().
+					InvokeWithConfig(legacyWorkflowID, gomock.Any()).
 					Return([]workflow.Data{}, nil).
 					Times(1)
 			},
-			expectedError: "", // No error, should succeed via legacy path
+			expectedError: "", // No error, should succeed via legacy flow
+		},
+		{
+			name: "UV test flow disabled should use legacy flow",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(constants.EnableExperimentalUvSupportEnvVar, false)
+				// When UV is disabled, should route directly to legacy flow
+				mockEngine.EXPECT().
+					InvokeWithConfig(legacyWorkflowID, gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			},
+			expectedError: "", // No error, should succeed via legacy flow
 		},
 	}
 

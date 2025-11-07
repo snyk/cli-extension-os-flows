@@ -340,7 +340,12 @@ func OSWorkflow(
 		return nil, fmt.Errorf("failed to parse provided configuration: %w", err)
 	}
 
-	useLegacy, err := ShouldUseLegacyFlow(ctx, flowCfg)
+	inputDirs, err := getInputDirectories(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	useLegacy, err := ShouldUseLegacyFlow(ctx, flowCfg, inputDirs)
 	if err != nil {
 		return nil, err
 	}
@@ -372,11 +377,6 @@ func OSWorkflow(
 	sbom := cfg.GetString(flags.FlagSBOM)
 
 	testClient, err := setupTestClient(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	inputDirs, err := getInputDirectories(ctx)
 	if err != nil {
 		return nil, err
 	}

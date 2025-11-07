@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/uploadrevision"
 )
 
@@ -43,6 +46,25 @@ func CreateTmpFiles(t *testing.T, files []uploadrevision.LoadedFile) (dir *os.Fi
 			dir.Close()
 		}
 	})
+
+	return dir
+}
+
+// CreateTempDirWithUvLock creates a temporary directory containing a uv.lock file for testing.
+func CreateTempDirWithUvLock(t *testing.T) string {
+	t.Helper()
+
+	dir, err := os.MkdirTemp("", "snyktest-uv")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(dir) })
+
+	uvLockPath := filepath.Join(dir, constants.UvLockFileName)
+	fd, err := os.Create(uvLockPath)
+	require.NoError(t, err)
+	defer fd.Close()
+
+	_, err = fd.WriteString("# uv.lock test file\n")
+	require.NoError(t, err)
 
 	return dir
 }

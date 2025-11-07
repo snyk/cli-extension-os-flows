@@ -16,6 +16,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 var (
@@ -90,7 +91,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
 		require.NoError(t, err)
 
 		assert.True(t, useLegacy)
@@ -106,7 +107,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 				flowCfg, err := ostest.ParseFlowConfig(testCfg)
 				require.NoError(t, err)
-				_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+				_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
 
 				assert.Error(t, err)
 			})
@@ -130,7 +131,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 				flowCfg, err := ostest.ParseFlowConfig(testCfg)
 				require.NoError(t, err)
-				useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+				useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
 				require.NoError(t, err)
 
 				assert.True(t, useLegacy)
@@ -147,7 +148,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 					flowCfg, err := ostest.ParseFlowConfig(testCfg)
 					require.NoError(t, err)
-					_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+					_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
 
 					assert.Error(t, err)
 				})
@@ -208,7 +209,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
 		require.NoError(t, err)
 
 		assert.True(t, useLegacy)
@@ -226,10 +227,75 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
 		require.NoError(t, err)
 
 		assert.True(t, useLegacy)
+	})
+
+	t.Run("when UV support is enabled with uv.lock file present", func(t *testing.T) {
+		t.Parallel()
+		cfg := defaultConfig.Clone()
+		cfg.Set(constants.EnableExperimentalUvSupportEnvVar, true)
+
+		// Create temp directory with uv.lock file
+		tempDir := util.CreateTempDirWithUvLock(t)
+		cfg.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
+
+		ctx := t.Context()
+		ctx = cmdctx.WithConfig(ctx, cfg)
+		ctx = cmdctx.WithLogger(ctx, &nopLogger)
+		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+		flowCfg, err := ostest.ParseFlowConfig(cfg)
+		require.NoError(t, err)
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{tempDir})
+		require.NoError(t, err)
+
+		assert.False(t, useLegacy, "should use new flow when UV support is enabled and uv.lock exists")
+	})
+
+	t.Run("when UV support is enabled but uv.lock file is missing", func(t *testing.T) {
+		t.Parallel()
+		cfg := defaultConfig.Clone()
+		cfg.Set(constants.EnableExperimentalUvSupportEnvVar, true)
+
+		// Create temp directory without uv.lock file
+		tempDir := t.TempDir()
+		cfg.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
+
+		ctx := t.Context()
+		ctx = cmdctx.WithConfig(ctx, cfg)
+		ctx = cmdctx.WithLogger(ctx, &nopLogger)
+		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+		flowCfg, err := ostest.ParseFlowConfig(cfg)
+		require.NoError(t, err)
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{tempDir})
+		require.NoError(t, err)
+
+		assert.True(t, useLegacy, "should use legacy flow when UV support is enabled but uv.lock is missing")
+	})
+	t.Run("when UV support is disabled even with uv.lock present", func(t *testing.T) {
+		t.Parallel()
+		cfg := defaultConfig.Clone()
+		cfg.Set(constants.EnableExperimentalUvSupportEnvVar, false)
+
+		// Create temp directory with uv.lock file
+		tempDir := util.CreateTempDirWithUvLock(t)
+		cfg.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
+
+		ctx := t.Context()
+		ctx = cmdctx.WithConfig(ctx, cfg)
+		ctx = cmdctx.WithLogger(ctx, &nopLogger)
+		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+		flowCfg, err := ostest.ParseFlowConfig(cfg)
+		require.NoError(t, err)
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{tempDir})
+		require.NoError(t, err)
+
+		assert.True(t, useLegacy, "should use legacy flow when UV support is disabled regardless of uv.lock presence")
 	})
 }
 

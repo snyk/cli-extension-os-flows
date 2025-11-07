@@ -15,6 +15,7 @@ import (
 	internalErrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 // Flow is the type of all the command's flows.
@@ -199,7 +200,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (FlowConfig, error) {
 }
 
 // ShouldUseLegacyFlow determines if the command should route to legacy CLI based on flags.
-func ShouldUseLegacyFlow(ctx context.Context, fc FlowConfig) (bool, error) {
+func ShouldUseLegacyFlow(ctx context.Context, fc FlowConfig, inputDirs []string) (bool, error) {
 	errFactory := cmdctx.ErrorFactory(ctx)
 	logger := cmdctx.Logger(ctx)
 
@@ -217,7 +218,10 @@ func ShouldUseLegacyFlow(ctx context.Context, fc FlowConfig) (bool, error) {
 		return false, err
 	}
 
-	hasNewFeatures := fc.RiskScoreTest || fc.Reachability || fc.SBOM != "" || fc.ReachabilityFilter != "" || fc.ExperimentalUvSupport
+	// Check if UV support should trigger, only if env var is set and uv.lock exists.
+	uvSupportWithLockFile := fc.ExperimentalUvSupport && util.HasUvLockFileInAnyDir(inputDirs, logger)
+
+	hasNewFeatures := fc.RiskScoreTest || fc.Reachability || fc.SBOM != "" || fc.ReachabilityFilter != "" || uvSupportWithLockFile
 	useLegacy := fc.ForceLegacyTest || fc.RequiresLegacy || !hasNewFeatures
 
 	logger.Debug().Msgf(
@@ -226,7 +230,7 @@ func ShouldUseLegacyFlow(ctx context.Context, fc FlowConfig) (bool, error) {
 		fc.ForceLegacyTest,
 		fc.SBOMReachabilityTest,
 		fc.RiskScoreTest,
-		fc.ExperimentalUvSupport,
+		uvSupportWithLockFile,
 	)
 
 	return useLegacy, nil
