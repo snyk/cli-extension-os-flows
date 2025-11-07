@@ -99,10 +99,11 @@ func processSeverityChangeForVuln(vuln *definitions.Vulnerability, severityChang
 		Severity:         string(severityChange.SeverityChange.NewSeverity),
 		NewSeverity:      string(severityChange.SeverityChange.NewSeverity),
 	}
-	vuln.AppliedPolicyRules = &definitions.AppliedPolicyRules{
-		SeverityChange:   &change,
-		SeverityOverride: &change,
+	if vuln.AppliedPolicyRules == nil {
+		vuln.AppliedPolicyRules = &definitions.AppliedPolicyRules{}
 	}
+	vuln.AppliedPolicyRules.SeverityChange = &change
+	vuln.AppliedPolicyRules.SeverityOverride = &change
 }
 
 func policiesOrNil(finding *testapi.FindingData) []testapi.Policy {

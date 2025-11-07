@@ -371,7 +371,7 @@
   "ok": false,
   "dependencyCount": 1098,
   "org": "jacek.rzeniewicz",
-  "policy": "# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.\nversion: v1.25.1\n# ignores vulnerabilities until expiry date; change duration by modifying expiry date\nignore:\n  SNYK-GOLANG-GOPKGINYAMLV2-12330650:\n    - '*':\n        reason: there is no fix available\n        expires: 2025-12-30T17:31:05.877Z\n        created: 2023-11-30T17:31:05.884Z\n        source: cli\n    - '*':\n        source: api\n        ignoredBy:\n          email: jacek.rzeniewicz@snyk.io\n          id: 0b515878-ae96-4c25-8389-d63cc552990e\n          name: Jacek Rzeniewicz\n          type: user\n        created: '2025-11-03T10:23:09.878Z'\n        reason: ignore from project level\n        disregardIfFixable: false\n        reasonType: not-vulnerable\npatch: {}\n",
+  "policy": "# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.\nversion: v1.25.1\n# ignores vulnerabilities until expiry date; change duration by modifying expiry date\nignore:\n  SNYK-GOLANG-GOPKGINYAMLV2-12330650:\n    - '*':\n        reason: None Given\n        expires: 2122-12-29T08:08:41.608Z\n        created: 2022-11-29T08:08:41.611Z\n        source: cli\n    - '*':\n        source: api\n        ignoredBy:\n          email: jacek.rzeniewicz@snyk.io\n          id: 0b515878-ae96-4c25-8389-d63cc552990e\n          name: Jacek Rzeniewicz\n          type: user\n        created: '2025-11-03T10:23:09.878Z'\n        reason: ignore from project level\n        disregardIfFixable: false\n        reasonType: not-vulnerable\npatch: {}\n",
   "isPrivate": true,
   "licensesPolicy": {
     "severities": {},
@@ -562,12 +562,12 @@
         "originalSeverity": "medium",
         "appliedPolicyRules": {
           "severity-override": {
-            "id": "1a59175b-82c4-4ae1-ac39-8c0518981a72",
+            "id": "20d65ab4-30c6-4807-9bba-02f8a706d31b",
             "rule": {
-              "id": "1a59175b-82c4-4ae1-ac39-8c0518981a72",
+              "id": "20d65ab4-30c6-4807-9bba-02f8a706d31b",
               "type": "policy_rule",
               "attributes": {
-                "modified": "2025-11-04T10:50:13.553268Z",
+                "modified": "2025-11-07T12:11:45.477702Z",
                 "name": "Rule 2",
                 "review": "not-required",
                 "actions": [
@@ -578,7 +578,7 @@
                     "type": "severity-override"
                   }
                 ],
-                "created": "2025-11-04T10:50:13.553268Z"
+                "created": "2025-11-07T12:11:45.477702Z"
               }
             },
             "type": "severity-override",
@@ -590,7 +590,7 @@
             "severity": "critical"
           },
           "ignore": {
-            "id": "ffcb52be-4242-420a-8c8b-51a2efe7ea15",
+            "id": "10cbb99a-97e7-413e-9656-a57e1fe43434",
             "type": "ignore",
             "ignore": {
               "path": [
@@ -608,13 +608,13 @@
                 "isGroupPolicy": true
               },
               "disregardIfFixable": false,
-              "created": "2025-11-04T10:50:13.553Z"
+              "created": "2025-11-07T12:11:45.477Z"
             },
             "rule": {
-              "id": "ffcb52be-4242-420a-8c8b-51a2efe7ea15",
+              "id": "10cbb99a-97e7-413e-9656-a57e1fe43434",
               "type": "policy_rule",
               "attributes": {
-                "modified": "2025-11-04T10:50:13.553268Z",
+                "modified": "2025-11-07T12:11:45.477702Z",
                 "name": "Rule 1",
                 "review": "not-required",
                 "actions": [
@@ -627,7 +627,7 @@
                     "type": "ignore"
                   }
                 ],
-                "created": "2025-11-04T10:50:13.553268Z"
+                "created": "2025-11-07T12:11:45.477702Z"
               }
             },
             "policy": {
@@ -636,12 +636,12 @@
             }
           },
           "severityChange": {
-            "id": "1a59175b-82c4-4ae1-ac39-8c0518981a72",
+            "id": "20d65ab4-30c6-4807-9bba-02f8a706d31b",
             "rule": {
-              "id": "1a59175b-82c4-4ae1-ac39-8c0518981a72",
+              "id": "20d65ab4-30c6-4807-9bba-02f8a706d31b",
               "type": "policy_rule",
               "attributes": {
-                "modified": "2025-11-04T10:50:13.553268Z",
+                "modified": "2025-11-07T12:11:45.477702Z",
                 "name": "Rule 2",
                 "review": "not-required",
                 "actions": [
@@ -652,7 +652,7 @@
                     "type": "severity-override"
                   }
                 ],
-                "created": "2025-11-04T10:50:13.553268Z"
+                "created": "2025-11-07T12:11:45.477702Z"
               }
             },
             "type": "severity-override",
@@ -684,7 +684,7 @@
               "isGroupPolicy": true
             },
             "disregardIfFixable": false,
-            "created": "2025-11-04T10:50:13.553Z"
+            "created": "2025-11-07T12:11:45.477Z"
           }
         ],
         "severityWithCritical": "critical",
@@ -705,7 +705,7 @@
               "isGroupPolicy": true
             },
             "disregardIfFixable": false,
-            "created": "2025-11-04T10:50:13.553Z"
+            "created": "2025-11-07T12:11:45.477Z"
           }
         },
         "from": [
@@ -732,7 +732,7 @@
                 "email": null,
                 "isGroupPolicy": true
               },
-              "created": "2025-11-04T10:50:13.553Z",
+              "created": "2025-11-07T12:11:45.477Z",
               "disregardIfFixable": false,
               "path": [
                 "[object Object]"
@@ -834,12 +834,12 @@
         "originalSeverity": "medium",
         "appliedPolicyRules": {
           "severity-override": {
-            "id": "1a59175b-82c4-4ae1-ac39-8c0518981a72",
+            "id": "20d65ab4-30c6-4807-9bba-02f8a706d31b",
             "rule": {
-              "id": "1a59175b-82c4-4ae1-ac39-8c0518981a72",
+              "id": "20d65ab4-30c6-4807-9bba-02f8a706d31b",
               "type": "policy_rule",
               "attributes": {
-                "modified": "2025-11-04T10:50:13.553268Z",
+                "modified": "2025-11-07T12:11:45.477702Z",
                 "name": "Rule 2",
                 "review": "not-required",
                 "actions": [
@@ -850,7 +850,7 @@
                     "type": "severity-override"
                   }
                 ],
-                "created": "2025-11-04T10:50:13.553268Z"
+                "created": "2025-11-07T12:11:45.477702Z"
               }
             },
             "type": "severity-override",
@@ -862,7 +862,7 @@
             "severity": "critical"
           },
           "ignore": {
-            "id": "ffcb52be-4242-420a-8c8b-51a2efe7ea15",
+            "id": "10cbb99a-97e7-413e-9656-a57e1fe43434",
             "type": "ignore",
             "ignore": {
               "path": [
@@ -880,13 +880,13 @@
                 "isGroupPolicy": true
               },
               "disregardIfFixable": false,
-              "created": "2025-11-04T10:50:13.553Z"
+              "created": "2025-11-07T12:11:45.477Z"
             },
             "rule": {
-              "id": "ffcb52be-4242-420a-8c8b-51a2efe7ea15",
+              "id": "10cbb99a-97e7-413e-9656-a57e1fe43434",
               "type": "policy_rule",
               "attributes": {
-                "modified": "2025-11-04T10:50:13.553268Z",
+                "modified": "2025-11-07T12:11:45.477702Z",
                 "name": "Rule 1",
                 "review": "not-required",
                 "actions": [
@@ -899,7 +899,7 @@
                     "type": "ignore"
                   }
                 ],
-                "created": "2025-11-04T10:50:13.553268Z"
+                "created": "2025-11-07T12:11:45.477702Z"
               }
             },
             "policy": {
@@ -908,12 +908,12 @@
             }
           },
           "severityChange": {
-            "id": "1a59175b-82c4-4ae1-ac39-8c0518981a72",
+            "id": "20d65ab4-30c6-4807-9bba-02f8a706d31b",
             "rule": {
-              "id": "1a59175b-82c4-4ae1-ac39-8c0518981a72",
+              "id": "20d65ab4-30c6-4807-9bba-02f8a706d31b",
               "type": "policy_rule",
               "attributes": {
-                "modified": "2025-11-04T10:50:13.553268Z",
+                "modified": "2025-11-07T12:11:45.477702Z",
                 "name": "Rule 2",
                 "review": "not-required",
                 "actions": [
@@ -924,7 +924,7 @@
                     "type": "severity-override"
                   }
                 ],
-                "created": "2025-11-04T10:50:13.553268Z"
+                "created": "2025-11-07T12:11:45.477702Z"
               }
             },
             "type": "severity-override",
@@ -956,7 +956,7 @@
               "isGroupPolicy": true
             },
             "disregardIfFixable": false,
-            "created": "2025-11-04T10:50:13.553Z"
+            "created": "2025-11-07T12:11:45.477Z"
           }
         ],
         "severityWithCritical": "critical",
@@ -977,7 +977,7 @@
               "isGroupPolicy": true
             },
             "disregardIfFixable": false,
-            "created": "2025-11-04T10:50:13.553Z"
+            "created": "2025-11-07T12:11:45.477Z"
           }
         },
         "from": [
@@ -1004,7 +1004,7 @@
                 "email": null,
                 "isGroupPolicy": true
               },
-              "created": "2025-11-04T10:50:13.553Z",
+              "created": "2025-11-07T12:11:45.477Z",
               "disregardIfFixable": false,
               "path": [
                 "[object Object]"

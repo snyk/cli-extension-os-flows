@@ -6,8 +6,29 @@
         "description": "## Overview\n[gopkg.in/yaml.v2](https://github.com/go-yaml/yaml) is a YAML support package for the Go language.\n\nAffected versions of this package are vulnerable to Information Exposure test\n## Remediation\nThere is no fixed version for `gopkg.in/yaml.v2`.\n\n## References\n- [GitHub Issue](https://github.com/go-yaml/yaml/issues/1002)\n",
         "evidence": [
           {
-            "reachability": "no_info",
-            "source": "reachability"
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/rest-go-libs/v5/featureflag",
+                "version": "5.16.1"
+              },
+              {
+                "name": "github.com/snyk/vervet/v8",
+                "version": "8.19.0"
+              },
+              {
+                "name": "github.com/ghodss/yaml",
+                "version": "1.0.0"
+              },
+              {
+                "name": "gopkg.in/yaml.v2",
+                "version": "2.4.0"
+              }
+            ],
+            "source": "dependency_path"
           },
           {
             "path": [
@@ -35,33 +56,12 @@
             "source": "dependency_path"
           },
           {
-            "path": [
-              {
-                "name": "github.com/snyk/sca-engine",
-                "version": "0.0.0"
-              },
-              {
-                "name": "github.com/snyk/rest-go-libs/v5/featureflag",
-                "version": "5.16.1"
-              },
-              {
-                "name": "github.com/snyk/vervet/v8",
-                "version": "8.19.0"
-              },
-              {
-                "name": "github.com/ghodss/yaml",
-                "version": "1.0.0"
-              },
-              {
-                "name": "gopkg.in/yaml.v2",
-                "version": "2.4.0"
-              }
-            ],
-            "source": "dependency_path"
+            "reachability": "no_info",
+            "source": "reachability"
           }
         ],
         "finding_type": "sca",
-        "key": "2f64d63f-f629-4e11-a7fe-9c1e3c1774c5",
+        "key": "3744da68-6d5f-4523-9961-6704adac841d",
         "locations": [
           {
             "package": {
@@ -75,17 +75,13 @@
           {
             "pointer": "/attributes/rating/severity",
             "policy": {
-              "id": "ec41852c-a9ec-41c4-bd55-e7a1ae7673fc"
+              "id": "73b74514-d8bf-4fa2-9905-28f3e0f92b09"
             },
             "prior": "medium",
             "reason": ""
           }
         ],
         "problems": [
-          {
-            "id": "CWE-200",
-            "source": "cwe"
-          },
           {
             "affected_hash_ranges": [],
             "affected_hashes": [],
@@ -156,6 +152,10 @@
             ],
             "severity": "critical",
             "source": "snyk_vuln"
+          },
+          {
+            "id": "CWE-200",
+            "source": "cwe"
           }
         ],
         "rating": {
@@ -163,19 +163,19 @@
         },
         "risk": {},
         "suppression": {
-          "created_at": "2025-11-04T10:50:13.553Z",
+          "created_at": "2025-11-07T12:11:45.477Z",
           "justification": "not vulnerable according to the group policy",
           "path": [
-            "[object Object]"
+            "*"
           ],
           "policy": {
-            "id": "5420fc03-42d5-40ac-8589-3437efc16951"
+            "id": "8f23490f-5bb1-4748-87c6-e5b767312daa"
           },
           "status": "ignored"
         },
         "title": "Information Exposure"
       },
-      "id": "2f64d63f-f629-4e11-a7fe-9c1e3c1774c5",
+      "id": "3744da68-6d5f-4523-9961-6704adac841d",
       "links": {},
       "relationships": {
         "policy": {
@@ -184,15 +184,47 @@
               "policies": [
                 {
                   "applied_policy": {
+                    "action_type": "ignore",
+                    "ignore": {
+                      "created": "2025-11-07T12:11:45.477Z",
+                      "disregard_if_fixable": false,
+                      "ignored_by": {
+                        "id": "3cc427b2-35dc-4ce7-bd12-b7ea95d01f68",
+                        "name": "Ignored by security policy"
+                      },
+                      "path": [
+                        "*"
+                      ],
+                      "reason": "not vulnerable according to the group policy",
+                      "reason_type": "not-vulnerable",
+                      "source": "unknown"
+                    },
+                    "policy_ref": {
+                      "id": "3cc427b2-35dc-4ce7-bd12-b7ea95d01f68",
+                      "owner": "group"
+                    },
+                    "rule": {
+                      "created": "2025-11-07T12:11:45.477702Z",
+                      "id": "10cbb99a-97e7-413e-9656-a57e1fe43434",
+                      "modified": "2025-11-07T12:11:45.477702Z",
+                      "name": "Rule 1",
+                      "review": "not-required"
+                    }
+                  },
+                  "id": "8f23490f-5bb1-4748-87c6-e5b767312daa",
+                  "type": "legacy_policy_snapshot"
+                },
+                {
+                  "applied_policy": {
                     "action_type": "severity-change",
                     "policy_ref": {
                       "id": "3cc427b2-35dc-4ce7-bd12-b7ea95d01f68",
                       "owner": "group"
                     },
                     "rule": {
-                      "created": "2025-11-04T10:50:13.553268Z",
-                      "id": "1a59175b-82c4-4ae1-ac39-8c0518981a72",
-                      "modified": "2025-11-04T10:50:13.553268Z",
+                      "created": "2025-11-07T12:11:45.477702Z",
+                      "id": "20d65ab4-30c6-4807-9bba-02f8a706d31b",
+                      "modified": "2025-11-07T12:11:45.477702Z",
                       "name": "Rule 2",
                       "review": "not-required"
                     },
@@ -201,33 +233,12 @@
                       "original_severity": "medium"
                     }
                   },
-                  "id": "ec41852c-a9ec-41c4-bd55-e7a1ae7673fc",
-                  "type": "legacy_policy_snapshot"
-                },
-                {
-                  "applied_policy": {
-                    "action_type": "ignore",
-                    "ignore": {
-                      "created": "2025-11-04T10:50:13.553Z",
-                      "disregard_if_fixable": false,
-                      "ignored_by": {
-                        "id": "3cc427b2-35dc-4ce7-bd12-b7ea95d01f68",
-                        "name": "Ignored by security policy"
-                      },
-                      "path": [
-                        "[object Object]"
-                      ],
-                      "reason": "not vulnerable according to the group policy",
-                      "reason_type": "not-vulnerable",
-                      "source": "unknown"
-                    }
-                  },
-                  "id": "5420fc03-42d5-40ac-8589-3437efc16951",
+                  "id": "73b74514-d8bf-4fa2-9905-28f3e0f92b09",
                   "type": "legacy_policy_snapshot"
                 }
               ]
             },
-            "id": "bf4acf51-c209-4e63-9821-3f9d7668d122",
+            "id": "d34ed842-10a3-4c12-8f33-89c75cd32a82",
             "type": "policies"
           },
           "links": {}
@@ -306,6 +317,31 @@
                 "version": "0.0.0"
               },
               {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice/fake",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/hashicorp/go-retryablehttp",
+                "version": "0.7.8"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
                 "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice",
                 "version": "2.2.2"
               },
@@ -340,35 +376,10 @@
           {
             "reachability": "not_applicable",
             "source": "reachability"
-          },
-          {
-            "path": [
-              {
-                "name": "github.com/snyk/sca-engine",
-                "version": "0.0.0"
-              },
-              {
-                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice/fake",
-                "version": "2.2.2"
-              },
-              {
-                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice",
-                "version": "2.2.2"
-              },
-              {
-                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
-                "version": "2.2.2"
-              },
-              {
-                "name": "github.com/hashicorp/go-retryablehttp",
-                "version": "0.7.8"
-              }
-            ],
-            "source": "dependency_path"
           }
         ],
         "finding_type": "sca",
-        "key": "bdf97caf-5f96-4408-a910-e24b894fa808",
+        "key": "184116c6-90b2-4d79-a9b1-d4126c6f5077",
         "locations": [
           {
             "package": {
@@ -408,7 +419,7 @@
         "risk": {},
         "title": "MPL-2.0 license"
       },
-      "id": "bdf97caf-5f96-4408-a910-e24b894fa808",
+      "id": "184116c6-90b2-4d79-a9b1-d4126c6f5077",
       "links": {},
       "relationships": {},
       "type": "findings"
@@ -444,8 +455,25 @@
             "source": "dependency_path"
           },
           {
-            "reachability": "not_applicable",
-            "source": "reachability"
+            "path": [
+              {
+                "name": "github.com/snyk/sca-engine",
+                "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
+                "version": "2.2.2"
+              },
+              {
+                "name": "github.com/hashicorp/go-retryablehttp",
+                "version": "0.7.8"
+              },
+              {
+                "name": "github.com/hashicorp/go-cleanhttp",
+                "version": "0.5.2"
+              }
+            ],
+            "source": "dependency_path"
           },
           {
             "path": [
@@ -477,6 +505,10 @@
               {
                 "name": "github.com/snyk/sca-engine",
                 "version": "0.0.0"
+              },
+              {
+                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice",
+                "version": "2.2.2"
               },
               {
                 "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
@@ -523,33 +555,12 @@
             "source": "dependency_path"
           },
           {
-            "path": [
-              {
-                "name": "github.com/snyk/sca-engine",
-                "version": "0.0.0"
-              },
-              {
-                "name": "github.com/snyk/sca-engine/pkg/v2/vulnservice",
-                "version": "2.2.2"
-              },
-              {
-                "name": "github.com/snyk/sca-engine/pkg/v2/vulndata",
-                "version": "2.2.2"
-              },
-              {
-                "name": "github.com/hashicorp/go-retryablehttp",
-                "version": "0.7.8"
-              },
-              {
-                "name": "github.com/hashicorp/go-cleanhttp",
-                "version": "0.5.2"
-              }
-            ],
-            "source": "dependency_path"
+            "reachability": "not_applicable",
+            "source": "reachability"
           }
         ],
         "finding_type": "sca",
-        "key": "f0d888a0-6b7c-4fd6-af89-6e83b3a88d0b",
+        "key": "347e0333-22a7-401d-9024-6d407998e45e",
         "locations": [
           {
             "package": {
@@ -589,7 +600,7 @@
         "risk": {},
         "title": "MPL-2.0 license"
       },
-      "id": "f0d888a0-6b7c-4fd6-af89-6e83b3a88d0b",
+      "id": "347e0333-22a7-401d-9024-6d407998e45e",
       "links": {},
       "relationships": {},
       "type": "findings"
@@ -599,8 +610,8 @@
     "version": "1.0"
   },
   "links": {
-    "first": "/orgs/c3e3b0e1-842c-4e1c-b5ed-59074c8bfc78/tests/c74c9d39-36e3-4c5b-ae6c-bda22707c13a/findings?version=2024-10-15\u0026limit=100",
-    "self": "/orgs/c3e3b0e1-842c-4e1c-b5ed-59074c8bfc78/tests/c74c9d39-36e3-4c5b-ae6c-bda22707c13a/findings?version=2024-10-15\u0026limit=100"
+    "first": "/orgs/c3e3b0e1-842c-4e1c-b5ed-59074c8bfc78/tests/c0dbc6a6-fef0-41ba-92bb-8f7c0909bf95/findings?version=2024-10-15\u0026limit=100",
+    "self": "/orgs/c3e3b0e1-842c-4e1c-b5ed-59074c8bfc78/tests/c0dbc6a6-fef0-41ba-92bb-8f7c0909bf95/findings?version=2024-10-15\u0026limit=100"
   },
   "meta": {
     "count": 3,
