@@ -28,34 +28,45 @@ const (
 	DepgraphFlow             Flow = "depgraph"
 )
 
+type cliOptions struct {
+	forceLegacyTest    bool
+	requiresLegacy     bool
+	riskScoreThreshold int
+	reachability       bool
+	sbom               string
+	reachabilityFilter string
+	unmanaged          bool
+}
+
 func validateLegacyCLIOptions(
-	forceLegacyTest,
-	requiresLegacy bool,
-	riskScoreThreshold int,
-	reachability bool,
-	sbom,
-	reachabilityFilter string,
+	opts cliOptions,
 	errFactory *internalErrors.ErrorFactory,
 ) error {
-	if !forceLegacyTest && !requiresLegacy {
+	if !opts.forceLegacyTest && !opts.requiresLegacy {
 		return nil
 	}
 
-	if riskScoreThreshold != -1 {
-		//nolint:wrapcheck // No need to wrap error factory errors.
-		return errFactory.NewInvalidLegacyFlagError("--risk-score-threshold")
+	invalidFlags := []string{}
+
+	if opts.unmanaged && opts.reachability {
+		invalidFlags = append(invalidFlags, "reachability", "unmanaged")
+	} else if opts.reachability {
+		invalidFlags = append(invalidFlags, "reachability")
 	}
-	if reachability {
-		//nolint:wrapcheck // No need to wrap error factory errors.
-		return errFactory.NewInvalidLegacyFlagError("--reachability")
+
+	if opts.riskScoreThreshold != -1 {
+		invalidFlags = append(invalidFlags, "risk-score-threshold")
 	}
-	if reachabilityFilter != "" {
-		//nolint:wrapcheck // No need to wrap error factory errors.
-		return errFactory.NewInvalidLegacyFlagError("--reachability-filter")
+	if opts.reachabilityFilter != "" {
+		invalidFlags = append(invalidFlags, "reachability-filter")
 	}
-	if sbom != "" {
+	if opts.sbom != "" {
+		invalidFlags = append(invalidFlags, "sbom")
+	}
+
+	if len(invalidFlags) > 0 {
 		//nolint:wrapcheck // No need to wrap error factory errors.
-		return errFactory.NewInvalidLegacyFlagError("--sbom")
+		return errFactory.NewInvalidLegacyFlagError(invalidFlags...)
 	}
 
 	return nil
@@ -118,6 +129,7 @@ type FlowConfig struct {
 	ExperimentalUvSupport bool
 	ForceLegacyTest       bool
 	RequiresLegacy        bool
+	Unmanaged             bool
 }
 
 func doesPathExist(path string) (bool, error) {
@@ -144,13 +156,14 @@ func ParseFlowConfig(cfg configuration.Configuration) (FlowConfig, error) {
 	sbom := cfg.GetString(flags.FlagSBOM)
 	sbomReachabilityTest := reachability && sbom != ""
 	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
+	unmanaged := cfg.GetBool(flags.FlagUnmanaged)
 
 	experimentalUvSupport := cfg.GetBool(constants.EnableExperimentalUvSupportEnvVar)
 	forceLegacyTest := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
 	requiresLegacy := cfg.GetBool(flags.FlagPrintGraph) ||
 		cfg.GetBool(flags.FlagPrintDeps) ||
 		cfg.GetBool(flags.FlagPrintDepPaths) ||
-		cfg.GetBool(flags.FlagUnmanaged)
+		unmanaged
 
 	// The legacy `snyk test` command supports testing packages directly. e.g `snyk test lodash`.
 	// The way the command determines if an argument is a package and not a path
@@ -181,6 +194,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (FlowConfig, error) {
 		ExperimentalUvSupport: experimentalUvSupport,
 		ForceLegacyTest:       forceLegacyTest,
 		RequiresLegacy:        requiresLegacy,
+		Unmanaged:             unmanaged,
 	}, nil
 }
 
@@ -189,15 +203,16 @@ func ShouldUseLegacyFlow(ctx context.Context, fc FlowConfig) (bool, error) {
 	errFactory := cmdctx.ErrorFactory(ctx)
 	logger := cmdctx.Logger(ctx)
 
-	err := validateLegacyCLIOptions(
-		fc.ForceLegacyTest,
-		fc.RequiresLegacy,
-		fc.RiskScoreThreshold,
-		fc.Reachability,
-		fc.SBOM,
-		fc.ReachabilityFilter,
-		errFactory,
-	)
+	opts := cliOptions{
+		forceLegacyTest:    fc.ForceLegacyTest,
+		requiresLegacy:     fc.RequiresLegacy,
+		riskScoreThreshold: fc.RiskScoreThreshold,
+		reachability:       fc.Reachability,
+		sbom:               fc.SBOM,
+		reachabilityFilter: fc.ReachabilityFilter,
+		unmanaged:          fc.Unmanaged,
+	}
+	err := validateLegacyCLIOptions(opts, errFactory)
 	if err != nil {
 		return false, err
 	}

@@ -2,6 +2,7 @@ package errors
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/rs/zerolog"
 	snyk_cli_errors "github.com/snyk/error-catalog-golang-public/cli"
@@ -151,10 +152,26 @@ func (ef *ErrorFactory) NewSBOMTestWithMultiplePathsError() error {
 
 // NewInvalidLegacyFlagError creates a new error for when
 // new flags are being passed to the legacy CLI.
-func (ef *ErrorFactory) NewInvalidLegacyFlagError(flag string) error {
-	return snyk_cli_errors.NewInvalidFlagOptionError(
-		fmt.Sprintf("The %s option can not be used with the legacy CLI", flag),
-	)
+func (ef *ErrorFactory) NewInvalidLegacyFlagError(flags ...string) error {
+	if len(flags) == 0 {
+		return snyk_cli_errors.NewInvalidFlagOptionError(
+			"An internal error occurred while validating command-line flags.",
+		)
+	}
+
+	formattedFlags := make([]string, len(flags))
+	for i, flag := range flags {
+		formattedFlags[i] = fmt.Sprintf("--%s", flag)
+	}
+
+	var userMsg string
+	if len(flags) > 1 {
+		userMsg = fmt.Sprintf("The options %s cannot be used together.", strings.Join(formattedFlags, ", "))
+	} else {
+		userMsg = fmt.Sprintf("The option %s cannot be used with the legacy CLI.", formattedFlags[0])
+	}
+
+	return snyk_cli_errors.NewInvalidFlagOptionError(userMsg)
 }
 
 // NewUnsupportedFailOnValueError creates a new error for when
