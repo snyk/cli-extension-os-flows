@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	snyk_errors "github.com/snyk/error-catalog-golang-public/snyk_errors"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,7 +108,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 				require.NoError(t, err)
 				_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg)
 
-				assert.ErrorContains(t, err, "Invalid flag option")
+				assert.Error(t, err)
 			})
 		}
 	})
@@ -119,7 +120,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 			cfg := defaultConfig.Clone()
 			cfg.Set(legacyOption, true)
 
-			t.Run(fmt.Sprintf("--% should route to legacy command", legacyOption), func(t *testing.T) {
+			t.Run(fmt.Sprintf("--%s should route to legacy command", legacyOption), func(t *testing.T) {
 				t.Parallel()
 				testCfg := cfg.Clone()
 				ctx := t.Context()
@@ -148,10 +149,52 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 					require.NoError(t, err)
 					_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg)
 
-					assert.ErrorContains(t, err, "Invalid flag option")
+					assert.Error(t, err)
 				})
 			}
 		}
+	})
+
+	t.Run("when --unmanaged and --reachability are set", func(t *testing.T) {
+		t.Parallel()
+		cfg := defaultConfig.Clone()
+		cfg.Set(flags.FlagUnmanaged, true)
+		cfg.Set(flags.FlagReachability, true)
+
+		ctx := t.Context()
+		ctx = cmdctx.WithConfig(ctx, cfg)
+		ctx = cmdctx.WithLogger(ctx, &nopLogger)
+		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+		flowCfg, err := ostest.ParseFlowConfig(cfg)
+		require.NoError(t, err)
+		_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+		require.Error(t, err)
+		var catalogErr snyk_errors.Error
+		require.ErrorAs(t, err, &catalogErr)
+		assert.Equal(t, "The options --reachability, --unmanaged cannot be used together.", catalogErr.Detail)
+	})
+
+	t.Run("when multiple invalid flags are set", func(t *testing.T) {
+		t.Parallel()
+		cfg := defaultConfig.Clone()
+		cfg.Set(constants.ForceLegacyCLIEnvVar, true)
+		cfg.Set(flags.FlagReachability, true)
+		cfg.Set(flags.FlagSBOM, "sbom.json")
+		cfg.Set(flags.FlagRiskScoreThreshold, 100)
+
+		ctx := t.Context()
+		ctx = cmdctx.WithConfig(ctx, cfg)
+		ctx = cmdctx.WithLogger(ctx, &nopLogger)
+		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+		flowCfg, err := ostest.ParseFlowConfig(cfg)
+		require.NoError(t, err)
+		_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg)
+		require.Error(t, err)
+		var catalogErr snyk_errors.Error
+		require.ErrorAs(t, err, &catalogErr)
+		assert.Equal(t, "The options --reachability, --risk-score-threshold, --sbom cannot be used together.", catalogErr.Detail)
 	})
 
 	t.Run("when no new options are provided", func(t *testing.T) {
