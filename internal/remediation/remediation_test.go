@@ -494,7 +494,7 @@ func Test_FindingsToRemediationSummary(t *testing.T) {
 					},
 					FixedInVersions: []string{"1.0.1", "2.0.0"},
 					PackageManager:  "npm",
-					Fix: remediation.NewUpgradeFix(remediation.FullyResolved, remediation.UpgradeAction{
+					Fix: remediation.NewUpgradeFix(remediation.PartiallyResolved, remediation.UpgradeAction{
 						PackageName: "vulnerable",
 						UpgradePaths: []remediation.DependencyPath{
 							newDependencyPath("root@1.0.0", "direct-1@1.2.3", "vulnerable@1.0.1"),
@@ -531,6 +531,48 @@ func Test_FindingsToRemediationSummary(t *testing.T) {
 						},
 					},
 				},
+			}, summary)
+		})
+
+		t.Run("upgrade for single package with fully resolved fixes results returns upgrade and an empty unresolved summary entry", func(t *testing.T) {
+			summary, err := remediation.FindingsToRemediationSummary([]*remediation.Finding{
+				{
+					Vulnerability: aVulnerabilityWithID("VULN_ID"),
+					Package:       newPackage("vulnerable@1.0.0"),
+					DependencyPaths: []remediation.DependencyPath{
+						newDependencyPath("root@1.0.0", "direct-1@1.0.0", "vulnerable@1.0.0"),
+						newDependencyPath("root@1.0.0", "direct-2@1.0.0", "transitive-1@1.0.0", "vulnerable@1.0.0"),
+					},
+					FixedInVersions: []string{"1.0.1", "2.0.0"},
+					PackageManager:  "npm",
+					Fix: remediation.NewUpgradeFix(remediation.FullyResolved, remediation.UpgradeAction{
+						PackageName: "vulnerable",
+						UpgradePaths: []remediation.DependencyPath{
+							newDependencyPath("root@1.0.0", "direct-1@1.2.3", "vulnerable@1.0.1"),
+						},
+					}),
+				},
+			})
+
+			require.NoError(t, err)
+			equalSummaries(t, remediation.Summary{
+				Upgrades: []*remediation.Upgrade{
+					{
+						From: newPackage("direct-1@1.0.0"),
+						To:   newPackage("direct-1@1.2.3"),
+						Fixes: []*remediation.VulnerabilityInPackage{
+							{
+								FixedInVersions:   []string{"1.0.1", "2.0.0"},
+								VulnerablePackage: newPackage("vulnerable@1.0.0"),
+								Vulnerability:     aVulnerabilityWithID("VULN_ID"),
+								IntroducedThrough: []remediation.DependencyPath{
+									newDependencyPath("root@1.0.0", "direct-1@1.0.0", "vulnerable@1.0.0"),
+								},
+							},
+						},
+					},
+				},
+				Unresolved: []*remediation.VulnerabilityInPackage{},
 			}, summary)
 		})
 

@@ -68,6 +68,14 @@ func calculateUpgrades(findings Findings) (upgrades []*Upgrade, unresolved []*Vu
 			}
 		}
 
+		// If the fix fully resolves all issues in all dependency paths, then there is
+		// no need to report any non-upgradable paths (see below).
+		// This is an edgecase in the python ecosystem, where technically there might be
+		// unresolved dependency paths, but a pin fixes all vulnerable paths at once.
+		if fix.outcome == FullyResolved {
+			continue
+		}
+
 		if len(matchingPaths.nonUpgradablePaths) > 0 {
 			vulnerabilityInPackage := newVulnerabilityInPackage(finding)
 			vulnerabilityInPackage.IntroducedThrough = matchingPaths.nonUpgradablePaths
