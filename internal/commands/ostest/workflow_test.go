@@ -642,6 +642,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 				// Create temp directory with uv.lock file
 				tempDir := util.CreateTempDirWithUvLock(t)
 				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
+				config.Set(configuration.FLAG_EXPERIMENTAL, true)
 				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
@@ -662,6 +663,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 				// Create temp directory without uv.lock file
 				tempDir := t.TempDir()
 				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
+				config.Set(configuration.FLAG_EXPERIMENTAL, true)
 				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
 
 				// Should route directly to legacy flow (not depgraph workflow)

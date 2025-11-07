@@ -79,6 +79,7 @@ func setupSBOMResolutionIntegrationTest(
 	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
 
 	cfg := configuration.New()
+	cfg.Set(configuration.FLAG_EXPERIMENTAL, true)
 	cfg.Set(constants.EnableExperimentalUvSupportEnvVar, true)
 	cfg.Set(configuration.ORGANIZATION, "test-org-id")
 	cfg.Set(flags.FlagFile, "uv.lock")

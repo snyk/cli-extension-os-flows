@@ -160,7 +160,8 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
 	unmanaged := cfg.GetBool(flags.FlagUnmanaged)
 
-	experimentalUvSupport := cfg.GetBool(constants.EnableExperimentalUvSupportEnvVar)
+	experimentalFlagSet := cfg.GetBool(configuration.FLAG_EXPERIMENTAL)
+	experimentalUvSupport := experimentalFlagSet && cfg.GetBool(constants.EnableExperimentalUvSupportEnvVar)
 	forceLegacyTest := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
 	requiresLegacy := cfg.GetBool(flags.FlagPrintGraph) ||
 		cfg.GetBool(flags.FlagPrintDeps) ||

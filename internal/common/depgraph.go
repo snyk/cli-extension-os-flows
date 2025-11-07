@@ -42,7 +42,8 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 	errFactory := errors.NewErrorFactory(logger)
 
 	depGraphConfig := config.Clone()
-	experimentalUvSupportEnabled := config.GetBool(constants.EnableExperimentalUvSupportEnvVar)
+	experimentalFlagSet := config.GetBool(configuration.FLAG_EXPERIMENTAL)
+	experimentalUvSupportEnabled := experimentalFlagSet && config.GetBool(constants.EnableExperimentalUvSupportEnvVar)
 	uvLockExists := util.HasUvLockFile(inputDir, logger)
 
 	if experimentalUvSupportEnabled && uvLockExists {
