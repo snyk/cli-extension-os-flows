@@ -150,6 +150,13 @@ func (ef *ErrorFactory) NewSBOMTestWithMultiplePathsError() error {
 	)
 }
 
+// NewInvalidArgCombinationError creates a new error for when
+// command line arguments and flags have been combined erroneously.
+func (ef *ErrorFactory) NewInvalidArgCombinationError(arg string, flags ...string) error {
+	return snyk_cli_errors.NewInvalidFlagOptionError(
+		fmt.Sprintf("The argument '%s' cannot be combined with flags %s.", arg, strings.Join(flags, ", ")))
+}
+
 // NewInvalidLegacyFlagError creates a new error for when
 // new flags are being passed to the legacy CLI.
 func (ef *ErrorFactory) NewInvalidLegacyFlagError(flags ...string) error {
@@ -159,16 +166,11 @@ func (ef *ErrorFactory) NewInvalidLegacyFlagError(flags ...string) error {
 		)
 	}
 
-	formattedFlags := make([]string, len(flags))
-	for i, flag := range flags {
-		formattedFlags[i] = fmt.Sprintf("--%s", flag)
-	}
-
 	var userMsg string
 	if len(flags) > 1 {
-		userMsg = fmt.Sprintf("The options %s cannot be used together.", strings.Join(formattedFlags, ", "))
+		userMsg = fmt.Sprintf("The options %s cannot be used together.", strings.Join(flags, ", "))
 	} else {
-		userMsg = fmt.Sprintf("The option %s cannot be used with the legacy CLI.", formattedFlags[0])
+		userMsg = fmt.Sprintf("The option %s cannot be used in this way.", flags[0])
 	}
 
 	return snyk_cli_errors.NewInvalidFlagOptionError(userMsg)

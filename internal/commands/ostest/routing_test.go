@@ -218,7 +218,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 	t.Run("when a package name is provided", func(t *testing.T) {
 		t.Parallel()
 		cfg := defaultConfig.Clone()
-		defaultConfig.Set(configuration.INPUT_DIRECTORY, []string{"lodash@1.2.3"})
+		cfg.Set(configuration.INPUT_DIRECTORY, []string{"lodash@1.2.3"})
 
 		ctx := t.Context()
 		ctx = cmdctx.WithConfig(ctx, cfg)
@@ -231,6 +231,27 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.True(t, useLegacy)
+	})
+
+	t.Run("when a package name and a new option is provided", func(t *testing.T) {
+		t.Parallel()
+		cfg := defaultConfig.Clone()
+		cfg.Set(configuration.INPUT_DIRECTORY, []string{"lodash@1.2.3"})
+		cfg.Set(flags.FlagReachability, true)
+
+		ctx := t.Context()
+		ctx = cmdctx.WithConfig(ctx, cfg)
+		ctx = cmdctx.WithLogger(ctx, &nopLogger)
+		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+		flowCfg, err := ostest.ParseFlowConfig(cfg)
+		require.NoError(t, err)
+		_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+		require.Error(t, err)
+
+		var catalogErr snyk_errors.Error
+		require.ErrorAs(t, err, &catalogErr)
+		assert.Equal(t, "The argument 'lodash@1.2.3' cannot be combined with flags --reachability.", catalogErr.Detail)
 	})
 
 	t.Run("when UV support is enabled with uv.lock file present", func(t *testing.T) {
@@ -276,6 +297,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		assert.True(t, useLegacy, "should use legacy flow when UV support is enabled but uv.lock is missing")
 	})
+
 	t.Run("when UV support is disabled even with uv.lock present", func(t *testing.T) {
 		t.Parallel()
 		cfg := defaultConfig.Clone()
