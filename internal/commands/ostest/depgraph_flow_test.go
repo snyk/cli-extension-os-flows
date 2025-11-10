@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/snyk/go-application-framework/pkg/utils"
 	"github.com/stretchr/testify/assert"
 
@@ -28,6 +29,8 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 )
+
+var orgUUID = uuid.MustParse("8c2def96-233c-41b2-ab52-590c016e81e0")
 
 // mockConcurrentStartTest sets up a mock TestClient whose Wait calls simulate concurrency
 // and record the peak concurrency observed. Extracted to avoid duplication across tests.
@@ -121,7 +124,6 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 
 	// Run
 	ef := errors.NewErrorFactory(&logger)
-	orgID := "org-123"
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
@@ -129,7 +131,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgID, nil, nil)
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
 	require.NoError(t, err)
 
 	p := peak.Load()
@@ -190,7 +192,6 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 
 	// Run
 	ef := errors.NewErrorFactory(&logger)
-	orgID := "org-123"
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
@@ -198,7 +199,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgID, nil, nil)
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
 	require.NoError(t, err)
 
 	p := peak.Load()
@@ -276,7 +277,6 @@ func Test_RunUnifiedTestFlow_WithIgnorePolicyFlag(t *testing.T) {
 
 	// Run
 	ef := errors.NewErrorFactory(&logger)
-	orgID := "org-123"
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, cfg)
@@ -284,7 +284,7 @@ func Test_RunUnifiedTestFlow_WithIgnorePolicyFlag(t *testing.T) {
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgID, nil, nil)
+	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
 	require.NoError(t, err)
 }
 
@@ -358,7 +358,6 @@ func Test_RunUnifiedTestFlow_WithProjectNameOverride(t *testing.T) {
 
 	// Run
 	ef := errors.NewErrorFactory(&logger)
-	orgID := "org-123"
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, cfg)
@@ -366,7 +365,7 @@ func Test_RunUnifiedTestFlow_WithProjectNameOverride(t *testing.T) {
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgID, nil, nil)
+	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
 	require.NoError(t, err)
 }
 
@@ -440,7 +439,6 @@ func Test_RunUnifiedTestFlow_WithTargetReference(t *testing.T) {
 
 	// Run
 	ef := errors.NewErrorFactory(&logger)
-	orgID := "org-123"
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, cfg)
@@ -448,7 +446,7 @@ func Test_RunUnifiedTestFlow_WithTargetReference(t *testing.T) {
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgID, nil, nil)
+	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
 	require.NoError(t, err)
 }
 
@@ -532,7 +530,7 @@ func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
-	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, "org-123", nil, nil)
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
 	require.Error(t, err)
 
 	// At least one sibling should have observed cancellation.

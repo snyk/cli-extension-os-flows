@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -36,7 +37,7 @@ func TestSBOMResolutionIntegration_DepGraphsPassedToUnifiedTestAPI(t *testing.T)
 	tempDir := util.CreateTempDirWithUvLock(t)
 
 	ctx := context.Background()
-	mockIctx, mockTestClient, mockDepGraph, orgID, cfg, testLogger := setupSBOMResolutionIntegrationTest(t, ctrl)
+	mockIctx, mockTestClient, mockDepGraph, orgUUID, cfg, testLogger := setupSBOMResolutionIntegrationTest(t, ctrl)
 
 	// Set up context with dependencies
 	testErrFactory := errors.NewErrorFactory(testLogger)
@@ -51,7 +52,7 @@ func TestSBOMResolutionIntegration_DepGraphsPassedToUnifiedTestAPI(t *testing.T)
 		ctx,
 		tempDir,
 		mockTestClient,
-		orgID,
+		orgUUID,
 		nil,
 		nil,
 	)
@@ -68,7 +69,7 @@ func setupSBOMResolutionIntegrationTest(
 	workflow.InvocationContext,
 	testapi.TestClient,
 	*testapi.IoSnykApiV1testdepgraphRequestDepGraph,
-	string,
+	uuid.UUID,
 	configuration.Configuration,
 	*zerolog.Logger,
 ) {
@@ -137,5 +138,5 @@ func setupSBOMResolutionIntegrationTest(
 		}).
 		Times(1)
 
-	return mockIctx, mockTestClient, &mockDepGraph, "test-org-id", cfg, &nopLogger
+	return mockIctx, mockTestClient, &mockDepGraph, uuid.MustParse("8c2def96-233c-41b2-ab52-590c016e81e0"), cfg, &nopLogger
 }

@@ -623,11 +623,15 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 		},
 		{
 			name: "CLI Reachability FF enabled, expects unified flow (depgraph error)",
-			setup: func(config configuration.Configuration, _ *mocks.MockEngine) {
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				config.Set(constants.FeatureFlagReachabilityForCLI, true)
 				config.Set(flags.FlagReachability, true)
+				mockEngine.EXPECT().
+					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
+					Return(nil, assert.AnError).
+					Times(1)
 			},
-			expectedError: "failed to upload source code",
+			expectedError: "failed to get dependency graph",
 		},
 		{
 			name: "Reachability set, CLI Reachability FF disabled",
