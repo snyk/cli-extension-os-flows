@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 	snyk_cli_errors "github.com/snyk/error-catalog-golang-public/cli"
+	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
 )
 
 // OSFlowsExtensionError represents something gone wrong during the
@@ -183,4 +184,10 @@ func (ef *ErrorFactory) NewUnsupportedFailOnValueError(value string) *OSFlowsExt
 		fmt.Errorf("unsupported fail-on value: %s", value),
 		fmt.Sprintf("Unsupported value '%s' for --fail-on flag. Supported values are: 'all', 'upgradable'.", value),
 	)
+}
+
+// NewReachabilitySettingsDisabledError creates a new error for when
+// an the user has a misconfiguration for the reachability settings.
+func (ef *ErrorFactory) NewReachabilitySettingsDisabledError(message string) error {
+	return ecosystems.NewReachabilitySettingDisabledError(message)
 }

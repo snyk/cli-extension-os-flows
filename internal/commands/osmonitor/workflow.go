@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
 	"github.com/snyk/go-application-framework/pkg/ui"
@@ -64,14 +63,18 @@ func runReachabilityScan(ctx context.Context) (uuid.UUID, error) {
 	}
 
 	if !isReachEnabled {
-		return uuid.Nil, ecosystems.NewReachabilitySettingDisabledError(
+		//nolint:wrapcheck // No need to wrap error factory errors.
+		return uuid.Nil, errFactory.NewReachabilitySettingsDisabledError(
 			"In order to run the `monitor` command with `--reachability=true`, the reachability settings must be enabled.",
 		)
 	}
 
 	ffReachabilityInCLI := cfg.GetBool(constants.FeatureFlagReachabilityForCLI)
 	if !ffReachabilityInCLI {
-		return uuid.Nil, errFactory.NewFeatureNotPermittedError(constants.FeatureFlagReachabilityForCLI)
+		//nolint:wrapcheck // No need to wrap error factory errors.
+		return uuid.Nil, errFactory.NewReachabilitySettingsDisabledError(
+			"In order to run the `monitor` command with `--reachability=true`, the feature must be enabled in the Snyk Preview.",
+		)
 	}
 
 	sourceDir := cfg.GetString(flags.FlagSourceDir)

@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
@@ -108,7 +107,8 @@ func validateReachability(
 	}
 
 	if !isReachEnabled {
-		return ecosystems.NewReachabilitySettingDisabledError(
+		//nolint:wrapcheck // No need to wrap error factory errors.
+		return errFactory.NewReachabilitySettingsDisabledError(
 			"In order to run the `test` command with `--reachability`, the reachability settings must be enabled.",
 		)
 	}
@@ -253,7 +253,10 @@ func RouteToFlow(ctx context.Context, fc *FlowConfig, orgUUID uuid.UUID, sc sett
 		return SBOMReachabilityFlow, nil
 	case fc.Reachability:
 		if !cfg.GetBool(constants.FeatureFlagReachabilityForCLI) {
-			return "", errFactory.NewFeatureNotPermittedError(constants.FeatureFlagReachabilityForCLI)
+			//nolint:wrapcheck // No need to wrap error factory errors.
+			return "", errFactory.NewReachabilitySettingsDisabledError(
+				"In order to run the `test` command with `--reachability=true`, the feature must be enabled in the Snyk Preview.",
+			)
 		}
 		return DepgraphReachabilityFlow, nil
 	default:
