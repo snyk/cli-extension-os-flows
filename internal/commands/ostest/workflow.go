@@ -30,11 +30,9 @@ import (
 	cmdutil "github.com/snyk/cli-extension-os-flows/internal/commands/util"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
-	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
-	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
 	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
@@ -131,32 +129,6 @@ func handleSBOMReachabilityFlow(
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	bsClient := setupBundlestoreClient(ctx)
 	return RunSbomReachabilityFlow(ctx, testClient, sbom, sourceDir, bsClient, orgID, localPolicy)
-}
-
-func handleDepgraphReachabilityFlow(
-	ctx context.Context,
-	inputDir string,
-	testClient testapi.TestClient,
-	orgUUID uuid.UUID,
-	sourceDir string,
-	localPolicy *testapi.LocalPolicy,
-) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	ictx := cmdctx.Ictx(ctx)
-	cfg := cmdctx.Config(ctx)
-	progressBar := cmdctx.ProgressBar(ctx)
-
-	fuClient := fileupload.NewClientFromInvocationContext(ictx, orgUUID)
-	rc := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
-		BaseURL: cfg.GetString(configuration.API_URL),
-	})
-
-	progressBar.SetTitle("Uploading source code...")
-	scanID, err := reachability.GetReachabilityID(ctx, orgUUID, sourceDir, rc, fuClient)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to analyze source code: %w", err)
-	}
-
-	return RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID.String(), localPolicy, &scanID)
 }
 
 func convertReachabilityFilterToSchema(reachabilityFilter string) *testapi.ReachabilityFilter {
@@ -400,9 +372,9 @@ func OSWorkflow(
 		case SBOMReachabilityFlow:
 			legacyFindings, outputData, flowErr = handleSBOMReachabilityFlow(ctx, testClient, orgID, sbom, sourceDir, localPolicy)
 		case DepgraphReachabilityFlow:
-			legacyFindings, outputData, flowErr = handleDepgraphReachabilityFlow(ctx, inputDir, testClient, orgUUID, sourceDir, localPolicy)
+			legacyFindings, outputData, flowErr = RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID, localPolicy, &reachabilityOpts{sourceDir: sourceDir})
 		case DepgraphFlow:
-			legacyFindings, outputData, flowErr = RunUnifiedTestFlow(ctx, inputDir, testClient, orgID, localPolicy, nil)
+			legacyFindings, outputData, flowErr = RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID, localPolicy, nil)
 		default:
 			flowErr = fmt.Errorf("unknown test flow: %s", flow)
 		}

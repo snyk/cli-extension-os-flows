@@ -9,8 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/snyk/cli-extension-os-flows/internal/util"
-
+	"github.com/google/uuid"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
@@ -19,10 +18,12 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	service "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 const maxConcurrentTests = 5
@@ -74,14 +75,18 @@ func enrichWithTargetReference(depgraphs []DepGraphWithMeta, targetReference str
 	}
 }
 
+type reachabilityOpts struct {
+	sourceDir string
+}
+
 // RunUnifiedTestFlow handles the unified test API flow.
 func RunUnifiedTestFlow(
 	ctx context.Context,
 	inputDir string,
 	testClient testapi.TestClient,
-	orgID string,
+	orgUUID uuid.UUID,
 	localPolicy *testapi.LocalPolicy,
-	reachabilityScanID *reachability.ID,
+	reachabilityOpts *reachabilityOpts,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	ictx := cmdctx.Ictx(ctx)
 	cfg := cmdctx.Config(ctx)
@@ -97,7 +102,21 @@ func RunUnifiedTestFlow(
 		return nil, nil, err
 	}
 
-	enrichWithScanID(depGraphs, reachabilityScanID)
+	if reachabilityOpts != nil {
+		progressBar.SetTitle("Uploading source code...")
+
+		fuClient := fileupload.NewClientFromInvocationContext(ictx, orgUUID)
+		rc := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
+			BaseURL: cfg.GetString(configuration.API_URL),
+		})
+
+		scanID, scanErr := reachability.GetReachabilityID(ctx, orgUUID, reachabilityOpts.sourceDir, rc, fuClient)
+		if scanErr != nil {
+			return nil, nil, fmt.Errorf("failed to analyze source code: %w", scanErr)
+		}
+
+		enrichWithScanID(depGraphs, &scanID)
+	}
 	enrichWithIgnorePolicy(depGraphs, cfg.GetBool(flags.FlagIgnorePolicy))
 	enrichWithProjectNameOverride(depGraphs, cfg.GetString(flags.FlagProjectName))
 	enrichWithTargetReference(depGraphs, cfg.GetString(flags.FlagTargetReference))
@@ -106,7 +125,7 @@ func RunUnifiedTestFlow(
 		ctx,
 		inputDir,
 		testClient,
-		orgID,
+		orgUUID.String(),
 		localPolicy,
 		depGraphs,
 	)
