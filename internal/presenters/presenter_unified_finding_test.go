@@ -1142,3 +1142,83 @@ func TestUnifiedFindingPresenter_LicenseWithoutInstructions(t *testing.T) {
 	assert.NotContains(t, out, "Legal instructions:")
 	assert.Contains(t, out, "MIT license")
 }
+
+func TestUnifiedFindingPresenter_ShowVulnerablePaths_None(t *testing.T) {
+	config := configuration.New()
+	config.Set("show-vulnerable-paths", "none")
+	buffer := &bytes.Buffer{}
+	lipgloss.SetColorProfile(termenv.Ascii)
+
+	depPathEv := testapi.Evidence{}
+	depPathEv.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path: []testapi.Package{
+			{Name: "root", Version: "1.0.0"},
+			{Name: "dep", Version: "2.0.0"},
+		},
+	})
+
+	finding := testapi.FindingData{
+		Type: util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{
+			Evidence: []testapi.Evidence{depPathEv},
+		},
+	}
+
+	projectResult := &presenters.UnifiedProjectResult{
+		Findings: []testapi.FindingData{finding},
+		Summary:  &json_schemas.TestSummary{Type: "open-source"},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer([]*presenters.UnifiedProjectResult{projectResult}, config, buffer)
+	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	assert.NoError(t, err)
+
+	out := buffer.String()
+	assert.NotContains(t, out, "Introduced through")
+	assert.Contains(t, out, "Introduced by:")
+}
+
+func TestUnifiedFindingPresenter_ShowVulnerablePaths_All(t *testing.T) {
+	config := configuration.New()
+	config.Set("show-vulnerable-paths", "all")
+	buffer := &bytes.Buffer{}
+	lipgloss.SetColorProfile(termenv.Ascii)
+
+	depPathEv1 := testapi.Evidence{}
+	depPathEv1.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path: []testapi.Package{
+			{Name: "root", Version: "1.0.0"},
+			{Name: "dep-a", Version: "2.0.0"},
+		},
+	})
+
+	depPathEv2 := testapi.Evidence{}
+	depPathEv2.FromDependencyPathEvidence(testapi.DependencyPathEvidence{
+		Path: []testapi.Package{
+			{Name: "root", Version: "1.0.0"},
+			{Name: "dep-b", Version: "3.0.0"},
+		},
+	})
+
+	finding := testapi.FindingData{
+		Type: util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{
+			Evidence: []testapi.Evidence{depPathEv1, depPathEv2},
+		},
+	}
+
+	projectResult := &presenters.UnifiedProjectResult{
+		Findings: []testapi.FindingData{finding},
+		Summary:  &json_schemas.TestSummary{Type: "open-source"},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer([]*presenters.UnifiedProjectResult{projectResult}, config, buffer)
+	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	assert.NoError(t, err)
+
+	out := buffer.String()
+	assert.Contains(t, out, "Introduced through:")
+	assert.Contains(t, out, "root@1.0.0 > dep-a@2.0.0")
+	assert.Contains(t, out, "root@1.0.0 > dep-b@3.0.0")
+	assert.NotContains(t, out, "other path")
+}

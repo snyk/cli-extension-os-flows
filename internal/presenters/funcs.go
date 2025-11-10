@@ -131,70 +131,54 @@ const (
 	packageVersionFormat = "%s@%s"
 )
 
-// GetIntroducedThroughWithCount returns the dependency path through which the vulnerability was introduced,
-// with a count of additional paths if more than one.
-func GetIntroducedThroughWithCount(finding testapi.FindingData) string {
-	if finding.Attributes == nil || len(finding.Attributes.Evidence) == 0 {
+// FormatPathsCount returns " and X other path(s)" for multiple paths, or "" for 0-1 paths.
+func FormatPathsCount(paths []string) string {
+	if len(paths) <= 1 {
 		return ""
 	}
 
-	var dependencyPaths []string
-	for _, evidence := range finding.Attributes.Evidence {
-		// An evidence object is a union type. We need to check if it's a DependencyPathEvidence.
-		if depPathEvidence, err := evidence.AsDependencyPathEvidence(); err == nil {
-			var pathParts []string
-			for _, pkg := range depPathEvidence.Path {
-				pathParts = append(pathParts, fmt.Sprintf(packageVersionFormat, pkg.Name, pkg.Version))
-			}
-			if len(pathParts) > 0 {
-				dependencyPaths = append(dependencyPaths, strings.Join(pathParts, " > "))
-			}
-		}
-	}
+	additionalCount := len(paths) - 1
+	countStr := pathCountStyle.Render(strconv.Itoa(additionalCount))
 
-	if len(dependencyPaths) == 0 {
-		return ""
-	}
-
-	if len(dependencyPaths) == 1 {
-		return dependencyPaths[0]
-	}
-
-	// If there are multiple paths, show the first one and count the rest
-	additionalCount := len(dependencyPaths) - 1
 	if additionalCount == 1 {
-		return fmt.Sprintf("%s and 1 other path", dependencyPaths[0])
+		return fmt.Sprintf(" and %s other path", countStr)
 	}
-	return fmt.Sprintf("%s and %d other paths", dependencyPaths[0], additionalCount)
+	return fmt.Sprintf(" and %s other paths", countStr)
 }
 
-func getRemediationIntroducedByWithCount(vip *remediation.VulnerabilityInPackage) string {
-	var dependencyPaths []string
-	for _, path := range vip.IntroducedThrough {
-		var pathParts []string
-		for _, pkg := range path {
-			pathParts = append(pathParts, fmt.Sprintf("%s@%s", pkg.Name, pkg.Version))
+// GetIntroducedThroughPaths returns the list of dependency paths for a finding.
+func GetIntroducedThroughPaths(finding testapi.FindingData) []string {
+	if finding.Attributes == nil || len(finding.Attributes.Evidence) == 0 {
+		return nil
+	}
+
+	var paths []string
+	for _, evidence := range finding.Attributes.Evidence {
+		if depPathEvidence, err := evidence.AsDependencyPathEvidence(); err == nil {
+			var parts []string
+			for _, pkg := range depPathEvidence.Path {
+				parts = append(parts, fmt.Sprintf(packageVersionFormat, pkg.Name, pkg.Version))
+			}
+			if len(parts) > 0 {
+				paths = append(paths, strings.Join(parts, " > "))
+			}
 		}
+	}
+	return paths
+}
 
-		if len(pathParts) > 0 {
-			dependencyPaths = append(dependencyPaths, strings.Join(pathParts, " > "))
+func getRemediationIntroducedByPaths(vip *remediation.VulnerabilityInPackage) []string {
+	var paths []string
+	for _, packagePath := range vip.IntroducedThrough {
+		var parts []string
+		for _, pkg := range packagePath {
+			parts = append(parts, fmt.Sprintf(packageVersionFormat, pkg.Name, pkg.Version))
+		}
+		if len(parts) > 0 {
+			paths = append(paths, strings.Join(parts, " > "))
 		}
 	}
-
-	if len(dependencyPaths) == 0 {
-		return ""
-	}
-
-	if len(dependencyPaths) == 1 {
-		return dependencyPaths[0]
-	}
-
-	// If there are multiple paths, show the first one and count the rest
-	additionalCount := len(dependencyPaths) - 1
-	if additionalCount == 1 {
-		return fmt.Sprintf("%s and %s other path", dependencyPaths[0], pathCountStyle.Render("1"))
-	}
-	return fmt.Sprintf("%s and %s other paths", dependencyPaths[0], pathCountStyle.Render(strconv.Itoa(additionalCount)))
+	return paths
 }
 
 // getIntroducedBy returns the direct dependency that introduced the vulnerability.
@@ -507,7 +491,8 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 	defaultMap["sortFindingBy"] = sortFindingBy
 	defaultMap["getFieldValueFrom"] = getFieldValueFrom
 	defaultMap["getVulnInfoURL"] = getVulnInfoURL
-	defaultMap["getIntroducedThroughWithCount"] = GetIntroducedThroughWithCount
+	defaultMap["getIntroducedThroughPaths"] = GetIntroducedThroughPaths
+
 	defaultMap["getIntroducedBy"] = getIntroducedBy
 	defaultMap["getReachability"] = getReachability
 	defaultMap["filterFinding"] = filterFinding
@@ -521,6 +506,7 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 	defaultMap["sub"] = sub
 	defaultMap["reverse"] = reverse
 	defaultMap["join"] = strings.Join
+	defaultMap["formatPathsCount"] = FormatPathsCount
 	defaultMap["formatDatetime"] = formatDatetime
 	defaultMap["getSourceLocation"] = getSourceLocation
 	defaultMap["getFindingId"] = getFindingID
@@ -535,7 +521,8 @@ func getDefaultTemplateFuncMap(config configuration.Configuration, ri runtimeinf
 	defaultMap["getIssueCountsIgnored"] = getIssueCountsIgnored
 
 	// This will compute the OS specific remediation summary
-	defaultMap["getRemediationIntroducedByWithCount"] = getRemediationIntroducedByWithCount
+	defaultMap["getRemediationIntroducedByPaths"] = getRemediationIntroducedByPaths
+
 	defaultMap["getRemediationSummary"] = func(findings []testapi.FindingData) remediation.Summary {
 		remFindings, err := remediation.ShimFindingsToRemediationFindings(findings)
 		if err != nil {

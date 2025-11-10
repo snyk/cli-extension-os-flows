@@ -6,8 +6,15 @@
 			{{- with (getIntroducedBy .) }}
    Introduced by: {{ . }}
 			{{- end }}
-			{{- with (getIntroducedThroughWithCount .) }}
-   Introduced through: {{ . }}
+			{{- $paths := getIntroducedThroughPaths . }}
+			{{- $showPaths := getValueFromConfig "show-vulnerable-paths" }}
+			{{- if and $paths (ne $showPaths "none") }}
+   Introduced through:{{- if eq $showPaths "all" }}
+				{{- range $paths }}
+   {{ . -}}
+				{{- end }}
+			{{- else }} {{ index $paths 0 }}{{ formatPathsCount $paths }}
+			{{- end }}
 			{{- end }}
 
 			{{- if not (isLicenseFinding .) }}
@@ -166,7 +173,18 @@
 
 {{- define "remediationDetails" }}
 {{- printf "  ✗ %s %s in %s\n"  (printf "%s %s" (.Vulnerability.Name | bold) (printf "[%s Severity]" (.Vulnerability.Severity | capitalize) | renderInSeverityColor) | renderInSeverityColor) (printf "[https://security.snyk.io/vuln/%s]" .Vulnerability.ID) (.VulnerablePackage.Name | bold) -}}
-{{- printf "    introduced by %s\n" (getRemediationIntroducedByWithCount .) -}}
+  {{- $paths := getRemediationIntroducedByPaths . }}
+  {{- $showPaths := getValueFromConfig "show-vulnerable-paths" }}
+  {{- if and $paths (ne $showPaths "none") -}}
+    {{- if eq $showPaths "all" -}}
+      {{- printf "    introduced by\n" -}}
+			{{- range $paths -}}
+        {{- printf "    %s\n" . -}}
+			{{- end -}}
+    {{- else -}}
+			{{- printf "    introduced by %s%s\n" (index $paths 0) (formatPathsCount $paths) -}}
+    {{- end }}
+  {{- end }}
 {{- end }}
 
 {{- define "main" }}
