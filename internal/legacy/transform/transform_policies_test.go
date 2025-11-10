@@ -1,9 +1,6 @@
 package transform_test
 
 import (
-	"encoding/json"
-	"os"
-	"slices"
 	"testing"
 
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
@@ -14,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/utils"
 )
 
@@ -38,7 +34,8 @@ func TestProjectLevelIgnore(t *testing.T) {
 	assert.Equal(t, true, *ignored.DisregardIfFixable)
 	require.NotNil(t, ignored.ReasonType)
 	assert.Equal(t, "temporary-ignore", *ignored.ReasonType)
-	assert.Equal(t, "2025-11-08T00:00:00Z", ignored.Expires)
+	require.NotNil(t, ignored.Expires)
+	assert.Equal(t, "2025-11-08T00:00:00Z", *ignored.Expires)
 	require.Len(t, ignored.Path, 1)
 	assert.Equal(t, map[string]string{"module": "*"}, ignored.Path[0])
 	assert.Equal(t, "0b515878-ae96-4c25-8389-d63cc552990e", ignored.IgnoredBy.Id)
@@ -46,6 +43,8 @@ func TestProjectLevelIgnore(t *testing.T) {
 	require.NotNil(t, ignored.IgnoredBy.Email)
 	assert.Equal(t, "first.last@snyk.io", *ignored.IgnoredBy.Email)
 	assert.Equal(t, false, ignored.IgnoredBy.IsGroupPolicy)
+
+	assert.Nil(t, vuln.Ignores)
 }
 
 func TestGroupLevelIgnore(t *testing.T) {
@@ -67,6 +66,7 @@ func TestGroupLevelIgnore(t *testing.T) {
 	assert.Equal(t, "wont-fix", *ignored.ReasonType)
 	assert.Equal(t, "unknown", ignored.Source)
 	assert.Equal(t, "2025-10-27T17:31:19.674Z", ignored.Created)
+	assert.Nil(t, ignored.Expires)
 	assert.False(t, *ignored.DisregardIfFixable)
 
 	require.Len(t, ignored.Path, 1)
@@ -120,6 +120,22 @@ func TestGroupLevelIgnore(t *testing.T) {
 	assert.Equal(t, "Ignored by security policy", vuln.SecurityPolicyMetaData.Ignore.IgnoredBy.Name)
 	assert.Nil(t, vuln.SecurityPolicyMetaData.Ignore.IgnoredBy.Email)
 	assert.True(t, vuln.SecurityPolicyMetaData.Ignore.IgnoredBy.IsGroupPolicy)
+
+	require.NotNil(t, vuln.Ignores)
+	ignores := *vuln.Ignores
+	require.Len(t, ignores, 1)
+	require.Len(t, ignores[0].Path, 1)
+	assert.Equal(t, map[string]string{"module": "*"}, ignores[0].Path[0])
+	assert.Equal(t, "vuln ignored by group policy for test reasons", ignores[0].Reason)
+	require.NotNil(t, ignores[0].ReasonType)
+	assert.Equal(t, "wont-fix", *ignores[0].ReasonType)
+	assert.Equal(t, "unknown", ignores[0].Source)
+	assert.Equal(t, "2025-10-27T17:31:19.674Z", ignores[0].Created)
+	assert.False(t, *ignores[0].DisregardIfFixable)
+	assert.Equal(t, "3cc427b2-35dc-4ce7-bd12-b7ea95d01f68", ignores[0].IgnoredBy.Id)
+	assert.Equal(t, "Ignored by security policy", ignores[0].IgnoredBy.Name)
+	assert.Nil(t, ignores[0].IgnoredBy.Email)
+	assert.True(t, ignores[0].IgnoredBy.IsGroupPolicy)
 }
 
 func TestDotSnykFileIgnore(t *testing.T) {
@@ -137,13 +153,16 @@ func TestDotSnykFileIgnore(t *testing.T) {
 	ignored := (*vuln.Filtered.Ignored)[0]
 	assert.Equal(t, "cli", ignored.Source)
 	assert.Equal(t, "2023-11-30T17:31:05.884Z", ignored.Created)
-	assert.Equal(t, "2025-12-30T17:31:05.877Z", ignored.Expires)
+	require.NotNil(t, ignored.Expires)
+	assert.Equal(t, "2025-12-30T17:31:05.877Z", *ignored.Expires)
 	assert.Equal(t, "there is no fix available", ignored.Reason)
 	require.Len(t, ignored.Path, 1)
 	assert.Equal(t, "*", ignored.Path[0])
 	assert.Nil(t, ignored.ReasonType)
 	assert.Nil(t, ignored.DisregardIfFixable)
 	assert.Nil(t, ignored.IgnoredBy)
+
+	assert.Empty(t, vuln.Ignores)
 }
 
 func TestSeverityChange(t *testing.T) {
@@ -255,28 +274,7 @@ func TestMultiplePolicies(t *testing.T) {
 	assert.Equal(t, "Ignored by security policy", vuln.SecurityPolicyMetaData.Ignore.IgnoredBy.Name)
 	assert.Nil(t, vuln.SecurityPolicyMetaData.Ignore.IgnoredBy.Email)
 	assert.True(t, vuln.SecurityPolicyMetaData.Ignore.IgnoredBy.IsGroupPolicy)
-}
 
-func loadFindings(t *testing.T, path string) []testapi.FindingData {
-	t.Helper()
-	buf, err := os.ReadFile(path)
-	require.NoError(t, err)
-
-	var response FindingsResponse
-	err = json.Unmarshal(buf, &response)
-	require.NoError(t, err)
-
-	return response.Data
-}
-
-type FindingsResponse struct {
-	Data []testapi.FindingData `json:"data"`
-}
-
-//nolint:unparam // vulnID is always the same in tests but keeping parameter for clarity
-func findByID(vulnID string, vulns []definitions.Vulnerability) definitions.Vulnerability {
-	index := slices.IndexFunc(vulns, func(vuln definitions.Vulnerability) bool {
-		return vuln.Id == vulnID
-	})
-	return vulns[index]
+	require.NotNil(t, vuln.Ignores)
+	require.Len(t, *vuln.Ignores, 1)
 }

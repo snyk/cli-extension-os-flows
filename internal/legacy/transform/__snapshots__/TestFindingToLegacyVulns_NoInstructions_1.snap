@@ -20,6 +20,7 @@
         FunctionsNew:           (*[]definitions.NewFunctionInfo)(nil),
         Id:                     "snyk:lic:pip:mit-pkg:MIT",
         Identifiers:            (*definitions.Identifiers)(nil),
+        Ignores:                (*[]definitions.VulnFilteredIgnored)(nil),
         Insights:               (*definitions.Insights)(nil),
         IsDisputed:             (*bool)(nil),
         IsIgnored:              (*bool)(nil),
@@ -48,6 +49,7 @@
         RiskScore:              (*uint16)(nil),
         SecurityPolicyMetaData: (*definitions.SecurityPolicyMetaData)(nil),
         Semver:                 &definitions.SemVerInfo{
+            HashRange:        (*[]string)(nil),
             Vulnerable:       {">=3.0.0"},
             VulnerableHashes: (*[]string)(nil),
         },
@@ -57,7 +59,8 @@
         SocialTrendAlert:     (*bool)(nil),
         Title:                "MIT license",
         Type:                 &"license",
-        UpgradePath:          nil,
-        Version:              "3.2.1",
+        UpgradePath:          {
+        },
+        Version: "3.2.1",
     },
 }

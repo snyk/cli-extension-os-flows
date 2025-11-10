@@ -304,6 +304,7 @@ type SecurityPolicyMetaData struct {
 
 // SemVerInfo defines model for SemVerInfo.
 type SemVerInfo struct {
+	HashRange        *[]string `json:"hashRange,omitempty"`
 	Vulnerable       []string  `json:"vulnerable"`
 	VulnerableHashes *[]string `json:"vulnerableHashes,omitempty"`
 }
@@ -347,7 +348,7 @@ type VulnFiltered struct {
 type VulnFilteredIgnored struct {
 	Created            string                 `json:"created"`
 	DisregardIfFixable *bool                  `json:"disregardIfFixable,omitempty"`
-	Expires            string                 `json:"expires"`
+	Expires            *string                `json:"expires,omitempty"`
 	IgnoredBy          *VulnFilteredIgnoredBy `json:"ignoredBy,omitempty"`
 	Path               []interface{}          `json:"path"`
 	Reason             string                 `json:"reason"`
@@ -375,7 +376,7 @@ type Vulnerability struct {
 	CvssSources            *[]CVSSSource                    `json:"cvssSources,omitempty"`
 	Description            string                           `json:"description"`
 	DisclosureTime         *string                          `json:"disclosureTime,omitempty"`
-	EpssDetails            *EPSSDetails                     `json:"epssDetails"`
+	EpssDetails            *EPSSDetails                     `json:"epssDetails,omitempty"`
 	Exploit                *string                          `json:"exploit,omitempty"`
 	ExploitDetails         *ExploitDetails                  `json:"exploitDetails,omitempty"`
 	Filtered               *VulnFiltered                    `json:"filtered,omitempty"`
@@ -385,6 +386,7 @@ type Vulnerability struct {
 	FunctionsNew           *[]NewFunctionInfo               `json:"functions_new,omitempty"`
 	Id                     string                           `json:"id"`
 	Identifiers            *Identifiers                     `json:"identifiers,omitempty"`
+	Ignores                *[]VulnFilteredIgnored           `json:"ignores,omitempty"`
 	Insights               *Insights                        `json:"insights,omitempty"`
 	IsDisputed             *bool                            `json:"isDisputed,omitempty"`
 	IsIgnored              *bool                            `json:"isIgnored,omitempty"`
