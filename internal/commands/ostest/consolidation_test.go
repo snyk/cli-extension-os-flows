@@ -180,7 +180,7 @@ func Test_consolidateFindings(t *testing.T) {
 	})
 }
 
-func Test_getIntroducedThroughWithCount(t *testing.T) {
+func Test_getIntroducedThroughPaths(t *testing.T) {
 	t.Run("returns single path when only one dependency path exists", func(t *testing.T) {
 		finding := testapi.FindingData{
 			Attributes: &testapi.FindingAttributes{
@@ -190,11 +190,12 @@ func Test_getIntroducedThroughWithCount(t *testing.T) {
 			},
 		}
 
-		result := presenters.GetIntroducedThroughWithCount(finding)
-		assert.Equal(t, "package1@1.0.0 > package2@2.0.0", result)
+		result := presenters.GetIntroducedThroughPaths(finding)
+		expected := []string{"package1@1.0.0 > package2@2.0.0"}
+		assert.Equal(t, expected, result)
 	})
 
-	t.Run("returns path with count when multiple dependency paths exist", func(t *testing.T) {
+	t.Run("returns multiple paths when they exist", func(t *testing.T) {
 		finding := testapi.FindingData{
 			Attributes: &testapi.FindingAttributes{
 				Evidence: []testapi.Evidence{
@@ -205,42 +206,33 @@ func Test_getIntroducedThroughWithCount(t *testing.T) {
 			},
 		}
 
-		result := presenters.GetIntroducedThroughWithCount(finding)
-		assert.Equal(t, "package1@1.0.0 > package2@2.0.0 and 2 other paths", result)
-	})
-
-	t.Run("returns path with singular count for exactly 2 paths", func(t *testing.T) {
-		finding := testapi.FindingData{
-			Attributes: &testapi.FindingAttributes{
-				Evidence: []testapi.Evidence{
-					createDependencyPathEvidence("package1@1.0.0", "package2@2.0.0"),
-					createDependencyPathEvidence("package3@3.0.0", "package4@4.0.0"),
-				},
-			},
+		result := presenters.GetIntroducedThroughPaths(finding)
+		expected := []string{
+			"package1@1.0.0 > package2@2.0.0",
+			"package3@3.0.0 > package4@4.0.0",
+			"package5@5.0.0 > package6@6.0.0",
 		}
-
-		result := presenters.GetIntroducedThroughWithCount(finding)
-		assert.Equal(t, "package1@1.0.0 > package2@2.0.0 and 1 other path", result)
+		assert.Equal(t, expected, result)
 	})
 
-	t.Run("returns empty string when no dependency paths exist", func(t *testing.T) {
+	t.Run("returns nil when no dependency paths exist", func(t *testing.T) {
 		finding := testapi.FindingData{
 			Attributes: &testapi.FindingAttributes{
 				Evidence: []testapi.Evidence{},
 			},
 		}
 
-		result := presenters.GetIntroducedThroughWithCount(finding)
-		assert.Equal(t, "", result)
+		result := presenters.GetIntroducedThroughPaths(finding)
+		assert.Nil(t, result)
 	})
 
-	t.Run("returns empty string when attributes are nil", func(t *testing.T) {
+	t.Run("returns nil when attributes are nil", func(t *testing.T) {
 		finding := testapi.FindingData{
 			Attributes: nil,
 		}
 
-		result := presenters.GetIntroducedThroughWithCount(finding)
-		assert.Equal(t, "", result)
+		result := presenters.GetIntroducedThroughPaths(finding)
+		assert.Nil(t, result)
 	})
 
 	t.Run("handles mixed evidence types correctly", func(t *testing.T) {
@@ -254,8 +246,35 @@ func Test_getIntroducedThroughWithCount(t *testing.T) {
 			},
 		}
 
-		result := presenters.GetIntroducedThroughWithCount(finding)
-		assert.Equal(t, "package1@1.0.0 > package2@2.0.0 and 1 other path", result)
+		result := presenters.GetIntroducedThroughPaths(finding)
+		expected := []string{
+			"package1@1.0.0 > package2@2.0.0",
+			"package3@3.0.0 > package4@4.0.0",
+		}
+		assert.Equal(t, expected, result)
+	})
+}
+
+func Test_formatPathsCount(t *testing.T) {
+	t.Run("returns empty string for zero paths", func(t *testing.T) {
+		result := presenters.FormatPathsCount([]string{})
+		assert.Equal(t, "", result)
+	})
+
+	t.Run("returns empty string for single path", func(t *testing.T) {
+		result := presenters.FormatPathsCount([]string{"path1"})
+		assert.Equal(t, "", result)
+	})
+
+	t.Run("returns singular for two paths", func(t *testing.T) {
+		result := presenters.FormatPathsCount([]string{"path1", "path2"})
+		assert.Contains(t, result, "1 other path")
+		assert.NotContains(t, result, "paths")
+	})
+
+	t.Run("returns plural for multiple paths", func(t *testing.T) {
+		result := presenters.FormatPathsCount([]string{"path1", "path2", "path3"})
+		assert.Contains(t, result, "2 other paths")
 	})
 }
 
