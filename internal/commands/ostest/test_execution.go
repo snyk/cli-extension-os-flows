@@ -267,6 +267,7 @@ func prepareOutput(
 				PackageManager:       params.PackageManager,
 				ProjectName:          params.ProjectName,
 				DisplayTargetFile:    params.DisplayTargetFile,
+				TargetDirectory:      params.TargetDir,
 				UniqueCount:          params.UniqueCount,
 				VulnerablePathsCount: vulnerablePathsCount,
 			}

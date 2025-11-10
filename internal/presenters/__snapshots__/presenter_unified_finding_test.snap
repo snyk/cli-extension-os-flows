@@ -1,6 +1,6 @@
 [TestUnifiedFindingPresenter_CliOutput/snapshot_test_of_human-readable_output - 1]
 
-Testing  ...
+Testing some-directory (package.json) ...
 
 Security issues: 1
 
@@ -34,7 +34,7 @@ Issues with no direct upgrade or patch:
 │                                                         │
 │   Organization:                                         │
 │   Test type:         open-source                        │
-│   Project path:                                         │
+│   Project path:      test/path                          │
 │                                                         │
 │   Total security issues: 1                              │
 │   Ignored: 0 [ 0 CRITICAL  0 HIGH  0 MEDIUM  0 LOW ]    │
@@ -76,7 +76,7 @@ Issues with no direct upgrade or patch:
 │                                                         │
 │   Organization:                                         │
 │   Test type:         open-source                        │
-│   Project path:                                         │
+│   Project path:      test/path                          │
 │                                                         │
 │   Total license issues: 1                               │
 │   Ignored: 0 [ 0 CRITICAL  0 HIGH  0 MEDIUM  0 LOW ]    │
@@ -111,12 +111,49 @@ Issues with no direct upgrade or patch:
 │                                                         │
 │   Organization:                                         │
 │   Test type:         open-source                        │
-│   Project path:                                         │
+│   Project path:      test/path                          │
 │                                                         │
 │   Total license issues: 1                               │
 │   Ignored: 0 [ 0 CRITICAL  0 HIGH  0 MEDIUM  0 LOW ]    │
 │   Open   : 1 [ 0 CRITICAL  0 HIGH  1 MEDIUM  0 LOW ]    │
 ╰─────────────────────────────────────────────────────────╯
+💡 Tip
+
+   To view ignored issues, use the --include-ignores option.
+                                                            
+
+---
+
+[TestUnifiedFindingPresenter_CliOutput/snapshot_test_with_multiple_results - 1]
+
+Testing some-project (package.json) ...
+
+╭──────────────────────────────────────╮
+│ Test Summary                         │
+│                                      │
+│   Organization:                      │
+│   Test type:         open-source     │
+│   Project path:      some-project    │
+│                                      │
+│   Total issues: 0                    │
+╰──────────────────────────────────────╯
+💡 Tip
+
+   To view ignored issues, use the --include-ignores option.
+                                                            
+─────────────────────────────────────────────────────
+
+Testing another-project (requirements.txt) ...
+
+╭─────────────────────────────────────────╮
+│ Test Summary                            │
+│                                         │
+│   Organization:                         │
+│   Test type:         open-source        │
+│   Project path:      another-project    │
+│                                         │
+│   Total issues: 0                       │
+╰─────────────────────────────────────────╯
 💡 Tip
 
    To view ignored issues, use the --include-ignores option.
