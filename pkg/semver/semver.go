@@ -2,6 +2,7 @@ package semver
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
 
 	composersemver "github.com/snyk/cli-extension-os-flows/pkg/semver/composer"
@@ -14,33 +15,35 @@ import (
 	unmanagedsemver "github.com/snyk/cli-extension-os-flows/pkg/semver/unmanaged"
 )
 
+var PoolSize = int32(runtime.NumCPU())
+
 var (
 	NPM = sync.OnceValues(func() (shared.Runtime, error) {
-		return npmsemver.New()
+		return shared.NewConcurrentRuntime(npmsemver.New, PoolSize)
 	})
 
 	Ruby = sync.OnceValues(func() (shared.Runtime, error) {
-		return rubysemver.New()
+		return shared.NewConcurrentRuntime(rubysemver.New, PoolSize)
 	})
 
 	Maven = sync.OnceValues(func() (shared.Runtime, error) {
-		return mavensemver.New()
+		return shared.NewConcurrentRuntime(mavensemver.New, PoolSize)
 	})
 
 	Golang = sync.OnceValues(func() (shared.Runtime, error) {
-		return golangsemver.New()
+		return shared.NewConcurrentRuntime(golangsemver.New, PoolSize)
 	})
 
 	Composer = sync.OnceValues(func() (shared.Runtime, error) {
-		return composersemver.New()
+		return shared.NewConcurrentRuntime(composersemver.New, PoolSize)
 	})
 
 	Nuget = sync.OnceValues(func() (shared.Runtime, error) {
-		return nugetsemver.New()
+		return shared.NewConcurrentRuntime(nugetsemver.New, PoolSize)
 	})
 
 	Unmanaged = sync.OnceValues(func() (shared.Runtime, error) {
-		return unmanagedsemver.New()
+		return shared.NewConcurrentRuntime(unmanagedsemver.New, PoolSize)
 	})
 )
 

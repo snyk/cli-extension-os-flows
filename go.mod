@@ -11,6 +11,7 @@ require (
 	github.com/gkampitakis/go-snaps v0.5.14
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
+	github.com/jackc/puddle/v2 v2.2.2
 	github.com/muesli/termenv v0.16.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/puzpuzpuz/xsync v1.5.2
