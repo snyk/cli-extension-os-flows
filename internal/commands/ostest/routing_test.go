@@ -487,7 +487,7 @@ func Test_RouteToFlow_ReachabilityFlow(t *testing.T) {
 				return ctx
 			},
 			orgID:               orgID,
-			expectErrorContains: "The feature you are trying to use is not available for your organization.",
+			expectErrorContains: "Reachability settings not enabled",
 		},
 		"--reachability should fail when reachability settings are disabled": {
 			ctx: func(ctx context.Context) context.Context {

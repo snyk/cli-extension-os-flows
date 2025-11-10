@@ -634,7 +634,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			setup: func(config configuration.Configuration, _ *mocks.MockEngine) {
 				config.Set(flags.FlagReachability, true)
 			},
-			expectedError: "The feature you are trying to use is not available for your organization",
+			expectedError: "Reachability settings not enabled",
 		},
 		{
 			name: "UV test flow enabled with uv.lock file should use depgraph workflow with SBOM resolution",
