@@ -44,9 +44,10 @@ func TestResolvePolicyFile_NonexistentFile(t *testing.T) {
 	ctx := cmdctx.WithConfig(t.Context(), cfg)
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 
-	_, err := util.GetLocalPolicy(ctx, ".")
+	policy, err := util.GetLocalPolicy(ctx, ".")
 
-	assert.ErrorContains(t, err, "failed to resolve local policy file")
+	assert.NoError(t, err)
+	assert.Nil(t, policy)
 }
 
 func TestResolvePolicyFile_WithDirectoryPath(t *testing.T) {
