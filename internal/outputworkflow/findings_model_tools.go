@@ -79,7 +79,6 @@ func getUnifiedProjectResults(input []workflow.Data, debugLogger *zerolog.Logger
 				PackageManager:       summaryPayload.PackageManager,
 				ProjectName:          summaryPayload.ProjectName,
 				DisplayTargetFile:    summaryPayload.DisplayTargetFile,
-				UniqueCount:          int(summaryPayload.UniqueCount),
 				VulnerablePathsCount: summaryPayload.VulnerablePathsCount,
 				TargetDirectory:      summaryPayload.TargetDirectory,
 			}

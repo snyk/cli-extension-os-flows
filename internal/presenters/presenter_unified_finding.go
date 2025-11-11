@@ -48,7 +48,6 @@ type UnifiedProjectResult struct {
 	ProjectName          string
 	DisplayTargetFile    string
 	TargetDirectory      string
-	UniqueCount          int
 	VulnerablePathsCount int
 }
 
@@ -59,7 +58,6 @@ type SummaryPayload struct {
 	PackageManager       string                    `json:"packageManager"`
 	ProjectName          string                    `json:"projectName"`
 	DisplayTargetFile    string                    `json:"displayTargetFile"`
-	UniqueCount          int32                     `json:"uniqueCount"`
 	VulnerablePathsCount int                       `json:"vulnerablePathsCount"`
 	TargetDirectory      string                    `json:"-"`
 }

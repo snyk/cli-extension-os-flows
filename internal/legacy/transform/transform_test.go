@@ -946,3 +946,15 @@ func TestFindingToLegacyVulns_NoInstructions(t *testing.T) {
 
 	snaps.MatchStandaloneSnapshot(t, vulns)
 }
+
+func TestUniqueCount(t *testing.T) {
+	vulns := []definitions.Vulnerability{
+		{Id: "SNYK-TEST-ID-1"},
+		{Id: "SNYK-TEST-ID-2"},
+		{Id: "SNYK-TEST-ID-1"},
+	}
+
+	count := transform.UniqueCount(vulns)
+
+	assert.Equal(t, int32(2), count)
+}
