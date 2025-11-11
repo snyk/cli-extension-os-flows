@@ -73,8 +73,6 @@ func RunTest(
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to consolidate findings: %w", err)
 	}
-	//nolint:gosec // G115: integer overflow is not a concern here
-	uniqueCount := int32(len(consolidatedFindings))
 
 	// The summary is always needed for the exit code calculation.
 	standardSummary, summaryData, summaryErr := NewSummaryDataFromFindings(consolidatedFindings, targetDir)
@@ -107,7 +105,6 @@ func RunTest(
 		ProjectName:        projectName,
 		PackageManager:     packageManager,
 		TargetDir:          targetDir,
-		UniqueCount:        uniqueCount,
 		DepCount:           depCount,
 		TargetFile:         targetFile,
 		DisplayTargetFile:  displayTargetFile,
@@ -268,7 +265,6 @@ func prepareOutput(
 				ProjectName:          params.ProjectName,
 				DisplayTargetFile:    params.DisplayTargetFile,
 				TargetDirectory:      params.TargetDir,
-				UniqueCount:          params.UniqueCount,
 				VulnerablePathsCount: vulnerablePathsCount,
 			}
 

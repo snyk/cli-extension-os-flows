@@ -36,7 +36,6 @@ type SnykSchemaToLegacyParams struct {
 	ProjectName        string
 	PackageManager     string
 	TargetDir          string
-	UniqueCount        int32
 	DepCount           int
 	TargetFile         string
 	DisplayTargetFile  string
@@ -68,7 +67,7 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 		PackageManager:    params.PackageManager,
 		TargetFile:        &params.TargetFile,
 		DisplayTargetFile: params.DisplayTargetFile,
-		UniqueCount:       params.UniqueCount,
+		UniqueCount:       UniqueCount(vulnReport.Vulnerabilities),
 		DependencyCount:   int64(params.DepCount),
 		Vulnerabilities:   vulnReport.Vulnerabilities,
 		Ok:                len(params.Findings) == 0,
@@ -77,7 +76,7 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 			Patch:  make([]string, 0),
 		},
 	}
-	totalVulnCount := len(vulnReport.Ignored) + len(vulnReport.Vulnerabilities)
+	totalVulnCount := len(allVulnerabilities)
 	switch totalVulnCount {
 	case 0:
 		res.Summary = "No known vulnerabilities"
@@ -109,6 +108,15 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 	res.Policy = policyStr
 
 	return &res, nil
+}
+
+// UniqueCount computes the number of unique vulnerabilities according to ID.
+func UniqueCount(vulnerabilities []definitions.Vulnerability) int32 {
+	uniques := map[string]bool{}
+	for i := range vulnerabilities {
+		uniques[vulnerabilities[i].Id] = true
+	}
+	return int32(len(uniques)) //nolint:gosec // G115: integer overflow is not a concern here
 }
 
 // FindingsToLegacyVulns converts a slice of snyk schema findings into a slice of legacy vulnerabilities.

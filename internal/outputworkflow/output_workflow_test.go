@@ -203,7 +203,6 @@ func TestUnifiedFindingsHandling_renderFilesAndUI(t *testing.T) {
 		PackageManager:    "npm",
 		ProjectName:       "test-project",
 		DisplayTargetFile: "package.json",
-		UniqueCount:       1,
 	}
 	summaryBytes, err := json.Marshal(summaryPayload)
 	assert.NoError(t, err)
