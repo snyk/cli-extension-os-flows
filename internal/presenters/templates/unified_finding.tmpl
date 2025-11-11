@@ -96,7 +96,7 @@
 {{- end}}{{/* end "details" */}}
 
 {{define "header" }}
-{{ $displayPath := constructDisplayPath .DisplayTargetFile -}}
+{{ $displayPath := constructDisplayPath .TargetDirectory .DisplayTargetFile -}}
 {{ print "Testing " $displayPath " ..." | bold }}
 {{end }}
 
@@ -104,7 +104,7 @@
 
   Organization:      {{ getValueFromConfig "internal_org_slug" }}
   Test type:         {{ if eq .Summary.Type "sast" }}Static code analysis{{else}}{{ .Summary.Type }}{{ end}}
-  Project path:      {{ getValueFromConfig "targetDirectory" }}
+  Project path:      {{ .Summary.Path }}
 
   {{- $vulnResults := getSummaryResultsByIssueType "vulnerability" .Findings .Summary.SeverityOrderAsc }}
   {{- $licenseResults := getSummaryResultsByIssueType "license" .Findings .Summary.SeverityOrderAsc }}
@@ -188,23 +188,27 @@
 {{- end }}
 
 {{- define "main" }}
-{{- range .Results}}
-    {{- template "header"  . }}
+{{- range $i, $result := .Results}}
+    {{- if gt $i 0 }}
+        {{- divider }}
+    {{- end }}
 
-    {{- $openFindings := .Findings | filterFinding (isOpenFinding) }}
+    {{- template "header" $result }}
+
+    {{- $openFindings := $result.Findings | filterFinding (isOpenFinding) }}
     {{- $openIssuesCount := len $openFindings }}
 
-    {{- if gt .DependencyCount 0 -}}
+    {{- if gt $result.DependencyCount 0 -}}
         {{- if eq $openIssuesCount 0 -}}
-            {{- printf "\n✔ Tested %d dependencies for known issues, no vulnerable paths found.\n" .DependencyCount | renderGreen -}}
+            {{- printf "\n✔ Tested %d dependencies for known issues, no vulnerable paths found.\n" $result.DependencyCount | renderGreen -}}
         {{- else -}}
-            {{- printf "\nTested %d dependencies for known issues, found %d issues, %d vulnerable paths.\n" .DependencyCount $openIssuesCount .VulnerablePathsCount -}}
+            {{- printf "\nTested %d dependencies for known issues, found %d issues, %d vulnerable paths.\n" $result.DependencyCount $openIssuesCount $result.VulnerablePathsCount -}}
         {{- end -}}
     {{- end }}
 
-    {{- template "details" . }}
+    {{- template "details" $result }}
 
-    {{- $remediationSummary := getRemediationSummary .Findings -}}
+    {{- $remediationSummary := getRemediationSummary $result.Findings -}}
     {{- if gt (len $remediationSummary.Upgrades) 0 -}}
 	{{- "Issues to fix by upgrading:\n" | renderGreen | bold -}}
 	{{- range $upgrade := $remediationSummary.Upgrades -}}
@@ -250,8 +254,6 @@
     {{- end }}
 
 {{- end }}
-
-
 {{- end }} {{/* end main */}}
 
 {{ template "main" . }}

@@ -81,6 +81,7 @@ func getUnifiedProjectResults(input []workflow.Data, debugLogger *zerolog.Logger
 				DisplayTargetFile:    summaryPayload.DisplayTargetFile,
 				UniqueCount:          int(summaryPayload.UniqueCount),
 				VulnerablePathsCount: summaryPayload.VulnerablePathsCount,
+				TargetDirectory:      summaryPayload.TargetDirectory,
 			}
 			projectResults = append(projectResults, projectResult)
 

@@ -47,6 +47,7 @@ type UnifiedProjectResult struct {
 	PackageManager       string
 	ProjectName          string
 	DisplayTargetFile    string
+	TargetDirectory      string
 	UniqueCount          int
 	VulnerablePathsCount int
 }
@@ -60,6 +61,7 @@ type SummaryPayload struct {
 	DisplayTargetFile    string                    `json:"displayTargetFile"`
 	UniqueCount          int32                     `json:"uniqueCount"`
 	VulnerablePathsCount int                       `json:"vulnerablePathsCount"`
+	TargetDirectory      string                    `json:"-"`
 }
 
 // UnifiedFindingPresenter is responsible for rendering unified findings data.

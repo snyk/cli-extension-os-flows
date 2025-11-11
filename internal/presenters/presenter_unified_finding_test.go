@@ -108,7 +108,9 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 		}
 
 		projectResult := &presenters.UnifiedProjectResult{
-			Findings: []testapi.FindingData{licenseFinding},
+			Findings:          []testapi.FindingData{licenseFinding},
+			DisplayTargetFile: "package.json",
+			TargetDirectory:   "some-directory",
 			Summary: &json_schemas.TestSummary{
 				Type:             "open-source",
 				Path:             "test/path",
@@ -130,9 +132,9 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 
 		// execute
 		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		require.NoError(t, err)
 
 		// assert
-		assert.NoError(t, err)
 		output := buffer.String()
 		assert.NotContains(t, output, "Risk Score:")
 	})
@@ -182,9 +184,9 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 
 		// execute
 		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		require.NoError(t, err)
 
 		// assert
-		assert.NoError(t, err)
 		output := buffer.String()
 		assert.Contains(t, output, "Risk Score: 780")
 	})
@@ -394,7 +396,9 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 		}
 
 		projectResult := &presenters.UnifiedProjectResult{
-			Findings: []testapi.FindingData{vulnFinding, licenseFinding},
+			Findings:          []testapi.FindingData{vulnFinding, licenseFinding},
+			DisplayTargetFile: "package.json",
+			TargetDirectory:   "some-directory",
 			Summary: &json_schemas.TestSummary{
 				Type:             "open-source",
 				Path:             "test/path",
@@ -422,9 +426,9 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 
 		// execute
 		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		require.NoError(t, err)
 
 		// assert
-		assert.NoError(t, err)
 		snaps.MatchSnapshot(t, buffer.String())
 	})
 
@@ -852,6 +856,54 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 		assert.Contains(t, out, "Total issues: 0")
 		assert.NotContains(t, out, "Total security issues")
 		assert.NotContains(t, out, "Total license issues")
+	})
+
+	t.Run("snapshot test with multiple results", func(t *testing.T) {
+		config := configuration.New()
+		buffer := &bytes.Buffer{}
+
+		results := []*presenters.UnifiedProjectResult{
+			{
+				Findings:          []testapi.FindingData{},
+				TargetDirectory:   "some-project",
+				DisplayTargetFile: "package.json",
+				Summary: &json_schemas.TestSummary{
+					Type:             "open-source",
+					Path:             "some-project",
+					SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+					Results: []json_schemas.TestSummaryResult{
+						{
+							Severity: "medium",
+							Open:     1,
+							Total:    1,
+						},
+					},
+				},
+			},
+			{
+				Findings:          []testapi.FindingData{},
+				TargetDirectory:   "another-project",
+				DisplayTargetFile: "requirements.txt",
+				Summary: &json_schemas.TestSummary{
+					Type:             "open-source",
+					Path:             "another-project",
+					SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+					Results: []json_schemas.TestSummaryResult{
+						{
+							Severity: "high",
+							Open:     1,
+							Total:    1,
+						},
+					},
+				},
+			},
+		}
+
+		presenter := presenters.NewUnifiedFindingsRenderer(results, config, buffer)
+		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		require.NoError(t, err)
+
+		snaps.MatchSnapshot(t, buffer.String())
 	})
 }
 
