@@ -45,6 +45,10 @@ func resolvePolicyPath(ctx context.Context, inputDir string) (string, error) {
 func normalizePolicyFileName(path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			// if the path does not exist, we assume it to be a file path
+			return path, nil
+		}
 		return "", fmt.Errorf("failed to access %q: %w", path, err)
 	}
 
