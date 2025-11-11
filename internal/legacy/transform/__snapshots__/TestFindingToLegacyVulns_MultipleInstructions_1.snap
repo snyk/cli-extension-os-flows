@@ -20,6 +20,7 @@
         FunctionsNew:           (*[]definitions.NewFunctionInfo)(nil),
         Id:                     "snyk:lic:pip:dual-pkg:GPL-3.0-OR-MIT",
         Identifiers:            (*definitions.Identifiers)(nil),
+        Ignores:                (*[]definitions.VulnFilteredIgnored)(nil),
         Insights:               (*definitions.Insights)(nil),
         IsDisputed:             (*bool)(nil),
         IsIgnored:              (*bool)(nil),
@@ -51,6 +52,7 @@
         RiskScore:              (*uint16)(nil),
         SecurityPolicyMetaData: (*definitions.SecurityPolicyMetaData)(nil),
         Semver:                 &definitions.SemVerInfo{
+            HashRange:        (*[]string)(nil),
             Vulnerable:       {">=1.0.0"},
             VulnerableHashes: (*[]string)(nil),
         },
@@ -60,7 +62,8 @@
         SocialTrendAlert:     (*bool)(nil),
         Title:                "GPL-3.0 OR MIT license",
         Type:                 &"license",
-        UpgradePath:          nil,
-        Version:              "1.0.0",
+        UpgradePath:          {
+        },
+        Version: "1.0.0",
     },
 }

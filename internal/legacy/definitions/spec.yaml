@@ -583,6 +583,10 @@ components:
           type: array
           items:
             type: string
+        hashRange:
+          type: array
+          items:
+            type: string
     Severity:
       type: object
     SeverityChangePolicyRule:
@@ -647,7 +651,6 @@ components:
       type: object
       required:
         - reason
-        - expires
         - created
         - source
         - path
@@ -755,6 +758,10 @@ components:
               - type: boolean
         isIgnored:
           type: boolean
+        ignores:
+          type: array
+          items:
+            $ref: '#/components/schemas/VulnFilteredIgnored'
         isUpgradable:
           type: boolean
         isPatchable:
@@ -791,10 +798,7 @@ components:
         disclosureTime:
           type: string
         epssDetails:
-          type: object
-          allOf:
-            - $ref: '#/components/schemas/EPSSDetails'
-          nullable: true
+          $ref: '#/components/schemas/EPSSDetails'
         exploit:
           type: string
         exploitDetails:

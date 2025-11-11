@@ -1,6 +1,7 @@
 model SemVerInfo {
   vulnerable: string[];
   vulnerableHashes?: string[];
+  hashRange?: string[];
 }
 
 enum VulnerabilityType {
@@ -90,6 +91,7 @@ model Vulnerability {
   reachablePaths?: ReachablePaths;
   upgradePath: UpgradePath[];
   isIgnored?: boolean;
+  ignores?: VulnFilteredIgnored[];
   isUpgradable: boolean;
   isPatchable: boolean;
   isPinnable?: boolean;
@@ -103,7 +105,7 @@ model Vulnerability {
   cvssScore?: float32;
   cvssSources?: CVSSSource[];
   disclosureTime?: string;
-  epssDetails?: EPSSDetails | null;
+  epssDetails?: EPSSDetails;
   exploit?: string;
   exploitDetails?: ExploitDetails;
   fixedIn?: string[];
@@ -213,7 +215,7 @@ model VulnFiltered {
 
 model VulnFilteredIgnored {
   reason: string;
-  expires: string;
+  expires?: string;
   created: string;
   source: string;
   path: unknown[];

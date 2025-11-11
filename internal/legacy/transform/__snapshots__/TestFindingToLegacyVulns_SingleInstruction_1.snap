@@ -20,6 +20,7 @@
         FunctionsNew:           (*[]definitions.NewFunctionInfo)(nil),
         Id:                     "snyk:lic:pip:agpl-pkg:AGPL-3.0",
         Identifiers:            (*definitions.Identifiers)(nil),
+        Ignores:                (*[]definitions.VulnFilteredIgnored)(nil),
         Insights:               (*definitions.Insights)(nil),
         IsDisputed:             (*bool)(nil),
         IsIgnored:              (*bool)(nil),
@@ -50,6 +51,7 @@
         RiskScore:              (*uint16)(nil),
         SecurityPolicyMetaData: (*definitions.SecurityPolicyMetaData)(nil),
         Semver:                 &definitions.SemVerInfo{
+            HashRange:        (*[]string)(nil),
             Vulnerable:       {">=2.0.0"},
             VulnerableHashes: (*[]string)(nil),
         },
@@ -59,7 +61,8 @@
         SocialTrendAlert:     (*bool)(nil),
         Title:                "AGPL-3.0 license",
         Type:                 &"license",
-        UpgradePath:          nil,
-        Version:              "2.5.0",
+        UpgradePath:          {
+        },
+        Version: "2.5.0",
     },
 }

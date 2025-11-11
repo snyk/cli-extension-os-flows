@@ -44,12 +44,14 @@ func processSuppressionForVuln(vuln *definitions.Vulnerability, suppression test
 		vuln.Filtered = buildFiltered(&legacyIgnore)
 		if ignore.Rule != nil {
 			vuln.AppliedPolicyRules = buildAppliedPolicyRules(ignore, &legacyIgnore)
+			vuln.Ignores = &[]definitions.VulnFilteredIgnored{legacyIgnore}
 		}
 		vuln.SecurityPolicyMetaData = buildSecurityPolicyMetaData(&legacyIgnore)
+		vuln.Insights = &definitions.Insights{}
 	} else {
 		vuln.Filtered = buildFiltered(&definitions.VulnFilteredIgnored{
-			Created: formatTime(suppression.CreatedAt, time.RFC3339Nano),
-			Expires: formatTime(suppression.ExpiresAt, time.RFC3339Nano),
+			Created: formatTimeOrBlank(suppression.CreatedAt, time.RFC3339Nano),
+			Expires: formatTimeOrNil(suppression.ExpiresAt, time.RFC3339Nano),
 			Reason:  *suppression.Justification,
 			Path:    buildArrayPath(suppression.Path),
 			Source:  "cli",
@@ -181,8 +183,8 @@ func buildLegacyIgnore(ignore *testapi.IgnoreDetails) definitions.VulnFilteredIg
 	}
 
 	return definitions.VulnFilteredIgnored{
-		Created:            formatTime(ignore.Created, time.RFC3339Nano),
-		Expires:            formatTime(ignore.Expires, time.RFC3339),
+		Created:            formatTimeOrBlank(ignore.Created, time.RFC3339Nano),
+		Expires:            formatTimeOrNil(ignore.Expires, time.RFC3339),
 		DisregardIfFixable: ignore.DisregardIfFixable,
 		ReasonType:         (*string)(ignore.ReasonType),
 		IgnoredBy:          &ignoredBy,
@@ -255,9 +257,16 @@ func ignorePath(ignorePath *[]string) []interface{} {
 	return path
 }
 
-func formatTime(t *time.Time, layout string) string {
+func formatTimeOrBlank(t *time.Time, layout string) string {
 	if t == nil {
 		return ""
 	}
 	return t.Format(layout)
+}
+
+func formatTimeOrNil(t *time.Time, layout string) *string {
+	if t == nil {
+		return nil
+	}
+	return utils.Ptr(t.Format(layout))
 }

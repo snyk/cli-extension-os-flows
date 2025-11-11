@@ -60,6 +60,7 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 	vulnReport := SeparateIgnoredVulnerabilities(allVulnerabilities, false)
 
 	res := definitions.LegacyVulnerabilityResponse{
+		IsPrivate:         true,
 		Org:               params.OrgSlugOrID,
 		ProjectId:         params.ProjectID,
 		ProjectName:       params.ProjectName,
@@ -143,6 +144,7 @@ func FindingToLegacyVulns(
 		Description:          finding.Attributes.Description,
 		Severity:             definitions.VulnerabilitySeverity(finding.Attributes.Rating.Severity),
 		SeverityWithCritical: utils.Ptr(definitions.VulnerabilitySeverity(finding.Attributes.Rating.Severity)),
+		UpgradePath:          make([]definitions.Vulnerability_UpgradePath_Item, 0),
 	}
 	err := processProblemsForVuln(&baseVuln, finding.Attributes.Problems, logger)
 	if err != nil {
@@ -226,11 +228,15 @@ func setBasicVulnInfo(vuln *definitions.Vulnerability, snykProblemVuln *testapi.
 	vuln.ModificationTime = util.Ptr(snykProblemVuln.ModifiedAt.Format(legacyTimeFormat))
 	vuln.PublicationTime = util.Ptr(snykProblemVuln.PublishedAt.Format(legacyTimeFormat))
 	vuln.SocialTrendAlert = &snykProblemVuln.IsSocialMediaTrending
+	vuln.Patches = utils.Ptr([]definitions.PatchInfo{})
+	vuln.Functions = utils.Ptr([]definitions.FunctionInfo{})
 	if len(snykProblemVuln.Credits) > 0 {
 		vuln.Credit = &snykProblemVuln.Credits
 	}
 	if len(snykProblemVuln.InitiallyFixedInVersions) > 0 {
 		vuln.FixedIn = &snykProblemVuln.InitiallyFixedInVersions
+	} else {
+		vuln.FixedIn = utils.Ptr([]string{})
 	}
 }
 
@@ -347,26 +353,9 @@ func setVulnCvssInfo(vuln *definitions.Vulnerability, snykProblemVuln *testapi.S
 }
 
 func setVulnExploitDetails(vuln *definitions.Vulnerability, snykExploitDetails *testapi.SnykvulndbExploitDetails) {
-	if len(snykExploitDetails.Sources) == 0 && len(snykExploitDetails.MaturityLevels) == 0 {
-		return
-	}
-
-	details := &definitions.ExploitDetails{
-		Sources: snykExploitDetails.Sources,
-	}
-
-	if len(snykExploitDetails.MaturityLevels) > 0 {
-		maturityLevels := make([]definitions.ExploitMaturityLevel, 0, len(snykExploitDetails.MaturityLevels))
-		for _, matLevel := range snykExploitDetails.MaturityLevels {
-			maturityLevels = append(maturityLevels, definitions.ExploitMaturityLevel{
-				Format: matLevel.Format,
-				Level:  matLevel.Level,
-				Type:   string(matLevel.Type),
-			})
-		}
-		details.MaturityLevels = maturityLevels
-	}
-	vuln.ExploitDetails = details
+	exploitDetails, exploit := ConvertExploit(snykExploitDetails)
+	vuln.ExploitDetails = exploitDetails
+	vuln.Exploit = exploit
 }
 
 func setVulnEpssDetails(vuln *definitions.Vulnerability, snykEpssDetails *testapi.SnykvulndbEpssDetails) {

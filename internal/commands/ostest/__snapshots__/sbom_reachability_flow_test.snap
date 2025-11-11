@@ -16,7 +16,7 @@
    "disregardFilesystemIgnores": false,
    "reasonRequired": false
   },
-  "isPrivate": false,
+  "isPrivate": true,
   "licensesPolicy": {
    "orgLicenseRules": null,
    "severities": null
@@ -53,11 +53,12 @@
     "cvssScore": 0,
     "description": "Test vulnerability description",
     "disclosureTime": "2025-07-28T17:11:43.000000Z",
-    "epssDetails": null,
+    "fixedIn": [],
     "from": [
      "root@1.0.0",
      "foo@0.0.0"
     ],
+    "functions": [],
     "id": "snyk-vuln-123",
     "isPatchable": false,
     "isUpgradable": true,
@@ -67,6 +68,7 @@
     "name": "foo",
     "packageManager": "npm",
     "packageName": "foo",
+    "patches": [],
     "publicationTime": "2025-07-28T17:11:43.000000Z",
     "reachability": "reachable",
     "riskScore": 80,
