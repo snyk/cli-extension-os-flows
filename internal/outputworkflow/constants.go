@@ -15,6 +15,8 @@ const (
 	DefaultWriter = "default"
 	// DefaultMimeType is a constant for the default mime type.
 	DefaultMimeType = presenters.DefaultMimeType
+	// OutputConfigKeyNoOutput is a constant for the no output configuration key that allows switching off outputs.
+	OutputConfigKeyNoOutput = "no-output"
 )
 
 const (
