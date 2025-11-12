@@ -170,6 +170,19 @@ func timeMustParse(t *testing.T, val string) *time.Time {
 	return &parsed
 }
 
+func TestExtendLocalPolicyFromFindings_LocalPolicyWithNilIgnore(t *testing.T) {
+	ctx := cmdctx.WithLogger(t.Context(), &nopLogger)
+	lp := createTempDotSnykFile(t, `version: v1.25.0\n`)
+
+	var findings testapi.FindingData
+	err := json.Unmarshal(findingWithManagedPolicySuppression, &findings)
+	require.NoError(t, err)
+
+	_, err = transform.ExtendLocalPolicyFromFindings(ctx, lp, []testapi.FindingData{findings})
+
+	require.NoError(t, err)
+}
+
 func createTempDotSnykFile(t *testing.T, contents string) *localpolicy.Policy {
 	t.Helper()
 
