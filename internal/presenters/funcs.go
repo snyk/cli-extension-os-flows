@@ -448,6 +448,7 @@ func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
 	fnMap["hasSuppression"] = hasSuppression
 	fnMap["collectAllFindings"] = collectAllFindings
 	fnMap["summaryData"] = summaryData
+	fnMap["shouldShowAggregateSummary"] = shouldShowAggregateSummary
 	return fnMap
 }
 
@@ -477,6 +478,12 @@ func collectAllFindings(results []*UnifiedProjectResult) []testapi.FindingData {
 	}
 
 	return allFindings
+}
+
+// shouldShowAggregateSummary determines if an aggregate summary should be shown
+// based on the number of results.
+func shouldShowAggregateSummary(results []*UnifiedProjectResult) bool {
+	return len(results) > 1
 }
 
 // getDefaultTemplateFuncMap returns the default template function map.

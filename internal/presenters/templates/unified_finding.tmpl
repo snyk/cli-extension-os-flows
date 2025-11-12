@@ -257,7 +257,7 @@
 
 {{- end }}
 
-{{- if and (gt (len .Results) 1) (eq (getValueFromConfig "all-projects") "true") }}
+{{- if shouldShowAggregateSummary .Results }}
 {{- divider }}
 
 {{- box (renderToString "aggregateSummary" .Results) }}
@@ -272,7 +272,8 @@
   Projects tested:   {{ len . }} projects
 
   {{- $allFindings := collectAllFindings . }}
-  {{- $severityOrder := (index . 0).Summary.SeverityOrderAsc }}
+  {{- $firstResult := index . 0 }}
+  {{- $severityOrder := $firstResult.Summary.SeverityOrderAsc }}
   {{- template "renderIssueCounts" (summaryData $allFindings $severityOrder) }}
 {{- end }} {{/* end aggregateSummary */}}
 

@@ -1333,11 +1333,46 @@ func TestUnifiedFindingPresenter_MultipleProjects_ShouldShowAggregateSummary(t *
 	assert.Equal(t, 4, strings.Count(output, "Test Summary"))
 }
 
-func TestUnifiedFindingPresenter_MultipleProjects_NoAggregateSummaryWithoutFlag(t *testing.T) {
+func TestUnifiedFindingPresenter_SingleProject_NoAggregateSummary(t *testing.T) {
 	config := configuration.New()
 	buffer := &bytes.Buffer{}
 	lipgloss.SetColorProfile(termenv.Ascii)
 
+	highFinding := testapi.FindingData{
+		Id:         util.Ptr(uuid.New()),
+		Type:       util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{Rating: testapi.Rating{Severity: testapi.SeverityHigh}},
+	}
+
+	results := []*presenters.UnifiedProjectResult{
+		{
+			Findings:          []testapi.FindingData{highFinding},
+			TargetDirectory:   "app1",
+			DisplayTargetFile: "package.json",
+			Summary:           &json_schemas.TestSummary{SeverityOrderAsc: []string{"low", "medium", "high", "critical"}},
+		},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer(results, config, buffer)
+	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	require.NoError(t, err)
+
+	output := buffer.String()
+	assert.Contains(t, output, "Testing app1 (package.json)")
+	assert.NotContains(t, output, "Overall Test Summary")
+	assert.Equal(t, 1, strings.Count(output, "Test Summary"))
+}
+
+func TestUnifiedFindingPresenter_MultiplePaths_ShouldShowAggregateSummary(t *testing.T) {
+	config := configuration.New()
+	buffer := &bytes.Buffer{}
+	lipgloss.SetColorProfile(termenv.Ascii)
+
+	criticalFinding := testapi.FindingData{
+		Id:         util.Ptr(uuid.New()),
+		Type:       util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{Rating: testapi.Rating{Severity: testapi.SeverityCritical}},
+	}
 	highFinding := testapi.FindingData{
 		Id:         util.Ptr(uuid.New()),
 		Type:       util.Ptr(testapi.Findings),
@@ -1351,14 +1386,14 @@ func TestUnifiedFindingPresenter_MultipleProjects_NoAggregateSummaryWithoutFlag(
 
 	results := []*presenters.UnifiedProjectResult{
 		{
-			Findings:          []testapi.FindingData{highFinding},
-			TargetDirectory:   "app1",
+			Findings:          []testapi.FindingData{criticalFinding, highFinding},
+			TargetDirectory:   "/path/to/dir1",
 			DisplayTargetFile: "package.json",
 			Summary:           &json_schemas.TestSummary{SeverityOrderAsc: []string{"low", "medium", "high", "critical"}},
 		},
 		{
-			Findings:          []testapi.FindingData{mediumFinding},
-			TargetDirectory:   "app2",
+			Findings:          []testapi.FindingData{mediumFinding, mediumFinding},
+			TargetDirectory:   "/path/to/dir2",
 			DisplayTargetFile: "pom.xml",
 			Summary:           &json_schemas.TestSummary{SeverityOrderAsc: []string{"low", "medium", "high", "critical"}},
 		},
@@ -1369,8 +1404,11 @@ func TestUnifiedFindingPresenter_MultipleProjects_NoAggregateSummaryWithoutFlag(
 	require.NoError(t, err)
 
 	output := buffer.String()
-	assert.Contains(t, output, "Testing app1 (package.json)")
-	assert.Contains(t, output, "Testing app2 (pom.xml)")
-	assert.NotContains(t, output, "Overall Test Summary")
-	assert.Equal(t, 2, strings.Count(output, "Test Summary"))
+	assert.Contains(t, output, "Testing /path/to/dir1 (package.json)")
+	assert.Contains(t, output, "Testing /path/to/dir2 (pom.xml)")
+	assert.Contains(t, output, "Overall Test Summary")
+	assert.Contains(t, output, "2 projects")
+	assert.Contains(t, output, "Total security issues: 4")
+	assert.Contains(t, output, "1 CRITICAL  1 HIGH  2 MEDIUM")
+	assert.Equal(t, 3, strings.Count(output, "Test Summary"))
 }
