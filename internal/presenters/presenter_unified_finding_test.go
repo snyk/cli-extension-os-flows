@@ -3,6 +3,7 @@ package presenters_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
@@ -1273,4 +1274,103 @@ func TestUnifiedFindingPresenter_ShowVulnerablePaths_All(t *testing.T) {
 	assert.Contains(t, out, "root@1.0.0 > dep-a@2.0.0")
 	assert.Contains(t, out, "root@1.0.0 > dep-b@3.0.0")
 	assert.NotContains(t, out, "other path")
+}
+
+func TestUnifiedFindingPresenter_MultipleProjects_ShouldShowAggregateSummary(t *testing.T) {
+	config := configuration.New()
+	config.Set("all-projects", true)
+	buffer := &bytes.Buffer{}
+	lipgloss.SetColorProfile(termenv.Ascii)
+
+	criticalFinding := testapi.FindingData{
+		Id:         util.Ptr(uuid.New()),
+		Type:       util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{Rating: testapi.Rating{Severity: testapi.SeverityCritical}},
+	}
+	highFinding := testapi.FindingData{
+		Id:         util.Ptr(uuid.New()),
+		Type:       util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{Rating: testapi.Rating{Severity: testapi.SeverityHigh}},
+	}
+	mediumFinding := testapi.FindingData{
+		Id:         util.Ptr(uuid.New()),
+		Type:       util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{Rating: testapi.Rating{Severity: testapi.SeverityMedium}},
+	}
+
+	results := []*presenters.UnifiedProjectResult{
+		{
+			Findings:          []testapi.FindingData{criticalFinding, highFinding, highFinding},
+			TargetDirectory:   "frontend",
+			DisplayTargetFile: "package.json",
+			Summary:           &json_schemas.TestSummary{SeverityOrderAsc: []string{"low", "medium", "high", "critical"}},
+		},
+		{
+			Findings:          []testapi.FindingData{highFinding, mediumFinding, mediumFinding, mediumFinding},
+			TargetDirectory:   "backend",
+			DisplayTargetFile: "pom.xml",
+			Summary:           &json_schemas.TestSummary{SeverityOrderAsc: []string{"low", "medium", "high", "critical"}},
+		},
+		{
+			Findings:          []testapi.FindingData{},
+			TargetDirectory:   "api",
+			DisplayTargetFile: "requirements.txt",
+			Summary:           &json_schemas.TestSummary{SeverityOrderAsc: []string{"low", "medium", "high", "critical"}},
+		},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer(results, config, buffer)
+	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	require.NoError(t, err)
+
+	output := buffer.String()
+	assert.Contains(t, output, "Testing frontend (package.json)")
+	assert.Contains(t, output, "Testing backend (pom.xml)")
+	assert.Contains(t, output, "Overall Test Summary")
+	assert.Contains(t, output, "3 projects")
+	assert.Contains(t, output, "Total security issues: 7")
+	assert.Contains(t, output, "1 CRITICAL  3 HIGH  3 MEDIUM")
+	assert.Equal(t, 4, strings.Count(output, "Test Summary"))
+}
+
+func TestUnifiedFindingPresenter_MultipleProjects_NoAggregateSummaryWithoutFlag(t *testing.T) {
+	config := configuration.New()
+	buffer := &bytes.Buffer{}
+	lipgloss.SetColorProfile(termenv.Ascii)
+
+	highFinding := testapi.FindingData{
+		Id:         util.Ptr(uuid.New()),
+		Type:       util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{Rating: testapi.Rating{Severity: testapi.SeverityHigh}},
+	}
+	mediumFinding := testapi.FindingData{
+		Id:         util.Ptr(uuid.New()),
+		Type:       util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{Rating: testapi.Rating{Severity: testapi.SeverityMedium}},
+	}
+
+	results := []*presenters.UnifiedProjectResult{
+		{
+			Findings:          []testapi.FindingData{highFinding},
+			TargetDirectory:   "app1",
+			DisplayTargetFile: "package.json",
+			Summary:           &json_schemas.TestSummary{SeverityOrderAsc: []string{"low", "medium", "high", "critical"}},
+		},
+		{
+			Findings:          []testapi.FindingData{mediumFinding},
+			TargetDirectory:   "app2",
+			DisplayTargetFile: "pom.xml",
+			Summary:           &json_schemas.TestSummary{SeverityOrderAsc: []string{"low", "medium", "high", "critical"}},
+		},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer(results, config, buffer)
+	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	require.NoError(t, err)
+
+	output := buffer.String()
+	assert.Contains(t, output, "Testing app1 (package.json)")
+	assert.Contains(t, output, "Testing app2 (pom.xml)")
+	assert.NotContains(t, output, "Overall Test Summary")
+	assert.Equal(t, 2, strings.Count(output, "Test Summary"))
 }
