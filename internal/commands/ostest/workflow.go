@@ -31,6 +31,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
+	"github.com/snyk/cli-extension-os-flows/internal/instrumentation"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
@@ -300,6 +301,7 @@ func OSWorkflow(
 	ctx = cmdctx.WithLogger(ctx, logger)
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 	ctx = cmdctx.WithProgressBar(ctx, progressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, instrumentation.NewGAFInstrumentation(ictx.GetAnalytics()))
 
 	progressBar.SetTitle("Validating configuration...")
 	//nolint:errcheck // We don't need to fail the command due to UI errors.

@@ -28,6 +28,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/flags"
+	"github.com/snyk/cli-extension-os-flows/internal/mocks"
 )
 
 var orgUUID = uuid.MustParse("8c2def96-233c-41b2-ab52-590c016e81e0")
@@ -86,6 +87,8 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	cfg.Set(configuration.MAX_THREADS, 99)
 
 	logger := zerolog.Nop()
+	mi := mocks.NewMockInstrumentation(ctrl)
+	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
@@ -130,6 +133,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
 	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
 	require.NoError(t, err)
@@ -158,6 +162,8 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 	cfg.Set(flags.FlagAllProjects, true)
 
 	logger := zerolog.Nop()
+	mi := mocks.NewMockInstrumentation(ctrl)
+	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
@@ -198,6 +204,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
 	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
 	require.NoError(t, err)
@@ -224,6 +231,8 @@ func Test_RunUnifiedTestFlow_WithIgnorePolicyFlag(t *testing.T) {
 	cfg.Set(flags.FlagIgnorePolicy, true)
 
 	logger := zerolog.Nop()
+	mi := mocks.NewMockInstrumentation(ctrl)
+	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
@@ -283,6 +292,7 @@ func Test_RunUnifiedTestFlow_WithIgnorePolicyFlag(t *testing.T) {
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
 	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
 	require.NoError(t, err)
@@ -305,6 +315,8 @@ func Test_RunUnifiedTestFlow_WithProjectNameOverride(t *testing.T) {
 	cfg.Set(flags.FlagProjectName, "my-custom-project-name")
 
 	logger := zerolog.Nop()
+	mi := mocks.NewMockInstrumentation(ctrl)
+	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
@@ -364,6 +376,7 @@ func Test_RunUnifiedTestFlow_WithProjectNameOverride(t *testing.T) {
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
 	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
 	require.NoError(t, err)
@@ -386,6 +399,8 @@ func Test_RunUnifiedTestFlow_WithTargetReference(t *testing.T) {
 	cfg.Set(flags.FlagTargetReference, "feature-branch-123")
 
 	logger := zerolog.Nop()
+	mi := mocks.NewMockInstrumentation(ctrl)
+	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
@@ -445,6 +460,7 @@ func Test_RunUnifiedTestFlow_WithTargetReference(t *testing.T) {
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
 	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
 	require.NoError(t, err)
@@ -467,6 +483,7 @@ func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
 	cfg.Set(flags.FlagAllProjects, true)
 
 	logger := zerolog.Nop()
+	mi := mocks.NewMockInstrumentation(ctrl)
 
 	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
@@ -529,6 +546,7 @@ func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
 	ctx = cmdctx.WithLogger(ctx, &logger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
 	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
 	require.Error(t, err)
