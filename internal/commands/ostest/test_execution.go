@@ -233,6 +233,10 @@ func prepareOutput(
 		outputData = append(outputData, testResultData)
 	}
 
+	if cfg.GetBool(outputworkflow.OutputConfigKeyNoOutput) {
+		return nil, outputData, nil
+	}
+
 	wantsJSONStdOut := cfg.GetBool(outputworkflow.OutputConfigKeyJSON)
 	jsonFileOutput := cfg.GetString(outputworkflow.OutputConfigKeyJSONFile)
 	wantsJSONFile := jsonFileOutput != ""
