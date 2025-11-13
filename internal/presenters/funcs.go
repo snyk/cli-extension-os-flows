@@ -446,7 +446,44 @@ func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
 	fnMap["isPendingFinding"] = isPendingFinding
 	fnMap["isIgnoredFinding"] = isIgnoredFinding
 	fnMap["hasSuppression"] = hasSuppression
+	fnMap["collectAllFindings"] = collectAllFindings
+	fnMap["summaryData"] = summaryData
+	fnMap["shouldShowAggregateSummary"] = shouldShowAggregateSummary
 	return fnMap
+}
+
+// SummaryData holds findings and severity order for rendering summary counts.
+type SummaryData struct {
+	Findings      []testapi.FindingData
+	SeverityOrder []string
+}
+
+func summaryData(findings []testapi.FindingData, severityOrder []string) SummaryData {
+	return SummaryData{
+		Findings:      findings,
+		SeverityOrder: severityOrder,
+	}
+}
+
+// collectAllFindings combines findings from multiple project results into a single slice.
+func collectAllFindings(results []*UnifiedProjectResult) []testapi.FindingData {
+	totalFindings := 0
+	for _, result := range results {
+		totalFindings += len(result.Findings)
+	}
+
+	allFindings := make([]testapi.FindingData, 0, totalFindings)
+	for _, result := range results {
+		allFindings = append(allFindings, result.Findings...)
+	}
+
+	return allFindings
+}
+
+// shouldShowAggregateSummary determines if an aggregate summary should be shown
+// based on the number of results.
+func shouldShowAggregateSummary(results []*UnifiedProjectResult) bool {
+	return len(results) > 1
 }
 
 // getDefaultTemplateFuncMap returns the default template function map.

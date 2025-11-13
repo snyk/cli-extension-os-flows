@@ -106,8 +106,12 @@
   Test type:         {{ if eq .Summary.Type "sast" }}Static code analysis{{else}}{{ .Summary.Type }}{{ end}}
   Project path:      {{ .Summary.Path }}
 
-  {{- $vulnResults := getSummaryResultsByIssueType "vulnerability" .Findings .Summary.SeverityOrderAsc }}
-  {{- $licenseResults := getSummaryResultsByIssueType "license" .Findings .Summary.SeverityOrderAsc }}
+  {{- template "renderIssueCounts" (summaryData .Findings .Summary.SeverityOrderAsc) }}
+{{- end }} {{/* end summary */}}
+
+{{- define "renderIssueCounts" }}
+  {{- $vulnResults := getSummaryResultsByIssueType "vulnerability" .Findings .SeverityOrder }}
+  {{- $licenseResults := getSummaryResultsByIssueType "license" .Findings .SeverityOrder }}
 
   {{- if and (eq (len $vulnResults) 0) (eq (len $licenseResults) 0) }}
   {{- "\n" }}
@@ -117,11 +121,10 @@
   {{- if gt (len $vulnResults) 0 }}
 
   Total security issues: {{ getIssueCountsTotal $vulnResults }}
-  {{- $total := getIssueCountsTotal $vulnResults }}
-  {{- $open := getIssueCountsOpen $vulnResults }}
   {{- $ignored := getIssueCountsIgnored $vulnResults }}
+  {{- $open := getIssueCountsOpen $vulnResults }}
   Ignored: {{ $ignored }} [
-  {{- range $severity := .Summary.SeverityOrderAsc | reverse }}
+  {{- range $severity := .SeverityOrder | reverse }}
       {{- $count := 0 }}
       {{- range $res := $vulnResults }}
           {{- if eq $res.Severity $severity }}
@@ -131,7 +134,7 @@
       {{- print " " $count " " $severity " " | toUpperCase | renderInSeverityColor }}
   {{- end}}]
   Open   : {{ $open }} [
-  {{- range $severity := .Summary.SeverityOrderAsc | reverse }}
+  {{- range $severity := .SeverityOrder | reverse }}
       {{- $count := 0 }}
       {{- range $res := $vulnResults }}
           {{- if eq $res.Severity $severity }}
@@ -145,11 +148,10 @@
   {{- if gt (len $licenseResults) 0 }}
 
   Total license issues: {{ getIssueCountsTotal $licenseResults }}
-  {{- $total := getIssueCountsTotal $licenseResults }}
-  {{- $open := getIssueCountsOpen $licenseResults }}
   {{- $ignored := getIssueCountsIgnored $licenseResults }}
+  {{- $open := getIssueCountsOpen $licenseResults }}
   Ignored: {{ $ignored }} [
-  {{- range $severity := .Summary.SeverityOrderAsc | reverse }}
+  {{- range $severity := .SeverityOrder | reverse }}
       {{- $count := 0 }}
       {{- range $res := $licenseResults }}
           {{- if eq $res.Severity $severity }}
@@ -159,7 +161,7 @@
       {{- print " " $count " " $severity " " | toUpperCase | renderInSeverityColor }}
   {{- end}}]
   Open   : {{ $open }} [
-  {{- range $severity := .Summary.SeverityOrderAsc | reverse }}
+  {{- range $severity := .SeverityOrder | reverse }}
       {{- $count := 0 }}
       {{- range $res := $licenseResults }}
           {{- if eq $res.Severity $severity }}
@@ -169,7 +171,7 @@
       {{- print " " $count " " $severity " " | toUpperCase | renderInSeverityColor }}
   {{- end}}]
   {{- end }}
-{{- end }} {{/* end summary */}}
+{{- end }} {{/* end renderIssueCounts */}}
 
 {{- define "remediationDetails" }}
 {{- printf "  ✗ %s %s in %s\n"  (printf "%s %s" (.Vulnerability.Name | bold) (printf "[%s Severity]" (.Vulnerability.Severity | capitalize) | renderInSeverityColor) | renderInSeverityColor) (printf "[https://security.snyk.io/vuln/%s]" .Vulnerability.ID) (.VulnerablePackage.Name | bold) -}}
@@ -254,6 +256,25 @@
     {{- end }}
 
 {{- end }}
+
+{{- if shouldShowAggregateSummary .Results }}
+{{- divider }}
+
+{{- box (renderToString "aggregateSummary" .Results) }}
+{{- end }}
+
 {{- end }} {{/* end main */}}
+
+{{- define "aggregateSummary"}}{{ "Overall Test Summary" | bold }}
+
+  Organization:      {{ getValueFromConfig "internal_org_slug" }}
+  Test type:         open-source
+  Projects tested:   {{ len . }} projects
+
+  {{- $allFindings := collectAllFindings . }}
+  {{- $firstResult := index . 0 }}
+  {{- $severityOrder := $firstResult.Summary.SeverityOrderAsc }}
+  {{- template "renderIssueCounts" (summaryData $allFindings $severityOrder) }}
+{{- end }} {{/* end aggregateSummary */}}
 
 {{ template "main" . }}
