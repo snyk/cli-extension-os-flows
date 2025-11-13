@@ -223,11 +223,11 @@ func getReachability(finding testapi.FindingData) string {
 			case testapi.ReachabilityTypeNoInfo:
 				return "No Path Found"
 			default:
-				return notApplicable
+				return "Not Applicable"
 			}
 		}
 	}
-	return notApplicable
+	return "Not Applicable"
 }
 
 // getFromConfig returns a function that retrieves configuration values.

@@ -10,6 +10,7 @@ Security issues: 1
    Introduced by: root@0.0.0
    Introduced through: root@0.0.0 > foo@1.0.0
    Risk Score: 780
+   Reachability: Not Applicable
 
 
 License issues: 1
@@ -19,6 +20,7 @@ License issues: 1
    Info: https://snyk.io/vuln/snyk:lic:npm:web3-core:LGPL-3.0
    Introduced by: root@0.0.0
    Introduced through: root@0.0.0 > foo@1.0.0
+   Reachability: Not Applicable
    Legal instructions:
    ○ for LGPL-3.0: This license requires source code disclosure when modified.
 
@@ -62,6 +64,7 @@ License issues: 1
    Info: https://snyk.io/vuln/snyk:lic:npm:dual-pkg:GPL-3.0-OR-MIT
    Introduced by: root@0.0.0
    Introduced through: root@0.0.0 > foo@1.0.0
+   Reachability: Not Applicable
    Legal instructions:
    ○ for GPL-3.0: Strong copyleft license. Requires source code disclosure for modifications.
    ○ for MIT: Permissive license. Must include original copyright notice.
@@ -100,6 +103,7 @@ License issues: 1
    Info: https://snyk.io/vuln/snyk:lic:npm:test-pkg:Apache-2.0
    Introduced by: root@0.0.0
    Introduced through: root@0.0.0 > foo@1.0.0
+   Reachability: Not Applicable
 
                                        
 Issues with no direct upgrade or patch:
