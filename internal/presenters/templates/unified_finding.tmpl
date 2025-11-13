@@ -26,10 +26,8 @@
 				{{- end }}
 			{{- end }}
 
-			{{- $reachability := getReachability . -}}
-			{{- if ne $reachability "N/A" }}
+			{{- $reachability := getReachability . }}
    Reachability: {{ $reachability }}
-			{{- end }}
 
 			{{- if isLicenseFinding . }}
 				{{- with (getLicenseInstructions .) }}
