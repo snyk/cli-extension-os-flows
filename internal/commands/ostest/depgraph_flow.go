@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -92,6 +93,7 @@ func RunUnifiedTestFlow(
 	cfg := cmdctx.Config(ctx)
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
+	instrumentation := cmdctx.Instrumentation(ctx)
 
 	logger.Info().Msg("Starting open source test")
 
@@ -121,6 +123,7 @@ func RunUnifiedTestFlow(
 	enrichWithProjectNameOverride(depGraphs, cfg.GetString(flags.FlagProjectName))
 	enrichWithTargetReference(depGraphs, cfg.GetString(flags.FlagTargetReference))
 
+	osAnalysisStart := time.Now()
 	allLegacyFindings, allOutputData, err := testAllDepGraphs(
 		ctx,
 		inputDir,
@@ -131,6 +134,9 @@ func RunUnifiedTestFlow(
 	)
 	if err != nil {
 		return nil, nil, err
+	}
+	if instrumentation != nil {
+		instrumentation.RecordOSAnalysisTime(time.Since(osAnalysisStart).Milliseconds())
 	}
 
 	return allLegacyFindings, allOutputData, err

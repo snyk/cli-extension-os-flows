@@ -9,6 +9,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	"github.com/snyk/cli-extension-os-flows/internal/instrumentation"
 )
 
 // CtxKey is the type of the keys inside the command context.
@@ -16,11 +17,12 @@ type CtxKey string
 
 // This is the list of keys used by the command context.
 const (
-	IctxKey         CtxKey = "ictx"
-	ConfigKey       CtxKey = "cfg"
-	LoggerKey       CtxKey = "logger"
-	ErrorFactoryKey CtxKey = "errFactory"
-	ProgressBarKey  CtxKey = "progressBar"
+	IctxKey            CtxKey = "ictx"
+	ConfigKey          CtxKey = "cfg"
+	LoggerKey          CtxKey = "logger"
+	ErrorFactoryKey    CtxKey = "errFactory"
+	ProgressBarKey     CtxKey = "progressBar"
+	InstrumentationKey CtxKey = "instrumentation"
 )
 
 // WithIctx adds an invocation context to the current context.
@@ -46,6 +48,11 @@ func WithErrorFactory(ctx context.Context, errFactory *errors.ErrorFactory) cont
 // WithProgressBar adds a progress bar to the current context.
 func WithProgressBar(ctx context.Context, progressBar ui.ProgressBar) context.Context {
 	return context.WithValue(ctx, ProgressBarKey, progressBar)
+}
+
+// WithInstrumentation adds instrumentation to the current context.
+func WithInstrumentation(ctx context.Context, instrumentation instrumentation.Instrumentation) context.Context {
+	return context.WithValue(ctx, InstrumentationKey, instrumentation)
 }
 
 // Ictx will retrieve the invocation context from the command context.
@@ -89,6 +96,15 @@ func ErrorFactory(ctx context.Context) *errors.ErrorFactory {
 func ProgressBar(ctx context.Context) ui.ProgressBar {
 	if progressBar, ok := ctx.Value(ProgressBarKey).(ui.ProgressBar); ok {
 		return progressBar
+	}
+	return nil
+}
+
+// Instrumentation will retrieve the instrumentation from the command context.
+// It will return `nil` if the value wasn't set on the context.
+func Instrumentation(ctx context.Context) instrumentation.Instrumentation {
+	if instrumentation, ok := ctx.Value(InstrumentationKey).(instrumentation.Instrumentation); ok {
+		return instrumentation
 	}
 	return nil
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/analytics"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
@@ -759,6 +760,7 @@ func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engin
 	mockNetwork := mocks.NewMockNetworkAccess(ctrl)
 	mockNetwork.EXPECT().GetHttpClient().Return(&http.Client{}).AnyTimes()
 	icontext.EXPECT().GetNetworkAccess().Return(mockNetwork).AnyTimes()
+	icontext.EXPECT().GetAnalytics().Return(analytics.New()).AnyTimes()
 
 	return icontext
 }

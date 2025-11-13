@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/workflow"
@@ -26,6 +27,7 @@ func RunSbomReachabilityFlow(
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
+	instrumentation := cmdctx.Instrumentation(ctx)
 
 	if err := validateDirectory(ctx, sourceCodePath); err != nil {
 		return nil, nil, err
@@ -67,9 +69,13 @@ func RunSbomReachabilityFlow(
 	}
 
 	targetDir := filepath.Dir(sbomPath)
+	osAnalysisStart := time.Now()
 	findings, summary, err := RunTest(ctx, targetDir, testClient, subject, "", "", int(0), sbomPath, sbomPath, orgID, localPolicy)
 	if err != nil {
 		return nil, nil, err
+	}
+	if instrumentation != nil {
+		instrumentation.RecordOSAnalysisTime(time.Since(osAnalysisStart).Milliseconds())
 	}
 
 	var allLegacyFindings []definitions.LegacyVulnerabilityResponse
