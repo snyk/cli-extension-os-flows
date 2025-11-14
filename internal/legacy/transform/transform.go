@@ -153,6 +153,7 @@ func FindingToLegacyVulns(
 		Severity:             definitions.VulnerabilitySeverity(finding.Attributes.Rating.Severity),
 		SeverityWithCritical: utils.Ptr(definitions.VulnerabilitySeverity(finding.Attributes.Rating.Severity)),
 		UpgradePath:          make([]definitions.Vulnerability_UpgradePath_Item, 0),
+		Insights:             &definitions.Insights{},
 	}
 	err := processProblemsForVuln(&baseVuln, finding.Attributes.Problems, logger)
 	if err != nil {

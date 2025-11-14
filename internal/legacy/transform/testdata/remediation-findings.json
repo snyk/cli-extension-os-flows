@@ -1,0 +1,4306 @@
+{
+  "data": [
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n\nAffected versions of this package are vulnerable to Directory Traversal. Async \u003c= 2.6.4 and \u003c= 3.2.5 are vulnerable to ReDoS (Regular Expression Denial of Service) while parsing function in autoinject function.\n\n## Details\n\nA Directory Traversal attack (also known as path traversal) aims to access files and directories that are stored outside the intended folder. By manipulating files with \"dot-dot-slash (../)\" sequences and its variations, or by using absolute file paths, it may be possible to access arbitrary files and directories stored on file system, including application source code, configuration, and other critical system files.\n\nDirectory Traversal vulnerabilities can be generally divided into two types:\n\n- **Information Disclosure**: Allows the attacker to gain information about the folder structure or read the contents of sensitive files on the system.\n\n`st` is a module for serving static files on web pages, and contains a [vulnerability of this type](https://snyk.io/vuln/npm:st:20140206). In our example, we will serve files from the `public` route.\n\nIf an attacker requests the following URL from our server, it will in turn leak the sensitive private key of the root user.\n\n```\ncurl http://localhost:8080/public/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/root/.ssh/id_rsa\n```\n**Note** `%2e` is the URL encoded version of `.` (dot).\n\n- **Writing arbitrary files**: Allows the attacker to create or replace existing files. This type of vulnerability is also known as `Zip-Slip`. \n\nOne way to achieve this is by using a malicious `zip` archive that holds path traversal filenames. When each filename in the zip archive gets concatenated to the target extraction folder, without validation, the final path ends up outside of the target folder. If an executable or a configuration file is overwritten with a file containing malicious code, the problem can turn into an arbitrary code execution issue quite easily.\n\nThe following is an example of a `zip` archive with one benign file and one malicious file. Extracting the malicious file will result in traversing out of the target folder, ending up in `/root/.ssh/` overwriting the `authorized_keys` file:\n\n```\n2018-04-15 22:04:29 .....           19           19  good.txt\n2018-04-15 22:04:42 .....           20           20  ../../../../../../root/.ssh/authorized_keys\n```\n\n## Remediation\nUpgrade `async` to version  or higher.\n## References\n- [Vulnerable Code](https://github.com/caolan/async/blob/v3.2.5/lib/autoInject.js#L41)\n- [Vulnerable Code](https://github.com/caolan/async/blob/v3.2.5/lib/autoInject.js#L6)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "ejs",
+                "version": "3.1.10"
+              },
+              {
+                "name": "jake",
+                "version": "10.9.2"
+              },
+              {
+                "name": "async",
+                "version": "3.2.5"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snowflake-sdk",
+                "version": "1.15.0"
+              },
+              {
+                "name": "@techteamer/ocsp",
+                "version": "1.0.1"
+              },
+              {
+                "name": "async",
+                "version": "3.2.5"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snowflake-sdk",
+                "version": "1.15.0"
+              },
+              {
+                "name": "winston",
+                "version": "3.14.2"
+              },
+              {
+                "name": "async",
+                "version": "3.2.5"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snyk-config",
+                "version": "5.3.0"
+              },
+              {
+                "name": "async",
+                "version": "3.2.5"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "1553cd3c-df22-41a9-8a4f-d661680a25d9",
+        "locations": [
+          {
+            "package": {
+              "name": "async",
+              "version": "3.2.5"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "*"
+            ],
+            "created_at": "2024-07-30T12:45:41.408492Z",
+            "credits": [
+              "Unknown"
+            ],
+            "cvss_base_score": 7.5,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 7.5,
+                "cvss_version": "3.1",
+                "modified_at": "2024-07-30T12:45:41.830747Z",
+                "severity": "high",
+                "type": "primary",
+                "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+              },
+              {
+                "assigner": "Red Hat",
+                "base_score": 5.3,
+                "cvss_version": "3.1",
+                "modified_at": "2024-10-03T17:46:06.688298Z",
+                "severity": "medium",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+              }
+            ],
+            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+            "disclosed_at": "2024-07-01T20:40:50.935Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "epss_details": {
+              "model_version": "v2025.03.14",
+              "percentile": "0.38550",
+              "probability": "0.00166"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-JS-ASYNC-12239908",
+            "initially_fixed_in_versions": [],
+            "is_fixable": false,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2024-10-03T17:46:06.688298Z",
+            "package_name": "async",
+            "package_version": "",
+            "published_at": "2024-07-30T12:45:41.784001Z",
+            "references": [
+              {
+                "title": "Vulnerable Code",
+                "url": "https://github.com/caolan/async/blob/v3.2.5/lib/autoInject.js%23L41"
+              },
+              {
+                "title": "Vulnerable Code",
+                "url": "https://github.com/caolan/async/blob/v3.2.5/lib/autoInject.js%23L6"
+              }
+            ],
+            "severity": "high",
+            "source": "snyk_vuln"
+          },
+          {
+            "id": "CVE-2024-39249",
+            "source": "cve"
+          },
+          {
+            "id": "CWE-22",
+            "source": "cwe"
+          }
+        ],
+        "rating": {
+          "severity": "high"
+        },
+        "risk": {},
+        "title": "Directory Traversal"
+      },
+      "id": "1553cd3c-df22-41a9-8a4f-d661680a25d9",
+      "links": {},
+      "relationships": {},
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n[debug](https://github.com/visionmedia/debug) is a small debugging utility.\n\nAffected versions of this package are vulnerable to Regular Expression Denial of Service (ReDoS) test\n\n## Details\n\nDenial of Service (DoS) describes a family of attacks, all aimed at making a system inaccessible to its original and legitimate users. There are many types of DoS attacks, ranging from trying to clog the network pipes to the system by generating a large volume of traffic from many machines (a Distributed Denial of Service - DDoS - attack) to sending crafted requests that cause a system to crash or take a disproportional amount of time to process.\n\nThe Regular expression Denial of Service (ReDoS) is a type of Denial of Service attack. Regular expressions are incredibly powerful, but they aren't very intuitive and can ultimately end up making it easy for attackers to take your site down.\n\nLet’s take the following regular expression as an example:\n```js\nregex = /A(B|C+)+D/\n```\n\nThis regular expression accomplishes the following:\n- `A` The string must start with the letter 'A'\n- `(B|C+)+` The string must then follow the letter A with either the letter 'B' or some number of occurrences of the letter 'C' (the `+` matches one or more times). The `+` at the end of this section states that we can look for one or more matches of this section.\n- `D` Finally, we ensure this section of the string ends with a 'D'\n\nThe expression would match inputs such as `ABBD`, `ABCCCCD`, `ABCBCCCD` and `ACCCCCD`\n\nIt most cases, it doesn't take very long for a regex engine to find a match:\n\n```bash\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCD\")'\n0.04s user 0.01s system 95% cpu 0.052 total\n\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCX\")'\n1.79s user 0.02s system 99% cpu 1.812 total\n```\n\nThe entire process of testing it against a 30 characters long string takes around ~52ms. But when given an invalid string, it takes nearly two seconds to complete the test, over ten times as long as it took to test a valid string. The dramatic difference is due to the way regular expressions get evaluated.\n\nMost Regex engines will work very similarly (with minor differences). The engine will match the first possible way to accept the current character and proceed to the next one. If it then fails to match the next one, it will backtrack and see if there was another way to digest the previous character. If it goes too far down the rabbit hole only to find out the string doesn’t match in the end, and if many characters have multiple valid regex paths, the number of backtracking steps can become very large, resulting in what is known as _catastrophic backtracking_.\n\nLet's look at how our expression runs into this problem, using a shorter string: \"ACCCX\". While it seems fairly straightforward, there are still four different ways that the engine could match those three C's:\n1. CCC\n2. CC+C\n3. C+CC\n4. C+C+C.\n\nThe engine has to try each of those combinations to see if any of them potentially match against the expression. When you combine that with the other steps the engine must take, we can use [RegEx 101 debugger](https://regex101.com/debugger) to see the engine has to take a total of 38 steps before it can determine the string doesn't match.\n\nFrom there, the number of steps the engine must use to validate a string just continues to grow.\n\n| String | Number of C's | Number of steps |\n| -------|-------------:| -----:|\n| ACCCX | 3 | 38\n| ACCCCX | 4 | 71\n| ACCCCCX | 5 | 136\n| ACCCCCCCCCCCCCCX | 14 | 65,553\n\n\nBy the time the string includes 14 C's, the engine has to take over 65,000 steps just to see if the string is valid. These extreme situations can cause them to work very slowly (exponentially related to input size, as shown above), allowing an attacker to exploit this and can cause the service to excessively consume CPU, resulting in a Denial of Service.\n\n## Remediation\nA fix was pushed into the `master` branch but not yet published.\n## References\n- [GitHub Issue](https://github.com/debug-js/debug/issues/957#issuecomment-2523030187)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "body-parser",
+                "version": "1.20.3"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "body-parser",
+                "version": "1.20.3"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "body-parser",
+                "version": "1.20.3"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/target-service-client",
+                "version": "5.46.2"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "body-parser",
+                "version": "1.20.3"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "finalhandler",
+                "version": "1.3.1"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "finalhandler",
+                "version": "1.3.1"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "finalhandler",
+                "version": "1.3.1"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/target-service-client",
+                "version": "5.46.2"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "finalhandler",
+                "version": "1.3.1"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "send",
+                "version": "0.19.0"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "send",
+                "version": "0.19.0"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "send",
+                "version": "0.19.0"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/target-service-client",
+                "version": "5.46.2"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "send",
+                "version": "0.19.0"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/target-service-client",
+                "version": "5.46.2"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "269b2e9c-7e21-4f2b-8d21-95052efc6230",
+        "locations": [
+          {
+            "package": {
+              "name": "debug",
+              "version": "2.6.9"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "id": "CWE-1333",
+            "source": "cwe"
+          },
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "\u003c1.0.0",
+              "\u003e=2.0.0"
+            ],
+            "created_at": "2024-12-10T12:05:49.468958Z",
+            "credits": [
+              "Qix-"
+            ],
+            "cvss_base_score": 6.9,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "4.0",
+                "modified_at": "2024-12-10T14:02:14.067687Z",
+                "severity": "medium",
+                "type": "primary",
+                "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N"
+              },
+              {
+                "assigner": "Snyk",
+                "base_score": 5.3,
+                "cvss_version": "3.1",
+                "modified_at": "2024-12-10T14:02:14.067687Z",
+                "severity": "medium",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+              }
+            ],
+            "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N",
+            "disclosed_at": "2024-12-06T11:51:54Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-JS-DEBUG-13283909",
+            "initially_fixed_in_versions": [],
+            "is_fixable": false,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2024-12-10T14:02:14.067687Z",
+            "package_name": "debug",
+            "package_version": "",
+            "published_at": "2024-12-10T12:05:49.760884Z",
+            "references": [
+              {
+                "title": "GitHub Issue",
+                "url": "https://github.com/debug-js/debug/issues/957%23issuecomment-2523030187"
+              }
+            ],
+            "severity": "medium",
+            "source": "snyk_vuln"
+          }
+        ],
+        "rating": {
+          "severity": "medium"
+        },
+        "risk": {},
+        "title": "Regular Expression Denial of Service (ReDoS)"
+      },
+      "id": "269b2e9c-7e21-4f2b-8d21-95052efc6230",
+      "links": {},
+      "relationships": {},
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n[debug](https://github.com/visionmedia/debug) is a small debugging utility.\n\nAffected versions of this package are vulnerable to Regular Expression Denial of Service (ReDoS) test\n\n## Details\n\nDenial of Service (DoS) describes a family of attacks, all aimed at making a system inaccessible to its original and legitimate users. There are many types of DoS attacks, ranging from trying to clog the network pipes to the system by generating a large volume of traffic from many machines (a Distributed Denial of Service - DDoS - attack) to sending crafted requests that cause a system to crash or take a disproportional amount of time to process.\n\nThe Regular expression Denial of Service (ReDoS) is a type of Denial of Service attack. Regular expressions are incredibly powerful, but they aren't very intuitive and can ultimately end up making it easy for attackers to take your site down.\n\nLet’s take the following regular expression as an example:\n```js\nregex = /A(B|C+)+D/\n```\n\nThis regular expression accomplishes the following:\n- `A` The string must start with the letter 'A'\n- `(B|C+)+` The string must then follow the letter A with either the letter 'B' or some number of occurrences of the letter 'C' (the `+` matches one or more times). The `+` at the end of this section states that we can look for one or more matches of this section.\n- `D` Finally, we ensure this section of the string ends with a 'D'\n\nThe expression would match inputs such as `ABBD`, `ABCCCCD`, `ABCBCCCD` and `ACCCCCD`\n\nIt most cases, it doesn't take very long for a regex engine to find a match:\n\n```bash\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCD\")'\n0.04s user 0.01s system 95% cpu 0.052 total\n\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCX\")'\n1.79s user 0.02s system 99% cpu 1.812 total\n```\n\nThe entire process of testing it against a 30 characters long string takes around ~52ms. But when given an invalid string, it takes nearly two seconds to complete the test, over ten times as long as it took to test a valid string. The dramatic difference is due to the way regular expressions get evaluated.\n\nMost Regex engines will work very similarly (with minor differences). The engine will match the first possible way to accept the current character and proceed to the next one. If it then fails to match the next one, it will backtrack and see if there was another way to digest the previous character. If it goes too far down the rabbit hole only to find out the string doesn’t match in the end, and if many characters have multiple valid regex paths, the number of backtracking steps can become very large, resulting in what is known as _catastrophic backtracking_.\n\nLet's look at how our expression runs into this problem, using a shorter string: \"ACCCX\". While it seems fairly straightforward, there are still four different ways that the engine could match those three C's:\n1. CCC\n2. CC+C\n3. C+CC\n4. C+C+C.\n\nThe engine has to try each of those combinations to see if any of them potentially match against the expression. When you combine that with the other steps the engine must take, we can use [RegEx 101 debugger](https://regex101.com/debugger) to see the engine has to take a total of 38 steps before it can determine the string doesn't match.\n\nFrom there, the number of steps the engine must use to validate a string just continues to grow.\n\n| String | Number of C's | Number of steps |\n| -------|-------------:| -----:|\n| ACCCX | 3 | 38\n| ACCCCX | 4 | 71\n| ACCCCCX | 5 | 136\n| ACCCCCCCCCCCCCCX | 14 | 65,553\n\n\nBy the time the string includes 14 C's, the engine has to take over 65,000 steps just to see if the string is valid. These extreme situations can cause them to work very slowly (exponentially related to input size, as shown above), allowing an attacker to exploit this and can cause the service to excessively consume CPU, resulting in a Denial of Service.\n\n## Remediation\nA fix was pushed into the `master` branch but not yet published.\n## References\n- [GitHub Issue](https://github.com/debug-js/debug/issues/957#issuecomment-2523030187)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "knex",
+                "version": "3.1.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.4"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "38f9f492-faec-48de-a0fa-74d52647ceae",
+        "locations": [
+          {
+            "package": {
+              "name": "debug",
+              "version": "4.3.4"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "id": "CWE-1333",
+            "source": "cwe"
+          },
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "\u003c1.0.0",
+              "\u003e=2.0.0"
+            ],
+            "created_at": "2024-12-10T12:05:49.468958Z",
+            "credits": [
+              "Qix-"
+            ],
+            "cvss_base_score": 6.9,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "4.0",
+                "modified_at": "2024-12-10T14:02:14.067687Z",
+                "severity": "medium",
+                "type": "primary",
+                "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N"
+              },
+              {
+                "assigner": "Snyk",
+                "base_score": 5.3,
+                "cvss_version": "3.1",
+                "modified_at": "2024-12-10T14:02:14.067687Z",
+                "severity": "medium",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+              }
+            ],
+            "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N",
+            "disclosed_at": "2024-12-06T11:51:54Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-JS-DEBUG-13283909",
+            "initially_fixed_in_versions": [],
+            "is_fixable": false,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2024-12-10T14:02:14.067687Z",
+            "package_name": "debug",
+            "package_version": "",
+            "published_at": "2024-12-10T12:05:49.760884Z",
+            "references": [
+              {
+                "title": "GitHub Issue",
+                "url": "https://github.com/debug-js/debug/issues/957%23issuecomment-2523030187"
+              }
+            ],
+            "severity": "medium",
+            "source": "snyk_vuln"
+          }
+        ],
+        "rating": {
+          "severity": "medium"
+        },
+        "risk": {},
+        "title": "Regular Expression Denial of Service (ReDoS)"
+      },
+      "id": "38f9f492-faec-48de-a0fa-74d52647ceae",
+      "links": {},
+      "relationships": {},
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n\nAffected versions of this package are vulnerable to Arbitrary Code Injection cookie is a basic HTTP cookie parser and serializer for HTTP servers. The cookie name could be used to set other fields of the cookie, resulting in an unexpected cookie value. A similar escape can be used for path and domain, which could be abused to alter other fields of the cookie. Upgrade to 0.7.0, which updates the validation for name, path, and domain.\n## Remediation\nUpgrade `cookie` to version 1.0.0 or higher.\n## References\n- [GitHub Advisory](https://github.com/jshttp/cookie/security/advisories/GHSA-pxg6-pf52-xh8x)\n- [GitHub Commit](https://github.com/jshttp/cookie/commit/e10042845354fea83bd8f34af72475eed1dadf5c)\n- [GitHub PR](https://github.com/jshttp/cookie/pull/167)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "cookie",
+                "version": "0.7.1"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "cookie",
+                "version": "0.7.1"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "cookie",
+                "version": "0.7.1"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/target-service-client",
+                "version": "5.46.2"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "cookie",
+                "version": "0.7.1"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "3eab88b5-465b-4d38-8cb0-09cbeece1cb3",
+        "locations": [
+          {
+            "package": {
+              "name": "cookie",
+              "version": "0.7.1"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "\u003c1.0.0"
+            ],
+            "created_at": "2024-11-27T14:30:08.622354Z",
+            "credits": [
+              "Unknown"
+            ],
+            "cvss_base_score": 6.9,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "4.0",
+                "modified_at": "2025-05-09T14:14:52.627873Z",
+                "severity": "medium",
+                "type": "primary",
+                "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:N/SC:N/SI:N/SA:N"
+              },
+              {
+                "assigner": "Snyk",
+                "base_score": 5.3,
+                "cvss_version": "3.1",
+                "modified_at": "2025-05-09T14:14:52.627873Z",
+                "severity": "medium",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+              },
+              {
+                "assigner": "Red Hat",
+                "base_score": 3.7,
+                "cvss_version": "3.1",
+                "modified_at": "2025-04-23T23:20:14.789876Z",
+                "severity": "low",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N"
+              }
+            ],
+            "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:N/SC:N/SI:N/SA:N",
+            "disclosed_at": "2024-10-04T19:41:54Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "epss_details": {
+              "model_version": "v2025.03.14",
+              "percentile": "0.21683",
+              "probability": "0.00069"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-JS-COOKIE-13271683",
+            "initially_fixed_in_versions": [
+              "1.0.0"
+            ],
+            "is_fixable": true,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2025-05-09T14:14:52.627873Z",
+            "package_name": "cookie",
+            "package_version": "",
+            "published_at": "2024-11-27T14:30:08.932074Z",
+            "references": [
+              {
+                "title": "GitHub Advisory",
+                "url": "https://github.com/jshttp/cookie/security/advisories/GHSA-pxg6-pf52-xh8x"
+              },
+              {
+                "title": "GitHub Commit",
+                "url": "https://github.com/jshttp/cookie/commit/e10042845354fea83bd8f34af72475eed1dadf5c"
+              },
+              {
+                "title": "GitHub PR",
+                "url": "https://github.com/jshttp/cookie/pull/167"
+              }
+            ],
+            "severity": "medium",
+            "source": "snyk_vuln"
+          },
+          {
+            "id": "CVE-2024-47764",
+            "source": "cve"
+          },
+          {
+            "id": "CWE-74",
+            "source": "cwe"
+          },
+          {
+            "id": "GHSA-pxg6-pf52-xh8x",
+            "source": "ghsa"
+          }
+        ],
+        "rating": {
+          "severity": "medium"
+        },
+        "risk": {},
+        "title": "Arbitrary Code Injection"
+      },
+      "id": "3eab88b5-465b-4d38-8cb0-09cbeece1cb3",
+      "links": {},
+      "relationships": {},
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n[debug](https://github.com/visionmedia/debug) is a small debugging utility.\n\nAffected versions of this package are vulnerable to Alternate solution to CWE-1333 | Inefficient Regular Expression Complexity. None\n## Remediation\nThere is no fixed version for `debug`.\n\n## References\n- [GitHub Issue](https://github.com/debug-js/debug/issues/957)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "knex",
+                "version": "3.1.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.4"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "4270dd26-7853-40c0-ae8d-9a37978db709",
+        "locations": [
+          {
+            "package": {
+              "name": "debug",
+              "version": "4.3.4"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "*"
+            ],
+            "created_at": "2025-05-02T12:17:04.846156Z",
+            "credits": [
+              "provDannyLaw"
+            ],
+            "cvss_base_score": 6.9,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "4.0",
+                "modified_at": "2025-05-02T12:17:05.259065Z",
+                "severity": "medium",
+                "type": "primary",
+                "vector": "CVSS:4.0/AV:A/AC:L/AT:N/PR:H/UI:N/VC:L/VI:H/VA:L/SC:N/SI:N/SA:L"
+              },
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "3.1",
+                "modified_at": "2025-05-02T12:17:05.259065Z",
+                "severity": "medium",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:A/AC:L/PR:H/UI:N/S:C/C:L/I:N/A:H"
+              }
+            ],
+            "cvss_vector": "CVSS:4.0/AV:A/AC:L/AT:N/PR:H/UI:N/VC:L/VI:H/VA:L/SC:N/SI:N/SA:L",
+            "disclosed_at": "2024-02-21T18:17:18Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-JS-DEBUG-14214893",
+            "initially_fixed_in_versions": [],
+            "is_fixable": false,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2025-05-02T12:17:05.259065Z",
+            "package_name": "debug",
+            "package_version": "",
+            "published_at": "2025-05-02T12:17:05.24083Z",
+            "references": [
+              {
+                "title": "GitHub Issue",
+                "url": "https://github.com/debug-js/debug/issues/957"
+              }
+            ],
+            "severity": "medium",
+            "source": "snyk_vuln"
+          },
+          {
+            "id": "CVE-9999-1234",
+            "source": "cve"
+          },
+          {
+            "id": "CWE-109",
+            "source": "cwe"
+          }
+        ],
+        "rating": {
+          "severity": "medium"
+        },
+        "risk": {},
+        "title": "Alternate solution to CWE-1333 | Inefficient Regular Expression Complexity"
+      },
+      "id": "4270dd26-7853-40c0-ae8d-9a37978db709",
+      "links": {},
+      "relationships": {},
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n[debug](https://github.com/visionmedia/debug) is a small debugging utility.\n\nAffected versions of this package are vulnerable to Regular Expression Denial of Service (ReDoS) test\n\n## Details\n\nDenial of Service (DoS) describes a family of attacks, all aimed at making a system inaccessible to its original and legitimate users. There are many types of DoS attacks, ranging from trying to clog the network pipes to the system by generating a large volume of traffic from many machines (a Distributed Denial of Service - DDoS - attack) to sending crafted requests that cause a system to crash or take a disproportional amount of time to process.\n\nThe Regular expression Denial of Service (ReDoS) is a type of Denial of Service attack. Regular expressions are incredibly powerful, but they aren't very intuitive and can ultimately end up making it easy for attackers to take your site down.\n\nLet’s take the following regular expression as an example:\n```js\nregex = /A(B|C+)+D/\n```\n\nThis regular expression accomplishes the following:\n- `A` The string must start with the letter 'A'\n- `(B|C+)+` The string must then follow the letter A with either the letter 'B' or some number of occurrences of the letter 'C' (the `+` matches one or more times). The `+` at the end of this section states that we can look for one or more matches of this section.\n- `D` Finally, we ensure this section of the string ends with a 'D'\n\nThe expression would match inputs such as `ABBD`, `ABCCCCD`, `ABCBCCCD` and `ACCCCCD`\n\nIt most cases, it doesn't take very long for a regex engine to find a match:\n\n```bash\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCD\")'\n0.04s user 0.01s system 95% cpu 0.052 total\n\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCX\")'\n1.79s user 0.02s system 99% cpu 1.812 total\n```\n\nThe entire process of testing it against a 30 characters long string takes around ~52ms. But when given an invalid string, it takes nearly two seconds to complete the test, over ten times as long as it took to test a valid string. The dramatic difference is due to the way regular expressions get evaluated.\n\nMost Regex engines will work very similarly (with minor differences). The engine will match the first possible way to accept the current character and proceed to the next one. If it then fails to match the next one, it will backtrack and see if there was another way to digest the previous character. If it goes too far down the rabbit hole only to find out the string doesn’t match in the end, and if many characters have multiple valid regex paths, the number of backtracking steps can become very large, resulting in what is known as _catastrophic backtracking_.\n\nLet's look at how our expression runs into this problem, using a shorter string: \"ACCCX\". While it seems fairly straightforward, there are still four different ways that the engine could match those three C's:\n1. CCC\n2. CC+C\n3. C+CC\n4. C+C+C.\n\nThe engine has to try each of those combinations to see if any of them potentially match against the expression. When you combine that with the other steps the engine must take, we can use [RegEx 101 debugger](https://regex101.com/debugger) to see the engine has to take a total of 38 steps before it can determine the string doesn't match.\n\nFrom there, the number of steps the engine must use to validate a string just continues to grow.\n\n| String | Number of C's | Number of steps |\n| -------|-------------:| -----:|\n| ACCCX | 3 | 38\n| ACCCCX | 4 | 71\n| ACCCCCX | 5 | 136\n| ACCCCCCCCCCCCCCX | 14 | 65,553\n\n\nBy the time the string includes 14 C's, the engine has to take over 65,000 steps just to see if the string is valid. These extreme situations can cause them to work very slowly (exponentially related to input size, as shown above), allowing an attacker to exploit this and can cause the service to excessively consume CPU, resulting in a Denial of Service.\n\n## Remediation\nA fix was pushed into the `master` branch but not yet published.\n## References\n- [GitHub Issue](https://github.com/debug-js/debug/issues/957#issuecomment-2523030187)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@opentelemetry/sdk-node",
+                "version": "0.203.0"
+              },
+              {
+                "name": "@opentelemetry/instrumentation",
+                "version": "0.203.0"
+              },
+              {
+                "name": "require-in-the-middle",
+                "version": "7.5.2"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@typescript-eslint/type-utils",
+                "version": "5.62.0"
+              },
+              {
+                "name": "@typescript-eslint/typescript-estree",
+                "version": "5.62.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "ioredis",
+                "version": "5.4.1"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "bullmq",
+                "version": "4.17.0"
+              },
+              {
+                "name": "ioredis",
+                "version": "5.4.1"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-import-resolver-typescript",
+                "version": "3.6.1"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-plugin-perfectionist",
+                "version": "3.9.1"
+              },
+              {
+                "name": "@typescript-eslint/utils",
+                "version": "8.11.0"
+              },
+              {
+                "name": "@typescript-eslint/typescript-estree",
+                "version": "8.11.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "simple-git",
+                "version": "3.25.0"
+              },
+              {
+                "name": "@kwsites/file-exists",
+                "version": "1.1.1"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snowflake-sdk",
+                "version": "1.15.0"
+              },
+              {
+                "name": "@google-cloud/storage",
+                "version": "7.12.1"
+              },
+              {
+                "name": "gaxios",
+                "version": "6.7.1"
+              },
+              {
+                "name": "https-proxy-agent",
+                "version": "7.0.6"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snyk-config",
+                "version": "5.3.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@typescript-eslint/type-utils",
+                "version": "5.62.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "simple-git",
+                "version": "3.25.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snowflake-sdk",
+                "version": "1.15.0"
+              },
+              {
+                "name": "@google-cloud/storage",
+                "version": "7.12.1"
+              },
+              {
+                "name": "retry-request",
+                "version": "7.0.2"
+              },
+              {
+                "name": "teeny-request",
+                "version": "9.0.0"
+              },
+              {
+                "name": "http-proxy-agent",
+                "version": "5.0.0"
+              },
+              {
+                "name": "agent-base",
+                "version": "6.0.2"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snowflake-sdk",
+                "version": "1.15.0"
+              },
+              {
+                "name": "@google-cloud/storage",
+                "version": "7.12.1"
+              },
+              {
+                "name": "retry-request",
+                "version": "7.0.2"
+              },
+              {
+                "name": "teeny-request",
+                "version": "9.0.0"
+              },
+              {
+                "name": "http-proxy-agent",
+                "version": "5.0.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snowflake-sdk",
+                "version": "1.15.0"
+              },
+              {
+                "name": "@google-cloud/storage",
+                "version": "7.12.1"
+              },
+              {
+                "name": "retry-request",
+                "version": "7.0.2"
+              },
+              {
+                "name": "teeny-request",
+                "version": "9.0.0"
+              },
+              {
+                "name": "https-proxy-agent",
+                "version": "5.0.1"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "4df08821-5762-4413-b3a4-c2bfc4feb89e",
+        "locations": [
+          {
+            "package": {
+              "name": "debug",
+              "version": "4.3.6"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "id": "CWE-1333",
+            "source": "cwe"
+          },
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "\u003c1.0.0",
+              "\u003e=2.0.0"
+            ],
+            "created_at": "2024-12-10T12:05:49.468958Z",
+            "credits": [
+              "Qix-"
+            ],
+            "cvss_base_score": 6.9,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "4.0",
+                "modified_at": "2024-12-10T14:02:14.067687Z",
+                "severity": "medium",
+                "type": "primary",
+                "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N"
+              },
+              {
+                "assigner": "Snyk",
+                "base_score": 5.3,
+                "cvss_version": "3.1",
+                "modified_at": "2024-12-10T14:02:14.067687Z",
+                "severity": "medium",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+              }
+            ],
+            "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N",
+            "disclosed_at": "2024-12-06T11:51:54Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-JS-DEBUG-13283909",
+            "initially_fixed_in_versions": [],
+            "is_fixable": false,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2024-12-10T14:02:14.067687Z",
+            "package_name": "debug",
+            "package_version": "",
+            "published_at": "2024-12-10T12:05:49.760884Z",
+            "references": [
+              {
+                "title": "GitHub Issue",
+                "url": "https://github.com/debug-js/debug/issues/957%23issuecomment-2523030187"
+              }
+            ],
+            "severity": "medium",
+            "source": "snyk_vuln"
+          }
+        ],
+        "rating": {
+          "severity": "medium"
+        },
+        "risk": {},
+        "title": "Regular Expression Denial of Service (ReDoS)"
+      },
+      "id": "4df08821-5762-4413-b3a4-c2bfc4feb89e",
+      "links": {},
+      "relationships": {},
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n[debug](https://github.com/visionmedia/debug) is a small debugging utility.\n\nAffected versions of this package are vulnerable to Alternate solution to CWE-1333 | Inefficient Regular Expression Complexity. None\n## Remediation\nThere is no fixed version for `debug`.\n\n## References\n- [GitHub Issue](https://github.com/debug-js/debug/issues/957)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@opentelemetry/sdk-node",
+                "version": "0.203.0"
+              },
+              {
+                "name": "@opentelemetry/instrumentation",
+                "version": "0.203.0"
+              },
+              {
+                "name": "require-in-the-middle",
+                "version": "7.5.2"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@typescript-eslint/type-utils",
+                "version": "5.62.0"
+              },
+              {
+                "name": "@typescript-eslint/typescript-estree",
+                "version": "5.62.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "ioredis",
+                "version": "5.4.1"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "bullmq",
+                "version": "4.17.0"
+              },
+              {
+                "name": "ioredis",
+                "version": "5.4.1"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-import-resolver-typescript",
+                "version": "3.6.1"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-plugin-perfectionist",
+                "version": "3.9.1"
+              },
+              {
+                "name": "@typescript-eslint/utils",
+                "version": "8.11.0"
+              },
+              {
+                "name": "@typescript-eslint/typescript-estree",
+                "version": "8.11.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "simple-git",
+                "version": "3.25.0"
+              },
+              {
+                "name": "@kwsites/file-exists",
+                "version": "1.1.1"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snowflake-sdk",
+                "version": "1.15.0"
+              },
+              {
+                "name": "@google-cloud/storage",
+                "version": "7.12.1"
+              },
+              {
+                "name": "gaxios",
+                "version": "6.7.1"
+              },
+              {
+                "name": "https-proxy-agent",
+                "version": "7.0.6"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snyk-config",
+                "version": "5.3.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@typescript-eslint/type-utils",
+                "version": "5.62.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "simple-git",
+                "version": "3.25.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snowflake-sdk",
+                "version": "1.15.0"
+              },
+              {
+                "name": "@google-cloud/storage",
+                "version": "7.12.1"
+              },
+              {
+                "name": "retry-request",
+                "version": "7.0.2"
+              },
+              {
+                "name": "teeny-request",
+                "version": "9.0.0"
+              },
+              {
+                "name": "http-proxy-agent",
+                "version": "5.0.0"
+              },
+              {
+                "name": "agent-base",
+                "version": "6.0.2"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snowflake-sdk",
+                "version": "1.15.0"
+              },
+              {
+                "name": "@google-cloud/storage",
+                "version": "7.12.1"
+              },
+              {
+                "name": "retry-request",
+                "version": "7.0.2"
+              },
+              {
+                "name": "teeny-request",
+                "version": "9.0.0"
+              },
+              {
+                "name": "http-proxy-agent",
+                "version": "5.0.0"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snowflake-sdk",
+                "version": "1.15.0"
+              },
+              {
+                "name": "@google-cloud/storage",
+                "version": "7.12.1"
+              },
+              {
+                "name": "retry-request",
+                "version": "7.0.2"
+              },
+              {
+                "name": "teeny-request",
+                "version": "9.0.0"
+              },
+              {
+                "name": "https-proxy-agent",
+                "version": "5.0.1"
+              },
+              {
+                "name": "debug",
+                "version": "4.3.6"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "5b7599c2-a716-4f09-ac60-5b0364cd1699",
+        "locations": [
+          {
+            "package": {
+              "name": "debug",
+              "version": "4.3.6"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "*"
+            ],
+            "created_at": "2025-05-02T12:17:04.846156Z",
+            "credits": [
+              "provDannyLaw"
+            ],
+            "cvss_base_score": 6.9,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "4.0",
+                "modified_at": "2025-05-02T12:17:05.259065Z",
+                "severity": "medium",
+                "type": "primary",
+                "vector": "CVSS:4.0/AV:A/AC:L/AT:N/PR:H/UI:N/VC:L/VI:H/VA:L/SC:N/SI:N/SA:L"
+              },
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "3.1",
+                "modified_at": "2025-05-02T12:17:05.259065Z",
+                "severity": "medium",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:A/AC:L/PR:H/UI:N/S:C/C:L/I:N/A:H"
+              }
+            ],
+            "cvss_vector": "CVSS:4.0/AV:A/AC:L/AT:N/PR:H/UI:N/VC:L/VI:H/VA:L/SC:N/SI:N/SA:L",
+            "disclosed_at": "2024-02-21T18:17:18Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-JS-DEBUG-14214893",
+            "initially_fixed_in_versions": [],
+            "is_fixable": false,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2025-05-02T12:17:05.259065Z",
+            "package_name": "debug",
+            "package_version": "",
+            "published_at": "2025-05-02T12:17:05.24083Z",
+            "references": [
+              {
+                "title": "GitHub Issue",
+                "url": "https://github.com/debug-js/debug/issues/957"
+              }
+            ],
+            "severity": "medium",
+            "source": "snyk_vuln"
+          },
+          {
+            "id": "CVE-9999-1234",
+            "source": "cve"
+          },
+          {
+            "id": "CWE-109",
+            "source": "cwe"
+          }
+        ],
+        "rating": {
+          "severity": "medium"
+        },
+        "risk": {},
+        "title": "Alternate solution to CWE-1333 | Inefficient Regular Expression Complexity"
+      },
+      "id": "5b7599c2-a716-4f09-ac60-5b0364cd1699",
+      "links": {},
+      "relationships": {},
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n[debug](https://github.com/visionmedia/debug) is a small debugging utility.\n\nAffected versions of this package are vulnerable to Regular Expression Denial of Service (ReDoS) test\n\n## Details\n\nDenial of Service (DoS) describes a family of attacks, all aimed at making a system inaccessible to its original and legitimate users. There are many types of DoS attacks, ranging from trying to clog the network pipes to the system by generating a large volume of traffic from many machines (a Distributed Denial of Service - DDoS - attack) to sending crafted requests that cause a system to crash or take a disproportional amount of time to process.\n\nThe Regular expression Denial of Service (ReDoS) is a type of Denial of Service attack. Regular expressions are incredibly powerful, but they aren't very intuitive and can ultimately end up making it easy for attackers to take your site down.\n\nLet’s take the following regular expression as an example:\n```js\nregex = /A(B|C+)+D/\n```\n\nThis regular expression accomplishes the following:\n- `A` The string must start with the letter 'A'\n- `(B|C+)+` The string must then follow the letter A with either the letter 'B' or some number of occurrences of the letter 'C' (the `+` matches one or more times). The `+` at the end of this section states that we can look for one or more matches of this section.\n- `D` Finally, we ensure this section of the string ends with a 'D'\n\nThe expression would match inputs such as `ABBD`, `ABCCCCD`, `ABCBCCCD` and `ACCCCCD`\n\nIt most cases, it doesn't take very long for a regex engine to find a match:\n\n```bash\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCD\")'\n0.04s user 0.01s system 95% cpu 0.052 total\n\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCX\")'\n1.79s user 0.02s system 99% cpu 1.812 total\n```\n\nThe entire process of testing it against a 30 characters long string takes around ~52ms. But when given an invalid string, it takes nearly two seconds to complete the test, over ten times as long as it took to test a valid string. The dramatic difference is due to the way regular expressions get evaluated.\n\nMost Regex engines will work very similarly (with minor differences). The engine will match the first possible way to accept the current character and proceed to the next one. If it then fails to match the next one, it will backtrack and see if there was another way to digest the previous character. If it goes too far down the rabbit hole only to find out the string doesn’t match in the end, and if many characters have multiple valid regex paths, the number of backtracking steps can become very large, resulting in what is known as _catastrophic backtracking_.\n\nLet's look at how our expression runs into this problem, using a shorter string: \"ACCCX\". While it seems fairly straightforward, there are still four different ways that the engine could match those three C's:\n1. CCC\n2. CC+C\n3. C+CC\n4. C+C+C.\n\nThe engine has to try each of those combinations to see if any of them potentially match against the expression. When you combine that with the other steps the engine must take, we can use [RegEx 101 debugger](https://regex101.com/debugger) to see the engine has to take a total of 38 steps before it can determine the string doesn't match.\n\nFrom there, the number of steps the engine must use to validate a string just continues to grow.\n\n| String | Number of C's | Number of steps |\n| -------|-------------:| -----:|\n| ACCCX | 3 | 38\n| ACCCCX | 4 | 71\n| ACCCCCX | 5 | 136\n| ACCCCCCCCCCCCCCX | 14 | 65,553\n\n\nBy the time the string includes 14 C's, the engine has to take over 65,000 steps just to see if the string is valid. These extreme situations can cause them to work very slowly (exponentially related to input size, as shown above), allowing an attacker to exploit this and can cause the service to excessively consume CPU, resulting in a Denial of Service.\n\n## Remediation\nA fix was pushed into the `master` branch but not yet published.\n## References\n- [GitHub Issue](https://github.com/debug-js/debug/issues/957#issuecomment-2523030187)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-import-resolver-node",
+                "version": "0.3.9"
+              },
+              {
+                "name": "debug",
+                "version": "3.2.7"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-import-resolver-typescript",
+                "version": "3.6.1"
+              },
+              {
+                "name": "eslint-module-utils",
+                "version": "2.8.1"
+              },
+              {
+                "name": "debug",
+                "version": "3.2.7"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-plugin-import",
+                "version": "2.29.1"
+              },
+              {
+                "name": "debug",
+                "version": "3.2.7"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-plugin-import",
+                "version": "2.29.1"
+              },
+              {
+                "name": "eslint-import-resolver-node",
+                "version": "0.3.9"
+              },
+              {
+                "name": "debug",
+                "version": "3.2.7"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-plugin-import",
+                "version": "2.29.1"
+              },
+              {
+                "name": "eslint-module-utils",
+                "version": "2.8.1"
+              },
+              {
+                "name": "debug",
+                "version": "3.2.7"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "6eb31b8f-fa0e-451a-bc59-3eece2872b1d",
+        "locations": [
+          {
+            "package": {
+              "name": "debug",
+              "version": "3.2.7"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "id": "CWE-1333",
+            "source": "cwe"
+          },
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "\u003c1.0.0",
+              "\u003e=2.0.0"
+            ],
+            "created_at": "2024-12-10T12:05:49.468958Z",
+            "credits": [
+              "Qix-"
+            ],
+            "cvss_base_score": 6.9,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "4.0",
+                "modified_at": "2024-12-10T14:02:14.067687Z",
+                "severity": "medium",
+                "type": "primary",
+                "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N"
+              },
+              {
+                "assigner": "Snyk",
+                "base_score": 5.3,
+                "cvss_version": "3.1",
+                "modified_at": "2024-12-10T14:02:14.067687Z",
+                "severity": "medium",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+              }
+            ],
+            "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N",
+            "disclosed_at": "2024-12-06T11:51:54Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-JS-DEBUG-13283909",
+            "initially_fixed_in_versions": [],
+            "is_fixable": false,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2024-12-10T14:02:14.067687Z",
+            "package_name": "debug",
+            "package_version": "",
+            "published_at": "2024-12-10T12:05:49.760884Z",
+            "references": [
+              {
+                "title": "GitHub Issue",
+                "url": "https://github.com/debug-js/debug/issues/957%23issuecomment-2523030187"
+              }
+            ],
+            "severity": "medium",
+            "source": "snyk_vuln"
+          }
+        ],
+        "rating": {
+          "severity": "medium"
+        },
+        "risk": {},
+        "title": "Regular Expression Denial of Service (ReDoS)"
+      },
+      "id": "6eb31b8f-fa0e-451a-bc59-3eece2872b1d",
+      "links": {},
+      "relationships": {
+        "fix": {
+          "data": {
+            "attributes": {
+              "action": {
+                "format": "upgrade_package_advice",
+                "package_name": "debug",
+                "upgrade_paths": [
+                  {
+                    "dependency_path": [
+                      {
+                        "name": "workspace-service",
+                        "version": "0.0.1"
+                      },
+                      {
+                        "name": "eslint-import-resolver-typescript",
+                        "version": "3.7.0"
+                      }
+                    ],
+                    "is_drop": true
+                  }
+                ]
+              },
+              "outcome": "fully_resolved"
+            },
+            "id": "6eb31b8f-fa0e-451a-bc59-3eece2872b1d",
+            "type": "fixes"
+          }
+        }
+      },
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n[brace-expansion](https://github.com/juliangruber/brace-expansion) is a Brace expansion as known from sh/bash\n\nAffected versions of this package are vulnerable to Regular Expression Denial of Service (ReDoS) in the `expand()` function, which is prone to catastrophic backtracking on very long malicious inputs.\n## PoC\n```js\r\nimport index from \"./index.js\";\r\n\r\nlet str = \"{a}\" + \",\".repeat(100000) + \"\\u0000\";\r\n\r\nlet startTime = performance.now();\r\n\r\nconst result = index(str);\r\n\r\nlet endTime = performance.now();\r\n\r\nlet timeTaken = endTime - startTime;\r\n\r\nconsole.log(`匹配耗时: ${timeTaken.toFixed(3)} 毫秒`);\r\n```\n\n## Details\n\nDenial of Service (DoS) describes a family of attacks, all aimed at making a system inaccessible to its original and legitimate users. There are many types of DoS attacks, ranging from trying to clog the network pipes to the system by generating a large volume of traffic from many machines (a Distributed Denial of Service - DDoS - attack) to sending crafted requests that cause a system to crash or take a disproportional amount of time to process.\n\nThe Regular expression Denial of Service (ReDoS) is a type of Denial of Service attack. Regular expressions are incredibly powerful, but they aren't very intuitive and can ultimately end up making it easy for attackers to take your site down.\n\nLet’s take the following regular expression as an example:\n```js\nregex = /A(B|C+)+D/\n```\n\nThis regular expression accomplishes the following:\n- `A` The string must start with the letter 'A'\n- `(B|C+)+` The string must then follow the letter A with either the letter 'B' or some number of occurrences of the letter 'C' (the `+` matches one or more times). The `+` at the end of this section states that we can look for one or more matches of this section.\n- `D` Finally, we ensure this section of the string ends with a 'D'\n\nThe expression would match inputs such as `ABBD`, `ABCCCCD`, `ABCBCCCD` and `ACCCCCD`\n\nIt most cases, it doesn't take very long for a regex engine to find a match:\n\n```bash\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCD\")'\n0.04s user 0.01s system 95% cpu 0.052 total\n\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCX\")'\n1.79s user 0.02s system 99% cpu 1.812 total\n```\n\nThe entire process of testing it against a 30 characters long string takes around ~52ms. But when given an invalid string, it takes nearly two seconds to complete the test, over ten times as long as it took to test a valid string. The dramatic difference is due to the way regular expressions get evaluated.\n\nMost Regex engines will work very similarly (with minor differences). The engine will match the first possible way to accept the current character and proceed to the next one. If it then fails to match the next one, it will backtrack and see if there was another way to digest the previous character. If it goes too far down the rabbit hole only to find out the string doesn’t match in the end, and if many characters have multiple valid regex paths, the number of backtracking steps can become very large, resulting in what is known as _catastrophic backtracking_.\n\nLet's look at how our expression runs into this problem, using a shorter string: \"ACCCX\". While it seems fairly straightforward, there are still four different ways that the engine could match those three C's:\n1. CCC\n2. CC+C\n3. C+CC\n4. C+C+C.\n\nThe engine has to try each of those combinations to see if any of them potentially match against the expression. When you combine that with the other steps the engine must take, we can use [RegEx 101 debugger](https://regex101.com/debugger) to see the engine has to take a total of 38 steps before it can determine the string doesn't match.\n\nFrom there, the number of steps the engine must use to validate a string just continues to grow.\n\n| String | Number of C's | Number of steps |\n| -------|-------------:| -----:|\n| ACCCX | 3 | 38\n| ACCCCX | 4 | 71\n| ACCCCCX | 5 | 136\n| ACCCCCCCCCCCCCCX | 14 | 65,553\n\n\nBy the time the string includes 14 C's, the engine has to take over 65,000 steps just to see if the string is valid. These extreme situations can cause them to work very slowly (exponentially related to input size, as shown above), allowing an attacker to exploit this and can cause the service to excessively consume CPU, resulting in a Denial of Service.\n\n## Remediation\nUpgrade `brace-expansion` to version 1.1.12, 2.0.2, 3.0.1, 4.0.1 or higher.\n## References\n- [GitHub Advisory](https://github.com/advisories/GHSA-v6h2-p8h4-qcjw)\n- [GitHub Commit](https://github.com/juliangruber/brace-expansion/commit/0b6a9781e18e9d2769bb2931f4856d1360243ed2)\n- [GitHub Gist](https://gist.github.com/mmmsssttt404/37a40ce7d6e5ca604858fe30814d9466)\n- [GitHub PR](https://github.com/juliangruber/brace-expansion/pull/65)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "ejs",
+                "version": "3.1.10"
+              },
+              {
+                "name": "jake",
+                "version": "10.9.2"
+              },
+              {
+                "name": "minimatch",
+                "version": "3.1.2"
+              },
+              {
+                "name": "brace-expansion",
+                "version": "1.1.11"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/log",
+                "version": "5.3.0"
+              },
+              {
+                "name": "bunyan",
+                "version": "1.8.15"
+              },
+              {
+                "name": "mv",
+                "version": "2.1.1"
+              },
+              {
+                "name": "rimraf",
+                "version": "2.4.5"
+              },
+              {
+                "name": "glob",
+                "version": "6.0.4"
+              },
+              {
+                "name": "minimatch",
+                "version": "3.1.2"
+              },
+              {
+                "name": "brace-expansion",
+                "version": "1.1.11"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "@snyk/log",
+                "version": "5.3.0"
+              },
+              {
+                "name": "bunyan",
+                "version": "1.8.15"
+              },
+              {
+                "name": "mv",
+                "version": "2.1.1"
+              },
+              {
+                "name": "rimraf",
+                "version": "2.4.5"
+              },
+              {
+                "name": "glob",
+                "version": "6.0.4"
+              },
+              {
+                "name": "minimatch",
+                "version": "3.1.2"
+              },
+              {
+                "name": "brace-expansion",
+                "version": "1.1.11"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/target-service-client",
+                "version": "5.46.2"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "@snyk/log",
+                "version": "5.3.0"
+              },
+              {
+                "name": "bunyan",
+                "version": "1.8.15"
+              },
+              {
+                "name": "mv",
+                "version": "2.1.1"
+              },
+              {
+                "name": "rimraf",
+                "version": "2.4.5"
+              },
+              {
+                "name": "glob",
+                "version": "6.0.4"
+              },
+              {
+                "name": "minimatch",
+                "version": "3.1.2"
+              },
+              {
+                "name": "brace-expansion",
+                "version": "1.1.11"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-plugin-import",
+                "version": "2.29.1"
+              },
+              {
+                "name": "minimatch",
+                "version": "3.1.2"
+              },
+              {
+                "name": "brace-expansion",
+                "version": "1.1.11"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "8128c0f0-b210-4578-a420-0fa92891ff41",
+        "locations": [
+          {
+            "package": {
+              "name": "brace-expansion",
+              "version": "1.1.11"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "id": "CVE-2025-5889",
+            "source": "cve"
+          },
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "\u003e=1.0.0 \u003c1.1.12",
+              "\u003e=2.0.0 \u003c2.0.2",
+              "\u003e=3.0.0 \u003c3.0.1",
+              "\u003e=4.0.0 \u003c4.0.1"
+            ],
+            "created_at": "2025-04-22T10:41:28.859488Z",
+            "credits": [
+              "mmmsssttt404"
+            ],
+            "cvss_base_score": 2.3,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 2.3,
+                "cvss_version": "4.0",
+                "modified_at": "2025-06-16T08:51:48.041497Z",
+                "severity": "low",
+                "type": "primary",
+                "vector": "CVSS:4.0/AV:N/AC:L/AT:P/PR:L/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N/E:P"
+              },
+              {
+                "assigner": "Snyk",
+                "base_score": 3.1,
+                "cvss_version": "3.1",
+                "modified_at": "2025-06-16T08:51:48.041497Z",
+                "severity": "low",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:N/A:L/E:P"
+              },
+              {
+                "assigner": "NVD",
+                "base_score": 3.1,
+                "cvss_version": "3.1",
+                "modified_at": "2025-06-10T01:13:43.537639Z",
+                "severity": "low",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:N/A:L"
+              },
+              {
+                "assigner": "Red Hat",
+                "base_score": 3.1,
+                "cvss_version": "3.1",
+                "modified_at": "2025-06-19T05:30:43.149011Z",
+                "severity": "low",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:N/A:L"
+              }
+            ],
+            "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:P/PR:L/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N/E:P",
+            "disclosed_at": "2025-04-22T09:04:33Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "epss_details": {
+              "model_version": "v2025.03.14",
+              "percentile": "0.04237",
+              "probability": "0.00022"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "proof of concept",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "proof of concept",
+                  "type": "primary"
+                }
+              ],
+              "sources": [
+                "Snyk"
+              ]
+            },
+            "id": "SNYK-JS-BRACEEXPANSION-9789073",
+            "initially_fixed_in_versions": [
+              "1.1.12",
+              "2.0.2",
+              "3.0.1",
+              "4.0.1"
+            ],
+            "is_fixable": true,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2025-06-19T05:30:43.149011Z",
+            "package_name": "brace-expansion",
+            "package_version": "",
+            "published_at": "2025-06-12T06:58:37.742572Z",
+            "references": [
+              {
+                "title": "GitHub Advisory",
+                "url": "https://github.com/advisories/GHSA-v6h2-p8h4-qcjw"
+              },
+              {
+                "title": "GitHub Commit",
+                "url": "https://github.com/juliangruber/brace-expansion/commit/0b6a9781e18e9d2769bb2931f4856d1360243ed2"
+              },
+              {
+                "title": "GitHub Gist",
+                "url": "https://gist.github.com/mmmsssttt404/37a40ce7d6e5ca604858fe30814d9466"
+              },
+              {
+                "title": "GitHub PR",
+                "url": "https://github.com/juliangruber/brace-expansion/pull/65"
+              }
+            ],
+            "severity": "low",
+            "source": "snyk_vuln"
+          },
+          {
+            "id": "CWE-1333",
+            "source": "cwe"
+          },
+          {
+            "id": "GHSA-v6h2-p8h4-qcjw",
+            "source": "ghsa"
+          }
+        ],
+        "rating": {
+          "severity": "low"
+        },
+        "risk": {},
+        "title": "Regular Expression Denial of Service (ReDoS)"
+      },
+      "id": "8128c0f0-b210-4578-a420-0fa92891ff41",
+      "links": {},
+      "relationships": {},
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n[debug](https://github.com/visionmedia/debug) is a small debugging utility.\n\nAffected versions of this package are vulnerable to Alternate solution to CWE-1333 | Inefficient Regular Expression Complexity. None\n## Remediation\nThere is no fixed version for `debug`.\n\n## References\n- [GitHub Issue](https://github.com/debug-js/debug/issues/957)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "body-parser",
+                "version": "1.20.3"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "body-parser",
+                "version": "1.20.3"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "body-parser",
+                "version": "1.20.3"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/target-service-client",
+                "version": "5.46.2"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "body-parser",
+                "version": "1.20.3"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "finalhandler",
+                "version": "1.3.1"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "finalhandler",
+                "version": "1.3.1"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "finalhandler",
+                "version": "1.3.1"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/target-service-client",
+                "version": "5.46.2"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "finalhandler",
+                "version": "1.3.1"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "send",
+                "version": "0.19.0"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "send",
+                "version": "0.19.0"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "send",
+                "version": "0.19.0"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/target-service-client",
+                "version": "5.46.2"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "send",
+                "version": "0.19.0"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/target-service-client",
+                "version": "5.46.2"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "debug",
+                "version": "2.6.9"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "bb8050e0-f027-4e6b-a46e-0138117d2c46",
+        "locations": [
+          {
+            "package": {
+              "name": "debug",
+              "version": "2.6.9"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "*"
+            ],
+            "created_at": "2025-05-02T12:17:04.846156Z",
+            "credits": [
+              "provDannyLaw"
+            ],
+            "cvss_base_score": 6.9,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "4.0",
+                "modified_at": "2025-05-02T12:17:05.259065Z",
+                "severity": "medium",
+                "type": "primary",
+                "vector": "CVSS:4.0/AV:A/AC:L/AT:N/PR:H/UI:N/VC:L/VI:H/VA:L/SC:N/SI:N/SA:L"
+              },
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "3.1",
+                "modified_at": "2025-05-02T12:17:05.259065Z",
+                "severity": "medium",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:A/AC:L/PR:H/UI:N/S:C/C:L/I:N/A:H"
+              }
+            ],
+            "cvss_vector": "CVSS:4.0/AV:A/AC:L/AT:N/PR:H/UI:N/VC:L/VI:H/VA:L/SC:N/SI:N/SA:L",
+            "disclosed_at": "2024-02-21T18:17:18Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-JS-DEBUG-14214893",
+            "initially_fixed_in_versions": [],
+            "is_fixable": false,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2025-05-02T12:17:05.259065Z",
+            "package_name": "debug",
+            "package_version": "",
+            "published_at": "2025-05-02T12:17:05.24083Z",
+            "references": [
+              {
+                "title": "GitHub Issue",
+                "url": "https://github.com/debug-js/debug/issues/957"
+              }
+            ],
+            "severity": "medium",
+            "source": "snyk_vuln"
+          },
+          {
+            "id": "CVE-9999-1234",
+            "source": "cve"
+          },
+          {
+            "id": "CWE-109",
+            "source": "cwe"
+          }
+        ],
+        "rating": {
+          "severity": "medium"
+        },
+        "risk": {},
+        "title": "Alternate solution to CWE-1333 | Inefficient Regular Expression Complexity"
+      },
+      "id": "bb8050e0-f027-4e6b-a46e-0138117d2c46",
+      "links": {},
+      "relationships": {},
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n[lodash](https://www.npmjs.com/package/lodash) is a modern JavaScript utility library delivering modularity, performance, \u0026 extras.\n\nAffected versions of this package are vulnerable to Denial of Service (DoS). An issue was discovered in Juju that resulted in the leak of the sensitive context ID, which allows a local unprivileged attacker to access other sensitive data or relation accessible to the local charm.\n\n## Details\n\nDenial of Service (DoS) describes a family of attacks, all aimed at making a system inaccessible to its intended and legitimate users.\n\nUnlike other vulnerabilities, DoS attacks usually do not aim at breaching security. Rather, they are focused on making websites and services unavailable to genuine users resulting in downtime.\n\nOne popular Denial of Service vulnerability is DDoS (a Distributed Denial of Service), an attack that attempts to clog network pipes to the system by generating a large volume of traffic from many machines.\n\nWhen it comes to open source libraries, DoS vulnerabilities allow attackers to trigger such a crash or crippling of the service by using a flaw either in the application code or from the use of open source libraries.\n\nTwo common types of DoS vulnerabilities:\n\n* High CPU/Memory Consumption- An attacker sending crafted requests that could cause the system to take a disproportionate amount of time to process. For example, [commons-fileupload:commons-fileupload](SNYK-JAVA-COMMONSFILEUPLOAD-30082).\n\n* Crash - An attacker sending crafted requests that could cause the system to crash. For Example,  [npm `ws` package](https://snyk.io/vuln/npm:ws:20171108)\n\n## Remediation\nUpgrade `lodash` to version  or higher.\n## References\n- [AAAA](https://www.cve.org/CVERecord?id=CVE-2024-6984)\n- [GitHub Advisory](https://github.com/juju/juju/security/advisories/GHSA-6vjm-54vp-mxhx)\n- [GitHub Commit](https://github.com/juju/juju/commit/da929676853092a29ddf8d589468cf85ba3efaf2)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "@bull-board/api",
+                "version": "5.21.4"
+              },
+              {
+                "name": "redis-info",
+                "version": "3.1.0"
+              },
+              {
+                "name": "lodash",
+                "version": "4.17.21"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "bullmq",
+                "version": "4.17.0"
+              },
+              {
+                "name": "lodash",
+                "version": "4.17.21"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "knex",
+                "version": "3.1.0"
+              },
+              {
+                "name": "lodash",
+                "version": "4.17.21"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "cec9305f-2602-4c6a-b2c8-c1e071b931db",
+        "locations": [
+          {
+            "package": {
+              "name": "lodash",
+              "version": "4.17.21"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "id": "CVE-2024-6984",
+            "source": "cve"
+          },
+          {
+            "id": "GHSA-6vjm-54vp-mxhx",
+            "source": "ghsa"
+          },
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "*"
+            ],
+            "created_at": "2024-07-29T14:50:27.269552Z",
+            "credits": [
+              "Unknown"
+            ],
+            "cvss_base_score": 7.5,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 7.5,
+                "cvss_version": "3.1",
+                "modified_at": "2024-07-29T14:50:27.627232Z",
+                "severity": "high",
+                "type": "primary",
+                "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+              },
+              {
+                "assigner": "NVD",
+                "base_score": 3.8,
+                "cvss_version": "3.1",
+                "modified_at": "2024-09-12T01:14:24.633804Z",
+                "severity": "low",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:C/C:L/I:N/A:N"
+              }
+            ],
+            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+            "disclosed_at": "2024-07-29T14:40:25.994Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "epss_details": {
+              "model_version": "v2025.03.14",
+              "percentile": "0.03017",
+              "probability": "0.00018"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-JS-LODASH-12239302",
+            "initially_fixed_in_versions": [],
+            "is_fixable": false,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2024-09-12T01:14:24.633804Z",
+            "package_name": "lodash",
+            "package_version": "",
+            "published_at": "2024-07-29T14:50:27.559032Z",
+            "references": [
+              {
+                "title": "AAAA",
+                "url": "https://www.cve.org/CVERecord?id=CVE-2024-6984"
+              },
+              {
+                "title": "GitHub Advisory",
+                "url": "https://github.com/juju/juju/security/advisories/GHSA-6vjm-54vp-mxhx"
+              },
+              {
+                "title": "GitHub Commit",
+                "url": "https://github.com/juju/juju/commit/da929676853092a29ddf8d589468cf85ba3efaf2"
+              }
+            ],
+            "severity": "high",
+            "source": "snyk_vuln"
+          },
+          {
+            "id": "CWE-400",
+            "source": "cwe"
+          }
+        ],
+        "rating": {
+          "severity": "high"
+        },
+        "risk": {},
+        "suppression": {
+          "created_at": "2025-11-12T14:35:18.727Z",
+          "justification": "I dont think this is vulnerable",
+          "path": [
+            "*"
+          ],
+          "policy": {
+            "id": "49b16de4-fab8-4f90-ae15-0c94189cbefd"
+          },
+          "status": "ignored"
+        },
+        "title": "Denial of Service (DoS)"
+      },
+      "id": "cec9305f-2602-4c6a-b2c8-c1e071b931db",
+      "links": {},
+      "relationships": {
+        "fix": {
+          "data": {
+            "attributes": {
+              "action": {
+                "format": "upgrade_package_advice",
+                "package_name": "lodash",
+                "upgrade_paths": [
+                  {
+                    "dependency_path": [
+                      {
+                        "name": "workspace-service",
+                        "version": "0.0.1"
+                      },
+                      {
+                        "name": "bullmq",
+                        "version": "5.4.3"
+                      }
+                    ],
+                    "is_drop": true
+                  }
+                ]
+              },
+              "outcome": "fully_resolved"
+            },
+            "id": "cec9305f-2602-4c6a-b2c8-c1e071b931db",
+            "type": "fixes"
+          }
+        },
+        "policy": {
+          "data": {
+            "attributes": {
+              "policies": [
+                {
+                  "applied_policy": {
+                    "action_type": "ignore",
+                    "ignore": {
+                      "created": "2025-11-12T14:35:18.727Z",
+                      "disregard_if_fixable": false,
+                      "ignored_by": {
+                        "id": "3cc427b2-35dc-4ce7-bd12-b7ea95d01f68",
+                        "name": "Ignored by security policy"
+                      },
+                      "path": [
+                        "*"
+                      ],
+                      "reason": "I dont think this is vulnerable",
+                      "reason_type": "not-vulnerable",
+                      "source": "unknown"
+                    },
+                    "policy_ref": {
+                      "id": "3cc427b2-35dc-4ce7-bd12-b7ea95d01f68",
+                      "owner": "group"
+                    },
+                    "rule": {
+                      "created": "2025-11-12T14:35:18.727389Z",
+                      "id": "88f29b79-6c33-4262-910d-0a53c4292bb5",
+                      "modified": "2025-11-12T14:35:18.727389Z",
+                      "name": "Rule 3",
+                      "review": "not-required"
+                    }
+                  },
+                  "id": "49b16de4-fab8-4f90-ae15-0c94189cbefd",
+                  "type": "legacy_policy_snapshot"
+                }
+              ]
+            },
+            "id": "61122434-13b2-4447-a5f5-ef92e926761c",
+            "type": "policies"
+          },
+          "links": {}
+        }
+      },
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n[debug](https://github.com/visionmedia/debug) is a small debugging utility.\n\nAffected versions of this package are vulnerable to Alternate solution to CWE-1333 | Inefficient Regular Expression Complexity. None\n## Remediation\nThere is no fixed version for `debug`.\n\n## References\n- [GitHub Issue](https://github.com/debug-js/debug/issues/957)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-import-resolver-node",
+                "version": "0.3.9"
+              },
+              {
+                "name": "debug",
+                "version": "3.2.7"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-import-resolver-typescript",
+                "version": "3.6.1"
+              },
+              {
+                "name": "eslint-module-utils",
+                "version": "2.8.1"
+              },
+              {
+                "name": "debug",
+                "version": "3.2.7"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-plugin-import",
+                "version": "2.29.1"
+              },
+              {
+                "name": "debug",
+                "version": "3.2.7"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-plugin-import",
+                "version": "2.29.1"
+              },
+              {
+                "name": "eslint-import-resolver-node",
+                "version": "0.3.9"
+              },
+              {
+                "name": "debug",
+                "version": "3.2.7"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-plugin-import",
+                "version": "2.29.1"
+              },
+              {
+                "name": "eslint-module-utils",
+                "version": "2.8.1"
+              },
+              {
+                "name": "debug",
+                "version": "3.2.7"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "d2e629fa-f24f-4d8c-869d-333a8693a5b8",
+        "locations": [
+          {
+            "package": {
+              "name": "debug",
+              "version": "3.2.7"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "*"
+            ],
+            "created_at": "2025-05-02T12:17:04.846156Z",
+            "credits": [
+              "provDannyLaw"
+            ],
+            "cvss_base_score": 6.9,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "4.0",
+                "modified_at": "2025-05-02T12:17:05.259065Z",
+                "severity": "medium",
+                "type": "primary",
+                "vector": "CVSS:4.0/AV:A/AC:L/AT:N/PR:H/UI:N/VC:L/VI:H/VA:L/SC:N/SI:N/SA:L"
+              },
+              {
+                "assigner": "Snyk",
+                "base_score": 6.9,
+                "cvss_version": "3.1",
+                "modified_at": "2025-05-02T12:17:05.259065Z",
+                "severity": "medium",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:A/AC:L/PR:H/UI:N/S:C/C:L/I:N/A:H"
+              }
+            ],
+            "cvss_vector": "CVSS:4.0/AV:A/AC:L/AT:N/PR:H/UI:N/VC:L/VI:H/VA:L/SC:N/SI:N/SA:L",
+            "disclosed_at": "2024-02-21T18:17:18Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-JS-DEBUG-14214893",
+            "initially_fixed_in_versions": [],
+            "is_fixable": false,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2025-05-02T12:17:05.259065Z",
+            "package_name": "debug",
+            "package_version": "",
+            "published_at": "2025-05-02T12:17:05.24083Z",
+            "references": [
+              {
+                "title": "GitHub Issue",
+                "url": "https://github.com/debug-js/debug/issues/957"
+              }
+            ],
+            "severity": "medium",
+            "source": "snyk_vuln"
+          },
+          {
+            "id": "CVE-9999-1234",
+            "source": "cve"
+          },
+          {
+            "id": "CWE-109",
+            "source": "cwe"
+          }
+        ],
+        "rating": {
+          "severity": "medium"
+        },
+        "risk": {},
+        "title": "Alternate solution to CWE-1333 | Inefficient Regular Expression Complexity"
+      },
+      "id": "d2e629fa-f24f-4d8c-869d-333a8693a5b8",
+      "links": {},
+      "relationships": {
+        "fix": {
+          "data": {
+            "attributes": {
+              "action": {
+                "format": "upgrade_package_advice",
+                "package_name": "debug",
+                "upgrade_paths": [
+                  {
+                    "dependency_path": [
+                      {
+                        "name": "workspace-service",
+                        "version": "0.0.1"
+                      },
+                      {
+                        "name": "eslint-import-resolver-typescript",
+                        "version": "3.7.0"
+                      }
+                    ],
+                    "is_drop": true
+                  }
+                ]
+              },
+              "outcome": "fully_resolved"
+            },
+            "id": "d2e629fa-f24f-4d8c-869d-333a8693a5b8",
+            "type": "fixes"
+          }
+        }
+      },
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n\nAffected versions of this package are vulnerable to Regular Expression Denial of Service (ReDoS) path-to-regexp turns path strings into a regular expressions. In certain cases, path-to-regexp will output a regular expression that can be exploited to cause poor performance. Because JavaScript is single threaded and regex matching runs on the main thread, poor performance will block the event loop and lead to a DoS. The bad regular expression is generated any time you have two parameters within a single segment, separated by something that is not a period (.). For users of 0.1, upgrade to 0.1.10. All other users should upgrade to 8.0.0.\n\n## Details\n\nDenial of Service (DoS) describes a family of attacks, all aimed at making a system inaccessible to its original and legitimate users. There are many types of DoS attacks, ranging from trying to clog the network pipes to the system by generating a large volume of traffic from many machines (a Distributed Denial of Service - DDoS - attack) to sending crafted requests that cause a system to crash or take a disproportional amount of time to process.\n\nThe Regular expression Denial of Service (ReDoS) is a type of Denial of Service attack. Regular expressions are incredibly powerful, but they aren't very intuitive and can ultimately end up making it easy for attackers to take your site down.\n\nLet’s take the following regular expression as an example:\n```js\nregex = /A(B|C+)+D/\n```\n\nThis regular expression accomplishes the following:\n- `A` The string must start with the letter 'A'\n- `(B|C+)+` The string must then follow the letter A with either the letter 'B' or some number of occurrences of the letter 'C' (the `+` matches one or more times). The `+` at the end of this section states that we can look for one or more matches of this section.\n- `D` Finally, we ensure this section of the string ends with a 'D'\n\nThe expression would match inputs such as `ABBD`, `ABCCCCD`, `ABCBCCCD` and `ACCCCCD`\n\nIt most cases, it doesn't take very long for a regex engine to find a match:\n\n```bash\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCD\")'\n0.04s user 0.01s system 95% cpu 0.052 total\n\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCX\")'\n1.79s user 0.02s system 99% cpu 1.812 total\n```\n\nThe entire process of testing it against a 30 characters long string takes around ~52ms. But when given an invalid string, it takes nearly two seconds to complete the test, over ten times as long as it took to test a valid string. The dramatic difference is due to the way regular expressions get evaluated.\n\nMost Regex engines will work very similarly (with minor differences). The engine will match the first possible way to accept the current character and proceed to the next one. If it then fails to match the next one, it will backtrack and see if there was another way to digest the previous character. If it goes too far down the rabbit hole only to find out the string doesn’t match in the end, and if many characters have multiple valid regex paths, the number of backtracking steps can become very large, resulting in what is known as _catastrophic backtracking_.\n\nLet's look at how our expression runs into this problem, using a shorter string: \"ACCCX\". While it seems fairly straightforward, there are still four different ways that the engine could match those three C's:\n1. CCC\n2. CC+C\n3. C+CC\n4. C+C+C.\n\nThe engine has to try each of those combinations to see if any of them potentially match against the expression. When you combine that with the other steps the engine must take, we can use [RegEx 101 debugger](https://regex101.com/debugger) to see the engine has to take a total of 38 steps before it can determine the string doesn't match.\n\nFrom there, the number of steps the engine must use to validate a string just continues to grow.\n\n| String | Number of C's | Number of steps |\n| -------|-------------:| -----:|\n| ACCCX | 3 | 38\n| ACCCCX | 4 | 71\n| ACCCCCX | 5 | 136\n| ACCCCCCCCCCCCCCX | 14 | 65,553\n\n\nBy the time the string includes 14 C's, the engine has to take over 65,000 steps just to see if the string is valid. These extreme situations can cause them to work very slowly (exponentially related to input size, as shown above), allowing an attacker to exploit this and can cause the service to excessively consume CPU, resulting in a Denial of Service.\n\n## Remediation\nUpgrade `path-to-regexp` to version 1.0.0 or higher.\n## References\n- [GitHub Advisory](https://github.com/pillarjs/path-to-regexp/security/advisories/GHSA-9wv6-86v2-598j)\n- [GitHub Commit](https://github.com/pillarjs/path-to-regexp/commit/29b96b4a1de52824e1ca0f49a701183cc4ed476f)\n- [GitHub Commit](https://github.com/pillarjs/path-to-regexp/commit/60f2121e9b66b7b622cc01080df0aabda9eedee6)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "path-to-regexp",
+                "version": "0.1.12"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "path-to-regexp",
+                "version": "0.1.12"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "path-to-regexp",
+                "version": "0.1.12"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/target-service-client",
+                "version": "5.46.2"
+              },
+              {
+                "name": "@snyk/rest-node-libs",
+                "version": "6.1.2"
+              },
+              {
+                "name": "express",
+                "version": "4.21.2"
+              },
+              {
+                "name": "path-to-regexp",
+                "version": "0.1.12"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "db7ce116-2374-4139-a197-410cdd14f21e",
+        "locations": [
+          {
+            "package": {
+              "name": "path-to-regexp",
+              "version": "0.1.12"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "id": "GHSA-9wv6-86v2-598j",
+            "source": "ghsa"
+          },
+          {
+            "id": "CWE-1333",
+            "source": "cwe"
+          },
+          {
+            "id": "CVE-2024-45296",
+            "source": "cve"
+          },
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "\u003c1.0.0"
+            ],
+            "created_at": "2024-11-27T14:28:29.557328Z",
+            "credits": [
+              "Unknown"
+            ],
+            "cvss_base_score": 7.5,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 7.5,
+                "cvss_version": "3.1",
+                "modified_at": "2024-12-02T11:33:42.633429Z",
+                "severity": "high",
+                "type": "primary",
+                "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+              },
+              {
+                "assigner": "Red Hat",
+                "base_score": 5.3,
+                "cvss_version": "3.1",
+                "modified_at": "2024-10-03T11:11:48.18152Z",
+                "severity": "medium",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+              }
+            ],
+            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+            "disclosed_at": "2024-09-09T19:40:08Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "epss_details": {
+              "model_version": "v2025.03.14",
+              "percentile": "0.38680",
+              "probability": "0.00167"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "not defined",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "not defined",
+                  "type": "primary"
+                }
+              ],
+              "sources": []
+            },
+            "id": "SNYK-JS-PATHTOREGEXP-13271681",
+            "initially_fixed_in_versions": [
+              "1.0.0"
+            ],
+            "is_fixable": true,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2024-12-02T11:33:42.633429Z",
+            "package_name": "path-to-regexp",
+            "package_version": "",
+            "published_at": "2024-11-27T14:28:29.972359Z",
+            "references": [
+              {
+                "title": "GitHub Advisory",
+                "url": "https://github.com/pillarjs/path-to-regexp/security/advisories/GHSA-9wv6-86v2-598j"
+              },
+              {
+                "title": "GitHub Commit",
+                "url": "https://github.com/pillarjs/path-to-regexp/commit/29b96b4a1de52824e1ca0f49a701183cc4ed476f"
+              },
+              {
+                "title": "GitHub Commit",
+                "url": "https://github.com/pillarjs/path-to-regexp/commit/60f2121e9b66b7b622cc01080df0aabda9eedee6"
+              }
+            ],
+            "severity": "high",
+            "source": "snyk_vuln"
+          }
+        ],
+        "rating": {
+          "severity": "high"
+        },
+        "risk": {},
+        "suppression": {
+          "created_at": "2025-11-12T14:36:26.987Z",
+          "expires_at": "2029-12-28T23:00:00Z",
+          "justification": "Temporary project ignore",
+          "path": [
+            "*"
+          ],
+          "policy": {
+            "id": "3ce24384-026c-4ca9-b61f-058d570b61fb"
+          },
+          "status": "ignored"
+        },
+        "title": "Regular Expression Denial of Service (ReDoS)"
+      },
+      "id": "db7ce116-2374-4139-a197-410cdd14f21e",
+      "links": {},
+      "relationships": {
+        "fix": {
+          "data": {
+            "attributes": {
+              "action": {
+                "format": "upgrade_package_advice",
+                "package_name": "path-to-regexp",
+                "upgrade_paths": [
+                  {
+                    "dependency_path": [
+                      {
+                        "name": "workspace-service",
+                        "version": "0.0.1"
+                      },
+                      {
+                        "name": "express",
+                        "version": "5.0.0"
+                      }
+                    ],
+                    "is_drop": true
+                  },
+                  {
+                    "dependency_path": [
+                      {
+                        "name": "workspace-service",
+                        "version": "0.0.1"
+                      },
+                      {
+                        "name": "@bull-board/express",
+                        "version": "6.5.4"
+                      },
+                      {
+                        "name": "express",
+                        "version": "5.1.0"
+                      }
+                    ],
+                    "is_drop": true
+                  }
+                ]
+              },
+              "outcome": "fully_resolved"
+            },
+            "id": "db7ce116-2374-4139-a197-410cdd14f21e",
+            "type": "fixes"
+          }
+        },
+        "policy": {
+          "data": {
+            "attributes": {
+              "policies": [
+                {
+                  "applied_policy": {
+                    "action_type": "ignore",
+                    "ignore": {
+                      "created": "2025-11-12T14:36:26.987Z",
+                      "disregard_if_fixable": false,
+                      "expires": "2029-12-28T23:00:00Z",
+                      "ignored_by": {
+                        "email": "jacek.rzeniewicz@snyk.io",
+                        "id": "0b515878-ae96-4c25-8389-d63cc552990e",
+                        "name": "Jacek Rzeniewicz"
+                      },
+                      "path": [
+                        "*"
+                      ],
+                      "reason": "Temporary project ignore",
+                      "reason_type": "temporary-ignore",
+                      "source": "api"
+                    }
+                  },
+                  "id": "3ce24384-026c-4ca9-b61f-058d570b61fb",
+                  "type": "legacy_policy_snapshot"
+                }
+              ]
+            },
+            "id": "5dd76854-b95e-42a5-9fb1-3c3366c68903",
+            "type": "policies"
+          },
+          "links": {}
+        }
+      },
+      "type": "findings"
+    },
+    {
+      "attributes": {
+        "cause_of_failure": false,
+        "description": "## Overview\n[brace-expansion](https://github.com/juliangruber/brace-expansion) is a Brace expansion as known from sh/bash\n\nAffected versions of this package are vulnerable to Regular Expression Denial of Service (ReDoS) in the `expand()` function, which is prone to catastrophic backtracking on very long malicious inputs.\n## PoC\n```js\r\nimport index from \"./index.js\";\r\n\r\nlet str = \"{a}\" + \",\".repeat(100000) + \"\\u0000\";\r\n\r\nlet startTime = performance.now();\r\n\r\nconst result = index(str);\r\n\r\nlet endTime = performance.now();\r\n\r\nlet timeTaken = endTime - startTime;\r\n\r\nconsole.log(`匹配耗时: ${timeTaken.toFixed(3)} 毫秒`);\r\n```\n\n## Details\n\nDenial of Service (DoS) describes a family of attacks, all aimed at making a system inaccessible to its original and legitimate users. There are many types of DoS attacks, ranging from trying to clog the network pipes to the system by generating a large volume of traffic from many machines (a Distributed Denial of Service - DDoS - attack) to sending crafted requests that cause a system to crash or take a disproportional amount of time to process.\n\nThe Regular expression Denial of Service (ReDoS) is a type of Denial of Service attack. Regular expressions are incredibly powerful, but they aren't very intuitive and can ultimately end up making it easy for attackers to take your site down.\n\nLet’s take the following regular expression as an example:\n```js\nregex = /A(B|C+)+D/\n```\n\nThis regular expression accomplishes the following:\n- `A` The string must start with the letter 'A'\n- `(B|C+)+` The string must then follow the letter A with either the letter 'B' or some number of occurrences of the letter 'C' (the `+` matches one or more times). The `+` at the end of this section states that we can look for one or more matches of this section.\n- `D` Finally, we ensure this section of the string ends with a 'D'\n\nThe expression would match inputs such as `ABBD`, `ABCCCCD`, `ABCBCCCD` and `ACCCCCD`\n\nIt most cases, it doesn't take very long for a regex engine to find a match:\n\n```bash\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCD\")'\n0.04s user 0.01s system 95% cpu 0.052 total\n\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCX\")'\n1.79s user 0.02s system 99% cpu 1.812 total\n```\n\nThe entire process of testing it against a 30 characters long string takes around ~52ms. But when given an invalid string, it takes nearly two seconds to complete the test, over ten times as long as it took to test a valid string. The dramatic difference is due to the way regular expressions get evaluated.\n\nMost Regex engines will work very similarly (with minor differences). The engine will match the first possible way to accept the current character and proceed to the next one. If it then fails to match the next one, it will backtrack and see if there was another way to digest the previous character. If it goes too far down the rabbit hole only to find out the string doesn’t match in the end, and if many characters have multiple valid regex paths, the number of backtracking steps can become very large, resulting in what is known as _catastrophic backtracking_.\n\nLet's look at how our expression runs into this problem, using a shorter string: \"ACCCX\". While it seems fairly straightforward, there are still four different ways that the engine could match those three C's:\n1. CCC\n2. CC+C\n3. C+CC\n4. C+C+C.\n\nThe engine has to try each of those combinations to see if any of them potentially match against the expression. When you combine that with the other steps the engine must take, we can use [RegEx 101 debugger](https://regex101.com/debugger) to see the engine has to take a total of 38 steps before it can determine the string doesn't match.\n\nFrom there, the number of steps the engine must use to validate a string just continues to grow.\n\n| String | Number of C's | Number of steps |\n| -------|-------------:| -----:|\n| ACCCX | 3 | 38\n| ACCCCX | 4 | 71\n| ACCCCCX | 5 | 136\n| ACCCCCCCCCCCCCCX | 14 | 65,553\n\n\nBy the time the string includes 14 C's, the engine has to take over 65,000 steps just to see if the string is valid. These extreme situations can cause them to work very slowly (exponentially related to input size, as shown above), allowing an attacker to exploit this and can cause the service to excessively consume CPU, resulting in a Denial of Service.\n\n## Remediation\nUpgrade `brace-expansion` to version 1.1.12, 2.0.2, 3.0.1, 4.0.1 or higher.\n## References\n- [GitHub Advisory](https://github.com/advisories/GHSA-v6h2-p8h4-qcjw)\n- [GitHub Commit](https://github.com/juliangruber/brace-expansion/commit/0b6a9781e18e9d2769bb2931f4856d1360243ed2)\n- [GitHub Gist](https://gist.github.com/mmmsssttt404/37a40ce7d6e5ca604858fe30814d9466)\n- [GitHub PR](https://github.com/juliangruber/brace-expansion/pull/65)\n",
+        "evidence": [
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@bull-board/express",
+                "version": "5.21.4"
+              },
+              {
+                "name": "ejs",
+                "version": "3.1.10"
+              },
+              {
+                "name": "jake",
+                "version": "10.9.2"
+              },
+              {
+                "name": "filelist",
+                "version": "1.0.4"
+              },
+              {
+                "name": "minimatch",
+                "version": "5.1.6"
+              },
+              {
+                "name": "brace-expansion",
+                "version": "2.0.1"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "bullmq",
+                "version": "4.17.0"
+              },
+              {
+                "name": "glob",
+                "version": "8.1.0"
+              },
+              {
+                "name": "minimatch",
+                "version": "5.1.6"
+              },
+              {
+                "name": "brace-expansion",
+                "version": "2.0.1"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "@snyk/workspace-service-client",
+                "version": "1.0.0"
+              },
+              {
+                "name": "minimatch",
+                "version": "9.0.5"
+              },
+              {
+                "name": "brace-expansion",
+                "version": "2.0.1"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "eslint-plugin-perfectionist",
+                "version": "3.9.1"
+              },
+              {
+                "name": "@typescript-eslint/utils",
+                "version": "8.11.0"
+              },
+              {
+                "name": "@typescript-eslint/typescript-estree",
+                "version": "8.11.0"
+              },
+              {
+                "name": "minimatch",
+                "version": "9.0.5"
+              },
+              {
+                "name": "brace-expansion",
+                "version": "2.0.1"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "path": [
+              {
+                "name": "workspace-service",
+                "version": "0.0.1"
+              },
+              {
+                "name": "snowflake-sdk",
+                "version": "1.15.0"
+              },
+              {
+                "name": "glob",
+                "version": "10.4.5"
+              },
+              {
+                "name": "minimatch",
+                "version": "9.0.5"
+              },
+              {
+                "name": "brace-expansion",
+                "version": "2.0.1"
+              }
+            ],
+            "source": "dependency_path"
+          },
+          {
+            "reachability": "no_info",
+            "source": "reachability"
+          }
+        ],
+        "finding_type": "sca",
+        "key": "dea8cbf3-d25d-4548-b912-f56a994d250e",
+        "locations": [
+          {
+            "package": {
+              "name": "brace-expansion",
+              "version": "2.0.1"
+            },
+            "type": "package"
+          }
+        ],
+        "policy_modifications": [],
+        "problems": [
+          {
+            "id": "CVE-2025-5889",
+            "source": "cve"
+          },
+          {
+            "affected_hash_ranges": [],
+            "affected_hashes": [],
+            "affected_versions": [
+              "\u003e=1.0.0 \u003c1.1.12",
+              "\u003e=2.0.0 \u003c2.0.2",
+              "\u003e=3.0.0 \u003c3.0.1",
+              "\u003e=4.0.0 \u003c4.0.1"
+            ],
+            "created_at": "2025-04-22T10:41:28.859488Z",
+            "credits": [
+              "mmmsssttt404"
+            ],
+            "cvss_base_score": 2.3,
+            "cvss_sources": [
+              {
+                "assigner": "Snyk",
+                "base_score": 2.3,
+                "cvss_version": "4.0",
+                "modified_at": "2025-06-16T08:51:48.041497Z",
+                "severity": "low",
+                "type": "primary",
+                "vector": "CVSS:4.0/AV:N/AC:L/AT:P/PR:L/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N/E:P"
+              },
+              {
+                "assigner": "Snyk",
+                "base_score": 3.1,
+                "cvss_version": "3.1",
+                "modified_at": "2025-06-16T08:51:48.041497Z",
+                "severity": "low",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:N/A:L/E:P"
+              },
+              {
+                "assigner": "NVD",
+                "base_score": 3.1,
+                "cvss_version": "3.1",
+                "modified_at": "2025-06-10T01:13:43.537639Z",
+                "severity": "low",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:N/A:L"
+              },
+              {
+                "assigner": "Red Hat",
+                "base_score": 3.1,
+                "cvss_version": "3.1",
+                "modified_at": "2025-06-19T05:30:43.149011Z",
+                "severity": "low",
+                "type": "secondary",
+                "vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:N/A:L"
+              }
+            ],
+            "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:P/PR:L/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N/E:P",
+            "disclosed_at": "2025-04-22T09:04:33Z",
+            "ecosystem": {
+              "language": "js",
+              "package_manager": "npm",
+              "type": "build"
+            },
+            "epss_details": {
+              "model_version": "v2025.03.14",
+              "percentile": "0.04237",
+              "probability": "0.00022"
+            },
+            "exploit_details": {
+              "maturity_levels": [
+                {
+                  "format": "CVSSv3",
+                  "level": "proof of concept",
+                  "type": "secondary"
+                },
+                {
+                  "format": "CVSSv4",
+                  "level": "proof of concept",
+                  "type": "primary"
+                }
+              ],
+              "sources": [
+                "Snyk"
+              ]
+            },
+            "id": "SNYK-JS-BRACEEXPANSION-9789073",
+            "initially_fixed_in_versions": [
+              "1.1.12",
+              "2.0.2",
+              "3.0.1",
+              "4.0.1"
+            ],
+            "is_fixable": true,
+            "is_malicious": false,
+            "is_social_media_trending": false,
+            "modified_at": "2025-06-19T05:30:43.149011Z",
+            "package_name": "brace-expansion",
+            "package_version": "",
+            "published_at": "2025-06-12T06:58:37.742572Z",
+            "references": [
+              {
+                "title": "GitHub Advisory",
+                "url": "https://github.com/advisories/GHSA-v6h2-p8h4-qcjw"
+              },
+              {
+                "title": "GitHub Commit",
+                "url": "https://github.com/juliangruber/brace-expansion/commit/0b6a9781e18e9d2769bb2931f4856d1360243ed2"
+              },
+              {
+                "title": "GitHub Gist",
+                "url": "https://gist.github.com/mmmsssttt404/37a40ce7d6e5ca604858fe30814d9466"
+              },
+              {
+                "title": "GitHub PR",
+                "url": "https://github.com/juliangruber/brace-expansion/pull/65"
+              }
+            ],
+            "severity": "low",
+            "source": "snyk_vuln"
+          },
+          {
+            "id": "CWE-1333",
+            "source": "cwe"
+          },
+          {
+            "id": "GHSA-v6h2-p8h4-qcjw",
+            "source": "ghsa"
+          }
+        ],
+        "rating": {
+          "severity": "low"
+        },
+        "risk": {},
+        "title": "Regular Expression Denial of Service (ReDoS)"
+      },
+      "id": "dea8cbf3-d25d-4548-b912-f56a994d250e",
+      "links": {},
+      "relationships": {
+        "fix": {
+          "data": {
+            "attributes": {
+              "action": {
+                "format": "upgrade_package_advice",
+                "package_name": "brace-expansion",
+                "upgrade_paths": [
+                  {
+                    "dependency_path": [
+                      {
+                        "name": "workspace-service",
+                        "version": "0.0.1"
+                      },
+                      {
+                        "name": "bullmq",
+                        "version": "5.3.3"
+                      }
+                    ],
+                    "is_drop": true
+                  }
+                ]
+              },
+              "outcome": "partially_resolved"
+            },
+            "id": "dea8cbf3-d25d-4548-b912-f56a994d250e",
+            "type": "fixes"
+          }
+        }
+      },
+      "type": "findings"
+    }
+  ],
+  "jsonapi": {
+    "version": "1.0"
+  },
+  "links": {
+    "first": "/orgs/c3e3b0e1-842c-4e1c-b5ed-59074c8bfc78/tests/ff7a0f5f-fc85-43da-a119-bea176843bd9/findings?version=2024-10-15\u0026limit=100",
+    "self": "/orgs/c3e3b0e1-842c-4e1c-b5ed-59074c8bfc78/tests/ff7a0f5f-fc85-43da-a119-bea176843bd9/findings?version=2024-10-15\u0026limit=100"
+  },
+  "meta": {
+    "count": 14,
+    "order": "asc",
+    "sorted-by": "id"
+  }
+}
