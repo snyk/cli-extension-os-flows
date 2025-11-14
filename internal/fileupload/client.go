@@ -214,7 +214,7 @@ func (c *HTTPClient) addPathsToRevision(
 		filters = append(filters, deeproxyFilter)
 	}
 
-	for batchResult, err := range batchPaths(rootPath, pathsChan, c.uploadRevisionSealableClient.GetLimits(), filters...) {
+	for batchResult, err := range batchPaths(rootPath, pathsChan, c.uploadRevisionSealableClient.GetLimits(), c.logger, filters...) {
 		if err != nil {
 			return res, fmt.Errorf("failed to batch files: %w", err)
 		}

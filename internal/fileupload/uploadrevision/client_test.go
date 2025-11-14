@@ -267,10 +267,10 @@ func TestClient_UploadFiles_TotalPayloadSizeLimit(t *testing.T) {
 	mockFS := fstest.MapFS{}
 	files := []uploadrevision.UploadFile{}
 
-	// Use files that are 30MB each (under the 50MB individual limit)
-	// 8 files = 240MB > 200MB total limit
-	fileSize := int64(30_000_000)
-	numFiles := 8
+	// Use files that are 20MB each (under the 50MB individual limit)
+	// 3 files = 60MB > 50MB total limit
+	fileSize := int64(20_000_000)
+	numFiles := 3
 
 	for i := range numFiles {
 		filename := fmt.Sprintf("file%d.txt", i)
@@ -298,14 +298,14 @@ func TestClient_UploadFiles_TotalPayloadSizeExactlyAtLimit(t *testing.T) {
 	srv, c := setupTestServer(t)
 	defer srv.Close()
 
-	// Test boundary: exactly 200MB (should succeed)
+	// Test boundary: exactly 50MB (should succeed)
 	mockFS := fstest.MapFS{}
 	files := []uploadrevision.UploadFile{}
 
-	// Create files that sum exactly to 200MB
-	// 4 files of 50MB each = 200MB exactly
-	fileSize := int64(50_000_000)
-	numFiles := 4
+	// Create files that sum exactly to 50MB
+	// 5 files of 10MB each = 50MB exactly
+	fileSize := int64(10_000_000)
+	numFiles := 5
 
 	for i := 0; i < numFiles; i++ {
 		filename := fmt.Sprintf("file%d.txt", i)

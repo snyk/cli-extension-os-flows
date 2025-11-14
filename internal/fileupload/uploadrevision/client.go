@@ -41,10 +41,12 @@ type HTTPSealableClient struct {
 const apiVersion = "2024-10-15"
 
 const (
-	fileSizeLimit         = 50_000_000  // 50MB - maximum size per individual file
-	fileCountLimit        = 300_000     // 300,000 - maximum number of files per request
-	totalPayloadSizeLimit = 200_000_000 // 200MB - maximum total uncompressed payload size per request
-	filePathLengthLimit   = 256         // 256 - maximum length of file names
+	fileSizeLimit         = 50_000_000 // 50MB - maximum size per individual file
+	fileCountLimit        = 300_000    // 300,000 - maximum number of files per request
+	totalPayloadSizeLimit = 50_000_000 // 50MB - maximum total file content size per batch (server limit)
+	filePathLengthLimit   = 256        // 256 - maximum length of file names
+	// Note: The server also has a 200MB limit for the total request payload size (multipart form with overhead),
+	// but since we batch at 50MB of file content, the multipart form will be well under 200MB after overhead.
 )
 
 // NewClient creates a new file upload client with the given configuration and options.
