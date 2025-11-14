@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/rs/zerolog"
+
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/uploadrevision"
 )
 
@@ -50,7 +51,12 @@ type batchingResult struct {
 	filteredFiles []FilteredFile
 }
 
-func batchPaths(rootPath string, paths <-chan string, limits uploadrevision.Limits, logger *zerolog.Logger, filters ...filter) iter.Seq2[*batchingResult, error] {
+func batchPaths(rootPath string,
+	paths <-chan string,
+	limits uploadrevision.Limits,
+	logger *zerolog.Logger,
+	filters ...filter,
+) iter.Seq2[*batchingResult, error] {
 	return func(yield func(*batchingResult, error) bool) {
 		batch := newUploadBatch(limits)
 		filtered := []FilteredFile{}
