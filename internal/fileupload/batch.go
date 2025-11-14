@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/rs/zerolog"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload/uploadrevision"
 )
 
@@ -49,10 +50,18 @@ type batchingResult struct {
 	filteredFiles []FilteredFile
 }
 
-func batchPaths(rootPath string, paths <-chan string, limits uploadrevision.Limits, filters ...filter) iter.Seq2[*batchingResult, error] {
+func batchPaths(rootPath string, paths <-chan string, limits uploadrevision.Limits, logger *zerolog.Logger, filters ...filter) iter.Seq2[*batchingResult, error] {
 	return func(yield func(*batchingResult, error) bool) {
 		batch := newUploadBatch(limits)
 		filtered := []FilteredFile{}
+		batchNumber := 0
+
+		logger.Debug().
+			Int("file_count_limit", limits.FileCountLimit).
+			Int64("file_size_limit_bytes", limits.FileSizeLimit).
+			Int64("total_payload_limit_bytes", limits.TotalPayloadSizeLimit).
+			Msg("Starting file batching")
+
 		for path := range paths {
 			relPath, err := filepath.Rel(rootPath, path)
 			if err != nil {
@@ -85,6 +94,12 @@ func batchPaths(rootPath string, paths <-chan string, limits uploadrevision.Limi
 			}
 
 			if batch.wouldExceedLimits(fstat.Size()) {
+				batchNumber++
+				logger.Debug().
+					Int("batch_number", batchNumber).
+					Int("file_count", len(batch.files)).
+					Int64("total_size_bytes", batch.currentSize).
+					Msg("Batch complete, starting new batch")
 				if !yield(&batchingResult{batch: batch, filteredFiles: filtered}, nil) {
 					return
 				}
