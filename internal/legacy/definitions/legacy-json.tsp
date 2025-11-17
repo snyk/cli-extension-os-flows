@@ -229,6 +229,7 @@ model VulnFilteredIgnoredBy {
   name: string;
   email: string | null;
   isGroupPolicy: boolean;
+  type?: string;
 }
 
 

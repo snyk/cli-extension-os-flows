@@ -278,3 +278,50 @@ func TestMultiplePolicies(t *testing.T) {
 	require.NotNil(t, vuln.Ignores)
 	require.Len(t, *vuln.Ignores, 1)
 }
+
+func TestIgnoredBy_TypeField_InFinalJSON(t *testing.T) {
+	tests := []struct {
+		name         string
+		findingsFile string
+		expectedType string
+	}{
+		{
+			name:         "user ignore in JSON",
+			findingsFile: "testdata/projectIgnore-findings.json",
+			expectedType: "user",
+		},
+		{
+			name:         "group policy ignore in JSON",
+			findingsFile: "testdata/policyGroupIgnore-findings.json",
+			expectedType: "group",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			findings := loadFindings(t, tt.findingsFile)
+			vulns, err := transform.FindingsToLegacyVulns(findings, "package-manager", utils.Ptr(zerolog.Nop()))
+			require.NoError(t, err)
+
+			vulnReport := transform.SeparateIgnoredVulnerabilities(vulns, false)
+
+			response := definitions.LegacyVulnerabilityResponse{
+				Filtered: definitions.Filtered{
+					Ignore: vulnReport.Ignored,
+					Patch:  make([]string, 0),
+				},
+			}
+
+			require.NotEmpty(t, response.Filtered.Ignore)
+			firstIgnoredVuln := response.Filtered.Ignore[0]
+			require.NotNil(t, firstIgnoredVuln.Filtered)
+			require.NotNil(t, firstIgnoredVuln.Filtered.Ignored)
+			require.NotEmpty(t, *firstIgnoredVuln.Filtered.Ignored)
+
+			ignored := (*firstIgnoredVuln.Filtered.Ignored)[0]
+			require.NotNil(t, ignored.IgnoredBy)
+			require.NotNil(t, ignored.IgnoredBy.Type)
+			assert.Equal(t, tt.expectedType, *ignored.IgnoredBy.Type)
+		})
+	}
+}
