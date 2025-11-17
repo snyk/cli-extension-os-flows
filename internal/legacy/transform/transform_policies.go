@@ -173,13 +173,19 @@ func severityChangePolicyOrNil(finding *testapi.FindingData) (*testapi.SeverityC
 }
 
 func buildLegacyIgnore(ignore *testapi.IgnoreDetails) definitions.VulnFilteredIgnored {
+	isGroupPolicy := ignore.IgnoredBy.Email == nil
 	ignoredBy := definitions.VulnFilteredIgnoredBy{
-		IsGroupPolicy: ignore.IgnoredBy.Email == nil,
+		IsGroupPolicy: isGroupPolicy,
 	}
 	if ignore.IgnoredBy != nil {
 		ignoredBy.Id = ignore.IgnoredBy.Id.String()
 		ignoredBy.Name = ignore.IgnoredBy.Name
 		ignoredBy.Email = ignore.IgnoredBy.Email
+		if isGroupPolicy {
+			ignoredBy.Type = utils.Ptr("group")
+		} else {
+			ignoredBy.Type = utils.Ptr("user")
+		}
 	}
 
 	return definitions.VulnFilteredIgnored{

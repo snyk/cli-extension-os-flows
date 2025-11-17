@@ -362,6 +362,7 @@ type VulnFilteredIgnoredBy struct {
 	Id            string  `json:"id"`
 	IsGroupPolicy bool    `json:"isGroupPolicy"`
 	Name          string  `json:"name"`
+	Type          *string `json:"type,omitempty"`
 }
 
 // Vulnerability defines model for Vulnerability.
