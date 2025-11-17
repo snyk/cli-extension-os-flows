@@ -11,6 +11,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
+	"github.com/snyk/cli-extension-os-flows/internal/util/testfactories"
 )
 
 func Test_consolidateFindings(t *testing.T) {
@@ -177,6 +178,43 @@ func Test_consolidateFindings(t *testing.T) {
 		// Should preserve the risk score from the second finding
 		assert.Equal(t, uint16(800), consolidated[0].Attributes.Risk.RiskScore.Value)
 		assert.Equal(t, testapi.SeverityCritical, consolidated[0].Attributes.Rating.Severity)
+	})
+
+	t.Run("handles findings with unresolved fix outcome without actions", func(t *testing.T) {
+		findings := []testapi.FindingData{
+			{
+				Attributes: &testapi.FindingAttributes{
+					Rating: testapi.Rating{Severity: testapi.SeverityHigh},
+					Problems: []testapi.Problem{
+						createSnykVulnProblem("SNYK-TEST-005"),
+					},
+				},
+			},
+			{
+				Attributes: &testapi.FindingAttributes{
+					Rating: testapi.Rating{Severity: testapi.SeverityMedium},
+					Problems: []testapi.Problem{
+						createSnykVulnProblem("SNYK-TEST-005"),
+					},
+				},
+			},
+		}
+
+		findings[0].Relationships = testfactories.NewShimUnresolvedRelationship()
+		findings[1].Relationships = testfactories.NewShimUnresolvedRelationship()
+
+		ctx := t.Context()
+		ctx = cmdctx.WithLogger(ctx, &logger)
+		ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+
+		consolidated, err := ostest.ConsolidateFindings(ctx, findings)
+		require.NoError(t, err)
+		require.Len(t, consolidated, 1)
+
+		require.NotNil(t, consolidated[0].Relationships)
+		require.NotNil(t, consolidated[0].Relationships.Fix)
+		assert.Equal(t, testapi.Unresolved, consolidated[0].Relationships.Fix.Data.Attributes.Outcome)
+		assert.Nil(t, consolidated[0].Relationships.Fix.Data.Attributes.Action)
 	})
 }
 

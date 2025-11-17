@@ -456,21 +456,28 @@ func consolidateFindingFix(existing, additional testapi.FindingData, pkgManager 
 
 	if existing.Relationships.Fix == nil {
 		existing.Relationships.Fix = additional.Relationships.Fix
-	} else {
-		efAction := existing.Relationships.Fix.Data.Attributes.Action
-		afAction := additional.Relationships.Fix.Data.Attributes.Action
-
-		action, err := mergeFixActions(efAction, afAction, pkgManager)
-		if err != nil {
-			return nil, fmt.Errorf("failed to merge findings fix actions: %w", err)
-		}
-
-		existing.Relationships.Fix.Data.Attributes.Outcome = mergeUpgradeOutcome(
-			existing.Relationships.Fix.Data.Attributes.Outcome,
-			additional.Relationships.Fix.Data.Attributes.Outcome,
-		)
-		existing.Relationships.Fix.Data.Attributes.Action = action
+		return &existing, nil
 	}
+
+	existingAttrs := existing.Relationships.Fix.Data.Attributes
+	additionalAttrs := additional.Relationships.Fix.Data.Attributes
+
+	existingAttrs.Outcome = mergeUpgradeOutcome(existingAttrs.Outcome, additionalAttrs.Outcome)
+
+	if existingAttrs.Action == nil {
+		existingAttrs.Action = additionalAttrs.Action
+		return &existing, nil
+	}
+
+	if additionalAttrs.Action == nil {
+		return &existing, nil
+	}
+
+	action, err := mergeFixActions(existingAttrs.Action, additionalAttrs.Action, pkgManager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to merge findings fix actions: %w", err)
+	}
+	existingAttrs.Action = action
 
 	return &existing, nil
 }

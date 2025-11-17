@@ -198,3 +198,17 @@ func NewShimPinRelationship(t *testing.T, pkg string) *testapiinline.FindingRela
 		},
 	}
 }
+
+// NewShimUnresolvedRelationship creates a FindingRelationship with an unresolved outcome and nil action.
+func NewShimUnresolvedRelationship() *testapiinline.FindingRelationship {
+	return &testapiinline.FindingRelationship{
+		Fix: &testapiinline.RelationshipFix{
+			Data: &testapiinline.FixData{
+				Attributes: &testapi.FixAttributes{
+					Outcome: testapi.Unresolved,
+					Action:  nil,
+				},
+			},
+		},
+	}
+}
