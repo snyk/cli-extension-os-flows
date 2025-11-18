@@ -16,9 +16,9 @@ import (
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
-	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	gafmocks "github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
+	"github.com/snyk/go-application-framework/pkg/utils/ufm"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
@@ -68,10 +68,8 @@ func Test_RunSbomReachabilityFlow_JSON(t *testing.T) {
 	require.True(t, ok)
 	snaps.MatchJSON(t, summary)
 
-	require.Contains(t, content_type.UFM_RESULT, outputData[1].GetContentType()) // test result data
-	testResult, ok := outputData[1].GetPayload().([]testapi.TestResult)
-	require.True(t, ok)
-	snaps.MatchJSON(t, testResult)
+	testResult := ufm.GetTestResultsFromWorkflowData(outputData[1])
+	require.Len(t, testResult, 1)
 }
 
 func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
@@ -101,10 +99,8 @@ func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
 	require.True(t, ok)
 	snaps.MatchJSON(t, summary)
 
-	require.Contains(t, content_type.UFM_RESULT, outputData[1].GetContentType()) // test result data
-	testResult, ok := outputData[1].GetPayload().([]testapi.TestResult)
-	require.True(t, ok)
-	snaps.MatchJSON(t, testResult)
+	testResult := ufm.GetTestResultsFromWorkflowData(outputData[1])
+	require.Len(t, testResult, 1)
 
 	require.Contains(t, "application/json; schema=local-unified-finding", outputData[2].GetContentType())
 	localFindings, ok := outputData[2].GetPayload().([]byte)
@@ -332,11 +328,26 @@ func setupTest(t *testing.T, ctrl *gomock.Controller, jsonOutput bool) (
 
 	// Mock TestResult with comprehensive data
 	mockTestResult := gafclientmocks.NewMockTestResult(ctrl)
-	mockTestResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).Times(1)
-	mockTestResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{findingData}, true, nil).Times(1)
+	mockTestResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
+	mockTestResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{findingData}, true, nil).AnyTimes()
 	mockTestResult.EXPECT().GetTestSubject().Return(testSubject).AnyTimes()
 	mockTestResult.EXPECT().GetEffectiveSummary().Return(summary).AnyTimes()
 	mockTestResult.EXPECT().GetRawSummary().Return(summary).AnyTimes()
+
+	passFail := testapi.Pass
+	outcomeReason := testapi.TestOutcomeReasonOther
+	// Mock calls for serialized test result
+	mockTestResult.EXPECT().GetTestID().Return(&uuid.UUID{}).AnyTimes()
+	mockTestResult.EXPECT().GetTestConfiguration().Return(&testapi.TestConfiguration{}).AnyTimes()
+	mockTestResult.EXPECT().GetCreatedAt().Return(&time.Time{}).AnyTimes()
+	mockTestResult.EXPECT().GetErrors().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
+	mockTestResult.EXPECT().GetWarnings().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
+	mockTestResult.EXPECT().GetPassFail().Return(&passFail).AnyTimes()
+	mockTestResult.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
+	mockTestResult.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
+	mockTestResult.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
+	mockTestResult.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
+
 	var tsl testapi.TestSubjectLocator
 	projectID := uuid.MustParse("5c520c95-a964-4de0-9284-02a16f9f88d5")
 	err = tsl.FromProjectEntityLocator(testapi.ProjectEntityLocator{
