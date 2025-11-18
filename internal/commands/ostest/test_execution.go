@@ -227,6 +227,13 @@ func prepareOutput(
 		outputData = append(outputData, summaryData)
 	}
 
+	// set metadata on the test result
+	params.TestResult.SetMetadata("package-manager", params.PackageManager)
+	params.TestResult.SetMetadata("project-name", params.ProjectName)
+	params.TestResult.SetMetadata("display-target-file", params.DisplayTargetFile)
+	params.TestResult.SetMetadata("target-directory", params.TargetDir)
+	params.TestResult.SetMetadata("dependency-count", params.DepCount)
+
 	// always output the test result
 	testResultData := ufm.CreateWorkflowDataFromTestResults(ictx.GetWorkflowIdentifier(), []testapi.TestResult{params.TestResult})
 	if testResultData != nil {
