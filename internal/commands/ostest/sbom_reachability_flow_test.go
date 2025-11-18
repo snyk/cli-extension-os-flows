@@ -101,6 +101,7 @@ func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
 
 	testResult := ufm.GetTestResultsFromWorkflowData(outputData[1])
 	require.Len(t, testResult, 1)
+	snaps.MatchJSON(t, `[{}]`) // TODO: needs snapshot updates so it can be removed
 
 	require.Contains(t, "application/json; schema=local-unified-finding", outputData[2].GetContentType())
 	localFindings, ok := outputData[2].GetPayload().([]byte)
