@@ -139,12 +139,6 @@
 
 [Test_RunSbomReachabilityFlow_HumanReadable - 2]
 [
- {}
-]
----
-
-[Test_RunSbomReachabilityFlow_HumanReadable - 3]
-[
  {
   "attributes": {
    "cause_of_failure": false,
@@ -251,6 +245,35 @@
   "type": "findings"
  }
 ]
+---
+
+[Test_RunSbomReachabilityFlow_HumanReadable - 3]
+{
+ "dependencyCount": 0,
+ "displayTargetFile": "./testdata/bom.json",
+ "packageManager": "",
+ "projectName": "",
+ "summary": {
+  "artifacts": 0,
+  "path": "testdata",
+  "results": [
+   {
+    "ignored": 0,
+    "open": 1,
+    "severity": "high",
+    "total": 1
+   }
+  ],
+  "severity_order_asc": [
+   "low",
+   "medium",
+   "high",
+   "critical"
+  ],
+  "type": "open-source"
+ },
+ "vulnerablePathsCount": 1
+}
 ---
 
 [Test_RunSbomReachabilityFlow_HumanReadable - 4]
