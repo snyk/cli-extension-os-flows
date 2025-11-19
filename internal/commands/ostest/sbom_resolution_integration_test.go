@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -133,6 +134,23 @@ func setupSBOMResolutionIntegrationTest(
 			result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
 			result.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
 			handle.EXPECT().Result().Return(result).Times(1)
+
+			// Mockup calls for serialized test result
+			result.EXPECT().GetTestID().Return(&uuid.UUID{}).AnyTimes()
+			result.EXPECT().GetTestConfiguration().Return(&testapi.TestConfiguration{}).AnyTimes()
+			result.EXPECT().GetCreatedAt().Return(&time.Time{}).AnyTimes()
+			result.EXPECT().GetErrors().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
+			result.EXPECT().GetWarnings().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
+			passFail := testapi.Pass
+			result.EXPECT().GetPassFail().Return(&passFail).AnyTimes()
+			outcomeReason := testapi.TestOutcomeReasonOther
+			result.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
+			result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
+			result.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
+			result.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
+			result.EXPECT().GetTestSubject().Return(testapi.TestSubject{}).AnyTimes()
+			result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
+			result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 
 			return handle, nil
 		}).
