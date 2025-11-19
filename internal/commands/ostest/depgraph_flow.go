@@ -7,13 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
-	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"golang.org/x/sync/errgroup"
 
@@ -327,16 +325,7 @@ func handleOutput(
 	}
 
 	if wantsJSONStdOut {
-		finalOutput = append(finalOutput, NewWorkflowData(ApplicationJSONContentType, jsonBytes))
-	}
-
-	// If only JSON output to stdout was requested, we still need the summary for the exit code.
-	if wantsJSONStdOut && !wantsHumanReadable {
-		for _, d := range allOutputData {
-			if strings.HasPrefix(d.GetContentType(), content_type.TEST_SUMMARY) {
-				finalOutput = append(finalOutput, d)
-			}
-		}
+		return append(allOutputData, NewWorkflowData(ApplicationJSONContentType, jsonBytes)), nil
 	}
 
 	return finalOutput, nil
