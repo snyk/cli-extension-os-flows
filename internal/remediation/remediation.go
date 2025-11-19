@@ -56,7 +56,18 @@ func calculateUpgrades(findings Findings) (upgrades []*Upgrade, unresolved []*Vu
 				}
 
 				existingUpgrade.To.Version = maxVersion
-				existingUpgrade.Fixes = append(existingUpgrade.Fixes, vulnerabilityInPackage)
+
+				// Check if the vulnerability is already in the fixes list to avoid duplicates.
+				found := false
+				for _, fix := range existingUpgrade.Fixes {
+					if fix.Vulnerability.ID == vulnerabilityInPackage.Vulnerability.ID {
+						found = true
+						break
+					}
+				}
+				if !found {
+					existingUpgrade.Fixes = append(existingUpgrade.Fixes, vulnerabilityInPackage)
+				}
 
 				upgradeMap[key] = existingUpgrade
 			} else {
