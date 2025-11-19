@@ -327,7 +327,7 @@ func handleOutput(
 	}
 
 	if wantsJSONStdOut {
-		finalOutput = append(finalOutput, NewWorkflowData(ApplicationJSONContentType, jsonBytes))
+		finalOutput = append(allOutputData, NewWorkflowData(ApplicationJSONContentType, jsonBytes))
 	}
 
 	// If only JSON output to stdout was requested, we still need the summary for the exit code.
