@@ -121,15 +121,16 @@ func setupBundlestoreClient(ctx context.Context) bundlestore.Client {
 	return bsClient
 }
 
-// handleSBOMReachabilityFlow sets up and runs the SBOM reachability flow.
-func handleSBOMReachabilityFlow(
+// handleSBOMFlow sets up and runs the SBOM flow (with or without reachability).
+func handleSBOMFlow(
 	ctx context.Context,
 	testClient testapi.TestClient,
 	orgID, sbom, sourceDir string,
 	localPolicy *testapi.LocalPolicy,
+	reachability bool,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	bsClient := setupBundlestoreClient(ctx)
-	return RunSbomReachabilityFlow(ctx, testClient, sbom, sourceDir, bsClient, orgID, localPolicy)
+	return RunSbomFlow(ctx, testClient, sbom, sourceDir, bsClient, orgID, localPolicy, reachability)
 }
 
 func convertReachabilityFilterToSchema(reachabilityFilter string) *testapi.ReachabilityFilter {
@@ -371,8 +372,8 @@ func OSWorkflow(
 		var outputData []workflow.Data
 		var flowErr error
 		switch flow {
-		case SBOMReachabilityFlow:
-			legacyFindings, outputData, flowErr = handleSBOMReachabilityFlow(ctx, testClient, orgID, sbom, sourceDir, localPolicy)
+		case SbomFlow:
+			legacyFindings, outputData, flowErr = handleSBOMFlow(ctx, testClient, orgID, sbom, sourceDir, localPolicy, flowCfg.Reachability)
 		case DepgraphReachabilityFlow:
 			legacyFindings, outputData, flowErr = RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID, localPolicy, &reachabilityOpts{sourceDir: sourceDir})
 		case DepgraphFlow:

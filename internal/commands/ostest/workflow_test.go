@@ -46,9 +46,13 @@ var (
 
 type NopProgressBar struct{}
 
-func (npb *NopProgressBar) SetTitle(_ string)              {}
-func (npb *NopProgressBar) UpdateProgress(_ float64) error { return nil }
-func (npb *NopProgressBar) Clear() error                   { return nil }
+func (npb *NopProgressBar) SetTitle(_ string)                                    {}
+func (npb *NopProgressBar) UpdateProgress(_ float64) error                       { return nil }
+func (npb *NopProgressBar) Clear() error                                         { return nil }
+func (npb *NopProgressBar) SetCompletionMessage(_ string)                        {}
+func (npb *NopProgressBar) SetCompletionMessageWithStyle(_, _ string)            {}
+func (npb *NopProgressBar) SetCompletionMessageWithTitle(_, _ string)            {}
+func (npb *NopProgressBar) SetCompletionMessageWithTitleAndStyle(_, _, _ string) {}
 
 func TestOSWorkflow_CreateLocalPolicy(t *testing.T) {
 	tests := []struct {

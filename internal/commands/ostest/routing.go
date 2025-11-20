@@ -23,7 +23,7 @@ type Flow string
 // The list of all available flows.
 const (
 	LegacyFlow               Flow = "legacy"
-	SBOMReachabilityFlow     Flow = "sbom-reachability"
+	SbomFlow                 Flow = "sbom-flow"
 	DepgraphReachabilityFlow Flow = "depgraph-reachability"
 	DepgraphFlow             Flow = "depgraph"
 )
@@ -247,11 +247,11 @@ func RouteToFlow(ctx context.Context, fc *FlowConfig, orgUUID uuid.UUID, sc sett
 	}
 
 	switch {
-	case fc.SBOMReachabilityTest:
-		if !cfg.GetBool(constants.FeatureFlagSBOMTestReachability) {
+	case fc.SBOM != "":
+		if fc.Reachability && !cfg.GetBool(constants.FeatureFlagSBOMTestReachability) {
 			return "", errFactory.NewFeatureNotPermittedError(constants.FeatureFlagSBOMTestReachability)
 		}
-		return SBOMReachabilityFlow, nil
+		return SbomFlow, nil
 	case fc.Reachability:
 		if !cfg.GetBool(constants.FeatureFlagReachabilityForCLI) {
 			//nolint:wrapcheck // No need to wrap error factory errors.

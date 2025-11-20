@@ -370,7 +370,7 @@ func Test_RouteToFlow_SBOMReachabilityFlow(t *testing.T) {
 				return ctx
 			},
 			orgID:        orgID,
-			expectedFlow: ostest.SBOMReachabilityFlow,
+			expectedFlow: ostest.SbomFlow,
 		},
 		"--reachability with --sbom and --reachability-filter should route to SBOM reachability flow when FF and reachability settings are enabled": {
 			ctx: func(ctx context.Context) context.Context {
@@ -387,7 +387,7 @@ func Test_RouteToFlow_SBOMReachabilityFlow(t *testing.T) {
 				return ctx
 			},
 			orgID:        orgID,
-			expectedFlow: ostest.SBOMReachabilityFlow,
+			expectedFlow: ostest.SbomFlow,
 		},
 		"--reachability with --sbom should fail when FF is missing": {
 			ctx: func(ctx context.Context) context.Context {
