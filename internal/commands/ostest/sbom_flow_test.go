@@ -37,21 +37,21 @@ var idRgxp = regexp.MustCompile(`\s*,?"id"\s*:\s*"[^"]*"?`)
 
 var nopLogger = zerolog.Nop()
 
-func Test_RunSbomReachabilityFlow_JSON(t *testing.T) {
+func Test_RunSbomFlow_Reachability_JSON(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	ef := errors.NewErrorFactory(&nopLogger)
-	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, true)
+	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, true, true)
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
-	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
-	legacyJSON, outputData, err := ostest.RunSbomReachabilityFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil)
+	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil, true)
 	require.NoError(t, err)
 
 	require.NotNil(t, legacyJSON)
@@ -72,21 +72,97 @@ func Test_RunSbomReachabilityFlow_JSON(t *testing.T) {
 	require.Len(t, testResult, 1)
 }
 
-func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
+func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	ef := errors.NewErrorFactory(&nopLogger)
-	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, false)
+	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, false, true)
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
-	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
-	legacyJSON, outputData, err := ostest.RunSbomReachabilityFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil)
+	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil, true)
+	require.NoError(t, err)
+
+	require.Nil(t, legacyJSON)
+	require.NotNil(t, outputData)
+	// Output data should contain standard summary, unified model test result, local unified findings and local unified summary
+	require.Len(t, outputData, 4)
+
+	require.Contains(t, "application/json; schema=test-summary", outputData[0].GetContentType())
+	summary, ok := outputData[0].GetPayload().([]byte)
+	require.True(t, ok)
+	snaps.MatchJSON(t, summary)
+
+	testResult := ufm.GetTestResultsFromWorkflowData(outputData[1])
+	require.Len(t, testResult, 1)
+
+	require.Contains(t, "application/json; schema=local-unified-finding", outputData[2].GetContentType())
+	localFindings, ok := outputData[2].GetPayload().([]byte)
+	require.True(t, ok)
+	snaps.MatchJSON(t, idRgxp.ReplaceAll(localFindings, nil))
+
+	require.Contains(t, "application/json; schema=local-unified-summary", outputData[3].GetContentType())
+	localSummary, ok := outputData[3].GetPayload().([]byte)
+	require.True(t, ok)
+	snaps.MatchJSON(t, localSummary)
+}
+
+func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ef := errors.NewErrorFactory(&nopLogger)
+	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, true, false)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+
+	// This should now succeed with proper finding data
+	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil, false)
+	require.NoError(t, err)
+
+	require.NotNil(t, legacyJSON)
+	jsonBytes, err := json.Marshal(legacyJSON)
+	require.NoError(t, err)
+	snaps.MatchJSON(t, jsonBytes)
+
+	require.NotNil(t, outputData)
+	// Output data should contain standard summary and unified model test result
+	require.Len(t, outputData, 2)
+
+	require.Contains(t, "application/json; schema=test-summary", outputData[0].GetContentType())
+	summary, ok := outputData[0].GetPayload().([]byte)
+	require.True(t, ok)
+	snaps.MatchJSON(t, summary)
+
+	testResult := ufm.GetTestResultsFromWorkflowData(outputData[1])
+	require.Len(t, testResult, 1)
+}
+
+func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ef := errors.NewErrorFactory(&nopLogger)
+	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, false, false)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+
+	// This should now succeed with proper finding data
+	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil, false)
 	require.NoError(t, err)
 
 	require.Nil(t, legacyJSON)
@@ -114,14 +190,12 @@ func Test_RunSbomReachabilityFlow_HumanReadable(t *testing.T) {
 }
 
 //nolint:gocritic // Not important for tests.
-func setupTest(t *testing.T, ctrl *gomock.Controller, jsonOutput bool) (
-	workflow.InvocationContext,
-	testapi.TestClient,
-	bundlestore.Client,
-	string,
-	string,
-	string,
-) {
+func setupTest(
+	t *testing.T,
+	ctrl *gomock.Controller,
+	jsonOutput bool,
+	reachability bool,
+) (workflow.InvocationContext, testapi.TestClient, bundlestore.Client, string, string, string) {
 	t.Helper()
 	sbomPath := "./testdata/bom.json"
 	sourceCodePath := "./testdata/test_dir"
@@ -311,18 +385,31 @@ func setupTest(t *testing.T, ctrl *gomock.Controller, jsonOutput bool) (
 
 	// Create test subject
 	var testSubject testapi.TestSubject
-	err = testSubject.FromSbomReachabilitySubject(testapi.SbomReachabilitySubject{
-		Type:         testapi.SbomReachability,
-		CodeBundleId: "test-source-hash",
-		SbomBundleId: "test-sbom-hash",
-		Locator: testapi.LocalPathLocator{
-			Paths: []string{
-				sbomPath,
-				sourceCodePath,
+	if reachability {
+		err = testSubject.FromSbomReachabilitySubject(testapi.SbomReachabilitySubject{
+			Type:         testapi.SbomReachability,
+			CodeBundleId: "test-source-hash",
+			SbomBundleId: "test-sbom-hash",
+			Locator: testapi.LocalPathLocator{
+				Paths: []string{
+					sbomPath,
+					sourceCodePath,
+				},
+				Type: testapi.LocalPath,
 			},
-			Type: testapi.LocalPath,
-		},
-	})
+		})
+	} else {
+		err = testSubject.FromSbomSubject(testapi.SbomSubject{
+			Type:         testapi.Sbom,
+			SbomBundleId: "test-sbom-hash",
+			Locator: testapi.LocalPathLocator{
+				Paths: []string{
+					sbomPath,
+				},
+				Type: testapi.LocalPath,
+			},
+		})
+	}
 
 	require.NoError(t, err)
 
@@ -369,7 +456,9 @@ func setupTest(t *testing.T, ctrl *gomock.Controller, jsonOutput bool) (
 	// Mock BundleStore Client
 	mockBsClient := mocks.NewMockClient(ctrl)
 	mockBsClient.EXPECT().UploadSBOM(gomock.Any(), sbomPath).Return("test-sbom-hash", nil).Times(1)
-	mockBsClient.EXPECT().UploadSourceCode(gomock.Any(), sourceCodePath).Return("test-source-hash", nil).Times(1)
+	if reachability {
+		mockBsClient.EXPECT().UploadSourceCode(gomock.Any(), sourceCodePath).Return("test-source-hash", nil).Times(1)
+	}
 
 	// Mock Invocation Context
 	mockConfig := configuration.New()
