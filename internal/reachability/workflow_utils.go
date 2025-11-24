@@ -11,6 +11,8 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 )
 
+const codeEngineProcessingLimit = 1048567 // 1MiB
+
 // GetReachabilityID will upload the source code directory using the file upload API,
 // kick off a reachability scan, wait for the scan to complete and return the scan ID.
 func GetReachabilityID(
@@ -22,7 +24,21 @@ func GetReachabilityID(
 ) (ID, error) {
 	instrumentation := cmdctx.Instrumentation(ctx)
 	codeUploadStart := time.Now()
-	res, err := fc.CreateRevisionFromDir(ctx, sourceDir, fileupload.UploadOptions{})
+	res, err := fc.CreateRevisionFromDir(ctx, sourceDir, fileupload.UploadOptions{
+		AdditionalFilters: []fileupload.Filter{
+			func(ftf fileupload.FileToFilter) *fileupload.FilteredFile {
+				fileSize := ftf.Stat.Size()
+				if fileSize > codeEngineProcessingLimit { // 1MiB
+					return &fileupload.FilteredFile{
+						Path:   ftf.Path,
+						Reason: fmt.Errorf("files over 1MiB will not be processed by the code engine: file size (bytes): %d", fileSize),
+					}
+				}
+
+				return nil
+			},
+		},
+	})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to upload source code for reachability analysis: %w", err)
 	}
