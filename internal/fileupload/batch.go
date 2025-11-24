@@ -55,7 +55,7 @@ func batchPaths(rootPath string,
 	paths <-chan string,
 	limits uploadrevision.Limits,
 	logger *zerolog.Logger,
-	filters ...filter,
+	filters ...Filter,
 ) iter.Seq2[*batchingResult, error] {
 	return func(yield func(*batchingResult, error) bool) {
 		batch := newUploadBatch(limits)
@@ -92,7 +92,7 @@ func batchPaths(rootPath string,
 				}
 			}
 
-			ff := applyFilters(fileToFilter{Path: relPath, Stat: fstat}, filters...)
+			ff := applyFilters(FileToFilter{Path: relPath, Stat: fstat}, filters...)
 			if ff != nil {
 				f.Close()
 				filtered = append(filtered, *ff)
@@ -125,7 +125,7 @@ func batchPaths(rootPath string,
 	}
 }
 
-func applyFilters(ff fileToFilter, filters ...filter) *FilteredFile {
+func applyFilters(ff FileToFilter, filters ...Filter) *FilteredFile {
 	for _, filter := range filters {
 		if ff := filter(ff); ff != nil {
 			return ff

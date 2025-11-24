@@ -120,12 +120,12 @@ func (c *HTTPClient) loadFilters(ctx context.Context) error {
 }
 
 // createDeeproxyFilter creates a filter function based on the current deeproxy filtering configuration.
-func (c *HTTPClient) createDeeproxyFilter(ctx context.Context) (filter, error) {
+func (c *HTTPClient) createDeeproxyFilter(ctx context.Context) (Filter, error) {
 	if err := c.loadFilters(ctx); err != nil {
 		return nil, fmt.Errorf("failed to load deeproxy filters: %w", err)
 	}
 
-	return func(ff fileToFilter) *FilteredFile {
+	return func(ff FileToFilter) *FilteredFile {
 		fileExt := filepath.Ext(ff.Stat.Name())
 		fileName := filepath.Base(ff.Stat.Name())
 		_, isSupportedExtension := c.filters.supportedExtensions.Load(fileExt)
@@ -177,7 +177,7 @@ func (c *HTTPClient) addPathsToRevision(
 		FilteredFiles: make([]FilteredFile, 0),
 	}
 
-	fileSizeFilter := func(ff fileToFilter) *FilteredFile {
+	fileSizeFilter := func(ff FileToFilter) *FilteredFile {
 		fileSizeLimit := c.uploadRevisionSealableClient.GetLimits().FileSizeLimit
 		if ff.Stat.Size() > fileSizeLimit {
 			return &FilteredFile{
@@ -189,7 +189,7 @@ func (c *HTTPClient) addPathsToRevision(
 		return nil
 	}
 
-	filePathLengthFilter := func(ff fileToFilter) *FilteredFile {
+	filePathLengthFilter := func(ff FileToFilter) *FilteredFile {
 		filePathLengthLimit := c.uploadRevisionSealableClient.GetLimits().FilePathLengthLimit
 		if len(ff.Path) > filePathLengthLimit {
 			return &FilteredFile{
@@ -201,7 +201,7 @@ func (c *HTTPClient) addPathsToRevision(
 		return nil
 	}
 
-	filters := []filter{
+	filters := []Filter{
 		fileSizeFilter,
 		filePathLengthFilter,
 	}
@@ -213,6 +213,7 @@ func (c *HTTPClient) addPathsToRevision(
 
 		filters = append(filters, deeproxyFilter)
 	}
+	filters = append(filters, opts.AdditionalFilters...)
 
 	for batchResult, err := range batchPaths(rootPath, pathsChan, c.uploadRevisionSealableClient.GetLimits(), c.logger, filters...) {
 		if err != nil {
