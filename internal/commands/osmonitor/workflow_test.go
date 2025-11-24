@@ -11,10 +11,49 @@ import (
 	"github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/networking"
 	"github.com/snyk/go-application-framework/pkg/workflow"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/osmonitor"
 )
+
+func Test_AppendScanIDToArgs(t *testing.T) {
+	t.Parallel()
+	scanID := uuid.New()
+	reachabilityParam := "--reachability-id=" + scanID.String()
+
+	t.Run("empty args", func(t *testing.T) {
+		t.Parallel()
+
+		legacyArgs := osmonitor.AppendScanIDToArgs([]string{}, scanID)
+
+		assert.Equal(t, []string{reachabilityParam}, legacyArgs)
+	})
+
+	t.Run("simple monitor command", func(t *testing.T) {
+		t.Parallel()
+
+		legacyArgs := osmonitor.AppendScanIDToArgs([]string{"monitor"}, scanID)
+
+		assert.Equal(t, []string{"monitor", reachabilityParam}, legacyArgs)
+	})
+
+	t.Run("monitor command with options", func(t *testing.T) {
+		t.Parallel()
+
+		legacyArgs := osmonitor.AppendScanIDToArgs([]string{"monitor", "--org=foo-bar", "--target-reference=baz"}, scanID)
+
+		assert.Equal(t, []string{"monitor", "--org=foo-bar", "--target-reference=baz", reachabilityParam}, legacyArgs)
+	})
+
+	t.Run("monitor command with options and double dash args", func(t *testing.T) {
+		t.Parallel()
+
+		legacyArgs := osmonitor.AppendScanIDToArgs([]string{"monitor", "--org=foo-bar", "--target-reference=baz", "--", "-s", "maven-opt"}, scanID)
+
+		assert.Equal(t, []string{"monitor", "--org=foo-bar", "--target-reference=baz", reachabilityParam, "--", "-s", "maven-opt"}, legacyArgs)
+	})
+}
 
 func TestRegisterWorkflows(t *testing.T) {
 	ctrl := gomock.NewController(t)

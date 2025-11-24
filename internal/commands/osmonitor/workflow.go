@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/snyk/go-application-framework/pkg/configuration"
@@ -101,6 +102,31 @@ func runReachabilityScan(ctx context.Context) (uuid.UUID, error) {
 	return scanID, nil
 }
 
+// AppendScanIDToArgs is used to append the `--reachability-id` option to the list of arguments.
+func AppendScanIDToArgs(args []string, scanID uuid.UUID) []string {
+	var legacyArgs []string
+
+	// If we have a command with a double dash (--)
+	// we want to append our custom flag before the double dash
+	// so that it's not being passed to subsequent processes (e.g plugins)
+	doubleDashIdx := slices.Index(args, "--")
+	if doubleDashIdx != -1 {
+		legacyArgs = args[:doubleDashIdx]
+		legacyArgs = append(
+			legacyArgs,
+			append(
+				[]string{fmt.Sprintf("--reachability-id=%s", scanID)},
+				args[doubleDashIdx:]...,
+			)...,
+		)
+	} else {
+		legacyArgs = args
+		legacyArgs = append(legacyArgs, fmt.Sprintf("--reachability-id=%s", scanID))
+	}
+
+	return legacyArgs
+}
+
 // OSWorkflow is the entry point for the Open Source Monitor workflow.
 func OSWorkflow(
 	ictx workflow.InvocationContext,
@@ -124,8 +150,8 @@ func OSWorkflow(
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	defer progressBar.Clear()
 
-	legacyArgs := os.Args[1:]
-
+	args := os.Args[1:]
+	var legacyArgs []string
 	if cfg.GetBool(flags.FlagReachability) {
 		scanID, err := runReachabilityScan(ctx)
 		if err != nil {
@@ -133,7 +159,9 @@ func OSWorkflow(
 		}
 
 		cfg.Set(flags.FlagReachabilityID, scanID)
-		legacyArgs = append(legacyArgs, fmt.Sprintf("--reachability-id=%s", scanID))
+		legacyArgs = AppendScanIDToArgs(args, scanID)
+	} else {
+		legacyArgs = args
 	}
 
 	engine := ictx.GetEngine()
