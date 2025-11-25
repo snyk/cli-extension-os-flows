@@ -2,7 +2,9 @@ package fileupload
 
 import "os"
 
-type fileToFilter struct {
+// FileToFilter is the metadata about a file that a Filter function gets,
+// in order to decide if the file should be filtered or not.
+type FileToFilter struct {
 	Path string
 	Stat os.FileInfo
 }
@@ -14,4 +16,8 @@ type FilteredFile struct {
 	Reason error
 }
 
-type filter func(fileToFilter) *FilteredFile
+// Filter is the type definition for functions which are used to
+// filter files before uploading.
+// The function will get metadata about files in the form of FileToFilter
+// and return a FilteredFile object if the file should be filtered, or nil otherwise.
+type Filter func(FileToFilter) *FilteredFile

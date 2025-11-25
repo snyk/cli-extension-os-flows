@@ -239,6 +239,58 @@ func Test_CreateRevisionFromDir(t *testing.T) {
 		expectEqualFiles(t, expectedFiles, uploadedFiles)
 	})
 
+	t.Run("uploading a directory with file that should be filtered by a custom filter", func(t *testing.T) {
+		expectedFiles := []uploadrevision.LoadedFile{
+			{
+				Path:    "file1.txt",
+				Content: "foo bar",
+			},
+		}
+		additionalFiles := []uploadrevision.LoadedFile{
+			{
+				Path:    "file2.txt",
+				Content: "foo",
+			},
+		}
+
+		allFiles := make([]uploadrevision.LoadedFile, 0, 2)
+		allFiles = append(allFiles, expectedFiles...)
+		allFiles = append(allFiles, additionalFiles...)
+		ctx, fakeSealableClient, client, dir := setupTest(t, uploadrevision.FakeClientConfig{
+			Limits: uploadrevision.Limits{
+				FileCountLimit:        2,
+				FileSizeLimit:         10,
+				TotalPayloadSizeLimit: 100,
+				FilePathLengthLimit:   20,
+			},
+		}, allFiles, allowList, nil)
+
+		res, err := client.CreateRevisionFromDir(ctx, dir.Name(), fileupload.UploadOptions{
+			AdditionalFilters: []fileupload.Filter{
+				func(ftf fileupload.FileToFilter) *fileupload.FilteredFile {
+					if strings.Contains(ftf.Stat.Name(), "file2.txt") {
+						return &fileupload.FilteredFile{
+							Path:   ftf.Path,
+							Reason: fmt.Errorf("some reason"),
+						}
+					}
+
+					return nil
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assert.Len(t, res.FilteredFiles, 1)
+		ff := res.FilteredFiles[0]
+		assert.Contains(t, ff.Path, "file2.txt")
+		assert.ErrorContains(t, ff.Reason, "some reason")
+
+		uploadedFiles, err := fakeSealableClient.GetSealedRevisionFiles(res.RevisionID)
+		require.NoError(t, err)
+		expectEqualFiles(t, expectedFiles, uploadedFiles)
+	})
+
 	t.Run("uploading a directory exceeding total payload size limit triggers batching", func(t *testing.T) {
 		// Create files that together exceed the payload size limit but not the count limit
 		// Each file is 30 bytes, limit is 70 bytes, so 3 files (90 bytes) should be split into 2 batches
