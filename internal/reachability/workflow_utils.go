@@ -11,7 +11,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 )
 
-const codeEngineProcessingLimit = 1048567 // 1MiB
+const codeEngineProcessingLimit = 1048576 // 1MiB
 
 // GetReachabilityID will upload the source code directory using the file upload API,
 // kick off a reachability scan, wait for the scan to complete and return the scan ID.
