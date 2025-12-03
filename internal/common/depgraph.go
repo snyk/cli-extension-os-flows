@@ -8,6 +8,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	"github.com/snyk/cli-extension-os-flows/internal/flags"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
@@ -43,8 +44,9 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 
 	depGraphConfig := config.Clone()
 	experimentalFlagSet := config.GetBool(configuration.FLAG_EXPERIMENTAL)
+	allProjectsFlagSet := config.GetBool(flags.FlagAllProjects)
 	experimentalUvSupportEnabled := experimentalFlagSet && config.GetBool(constants.EnableExperimentalUvSupportEnvVar)
-	uvLockExists := util.HasUvLockFile(inputDir, logger)
+	uvLockExists := util.HasUvLockFile(inputDir, allProjectsFlagSet, logger)
 
 	if experimentalUvSupportEnabled && uvLockExists {
 		logger.Info().Msg("Experimental uv support enabled and uv.lock found, using SBOM resolution in depgraph workflow")
