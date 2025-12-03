@@ -320,8 +320,7 @@ func OSWorkflow(
 		return nil, err
 	}
 
-	allProjectsFlagSet := cfg.GetBool(flags.FlagAllProjects)
-	useLegacy, err := ShouldUseLegacyFlow(ctx, allProjectsFlagSet, flowCfg, inputDirs)
+	useLegacy, err := ShouldUseLegacyFlow(ctx, flowCfg, inputDirs)
 	if err != nil {
 		return nil, err
 	}

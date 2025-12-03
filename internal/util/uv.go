@@ -20,10 +20,10 @@ var ExcludedUVLockFileDirs = map[string]bool{
 }
 
 // HasUvLockFile checks if the specified directory contains a uv.lock file.
-// If allProjectsFlagSet is true, the function will check if the directory contains a uv.lock file recursively.
+// If allProjects is true, the function will check if the directory contains a uv.lock file recursively.
 // Otherwise, it will only check if the directory contains a uv.lock file.
-func HasUvLockFile(dir string, allProjectsFlagSet bool, logger *zerolog.Logger) bool {
-	if allProjectsFlagSet {
+func HasUvLockFile(dir string, allProjects bool, logger *zerolog.Logger) bool {
+	if allProjects {
 		return HasUvLockFileRecursive(dir, logger)
 	}
 	return HasUvLockFileSingle(dir, logger)
@@ -95,11 +95,17 @@ func HasUvLockFileRecursive(dir string, logger *zerolog.Logger) bool {
 }
 
 // HasUvLockFileInAnyDir checks if any of the input directories contains a uv.lock file.
-func HasUvLockFileInAnyDir(inputDirs []string, allProjectsFlagSet bool, logger *zerolog.Logger) bool {
+func HasUvLockFileInAnyDir(inputDirs []string, allProjects bool, logger *zerolog.Logger) bool {
 	for _, inputDir := range inputDirs {
-		if HasUvLockFile(inputDir, allProjectsFlagSet, logger) {
+		if HasUvLockFile(inputDir, allProjects, logger) {
 			return true
 		}
 	}
 	return false
+}
+
+// TargetFileIsUvRelated checks if the target file is a uv.lock file or a pyproject.toml file.
+func TargetFileIsUvRelated(targetFile string) bool {
+	filename := filepath.Base(targetFile)
+	return filename == constants.UvLockFileName || filename == constants.PyProjectTomlFileName
 }

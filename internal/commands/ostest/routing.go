@@ -132,6 +132,8 @@ type FlowConfig struct {
 	RequiresLegacy        bool
 	Unmanaged             bool
 	TargetPackage         string
+	AllProjects           bool
+	TargetFile            string
 }
 
 func doesPathExist(path string) (bool, error) {
@@ -159,7 +161,8 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	sbomReachabilityTest := reachability && sbom != ""
 	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
 	unmanaged := cfg.GetBool(flags.FlagUnmanaged)
-
+	allProjects := cfg.GetBool(flags.FlagAllProjects)
+	targetFile := cfg.GetString(flags.FlagFile)
 	experimentalFlagSet := cfg.GetBool(configuration.FLAG_EXPERIMENTAL)
 	experimentalUvSupport := experimentalFlagSet && cfg.GetBool(constants.EnableExperimentalUvSupportEnvVar)
 	forceLegacyTest := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
@@ -201,11 +204,13 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 		RequiresLegacy:        requiresLegacy,
 		Unmanaged:             unmanaged,
 		TargetPackage:         targetPackage,
+		AllProjects:           allProjects,
+		TargetFile:            targetFile,
 	}, nil
 }
 
 // ShouldUseLegacyFlow determines if the command should route to legacy CLI based on flags.
-func ShouldUseLegacyFlow(ctx context.Context, allProjectsFlagSet bool, fc *FlowConfig, inputDirs []string) (bool, error) {
+func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string) (bool, error) {
 	errFactory := cmdctx.ErrorFactory(ctx)
 	logger := cmdctx.Logger(ctx)
 
@@ -214,7 +219,9 @@ func ShouldUseLegacyFlow(ctx context.Context, allProjectsFlagSet bool, fc *FlowC
 	}
 
 	// Check if UV support should trigger, only if env var is set and uv.lock exists.
-	uvSupportWithLockFile := fc.ExperimentalUvSupport && util.HasUvLockFileInAnyDir(inputDirs, allProjectsFlagSet, logger)
+	uvSupportWithLockFile := fc.ExperimentalUvSupport &&
+		util.HasUvLockFileInAnyDir(inputDirs, fc.AllProjects, logger) &&
+		util.TargetFileIsUvRelated(fc.TargetFile)
 
 	hasNewFeatures := fc.RiskScoreTest || fc.Reachability || fc.SBOM != "" || fc.ReachabilityFilter != "" || uvSupportWithLockFile
 	useLegacy := fc.ForceLegacyTest || fc.RequiresLegacy || !hasNewFeatures

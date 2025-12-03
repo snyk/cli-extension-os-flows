@@ -20,3 +20,5 @@ const FeatureFlagRiskScoreInCLI = "internal_snyk_cli_experimental_risk_score_in_
 
 // UvLockFileName is the name of the UV lock file.
 const UvLockFileName = "uv.lock"
+
+const PyProjectTomlFileName = "pyproject.toml"
