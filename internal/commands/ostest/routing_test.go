@@ -91,7 +91,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{"."})
 		require.NoError(t, err)
 
 		assert.True(t, useLegacy)
@@ -107,7 +107,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 				flowCfg, err := ostest.ParseFlowConfig(testCfg)
 				require.NoError(t, err)
-				_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+				_, err = ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{"."})
 
 				assert.Error(t, err)
 			})
@@ -131,7 +131,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 				flowCfg, err := ostest.ParseFlowConfig(testCfg)
 				require.NoError(t, err)
-				useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+				useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{"."})
 				require.NoError(t, err)
 
 				assert.True(t, useLegacy)
@@ -148,7 +148,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 					flowCfg, err := ostest.ParseFlowConfig(testCfg)
 					require.NoError(t, err)
-					_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+					_, err = ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{"."})
 
 					assert.Error(t, err)
 				})
@@ -169,7 +169,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+		_, err = ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{"."})
 		require.Error(t, err)
 		var catalogErr snyk_errors.Error
 		require.ErrorAs(t, err, &catalogErr)
@@ -191,7 +191,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+		_, err = ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{"."})
 		require.Error(t, err)
 		var catalogErr snyk_errors.Error
 		require.ErrorAs(t, err, &catalogErr)
@@ -209,7 +209,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{"."})
 		require.NoError(t, err)
 
 		assert.True(t, useLegacy)
@@ -227,7 +227,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{"."})
 		require.NoError(t, err)
 
 		assert.True(t, useLegacy)
@@ -246,7 +246,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		_, err = ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+		_, err = ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{"."})
 		require.Error(t, err)
 
 		var catalogErr snyk_errors.Error
@@ -271,7 +271,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{tempDir})
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{tempDir})
 		require.NoError(t, err)
 
 		assert.False(t, useLegacy, "should use new flow when experimental flag and UV support are enabled and uv.lock exists")
@@ -294,7 +294,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{tempDir})
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{tempDir})
 		require.NoError(t, err)
 
 		assert.True(t, useLegacy, "should use legacy flow when UV support is enabled but uv.lock is missing")
@@ -317,7 +317,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{tempDir})
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{tempDir})
 		require.NoError(t, err)
 
 		assert.True(t, useLegacy, "should use legacy flow when experimental flag is not set regardless of UV support")
@@ -338,7 +338,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{tempDir})
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, false, flowCfg, []string{tempDir})
 		require.NoError(t, err)
 
 		assert.True(t, useLegacy, "should use legacy flow when UV support is disabled regardless of uv.lock presence")
