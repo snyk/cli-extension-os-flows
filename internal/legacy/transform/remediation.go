@@ -108,17 +108,7 @@ func processPinAction(vuln *definitions.Vulnerability, act *testapi.FixAction) e
 	return nil
 }
 
-// RemediationSummaryToLegacy will convert a remediation.Summary into the legacy `--json` remediation field.
-func RemediationSummaryToLegacy(legacyVulns []definitions.Vulnerability, remSummary remediation.Summary) (*definitions.Remediation, error) {
-	if len(remSummary.Unresolved) == 0 && len(remSummary.Pins) == 0 && len(remSummary.Upgrades) == 0 {
-		//nolint:nilnil // nil is a valid value and will be returned if no remediation information is provided.
-		return nil, nil
-	}
-	summary := definitions.Remediation{
-		Pin:        make(map[string]definitions.PinRemediation),
-		Upgrade:    make(map[string]definitions.RemediationUpgradeInfo),
-		Unresolved: make([]definitions.Vulnerability, 0, len(remSummary.Unresolved)),
-	}
+func setUnresolved(summary *definitions.Remediation, remSummary remediation.Summary, legacyVulns []definitions.Vulnerability) error {
 	rawVulnsMap := make(map[string]*definitions.Vulnerability)
 	// We only construct the map if we have unresolved issues
 	// as it will only be used for lookups in that scenario
@@ -130,6 +120,26 @@ func RemediationSummaryToLegacy(legacyVulns []definitions.Vulnerability, remSumm
 		}
 	}
 
+	for _, unresolved := range remSummary.Unresolved {
+		for _, introducedThrough := range unresolved.IntroducedThrough {
+			path := make([]string, 0, len(introducedThrough))
+			for _, pkg := range introducedThrough {
+				path = append(path, legacyUtils.JoinNameAndVersion(pkg.Name, pkg.Version))
+			}
+			key := getVulnKeyByPath(string(unresolved.Vulnerability.ID), path)
+			rawVuln, exists := rawVulnsMap[key]
+			if !exists {
+				return fmt.Errorf("vulnerability not found in map: %s", unresolved.Vulnerability.ID)
+			}
+
+			summary.Unresolved = append(summary.Unresolved, *rawVuln)
+		}
+	}
+
+	return nil
+}
+
+func setPins(summary *definitions.Remediation, remSummary remediation.Summary) {
 	for _, pin := range remSummary.Pins {
 		from := legacyUtils.JoinNameAndVersion(pin.From.Name, pin.From.Version)
 		to := legacyUtils.JoinNameAndVersion(pin.To.Name, pin.To.Version)
@@ -145,19 +155,40 @@ func RemediationSummaryToLegacy(legacyVulns []definitions.Vulnerability, remSumm
 			Vulns:        vulns,
 		}
 	}
+}
 
+func setUpgrades(summary *definitions.Remediation, remSummary remediation.Summary) {
 	for _, upgrade := range remSummary.Upgrades {
 		from := legacyUtils.JoinNameAndVersion(upgrade.From.Name, upgrade.From.Version)
 		to := legacyUtils.JoinNameAndVersion(upgrade.To.Name, upgrade.To.Version)
 
-		upgrades := make([]string, 0, len(upgrade.Fixes))
-		vulns := make([]string, 0, len(upgrade.Fixes))
+		type vulnUpgradePair struct {
+			vuln    string
+			upgrade string
+		}
+		pairs := make([]vulnUpgradePair, 0, len(upgrade.Fixes))
 		for _, fixes := range upgrade.Fixes {
-			vulns = append(vulns, string(fixes.Vulnerability.ID))
-			upgrades = append(
-				upgrades,
-				legacyUtils.JoinNameAndVersion(fixes.VulnerablePackage.Name, fixes.VulnerablePackage.Version),
-			)
+			pairs = append(pairs, vulnUpgradePair{
+				vuln:    string(fixes.Vulnerability.ID),
+				upgrade: legacyUtils.JoinNameAndVersion(fixes.VulnerablePackage.Name, fixes.VulnerablePackage.Version),
+			})
+		}
+
+		slices.SortFunc(pairs, func(a, b vulnUpgradePair) int {
+			if a.vuln < b.vuln {
+				return -1
+			}
+			if a.vuln > b.vuln {
+				return 1
+			}
+			return 0
+		})
+
+		upgrades := make([]string, len(pairs))
+		vulns := make([]string, len(pairs))
+		for i, pair := range pairs {
+			vulns[i] = pair.vuln
+			upgrades[i] = pair.upgrade
 		}
 
 		summary.Upgrade[from] = definitions.RemediationUpgradeInfo{
@@ -166,22 +197,26 @@ func RemediationSummaryToLegacy(legacyVulns []definitions.Vulnerability, remSumm
 			Vulns:     vulns,
 		}
 	}
+}
 
-	for _, unresolved := range remSummary.Unresolved {
-		for _, introducedThrough := range unresolved.IntroducedThrough {
-			path := make([]string, 0, len(introducedThrough))
-			for _, pkg := range introducedThrough {
-				path = append(path, legacyUtils.JoinNameAndVersion(pkg.Name, pkg.Version))
-			}
-			key := getVulnKeyByPath(string(unresolved.Vulnerability.ID), path)
-			rawVuln, exists := rawVulnsMap[key]
-			if !exists {
-				return nil, fmt.Errorf("vulnerability not found in map: %s", unresolved.Vulnerability.ID)
-			}
-
-			summary.Unresolved = append(summary.Unresolved, *rawVuln)
-		}
+// RemediationSummaryToLegacy will convert a remediation.Summary into the legacy `--json` remediation field.
+func RemediationSummaryToLegacy(legacyVulns []definitions.Vulnerability, remSummary remediation.Summary) (*definitions.Remediation, error) {
+	if len(remSummary.Unresolved) == 0 && len(remSummary.Pins) == 0 && len(remSummary.Upgrades) == 0 {
+		//nolint:nilnil // nil is a valid value and will be returned if no remediation information is provided.
+		return nil, nil
 	}
+	summary := definitions.Remediation{
+		Pin:        make(map[string]definitions.PinRemediation),
+		Upgrade:    make(map[string]definitions.RemediationUpgradeInfo),
+		Unresolved: make([]definitions.Vulnerability, 0, len(remSummary.Unresolved)),
+	}
+
+	err := setUnresolved(&summary, remSummary, legacyVulns)
+	if err != nil {
+		return nil, err
+	}
+	setPins(&summary, remSummary)
+	setUpgrades(&summary, remSummary)
 
 	return &summary, nil
 }

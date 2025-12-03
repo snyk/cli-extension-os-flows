@@ -141,10 +141,10 @@ func Test_RemediationSummaryToLegacy(t *testing.T) {
 				"direct-1@1.0.0": {
 					UpgradeTo: "direct-1@1.2.0",
 					Upgrades: []string{
-						"foo@1.0.0",
 						"bar@1.0.0",
+						"foo@1.0.0",
 					},
-					Vulns: []string{"SNYK-FOO-123", "SNYK-BAR-123"},
+					Vulns: []string{"SNYK-BAR-123", "SNYK-FOO-123"},
 				},
 				"direct-2@1.0.0": {
 					UpgradeTo: "direct-2@2.0.0",
