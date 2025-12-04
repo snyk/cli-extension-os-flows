@@ -401,7 +401,7 @@ func ProcessLocationForVuln(
 		return fmt.Errorf("getting location discriminator: %w", err)
 	}
 	switch locDisc {
-	case string(testapi.Source):
+	case string(testapi.SourceLocationTypeSource):
 		logger.Warn().Str(logFieldDiscriminator, locDisc).Msg("source location type not yet supported for legacy conversion")
 		_, err = loc.AsSourceLocation()
 		if err != nil {
