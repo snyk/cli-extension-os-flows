@@ -400,7 +400,7 @@ func setupTest(
 		})
 	} else {
 		err = testSubject.FromSbomSubject(testapi.SbomSubject{
-			Type:         testapi.Sbom,
+			Type:         testapi.SbomSubjectTypeSbom,
 			SbomBundleId: "test-sbom-hash",
 			Locator: testapi.LocalPathLocator{
 				Paths: []string{
