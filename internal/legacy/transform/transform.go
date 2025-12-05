@@ -46,7 +46,6 @@ type SnykSchemaToLegacyParams struct {
 // ConvertSnykSchemaFindingsToLegacy is a function that converts snyk schema findings into
 // the legacy vulnerability response structure for the snyk cli.
 func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaToLegacyParams) (*definitions.LegacyVulnerabilityResponse, error) {
-
 	allVulnerabilities, err := FindingsToLegacyVulns(params.Findings, params.PackageManager, params.Logger)
 	if err != nil {
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting finding to legacy vuln: %w", err))
