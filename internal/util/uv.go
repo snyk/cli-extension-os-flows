@@ -19,19 +19,30 @@ var ExcludedUVLockFileDirs = map[string]bool{
 	".build":       true,
 }
 
-// HasUvLockFile checks if the specified directory contains a uv.lock file.
+// HasUvLockFile checks if the specified directory contains a uv.lock file or the target file if provided.
 // If allProjects is true, the function will check if the directory contains a uv.lock file recursively.
 // Otherwise, it will only check if the directory contains a uv.lock file.
-func HasUvLockFile(dir string, allProjects bool, logger *zerolog.Logger) bool {
+func HasUvLockFile(dir, targetFile string, allProjects bool, logger *zerolog.Logger) bool {
 	if allProjects {
 		return HasUvLockFileRecursive(dir, logger)
 	}
-	return HasUvLockFileSingle(dir, logger)
+	return HasUvLockFileSingle(dir, targetFile, logger)
 }
 
-// HasUvLockFileSingle checks if the specified directory contains a uv.lock file.
-func HasUvLockFileSingle(dir string, logger *zerolog.Logger) bool {
-	uvLockPath := filepath.Join(dir, constants.UvLockFileName)
+// HasUvLockFileSingle checks if the specified directory contains a uv.lock file or the target file if provided.
+// If targetFile is an absolute path, it will be used directly; otherwise, it will be joined with dir.
+func HasUvLockFileSingle(dir, targetFile string, logger *zerolog.Logger) bool {
+	var uvLockPath string
+	if targetFile != "" {
+		if filepath.IsAbs(targetFile) {
+			uvLockPath = targetFile
+		} else {
+			uvLockPath = filepath.Join(dir, targetFile)
+		}
+	} else {
+		uvLockPath = filepath.Join(dir, constants.UvLockFileName)
+	}
+
 	_, err := os.Stat(uvLockPath)
 	if err == nil {
 		return true
@@ -95,9 +106,9 @@ func HasUvLockFileRecursive(dir string, logger *zerolog.Logger) bool {
 }
 
 // HasUvLockFileInAnyDir checks if any of the input directories contains a uv.lock file.
-func HasUvLockFileInAnyDir(inputDirs []string, allProjects bool, logger *zerolog.Logger) bool {
+func HasUvLockFileInAnyDir(inputDirs []string, targetFile string, allProjects bool, logger *zerolog.Logger) bool {
 	for _, inputDir := range inputDirs {
-		if HasUvLockFile(inputDir, allProjects, logger) {
+		if HasUvLockFile(inputDir, targetFile, allProjects, logger) {
 			return true
 		}
 	}
