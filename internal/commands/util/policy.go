@@ -70,14 +70,24 @@ func GetLocalPolicy(ctx context.Context, inputDir string) (*localpolicy.Policy, 
 		return nil, fmt.Errorf("failed to resolve local policy file: %w", err)
 	}
 
-	fd, err := os.Open(policyPath)
+	fileInfo, err := os.Stat(policyPath)
 	if err != nil {
-		var perr *fs.PathError
-		if errors.As(err, &perr) {
-			logger.Info().Msg("No local policy file found.")
+		if errors.Is(err, fs.ErrNotExist) {
+			logger.Info().Msg(fmt.Sprintf("Local policy file not found at %s", policyPath))
 			//nolint:nilnil // Intentionally returning a nil policy, because none could be found.
 			return nil, nil
 		}
+		return nil, fmt.Errorf("failed to access local policy file: %w", err)
+	}
+
+	if fileInfo.IsDir() {
+		logger.Info().Msg(fmt.Sprintf("Local policy path is a directory. Skipping (%s).", policyPath))
+		//nolint:nilnil // Intentionally returning a nil policy, because none could be found.
+		return nil, nil
+	}
+
+	fd, err := os.Open(policyPath)
+	if err != nil {
 		return nil, fmt.Errorf("failed to open local policy: %w", err)
 	}
 	defer fd.Close()
