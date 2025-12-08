@@ -133,6 +133,7 @@ type FlowConfig struct {
 	Unmanaged             bool
 	TargetPackage         string
 	AllProjects           bool
+	FileFlag              string
 }
 
 func doesPathExist(path string) (bool, error) {
@@ -161,6 +162,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
 	unmanaged := cfg.GetBool(flags.FlagUnmanaged)
 	allProjects := cfg.GetBool(flags.FlagAllProjects)
+	fileFlag := cfg.GetString(flags.FlagFile)
 
 	experimentalFlagSet := cfg.GetBool(configuration.FLAG_EXPERIMENTAL)
 	experimentalUvSupport := experimentalFlagSet && cfg.GetBool(constants.EnableExperimentalUvSupportEnvVar)
@@ -204,6 +206,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 		Unmanaged:             unmanaged,
 		TargetPackage:         targetPackage,
 		AllProjects:           allProjects,
+		FileFlag:              fileFlag,
 	}, nil
 }
 
@@ -217,7 +220,7 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 	}
 
 	// Check if UV support should trigger, only if env var is set and uv.lock exists.
-	uvSupportWithLockFile := fc.ExperimentalUvSupport && util.HasUvLockFileInAnyDir(inputDirs, fc.AllProjects, logger)
+	uvSupportWithLockFile := fc.ExperimentalUvSupport && util.HasUvLockFileInAnyDir(inputDirs, fc.FileFlag, fc.AllProjects, logger)
 
 	hasNewFeatures := fc.RiskScoreTest || fc.Reachability || fc.SBOM != "" || fc.ReachabilityFilter != "" || uvSupportWithLockFile
 	useLegacy := fc.ForceLegacyTest || fc.RequiresLegacy || !hasNewFeatures

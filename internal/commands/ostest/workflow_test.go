@@ -652,6 +652,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 				tempDir := util.CreateTempDirWithUvLock(t)
 				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
 				config.Set(configuration.FLAG_EXPERIMENTAL, true)
+				config.Set(flags.FlagFile, "")
 				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
