@@ -110,3 +110,21 @@ func TestGetLocalPolicy_BrokenPolicy(t *testing.T) {
 	var terr *yaml.TypeError
 	assert.ErrorAs(t, err, &terr)
 }
+
+func TestGetLocalPolicy_WhenDotSnykIsADir(t *testing.T) {
+	dir, err := os.MkdirTemp("", "snyk-policy")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(dir) })
+
+	err = os.Mkdir(filepath.Join(dir, ".snyk"), 0o755)
+	require.NoError(t, err)
+
+	cfg := configuration.New()
+	ctx := cmdctx.WithConfig(t.Context(), cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+
+	policy, err := util.GetLocalPolicy(ctx, dir)
+
+	require.NoError(t, err)
+	require.Nil(t, policy)
+}
