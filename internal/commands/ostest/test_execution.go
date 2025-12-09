@@ -155,7 +155,7 @@ func executeTest(
 
 	startParams := testapi.StartTestParams{
 		OrgID:       orgID,
-		Subject:     subject,
+		Subject:     &subject,
 		LocalPolicy: localPolicy,
 	}
 

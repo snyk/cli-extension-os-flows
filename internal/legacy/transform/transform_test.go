@@ -446,7 +446,7 @@ func TestProcessLocationForVuln(t *testing.T) {
 
 	sourceLoc := &testapi.FindingLocation{}
 	err = sourceLoc.FromSourceLocation(testapi.SourceLocation{
-		Type: testapi.Source,
+		Type: testapi.SourceLocationTypeSource,
 	})
 	require.NoError(t, err)
 

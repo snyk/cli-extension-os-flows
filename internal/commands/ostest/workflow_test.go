@@ -942,7 +942,7 @@ func (s *mockAPIState) handleGetTestResult(w http.ResponseWriter, r *http.Reques
 			Outcome:          &testapi.TestOutcome{Result: pass},
 			RawSummary:       &testapi.FindingSummary{Count: 0},
 			EffectiveSummary: &testapi.FindingSummary{Count: 0},
-			Subject:          testapi.TestSubject{},
+			Subject:          &testapi.TestSubject{},
 		},
 	}
 	err := json.NewEncoder(w).Encode(struct {

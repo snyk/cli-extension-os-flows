@@ -46,11 +46,6 @@ type SnykSchemaToLegacyParams struct {
 // ConvertSnykSchemaFindingsToLegacy is a function that converts snyk schema findings into
 // the legacy vulnerability response structure for the snyk cli.
 func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaToLegacyParams) (*definitions.LegacyVulnerabilityResponse, error) {
-	if _, err := params.TestResult.GetTestSubject().AsDepGraphSubject(); err != nil {
-		return nil, params.ErrFactory.NewLegacyJSONTransformerError(
-			fmt.Errorf("expected a depgraph subject but got something else: %w", err))
-	}
-
 	allVulnerabilities, err := FindingsToLegacyVulns(params.Findings, params.PackageManager, params.Logger)
 	if err != nil {
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("converting finding to legacy vuln: %w", err))
@@ -401,7 +396,7 @@ func ProcessLocationForVuln(
 		return fmt.Errorf("getting location discriminator: %w", err)
 	}
 	switch locDisc {
-	case string(testapi.Source):
+	case string(testapi.SourceLocationTypeSource):
 		logger.Warn().Str(logFieldDiscriminator, locDisc).Msg("source location type not yet supported for legacy conversion")
 		_, err = loc.AsSourceLocation()
 		if err != nil {

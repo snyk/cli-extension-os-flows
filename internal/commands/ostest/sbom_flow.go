@@ -120,7 +120,7 @@ func createSbomSubject(
 	var subject testapi.TestSubjectCreate
 
 	err := subject.FromSbomSubject(testapi.SbomSubject{
-		Type:         testapi.Sbom,
+		Type:         testapi.SbomSubjectTypeSbom,
 		SbomBundleId: sbomBundleHash,
 		Locator: testapi.LocalPathLocator{
 			Paths: []string{

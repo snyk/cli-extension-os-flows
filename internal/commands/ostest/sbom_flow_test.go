@@ -400,7 +400,7 @@ func setupTest(
 		})
 	} else {
 		err = testSubject.FromSbomSubject(testapi.SbomSubject{
-			Type:         testapi.Sbom,
+			Type:         testapi.SbomSubjectTypeSbom,
 			SbomBundleId: "test-sbom-hash",
 			Locator: testapi.LocalPathLocator{
 				Paths: []string{
@@ -417,7 +417,7 @@ func setupTest(
 	mockTestResult := gafclientmocks.NewMockTestResult(ctrl)
 	mockTestResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
 	mockTestResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{findingData}, true, nil).AnyTimes()
-	mockTestResult.EXPECT().GetTestSubject().Return(testSubject).AnyTimes()
+	mockTestResult.EXPECT().GetTestSubject().Return(&testSubject).AnyTimes()
 	mockTestResult.EXPECT().GetEffectiveSummary().Return(summary).AnyTimes()
 	mockTestResult.EXPECT().GetRawSummary().Return(summary).AnyTimes()
 

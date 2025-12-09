@@ -76,7 +76,7 @@ func mockConcurrentStartTest(ctrl *gomock.Controller, n int, current, peak *atom
 		result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
 		result.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
 		result.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
-		result.EXPECT().GetTestSubject().Return(testapi.TestSubject{}).AnyTimes()
+		result.EXPECT().GetTestSubject().Return(&testapi.TestSubject{}).AnyTimes()
 		result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 		result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 
@@ -313,7 +313,7 @@ func Test_RunUnifiedTestFlow_WithIgnorePolicyFlag(t *testing.T) {
 		result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
 		result.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
 		result.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
-		result.EXPECT().GetTestSubject().Return(testapi.TestSubject{}).AnyTimes()
+		result.EXPECT().GetTestSubject().Return(&testapi.TestSubject{}).AnyTimes()
 		result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 		result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 
@@ -413,7 +413,7 @@ func Test_RunUnifiedTestFlow_WithProjectNameOverride(t *testing.T) {
 		result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
 		result.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
 		result.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
-		result.EXPECT().GetTestSubject().Return(testapi.TestSubject{}).AnyTimes()
+		result.EXPECT().GetTestSubject().Return(&testapi.TestSubject{}).AnyTimes()
 		result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 		result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 
@@ -515,7 +515,7 @@ func Test_RunUnifiedTestFlow_WithTargetReference(t *testing.T) {
 		result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
 		result.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
 		result.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
-		result.EXPECT().GetTestSubject().Return(testapi.TestSubject{}).AnyTimes()
+		result.EXPECT().GetTestSubject().Return(&testapi.TestSubject{}).AnyTimes()
 		result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 		result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 
