@@ -340,14 +340,14 @@ model LegacyVulnerabilityResponse {
   policy: string;
   isPrivate: boolean;
   licensesPolicy: LicensesPolicy;
-  packageManager: string;
+  packageManager?: string;
   ignoreSettings: IgnoreSettings;
   summary: string;
   filesystemPolicy: boolean;
   filtered: Filtered;
   uniqueCount: int32;
   targetFile?: string;
-  projectName: string;
+  projectName?: string;
   displayTargetFile: string;
   hasUnknownVersions: boolean;
   path: string;

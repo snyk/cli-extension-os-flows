@@ -196,11 +196,11 @@ type LegacyVulnerabilityResponse struct {
 	LicensesPolicy     LicensesPolicy  `json:"licensesPolicy"`
 	Ok                 bool            `json:"ok"`
 	Org                string          `json:"org"`
-	PackageManager     string          `json:"packageManager"`
+	PackageManager     *string         `json:"packageManager,omitempty"`
 	Path               string          `json:"path"`
 	Policy             string          `json:"policy"`
 	ProjectId          *string         `json:"projectId,omitempty"`
-	ProjectName        string          `json:"projectName"`
+	ProjectName        *string         `json:"projectName,omitempty"`
 	Remediation        *Remediation    `json:"remediation,omitempty"`
 	Summary            string          `json:"summary"`
 	TargetFile         *string         `json:"targetFile,omitempty"`

@@ -156,7 +156,9 @@ func GetDependencyCountFromTestFacts(result testapi.TestResult) int {
 	}
 
 	for _, fact := range *testFacts {
-		return int(fact.TotalDependencyCount)
+		if fact.Type == testapi.DependencyCountFactTypeDependencyCountFact {
+			return int(fact.TotalDependencyCount)
+		}
 	}
 
 	return 0

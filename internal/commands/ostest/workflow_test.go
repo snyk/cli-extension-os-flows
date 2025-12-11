@@ -1107,7 +1107,7 @@ ignore: {}
 			assert.True(t, legacyResults[1].FilesystemPolicy)
 
 			// The order is not guaranteed, so we check for presence
-			projectNames := []string{legacyResults[0].ProjectName, legacyResults[1].ProjectName}
+			projectNames := []string{*legacyResults[0].ProjectName, *legacyResults[1].ProjectName}
 			assert.Contains(t, projectNames, "proj1")
 			assert.Contains(t, projectNames, "proj2")
 		})
