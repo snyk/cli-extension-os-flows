@@ -147,6 +147,7 @@ func setupSBOMResolutionIntegrationTest(
 			result.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
 			result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
 			result.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
+			result.EXPECT().GetTestFacts().Return(nil).AnyTimes()
 			result.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
 			result.EXPECT().GetTestSubject().Return(&testapi.TestSubject{}).AnyTimes()
 			result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()

@@ -689,6 +689,8 @@ components:
           nullable: true
         isGroupPolicy:
           type: boolean
+        type:
+          type: string
     Vulnerability:
       type: object
       required:

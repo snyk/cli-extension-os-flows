@@ -433,6 +433,7 @@ func setupTest(
 	mockTestResult.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
 	mockTestResult.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockTestResult.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
+	mockTestResult.EXPECT().GetTestFacts().Return(nil).AnyTimes()
 	mockTestResult.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
 
 	var tsl testapi.TestSubjectLocator
