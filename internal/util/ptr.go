@@ -15,3 +15,12 @@ func DefaultValue[T any](val *T, fallback T) T {
 	}
 	return *val
 }
+
+// PtrOrNil returns a pointer to the string, or nil if the string is empty.
+// This is useful for optional JSON fields with omitempty.
+func PtrOrNil(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}

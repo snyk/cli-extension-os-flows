@@ -18,7 +18,7 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/snyk/code-client-go v1.24.3
 	github.com/snyk/error-catalog-golang-public v0.0.0-20251008132755-b542bb643649
-	github.com/snyk/go-application-framework v0.0.0-20251209131634-fa77f8c14fa3
+	github.com/snyk/go-application-framework v0.0.0-20251211160454-e7a3786df2f6
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.43.0
@@ -107,8 +107,10 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/crypto v0.42.0 // indirect
+	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
+	golang.org/x/tools v0.36.0 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

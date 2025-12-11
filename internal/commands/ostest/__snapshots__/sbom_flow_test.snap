@@ -23,11 +23,9 @@
   },
   "ok": false,
   "org": "test-org-slug",
-  "packageManager": "",
   "path": "testdata",
   "policy": "",
   "projectId": "5c520c95-a964-4de0-9284-02a16f9f88d5",
-  "projectName": "",
   "remediation": {
    "ignore": null,
    "pin": {},
@@ -294,11 +292,9 @@
   },
   "ok": false,
   "org": "test-org-slug",
-  "packageManager": "",
   "path": "testdata",
   "policy": "",
   "projectId": "5c520c95-a964-4de0-9284-02a16f9f88d5",
-  "projectName": "",
   "remediation": {
    "ignore": null,
    "pin": {},

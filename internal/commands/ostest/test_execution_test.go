@@ -290,6 +290,42 @@ func Test_RunTest_ErrorsWhenFindingsError(t *testing.T) {
 	require.Error(t, err)
 }
 
+func Test_GetDependencyCountFromTestFacts(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	t.Run("returns 0 when test facts is nil", func(t *testing.T) {
+		mockResult := gafclientmocks.NewMockTestResult(ctrl)
+		mockResult.EXPECT().GetTestFacts().Return(nil)
+
+		count := ostest.GetDependencyCountFromTestFacts(mockResult)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("returns 0 when test facts is empty", func(t *testing.T) {
+		mockResult := gafclientmocks.NewMockTestResult(ctrl)
+		emptyFacts := []testapi.TestFact{}
+		mockResult.EXPECT().GetTestFacts().Return(&emptyFacts)
+
+		count := ostest.GetDependencyCountFromTestFacts(mockResult)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("returns dependency count from test facts", func(t *testing.T) {
+		mockResult := gafclientmocks.NewMockTestResult(ctrl)
+		facts := []testapi.TestFact{
+			{
+				TotalDependencyCount: 42,
+				Type:                 testapi.DependencyCountFactTypeDependencyCountFact,
+			},
+		}
+		mockResult.EXPECT().GetTestFacts().Return(&facts)
+
+		count := ostest.GetDependencyCountFromTestFacts(mockResult)
+		assert.Equal(t, 42, count)
+	})
+}
+
 // Test_RunTest_ErrorsWhenFindingsIncomplete verifies an error is returned when the Test passes but the Findings returns incomplete.
 func Test_RunTest_ErrorsWhenFindingsIncomplete(t *testing.T) {
 	ctrl := gomock.NewController(t)

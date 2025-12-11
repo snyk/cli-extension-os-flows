@@ -314,13 +314,11 @@ components:
         - policy
         - isPrivate
         - licensesPolicy
-        - packageManager
         - ignoreSettings
         - summary
         - filesystemPolicy
         - filtered
         - uniqueCount
-        - projectName
         - displayTargetFile
         - hasUnknownVersions
         - path
@@ -689,6 +687,8 @@ components:
           nullable: true
         isGroupPolicy:
           type: boolean
+        type:
+          type: string
     Vulnerability:
       type: object
       required:

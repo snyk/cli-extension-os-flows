@@ -96,6 +96,12 @@ func RunTest(
 		return nil, nil, fmt.Errorf("failed to extract project ID: %w", err)
 	}
 
+	// Use dependency count from test facts if available, otherwise fall back to the provided depCount.
+	effectiveDepCount := depCount
+	if factDepCount := GetDependencyCountFromTestFacts(finalResult); factDepCount > 0 {
+		effectiveDepCount = factDepCount
+	}
+
 	legacyParams := &transform.SnykSchemaToLegacyParams{
 		Findings:           allFindingsData,
 		ProjectID:          projectID,
@@ -105,7 +111,7 @@ func RunTest(
 		ProjectName:        projectName,
 		PackageManager:     packageManager,
 		TargetDir:          targetDir,
-		DepCount:           depCount,
+		DepCount:           effectiveDepCount,
 		TargetFile:         targetFile,
 		DisplayTargetFile:  displayTargetFile,
 		ErrFactory:         errFactory,
@@ -139,6 +145,23 @@ func getTestProjectID(result testapi.TestResult) (*string, error) {
 
 	//nolint:nilnil // Nil is a proper value to be returned, indicating a missing project id.
 	return nil, nil
+}
+
+// GetDependencyCountFromTestFacts extracts the total dependency count from test facts.
+// Returns 0 if no dependency count fact is found.
+func GetDependencyCountFromTestFacts(result testapi.TestResult) int {
+	testFacts := result.GetTestFacts()
+	if testFacts == nil {
+		return 0
+	}
+
+	for _, fact := range *testFacts {
+		if fact.Type == testapi.DependencyCountFactTypeDependencyCountFact {
+			return int(fact.TotalDependencyCount)
+		}
+	}
+
+	return 0
 }
 
 // executeTest runs the test and returns the results.
