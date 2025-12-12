@@ -183,6 +183,8 @@ func useRendererWithUnifiedModel(name string, wEntry *WriterEntry, projectResult
 		}
 	}()
 
+	invocation.GetEngine().GetConfiguration().Set(output_workflow.OUTPUT_CONFIG_KEY_NO_DEFAULT_WRITER, true)
+
 	config := invocation.GetConfiguration()
 	renderer := presenters.NewUnifiedFindingsRenderer(
 		projectResults,
