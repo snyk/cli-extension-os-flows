@@ -162,7 +162,7 @@ func (p *testProcessor) runDepGraphTest(
 	packageManager := depGraph.Payload.PkgManager.Name
 	depCount := max(0, len(depGraph.Payload.Pkgs)-1)
 
-	return RunTest(
+	return RunTestWithSubject(
 		ctx,
 		targetDir,
 		p.testClient,
