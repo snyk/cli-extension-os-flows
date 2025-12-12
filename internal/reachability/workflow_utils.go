@@ -11,7 +11,50 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 )
 
-const codeEngineProcessingLimit = 1048576 // 1MiB
+// CodeEngineProcessingLimit is the maximum file size (1MiB) that the code engine will process.
+// Files larger than this are filtered out during source code upload.
+const CodeEngineProcessingLimit = 1048576 // 1MiB
+
+// SourceCodeUploadOptions returns the upload options for source code uploads.
+// This includes a filter to exclude files larger than the code engine processing limit.
+func SourceCodeUploadOptions() fileupload.UploadOptions {
+	return fileupload.UploadOptions{
+		AdditionalFilters: []fileupload.Filter{
+			func(ftf fileupload.FileToFilter) *fileupload.FilteredFile {
+				fileSize := ftf.Stat.Size()
+				if fileSize > CodeEngineProcessingLimit {
+					return &fileupload.FilteredFile{
+						Path:   ftf.Path,
+						Reason: fmt.Errorf("files over 1MiB will not be processed by the code engine: file size (bytes): %d", fileSize),
+					}
+				}
+				return nil
+			},
+		},
+	}
+}
+
+// UploadSourceCode uploads a source code directory for reachability analysis.
+// It applies the standard source code filters (1MiB file size limit).
+func UploadSourceCode(
+	ctx context.Context,
+	fc fileupload.Client,
+	sourceDir string,
+) (fileupload.UploadResult, error) {
+	instrumentation := cmdctx.Instrumentation(ctx)
+	codeUploadStart := time.Now()
+
+	res, err := fc.CreateRevisionFromDir(ctx, sourceDir, SourceCodeUploadOptions())
+	if err != nil {
+		return fileupload.UploadResult{}, fmt.Errorf("failed to upload source code: %w", err)
+	}
+
+	if instrumentation != nil {
+		instrumentation.RecordCodeUploadTime(time.Since(codeUploadStart).Milliseconds())
+	}
+
+	return res, nil
+}
 
 // GetReachabilityID will upload the source code directory using the file upload API,
 // kick off a reachability scan, wait for the scan to complete and return the scan ID.
@@ -23,28 +66,10 @@ func GetReachabilityID(
 	fc fileupload.Client,
 ) (ID, error) {
 	instrumentation := cmdctx.Instrumentation(ctx)
-	codeUploadStart := time.Now()
-	res, err := fc.CreateRevisionFromDir(ctx, sourceDir, fileupload.UploadOptions{
-		AdditionalFilters: []fileupload.Filter{
-			func(ftf fileupload.FileToFilter) *fileupload.FilteredFile {
-				fileSize := ftf.Stat.Size()
-				if fileSize > codeEngineProcessingLimit { // 1MiB
-					return &fileupload.FilteredFile{
-						Path:   ftf.Path,
-						Reason: fmt.Errorf("files over 1MiB will not be processed by the code engine: file size (bytes): %d", fileSize),
-					}
-				}
 
-				return nil
-			},
-		},
-	})
+	res, err := UploadSourceCode(ctx, fc, sourceDir)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to upload source code for reachability analysis: %w", err)
-	}
-
-	if instrumentation != nil {
-		instrumentation.RecordCodeUploadTime(time.Since(codeUploadStart).Milliseconds())
 	}
 
 	codeAnalysisStart := time.Now()
