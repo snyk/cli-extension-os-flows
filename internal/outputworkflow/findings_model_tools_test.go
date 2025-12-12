@@ -11,6 +11,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
 	pkgMocks "github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
+	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
@@ -95,7 +96,9 @@ func Test_useRendererWithUnifiedModel(t *testing.T) {
 	logger := zerolog.Nop()
 	config := configuration.NewWithOpts()
 	mockCtl := gomock.NewController(t)
+	engine := workflow.NewWorkFlowEngine(config)
 	ctx := pkgMocks.NewMockInvocationContext(mockCtl)
+	ctx.EXPECT().GetEngine().Return(engine).AnyTimes()
 	ctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
 	ctx.EXPECT().GetConfiguration().Return(config).AnyTimes()
 	ctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()

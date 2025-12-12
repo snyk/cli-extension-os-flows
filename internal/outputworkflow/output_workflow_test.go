@@ -168,10 +168,12 @@ func TestUnifiedFindingsHandling_renderFilesAndUI(t *testing.T) {
 
 	// setup mocks
 	ctrl := gomock.NewController(t)
+	engine := workflow.NewWorkFlowEngine(config)
 	invocationContextMock := mocks.NewMockInvocationContext(ctrl)
 	outputDestination := NewMockOutputDestination(ctrl)
 
 	// invocation context mocks
+	invocationContextMock.EXPECT().GetEngine().Return(engine).AnyTimes()
 	invocationContextMock.EXPECT().GetConfiguration().Return(config).AnyTimes()
 	invocationContextMock.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
 	invocationContextMock.EXPECT().GetRuntimeInfo().Return(
