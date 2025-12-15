@@ -118,22 +118,23 @@ func validateReachability(
 
 // FlowConfig holds parsed configuration for flow routing decisions.
 type FlowConfig struct {
-	FFRiskScore           bool
-	FFRiskScoreInCLI      bool
-	RiskScoreFFsEnabled   bool
-	RiskScoreThreshold    int
-	RiskScoreTest         bool
-	Reachability          bool
-	SBOM                  string
-	SBOMReachabilityTest  bool
-	ReachabilityFilter    string
-	ExperimentalUvSupport bool
-	ForceLegacyTest       bool
-	RequiresLegacy        bool
-	Unmanaged             bool
-	TargetPackage         string
-	AllProjects           bool
-	FileFlag              string
+	FFRiskScore               bool
+	FFRiskScoreInCLI          bool
+	FFUseTestShimForOSCliTest bool
+	RiskScoreFFsEnabled       bool
+	RiskScoreThreshold        int
+	RiskScoreTest             bool
+	Reachability              bool
+	SBOM                      string
+	SBOMReachabilityTest      bool
+	ReachabilityFilter        string
+	ExperimentalUvSupport     bool
+	ForceLegacyTest           bool
+	RequiresLegacy            bool
+	Unmanaged                 bool
+	TargetPackage             string
+	AllProjects               bool
+	FileFlag                  string
 }
 
 func doesPathExist(path string) (bool, error) {
@@ -152,6 +153,7 @@ func doesPathExist(path string) (bool, error) {
 func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	ffRiskScore := cfg.GetBool(constants.FeatureFlagRiskScore)
 	ffRiskScoreInCLI := cfg.GetBool(constants.FeatureFlagRiskScoreInCLI)
+	ffUseTestShimForOSCliTest := cfg.GetBool(constants.FeatureFlagUseTestShimForOSCliTest)
 	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
 	riskScoreThreshold := cfg.GetInt(flags.FlagRiskScoreThreshold)
 	riskScoreTest := riskScoreFFsEnabled || riskScoreThreshold != -1
@@ -191,22 +193,23 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	}
 
 	return &FlowConfig{
-		FFRiskScore:           ffRiskScore,
-		FFRiskScoreInCLI:      ffRiskScoreInCLI,
-		RiskScoreFFsEnabled:   riskScoreFFsEnabled,
-		RiskScoreThreshold:    riskScoreThreshold,
-		RiskScoreTest:         riskScoreTest,
-		Reachability:          reachability,
-		SBOM:                  sbom,
-		SBOMReachabilityTest:  sbomReachabilityTest,
-		ReachabilityFilter:    reachabilityFilter,
-		ExperimentalUvSupport: experimentalUvSupport,
-		ForceLegacyTest:       forceLegacyTest,
-		RequiresLegacy:        requiresLegacy,
-		Unmanaged:             unmanaged,
-		TargetPackage:         targetPackage,
-		AllProjects:           allProjects,
-		FileFlag:              fileFlag,
+		FFRiskScore:               ffRiskScore,
+		FFRiskScoreInCLI:          ffRiskScoreInCLI,
+		FFUseTestShimForOSCliTest: ffUseTestShimForOSCliTest,
+		RiskScoreFFsEnabled:       riskScoreFFsEnabled,
+		RiskScoreThreshold:        riskScoreThreshold,
+		RiskScoreTest:             riskScoreTest,
+		Reachability:              reachability,
+		SBOM:                      sbom,
+		SBOMReachabilityTest:      sbomReachabilityTest,
+		ReachabilityFilter:        reachabilityFilter,
+		ExperimentalUvSupport:     experimentalUvSupport,
+		ForceLegacyTest:           forceLegacyTest,
+		RequiresLegacy:            requiresLegacy,
+		Unmanaged:                 unmanaged,
+		TargetPackage:             targetPackage,
+		AllProjects:               allProjects,
+		FileFlag:                  fileFlag,
 	}, nil
 }
 
@@ -222,16 +225,17 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 	// Check if UV support should trigger, only if env var is set and uv.lock exists.
 	uvSupportWithLockFile := fc.ExperimentalUvSupport && util.HasUvLockFileInAnyDir(inputDirs, fc.FileFlag, fc.AllProjects, logger)
 
-	hasNewFeatures := fc.RiskScoreTest || fc.Reachability || fc.SBOM != "" || fc.ReachabilityFilter != "" || uvSupportWithLockFile
+	hasNewFeatures := fc.RiskScoreTest || fc.Reachability || fc.SBOM != "" || fc.ReachabilityFilter != "" || uvSupportWithLockFile || fc.FFUseTestShimForOSCliTest
 	useLegacy := fc.ForceLegacyTest || fc.RequiresLegacy || !hasNewFeatures
 
 	logger.Debug().Msgf(
-		"Using legacy flow: %t. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %t. Experimental uv Support: %t.",
+		"Using legacy flow: %t. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %t. Experimental uv Support: %t. Test Shim FF: %t.",
 		useLegacy,
 		fc.ForceLegacyTest,
 		fc.SBOMReachabilityTest,
 		fc.RiskScoreTest,
 		uvSupportWithLockFile,
+		fc.FFUseTestShimForOSCliTest,
 	)
 
 	return useLegacy, nil

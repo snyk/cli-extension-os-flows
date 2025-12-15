@@ -18,5 +18,8 @@ const FeatureFlagRiskScore = "internal_snyk_cli_experimental_risk_score"
 // FeatureFlagRiskScoreInCLI is used to gate the risk score feature in the CLI.
 const FeatureFlagRiskScoreInCLI = "internal_snyk_cli_experimental_risk_score_in_cli"
 
+// FeatureFlagUseTestShimForOSCliTest gates routing DepGraph tests through the new test API.
+const FeatureFlagUseTestShimForOSCliTest = "internal_snyk_cli_use_test_shim_for_os_cli_test"
+
 // UvLockFileName is the name of the UV lock file.
 const UvLockFileName = "uv.lock"
