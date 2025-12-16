@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 	codeclient "github.com/snyk/code-client-go"
 	codeclienthttp "github.com/snyk/code-client-go/http"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -37,6 +36,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
 	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 // WorkflowID is the identifier for the Open Source Test workflow.

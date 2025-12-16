@@ -8,19 +8,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/snyk/cli-extension-os-flows/pkg/flags"
-	"github.com/snyk/go-application-framework/pkg/utils"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	gafmocks "github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
+	"github.com/snyk/go-application-framework/pkg/utils"
 	"github.com/snyk/go-application-framework/pkg/workflow"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
@@ -29,6 +27,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/mocks"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 var orgUUID = uuid.MustParse("8c2def96-233c-41b2-ab52-590c016e81e0")

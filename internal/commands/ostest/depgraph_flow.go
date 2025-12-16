@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
@@ -23,6 +22,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 const maxConcurrentTests = 5

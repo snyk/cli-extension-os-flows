@@ -3,13 +3,13 @@ package service
 import (
 	"fmt"
 
-	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 // NormalisedTargetFileKey is used by the dep graph workflow to embed the target file path in the workflow data.

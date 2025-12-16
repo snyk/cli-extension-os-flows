@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
@@ -15,6 +14,7 @@ import (
 	internalErrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 // Flow is the type of all the command's flows.

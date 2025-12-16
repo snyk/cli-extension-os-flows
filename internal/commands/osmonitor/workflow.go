@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
-	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
 	"github.com/snyk/go-application-framework/pkg/ui"
@@ -20,6 +19,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/instrumentation"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 // WorkflowID is the identifier for the Open Source Monitor workflow.
