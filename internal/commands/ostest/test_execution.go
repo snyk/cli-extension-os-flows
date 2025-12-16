@@ -81,7 +81,7 @@ func RunTest(
 		logger.Warn().Err(summaryErr).Msg("Failed to create test summary for exit code handling")
 	}
 
-	remFindings, err := remediation.ShimFindingsToRemediationFindings(consolidatedFindings)
+	remFindings, err := remediation.ShimFindingsToRemediationFindings(allFindingsData)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to convert to remediation findings: %w", err)
 	}
