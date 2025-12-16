@@ -117,6 +117,7 @@ model Vulnerability {
   malicious?: boolean;
   modificationTime?: string;
   moduleName?: string;
+  mavenModuleName?: MavenModuleName;
   patches?: PatchInfo[];
   proprietary?: boolean;
   references?: Reference[];
@@ -126,6 +127,11 @@ model Vulnerability {
   filtered?: VulnFiltered;
   appliedPolicyRules?: AppliedPolicyRules;
   securityPolicyMetaData?: SecurityPolicyMetaData;
+}
+
+model MavenModuleName {
+  groupId: string;
+  artifactId: string;
 }
 
 model SecurityPolicyMetaData {

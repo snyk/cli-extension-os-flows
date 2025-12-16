@@ -213,6 +213,7 @@ func setupTest(
 	err = ecosystem.FromSnykvulndbBuildPackageEcosystem(testapi.SnykvulndbBuildPackageEcosystem{
 		Language:       "js",
 		PackageManager: "npm",
+		Client:         util.Ptr("npm"),
 		Type:           testapi.Build,
 	})
 	require.NoError(t, err)

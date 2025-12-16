@@ -60,7 +60,6 @@
     "id": "snyk-vuln-123",
     "isPatchable": false,
     "isUpgradable": true,
-    "language": "js",
     "malicious": true,
     "modificationTime": "2025-07-28T17:11:43.000000Z",
     "name": "foo",
@@ -174,6 +173,7 @@
      "cvss_vector": "",
      "disclosed_at": "2025-07-28T17:11:43+03:00",
      "ecosystem": {
+      "client": "npm",
       "language": "js",
       "package_manager": "npm",
       "type": "build"
@@ -329,7 +329,6 @@
     "id": "snyk-vuln-123",
     "isPatchable": false,
     "isUpgradable": true,
-    "language": "js",
     "malicious": true,
     "modificationTime": "2025-07-28T17:11:43.000000Z",
     "name": "foo",
@@ -443,6 +442,7 @@
      "cvss_vector": "",
      "disclosed_at": "2025-07-28T17:11:43+03:00",
      "ecosystem": {
+      "client": "npm",
       "language": "js",
       "package_manager": "npm",
       "type": "build"

@@ -407,6 +407,16 @@ components:
           type: object
           additionalProperties:
             $ref: '#/components/schemas/LicenseRule'
+    MavenModuleName:
+      type: object
+      required:
+        - groupId
+        - artifactId
+      properties:
+        groupId:
+          type: string
+        artifactId:
+          type: string
     NewFunctionId:
       type: object
       required:
@@ -827,6 +837,8 @@ components:
           type: string
         moduleName:
           type: string
+        mavenModuleName:
+          $ref: '#/components/schemas/MavenModuleName'
         patches:
           type: array
           items:

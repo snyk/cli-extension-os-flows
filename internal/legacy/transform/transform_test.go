@@ -493,6 +493,7 @@ func TestProcessProblemForVuln_License(t *testing.T) {
 		Type:           testapi.Build,
 		Language:       "javascript",
 		PackageManager: "npm",
+		Client:         util.Ptr("npm"),
 	})
 	require.NoError(t, err)
 
@@ -540,7 +541,6 @@ func TestProcessProblemForVuln_License(t *testing.T) {
 		problem                *testapi.Problem
 		shouldError            bool
 		expectedPackageManager *string
-		expectedLanguage       *string
 	}{
 		{
 			name:                   "Build ecosystem",
@@ -548,7 +548,6 @@ func TestProcessProblemForVuln_License(t *testing.T) {
 			problem:                problemBuild,
 			shouldError:            false,
 			expectedPackageManager: util.Ptr("npm"),
-			expectedLanguage:       util.Ptr("javascript"),
 		},
 		{
 			name:                   "OS ecosystem",
@@ -556,7 +555,6 @@ func TestProcessProblemForVuln_License(t *testing.T) {
 			problem:                problemOs,
 			shouldError:            false,
 			expectedPackageManager: util.Ptr("alpine:3.16"),
-			expectedLanguage:       nil,
 		},
 		{
 			name:                   "Other ecosystem",
@@ -564,7 +562,6 @@ func TestProcessProblemForVuln_License(t *testing.T) {
 			problem:                problemOther,
 			shouldError:            false,
 			expectedPackageManager: nil,
-			expectedLanguage:       nil,
 		},
 	}
 
@@ -580,7 +577,6 @@ func TestProcessProblemForVuln_License(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedPackageManager, tt.vuln.PackageManager)
-			require.Equal(t, tt.expectedLanguage, tt.vuln.Language)
 		})
 	}
 }
@@ -615,6 +611,7 @@ func TestLicenseInstructions(t *testing.T) {
 			Type:           testapi.Build,
 			Language:       "javascript",
 			PackageManager: "npm",
+			Client:         util.Ptr("npm"),
 		})
 		require.NoError(t, err)
 
@@ -659,6 +656,7 @@ func TestLicenseInstructions(t *testing.T) {
 			Type:           testapi.Build,
 			Language:       "javascript",
 			PackageManager: "npm",
+			Client:         util.Ptr("npm"),
 		})
 		require.NoError(t, err)
 
@@ -709,6 +707,7 @@ func TestLicenseInstructions(t *testing.T) {
 			Type:           testapi.Build,
 			Language:       "javascript",
 			PackageManager: "npm",
+			Client:         util.Ptr("npm"),
 		})
 		require.NoError(t, err)
 
@@ -746,6 +745,7 @@ func TestFindingToLegacyVulns_MultipleInstructions(t *testing.T) {
 		Type:           testapi.Build,
 		Language:       "python",
 		PackageManager: "pip",
+		Client:         util.Ptr("pip"),
 	})
 	require.NoError(t, err)
 
@@ -821,6 +821,7 @@ func TestFindingToLegacyVulns_SingleInstruction(t *testing.T) {
 		Type:           testapi.Build,
 		Language:       "python",
 		PackageManager: "pip",
+		Client:         util.Ptr("pip"),
 	})
 	require.NoError(t, err)
 
@@ -892,6 +893,7 @@ func TestFindingToLegacyVulns_NoInstructions(t *testing.T) {
 		Type:           testapi.Build,
 		Language:       "python",
 		PackageManager: "pip",
+		Client:         util.Ptr("pip"),
 	})
 	require.NoError(t, err)
 

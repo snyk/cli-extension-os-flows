@@ -214,20 +214,31 @@ func processSnykVulnProblem(vuln *definitions.Vulnerability, prob *testapi.Probl
 	setBasicVulnInfo(vuln, &snykProblemVuln)
 	setVulnReferences(vuln, snykProblemVuln.References)
 	setVulnSemver(vuln, &snykProblemVuln)
-	setEcosystem(vuln, &snykProblemVuln.Ecosystem, logger)
+	setVulnEcosystem(vuln, &snykProblemVuln, logger)
 	setVulnCvssInfo(vuln, &snykProblemVuln)
 	setVulnExploitDetails(vuln, &snykProblemVuln.ExploitDetails)
 	setVulnEpssDetails(vuln, snykProblemVuln.EpssDetails)
 	return nil
 }
 
+func getPackageNameFromVuln(snykProblemVuln *testapi.SnykVulnProblem) *string {
+	if snykProblemVuln.PackageFullName != nil {
+		return snykProblemVuln.PackageFullName
+	}
+
+	return &snykProblemVuln.PackageName
+}
+
 func setBasicVulnInfo(vuln *definitions.Vulnerability, snykProblemVuln *testapi.SnykVulnProblem) {
 	vuln.Id = snykProblemVuln.Id
 	vuln.CreationTime = snykProblemVuln.CreatedAt.Format(legacyTimeFormat)
+	vuln.SeverityBasedOn = snykProblemVuln.SeverityBasedOn
 	vuln.Version = snykProblemVuln.PackageVersion
 	vuln.DisclosureTime = util.Ptr(snykProblemVuln.DisclosedAt.Format(legacyTimeFormat))
-	vuln.PackageName = &snykProblemVuln.PackageName
+	vuln.PackageName = getPackageNameFromVuln(snykProblemVuln)
+	vuln.IsDisputed = snykProblemVuln.IsDisputed
 	vuln.Malicious = &snykProblemVuln.IsMalicious
+	vuln.Proprietary = snykProblemVuln.IsProprietary
 	vuln.ModificationTime = util.Ptr(snykProblemVuln.ModifiedAt.Format(legacyTimeFormat))
 	vuln.PublicationTime = util.Ptr(snykProblemVuln.PublishedAt.Format(legacyTimeFormat))
 	vuln.SocialTrendAlert = &snykProblemVuln.IsSocialMediaTrending
@@ -241,6 +252,7 @@ func setBasicVulnInfo(vuln *definitions.Vulnerability, snykProblemVuln *testapi.
 	} else {
 		vuln.FixedIn = utils.Ptr([]string{})
 	}
+	vuln.AlternativeIds = snykProblemVuln.AlternativeIds
 }
 
 func setVulnReferences(vuln *definitions.Vulnerability, snykReferences []testapi.SnykvulndbReferenceLinks) {
@@ -277,11 +289,16 @@ func getSemverInfo(affectedVersions, affectedHashes, affectedHashRanges *[]strin
 	if hasAffectedHashes {
 		vulnerableHashes = append(vulnerableHashes, *affectedHashes...)
 	}
-	if hasAffectedHashRanges {
-		vulnerableHashes = append(vulnerableHashes, *affectedHashRanges...)
-	}
 	if len(vulnerableHashes) > 0 {
 		semver.VulnerableHashes = &vulnerableHashes
+	}
+
+	var vulnerableHashRanges []string
+	if hasAffectedHashRanges {
+		vulnerableHashRanges = append(vulnerableHashRanges, *affectedHashRanges...)
+	}
+	if len(vulnerableHashRanges) > 0 {
+		semver.HashRange = &vulnerableHashRanges
 	}
 	return semver
 }
@@ -294,6 +311,25 @@ func setLicenseSemver(v *definitions.Vulnerability, license *testapi.SnykLicense
 	v.Semver = getSemverInfo(license.AffectedVersions, license.AffectedHashes, license.AffectedHashRanges)
 }
 
+func setMavenModuleName(vuln *definitions.Vulnerability, snykProblemVuln *testapi.SnykVulnProblem) {
+	if vuln.PackageManager == nil || *vuln.PackageManager != "maven" {
+		return
+	}
+
+	mvnModuleName := definitions.MavenModuleName{
+		ArtifactId: snykProblemVuln.PackageName,
+	}
+	if snykProblemVuln.PackageNamespace != nil {
+		mvnModuleName.GroupId = *snykProblemVuln.PackageNamespace
+	}
+	vuln.MavenModuleName = &mvnModuleName
+}
+
+func setVulnEcosystem(vuln *definitions.Vulnerability, snykProblemVuln *testapi.SnykVulnProblem, logger *zerolog.Logger) {
+	setEcosystem(vuln, &snykProblemVuln.Ecosystem, logger)
+	setMavenModuleName(vuln, snykProblemVuln)
+}
+
 func setEcosystem(vuln *definitions.Vulnerability, ecosystem *testapi.SnykvulndbPackageEcosystem, logger *zerolog.Logger) {
 	ecoDisc, err := ecosystem.Discriminator()
 	if err != nil {
@@ -303,8 +339,7 @@ func setEcosystem(vuln *definitions.Vulnerability, ecosystem *testapi.Snykvulndb
 	switch ecoDisc {
 	case string(testapi.Build):
 		if eco, err := ecosystem.AsSnykvulndbBuildPackageEcosystem(); err == nil {
-			vuln.Language = &eco.Language
-			vuln.PackageManager = &eco.PackageManager
+			vuln.PackageManager = eco.Client
 		} else {
 			logger.Warn().Err(err).Msg("could not convert ecosystem to SnykvulndbBuildPackageEcosystem")
 		}

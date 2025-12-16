@@ -95,6 +95,7 @@
         "ecosystem": {
           "language": "js",
           "package_manager": "npm",
+          "client": "npm",
           "type": "build"
         },
         "epss_details": {
