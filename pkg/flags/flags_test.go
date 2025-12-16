@@ -3,11 +3,10 @@ package flags_test
 import (
 	"testing"
 
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/snyk/cli-extension-os-flows/internal/flags"
 )
 
 func TestReachabilityFlag(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
-	"github.com/snyk/cli-extension-os-flows/internal/flags"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
 )
 
