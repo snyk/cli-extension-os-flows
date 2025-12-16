@@ -11,9 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
+
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/util"
-	"github.com/snyk/cli-extension-os-flows/internal/flags"
 )
 
 var nopLogger = zerolog.Nop()
