@@ -82,3 +82,42 @@ func Test_RenderError(t *testing.T) {
 		snaps.MatchSnapshot(t, output)
 	})
 }
+
+func Test_RenderEarlyAccessBanner(t *testing.T) {
+	testDocsURL := "https://docs.snyk.io/test"
+
+	t.Run("renders banner with expected content in light mode", func(t *testing.T) {
+		lipgloss.SetColorProfile(termenv.TrueColor)
+		lipgloss.SetHasDarkBackground(false)
+
+		output := presenters.RenderEarlyAccessBanner(testDocsURL)
+
+		assert.Contains(t, output, "EARLY ACCESS")
+		assert.Contains(t, output, "This command is in Early Access")
+		assert.Contains(t, output, "Performance, stability,")
+		assert.Contains(t, output, "and behavior are subject to change.")
+		assert.Contains(t, output, "Your feedback helps us improve!")
+		assert.Contains(t, output, testDocsURL)
+		snaps.MatchSnapshot(t, output)
+	})
+
+	t.Run("renders banner with expected content in dark mode", func(t *testing.T) {
+		lipgloss.SetColorProfile(termenv.TrueColor)
+		lipgloss.SetHasDarkBackground(true)
+
+		output := presenters.RenderEarlyAccessBanner(testDocsURL)
+
+		assert.Contains(t, output, "EARLY ACCESS")
+		assert.Contains(t, output, "This command is in Early Access")
+		assert.Contains(t, output, testDocsURL)
+		snaps.MatchSnapshot(t, output)
+	})
+
+	t.Run("uses default SBOM docs URL constant", func(t *testing.T) {
+		lipgloss.SetColorProfile(termenv.TrueColor)
+
+		output := presenters.RenderEarlyAccessBanner(presenters.SBOMEarlyAccessDocsURL)
+
+		assert.Contains(t, output, presenters.SBOMEarlyAccessDocsURL)
+	})
+}
