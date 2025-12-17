@@ -13,6 +13,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
+	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 )
 
@@ -31,8 +32,10 @@ func RunSbomFlow(
 	progressBar := cmdctx.ProgressBar(ctx)
 	instrumentation := cmdctx.Instrumentation(ctx)
 	ictx := cmdctx.Ictx(ctx)
+	cfg := cmdctx.Config(ctx)
 
-	if ictx != nil {
+	wantsJSONStdOut := cfg.GetBool(outputworkflow.OutputConfigKeyJSON)
+	if ictx != nil && !wantsJSONStdOut {
 		banner := presenters.RenderEarlyAccessBanner(presenters.SBOMEarlyAccessDocsURL)
 		if err := ictx.GetUserInterface().Output(banner); err != nil {
 			logger.Debug().Err(err).Msg("Failed to render Early Access banner")
