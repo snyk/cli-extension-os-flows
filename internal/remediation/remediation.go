@@ -60,7 +60,7 @@ func calculateUpgrades(findings Findings) (upgrades []*Upgrade, unresolved []*Vu
 				// Check if the vulnerability is already in the fixes list to avoid duplicates.
 				found := false
 				for _, fix := range existingUpgrade.Fixes {
-					if fix.Vulnerability.ID == vulnerabilityInPackage.Vulnerability.ID {
+					if fix.Vulnerability.ID == vulnerabilityInPackage.Vulnerability.ID && fix.VulnerablePackage.Version == vulnerabilityInPackage.VulnerablePackage.Version {
 						found = true
 						break
 					}
