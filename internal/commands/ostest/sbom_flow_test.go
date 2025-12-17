@@ -18,7 +18,6 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	gafmocks "github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
-	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/utils/ufm"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
@@ -466,12 +465,18 @@ func setupTest(
 	mockConfig := configuration.New()
 	mockConfig.Set(outputworkflow.OutputConfigKeyJSON, jsonOutput)
 	mockConfig.Set(configuration.ORGANIZATION_SLUG, orgSlug)
+	mockUI := gafmocks.NewMockUserInterface(ctrl)
+	if !jsonOutput {
+		mockUI.EXPECT().Output(gomock.Any()).Return(nil).Times(1)
+	} else {
+		mockUI.EXPECT().Output(gomock.Any()).Return(nil).Times(0)
+	}
 	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
 	mockIctx.EXPECT().GetConfiguration().Return(mockConfig).AnyTimes()
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&nopLogger).AnyTimes()
 	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
 	mockIctx.EXPECT().GetWorkflowIdentifier().Return(workflow.NewWorkflowIdentifier("test")).AnyTimes()
-	mockIctx.EXPECT().GetUserInterface().Return(ui.DefaultUi()).AnyTimes()
+	mockIctx.EXPECT().GetUserInterface().Return(mockUI).AnyTimes()
 
 	return mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath
 }
