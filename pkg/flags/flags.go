@@ -121,6 +121,7 @@ func OSTestFlagSet() *pflag.FlagSet {
 	flagSet.Bool(FlagPrintDepPaths, false, "Display dependencies. Shows what files contributed to each dependency.")
 	flagSet.Bool(FlagIgnorePolicy, false, "Ignore all set policies, the current policy in the .snyk file, Org level ignores, and the project policy on snyk.io.")
 	flagSet.Bool(FlagTrustPolicies, false, "Apply and use ignore rules from the Snyk policies in your dependencies.")
+	flagSet.String(FlagTargetReference, "", "Specify a reference that differentiates this project, for example, a branch name or version.")
 	flagSet.String(FlagPolicyPath, "", "Manually pass a path to a .snyk policy file.")
 	flagSet.String(FlagShowVulnerablePaths, "", "Display the dependency paths from the top level dependencies down to the vulnerable packages.")
 	flagSet.String(FlagFailOn, "", "Fail only when there are vulnerabilities that can be fixed.")
