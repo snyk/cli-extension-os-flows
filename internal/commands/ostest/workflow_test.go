@@ -700,6 +700,99 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			},
 			expectedError: "", // No error, should succeed via legacy flow
 		},
+		{
+			name: "useTestShimForOSCliTest FF enabled, expects depgraph workflow (new flow)",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(constants.FeatureFlagUseTestShimForOSCliTest, true)
+				mockEngine.EXPECT().
+					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
+					Return(nil, assert.AnError).
+					Times(1)
+			},
+			expectedError: "failed to get dependency graph",
+		},
+		{
+			name: "useTestShimForOSCliTest FF disabled without risk score, expects legacy flow",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(constants.FeatureFlagUseTestShimForOSCliTest, false)
+				mockEngine.EXPECT().
+					InvokeWithConfig(legacyWorkflowID, gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			},
+			expectedError: "",
+		},
+		{
+			name: "useTestShimForOSCliTest FF disabled WITH risk score FFs enabled, expects depgraph workflow (new flow)",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(constants.FeatureFlagUseTestShimForOSCliTest, false)
+				config.Set(constants.FeatureFlagRiskScore, true)
+				config.Set(constants.FeatureFlagRiskScoreInCLI, true)
+				mockEngine.EXPECT().
+					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
+					Return(nil, assert.AnError).
+					Times(1)
+			},
+			expectedError: "failed to get dependency graph",
+		},
+		{
+			name: "useTestShimForOSCliTest FF disabled WITH UV support active, expects depgraph workflow (new flow)",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				// Create temp directory with uv.lock file
+				tempDir := util.CreateTempDirWithUvLock(t)
+				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
+				config.Set(configuration.FLAG_EXPERIMENTAL, true)
+				config.Set(flags.FlagFile, "")
+				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
+				// Explicitly disable the test shim FF
+				config.Set(constants.FeatureFlagUseTestShimForOSCliTest, false)
+				// UV support should override, still use new flow
+				mockEngine.EXPECT().
+					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
+					Return(nil, assert.AnError).
+					Times(1)
+			},
+			expectedError: "failed to get dependency graph",
+		},
+		{
+			name: "useTestShimForOSCliTest FF enabled WITH --unmanaged flag, expects legacy flow (RequiresLegacy takes precedence)",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(constants.FeatureFlagUseTestShimForOSCliTest, true)
+				config.Set(flags.FlagUnmanaged, true)
+				// RequiresLegacy takes precedence over the test shim FF
+				mockEngine.EXPECT().
+					InvokeWithConfig(legacyWorkflowID, gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			},
+			expectedError: "",
+		},
+		{
+			name: "useTestShimForOSCliTest FF enabled WITH ForceLegacyTest env var, expects legacy flow (ForceLegacyTest takes precedence)",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(constants.FeatureFlagUseTestShimForOSCliTest, true)
+				config.Set(constants.ForceLegacyCLIEnvVar, true)
+				// ForceLegacyTest takes precedence over the test shim FF
+				mockEngine.EXPECT().
+					InvokeWithConfig(legacyWorkflowID, gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			},
+			expectedError: "",
+		},
+		{
+			name: "useTestShimForOSCliTest FF enabled WITH --print-graph flag, expects legacy flow (RequiresLegacy takes precedence)",
+			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
+				config.Set(constants.FeatureFlagUseTestShimForOSCliTest, true)
+				config.Set(flags.FlagPrintGraph, true)
+				// RequiresLegacy takes precedence over the test shim FF
+				mockEngine.EXPECT().
+					InvokeWithConfig(legacyWorkflowID, gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			},
+			expectedError: "",
+		},
 	}
 
 	for _, test := range tests {

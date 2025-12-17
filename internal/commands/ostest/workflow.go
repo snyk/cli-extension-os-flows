@@ -68,6 +68,9 @@ func RegisterWorkflows(e workflow.Engine) error {
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagRiskScore, "useExperimentalRiskScore")
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagRiskScoreInCLI, "useExperimentalRiskScoreInCLI")
 
+	// Test shim FF for routing depgraph tests through the new test API.
+	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagUseTestShimForOSCliTest, "useTestShimForOSCliTest")
+
 	return nil
 }
 
