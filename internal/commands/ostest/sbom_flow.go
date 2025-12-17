@@ -13,6 +13,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
+	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 )
 
 // RunSbomFlow runs the SBOM flow.
@@ -29,6 +30,14 @@ func RunSbomFlow(
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
 	instrumentation := cmdctx.Instrumentation(ctx)
+	ictx := cmdctx.Ictx(ctx)
+
+	if ictx != nil {
+		banner := presenters.RenderEarlyAccessBanner(presenters.SBOMEarlyAccessDocsURL)
+		if err := ictx.GetUserInterface().Output(banner); err != nil {
+			logger.Debug().Err(err).Msg("Failed to render Early Access banner")
+		}
+	}
 
 	progressBar.SetTitle("Uploading SBOM document...")
 	sbomBundleHash, err := bsClient.UploadSBOM(ctx, sbomPath)

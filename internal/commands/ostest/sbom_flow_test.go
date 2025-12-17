@@ -18,6 +18,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	gafmocks "github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
+	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/utils/ufm"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
@@ -470,6 +471,7 @@ func setupTest(
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&nopLogger).AnyTimes()
 	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
 	mockIctx.EXPECT().GetWorkflowIdentifier().Return(workflow.NewWorkflowIdentifier("test")).AnyTimes()
+	mockIctx.EXPECT().GetUserInterface().Return(ui.DefaultUi()).AnyTimes()
 
 	return mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath
 }

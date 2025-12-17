@@ -19,7 +19,9 @@ const (
 	SnykDocsURL = "https://docs.snyk.io"
 	// SnykDocsErrorCatalogPath is the path to the error catalog on Snyk's documentation website.
 	SnykDocsErrorCatalogPath = "/scan-with-snyk/error-catalog"
-	docsLabel                = "Docs:"
+	// SBOMEarlyAccessDocsURL is the documentation URL for the SBOM Early Access feature.
+	SBOMEarlyAccessDocsURL = "https://docs.snyk.io/developer-tools/snyk-cli/commands/sbom-test"
+	docsLabel              = "Docs:"
 )
 
 const valueStyleWidth = 80
@@ -156,4 +158,40 @@ func FilterSeverityAsc(original []string, severityMinLevel string) []string {
 	}
 
 	return original
+}
+
+// RenderEarlyAccessBanner renders the Early Access banner with adaptive colors for light/dark terminal themes.
+func RenderEarlyAccessBanner(docsURL string) string {
+	yellowColor := lipgloss.AdaptiveColor{Light: "#B8860B", Dark: "#FFD700"}
+	grayColor := lipgloss.AdaptiveColor{Light: "#555555", Dark: "#AAAAAA"}
+	linkColor := lipgloss.AdaptiveColor{Light: "#0066CC", Dark: "#5DADE2"}
+	borderColor := lipgloss.AdaptiveColor{Light: "#CCCCCC", Dark: "#555555"}
+
+	titleStyle := lipgloss.NewStyle().
+		Foreground(yellowColor).
+		Bold(true)
+
+	descStyle := lipgloss.NewStyle().
+		Foreground(grayColor)
+
+	linkStyle := lipgloss.NewStyle().
+		Foreground(linkColor)
+
+	title := titleStyle.Render("🚧  EARLY ACCESS")
+	desc1 := descStyle.Render("This command is in Early Access. Performance, stability,")
+	desc2 := descStyle.Render("and behavior are subject to change.")
+	desc3 := descStyle.Render("Your feedback helps us improve! Learn more:")
+	link := linkStyle.Render(docsURL)
+
+	content := strings.Join([]string{title, desc1, desc2, desc3, link}, "\n")
+
+	boxStyle := lipgloss.NewStyle().
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(borderColor).
+		PaddingLeft(1).
+		PaddingRight(1).
+		PaddingTop(0).
+		PaddingBottom(0)
+
+	return "\n" + boxStyle.Render(content) + "\n"
 }
