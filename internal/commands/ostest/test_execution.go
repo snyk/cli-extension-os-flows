@@ -51,11 +51,7 @@ func RunTestWithSubject(
 	orgID string,
 	localPolicy *testapi.LocalPolicy,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	startParams := testapi.StartTestParams{
-		OrgID:       orgID,
-		Subject:     &subject,
-		LocalPolicy: localPolicy,
-	}
+	startParams := testapi.NewStartTestParamsFromSubject(orgID, &subject, localPolicy)
 	return runTestInternal(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
 }
 
@@ -73,12 +69,9 @@ func RunTestWithResources(
 	displayTargetFile string,
 	orgID string,
 	localPolicy *testapi.LocalPolicy,
+	scanConfig *testapi.ScanConfiguration,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	startParams := testapi.StartTestParams{
-		OrgID:       orgID,
-		Resources:   &resources,
-		LocalPolicy: localPolicy,
-	}
+	startParams := testapi.NewStartTestParamsFromResources(orgID, &resources, localPolicy, scanConfig)
 	return runTestInternal(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
 }
 

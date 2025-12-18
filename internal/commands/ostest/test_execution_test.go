@@ -382,7 +382,7 @@ func Test_RunTestWithResources_ErrorsWhenFindingsError(t *testing.T) {
 
 	resources := []testapi.TestResourceCreateItem{}
 
-	_, _, err := ostest.RunTestWithResources(ctx, ".", mockTestClient, resources, "", "", 0, "", "", "org", nil)
+	_, _, err := ostest.RunTestWithResources(ctx, ".", mockTestClient, resources, "", "", 0, "", "", "org", nil, nil)
 	require.Error(t, err)
 }
 
@@ -410,6 +410,6 @@ func Test_RunTestWithResources_ErrorsWhenFindingsIncomplete(t *testing.T) {
 
 	resources := []testapi.TestResourceCreateItem{}
 
-	_, _, err := ostest.RunTestWithResources(ctx, ".", mockTestClient, resources, "", "", 0, "", "", "org", nil)
+	_, _, err := ostest.RunTestWithResources(ctx, ".", mockTestClient, resources, "", "", 0, "", "", "org", nil, nil)
 	require.Error(t, err)
 }

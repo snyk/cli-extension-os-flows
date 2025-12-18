@@ -70,7 +70,12 @@ func RunSbomFlow(
 
 	targetDir := filepath.Dir(sbomPath)
 	osAnalysisStart := time.Now()
-	findings, summary, err := RunTestWithResources(ctx, targetDir, testClient, resources, "", "", 0, sbomPath, sbomPath, orgID, localPolicy)
+
+	scanConfig := &testapi.ScanConfiguration{
+		Sca: &testapi.ScaScanConfiguration{},
+	}
+
+	findings, summary, err := RunTestWithResources(ctx, targetDir, testClient, resources, "", "", 0, sbomPath, sbomPath, orgID, localPolicy, scanConfig)
 	if err != nil {
 		return nil, nil, err
 	}
