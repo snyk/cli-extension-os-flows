@@ -258,9 +258,6 @@ func RouteToFlow(ctx context.Context, fc *FlowConfig, orgUUID uuid.UUID, sc sett
 
 	switch {
 	case fc.SBOM != "":
-		if fc.Reachability && !cfg.GetBool(constants.FeatureFlagSBOMTestReachability) {
-			return "", errFactory.NewFeatureNotPermittedError(constants.FeatureFlagSBOMTestReachability)
-		}
 		return SbomFlow, nil
 	case fc.Reachability:
 		if !cfg.GetBool(constants.FeatureFlagReachabilityForCLI) {

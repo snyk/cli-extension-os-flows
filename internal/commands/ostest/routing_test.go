@@ -362,7 +362,6 @@ func Test_RouteToFlow_SBOMReachabilityFlow(t *testing.T) {
 				cfg := defaultConfig.Clone()
 				cfg.Set(flags.FlagSBOM, "sbom.json")
 				cfg.Set(flags.FlagReachability, true)
-				cfg.Set(constants.FeatureFlagSBOMTestReachability, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -379,7 +378,6 @@ func Test_RouteToFlow_SBOMReachabilityFlow(t *testing.T) {
 				cfg.Set(flags.FlagSBOM, "sbom.json")
 				cfg.Set(flags.FlagReachability, true)
 				cfg.Set(flags.FlagReachabilityFilter, "reachable")
-				cfg.Set(constants.FeatureFlagSBOMTestReachability, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -390,27 +388,11 @@ func Test_RouteToFlow_SBOMReachabilityFlow(t *testing.T) {
 			orgID:        orgID,
 			expectedFlow: ostest.SbomFlow,
 		},
-		"--reachability with --sbom should fail when FF is missing": {
-			ctx: func(ctx context.Context) context.Context {
-				cfg := defaultConfig.Clone()
-				cfg.Set(flags.FlagSBOM, "sbom.json")
-				cfg.Set(flags.FlagReachability, true)
-
-				ctx = cmdctx.WithConfig(ctx, cfg)
-				ctx = cmdctx.WithLogger(ctx, &nopLogger)
-				ctx = cmdctx.WithErrorFactory(ctx, errFactory)
-
-				return ctx
-			},
-			orgID:               orgID,
-			expectErrorContains: "The feature you are trying to use is not available for your organization.",
-		},
 		"--reachability with --sbom should fail when reachability settings are disabled": {
 			ctx: func(ctx context.Context) context.Context {
 				cfg := defaultConfig.Clone()
 				cfg.Set(flags.FlagSBOM, "sbom.json")
 				cfg.Set(flags.FlagReachability, true)
-				cfg.Set(constants.FeatureFlagSBOMTestReachability, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -426,7 +408,6 @@ func Test_RouteToFlow_SBOMReachabilityFlow(t *testing.T) {
 				cfg := defaultConfig.Clone()
 				cfg.Set(flags.FlagSBOM, "sbom.json")
 				cfg.Set(flags.FlagReachability, true)
-				cfg.Set(constants.FeatureFlagSBOMTestReachability, true)
 
 				ctx = cmdctx.WithConfig(ctx, cfg)
 				ctx = cmdctx.WithLogger(ctx, &nopLogger)
