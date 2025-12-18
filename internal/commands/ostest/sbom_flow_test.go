@@ -21,16 +21,13 @@ import (
 	"github.com/snyk/go-application-framework/pkg/utils/ufm"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
-	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
-	"github.com/snyk/cli-extension-os-flows/internal/mocks"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
-
-//go:generate go run github.com/golang/mock/mockgen -package=mocks -destination=../../mocks/mock_bundlestore_client.go github.com/snyk/cli-extension-os-flows/internal/bundlestore Client
 
 // idRgxp is used for replacing the "id" in the output for snapshot consistency.
 var idRgxp = regexp.MustCompile(`\s*,?"id"\s*:\s*"[^"]*"?`)
@@ -42,7 +39,7 @@ func Test_RunSbomFlow_Reachability_JSON(t *testing.T) {
 	defer ctrl.Finish()
 
 	ef := errors.NewErrorFactory(&nopLogger)
-	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, true, true)
+	mockIctx, mockTestClient, fuClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, true)
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
@@ -51,7 +48,7 @@ func Test_RunSbomFlow_Reachability_JSON(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
-	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil, true)
+	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, fuClient, orgID, nil, true)
 	require.NoError(t, err)
 
 	require.NotNil(t, legacyJSON)
@@ -70,6 +67,10 @@ func Test_RunSbomFlow_Reachability_JSON(t *testing.T) {
 
 	testResult := ufm.GetTestResultsFromWorkflowData(outputData[1])
 	require.Len(t, testResult, 1)
+
+	// Verify file upload client was called for both SBOM and source code
+	fakeClient := fuClient.(*fileupload.FakeClient)
+	require.Equal(t, 2, fakeClient.GetUploadCount(), "Expected 2 uploads (SBOM + source code)")
 }
 
 func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
@@ -77,7 +78,7 @@ func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 	defer ctrl.Finish()
 
 	ef := errors.NewErrorFactory(&nopLogger)
-	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, false, true)
+	mockIctx, mockTestClient, fuClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, false)
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
@@ -86,7 +87,7 @@ func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
-	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil, true)
+	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, fuClient, orgID, nil, true)
 	require.NoError(t, err)
 
 	require.Nil(t, legacyJSON)
@@ -111,6 +112,10 @@ func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 	localSummary, ok := outputData[3].GetPayload().([]byte)
 	require.True(t, ok)
 	snaps.MatchJSON(t, localSummary)
+
+	// Verify file upload client was called for both SBOM and source code
+	fakeClient := fuClient.(*fileupload.FakeClient)
+	require.Equal(t, 2, fakeClient.GetUploadCount(), "Expected 2 uploads (SBOM + source code)")
 }
 
 func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
@@ -118,7 +123,7 @@ func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
 	defer ctrl.Finish()
 
 	ef := errors.NewErrorFactory(&nopLogger)
-	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, true, false)
+	mockIctx, mockTestClient, fuClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, true)
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
@@ -127,7 +132,7 @@ func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
-	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil, false)
+	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, fuClient, orgID, nil, false)
 	require.NoError(t, err)
 
 	require.NotNil(t, legacyJSON)
@@ -146,6 +151,10 @@ func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
 
 	testResult := ufm.GetTestResultsFromWorkflowData(outputData[1])
 	require.Len(t, testResult, 1)
+
+	// Verify file upload client was called only for SBOM
+	fakeClient := fuClient.(*fileupload.FakeClient)
+	require.Equal(t, 1, fakeClient.GetUploadCount(), "Expected 1 upload (SBOM only)")
 }
 
 func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
@@ -153,7 +162,7 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 	defer ctrl.Finish()
 
 	ef := errors.NewErrorFactory(&nopLogger)
-	mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, false, false)
+	mockIctx, mockTestClient, fuClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, false)
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
@@ -162,7 +171,7 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
-	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, mockBsClient, orgID, nil, false)
+	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, fuClient, orgID, nil, false)
 	require.NoError(t, err)
 
 	require.Nil(t, legacyJSON)
@@ -187,6 +196,10 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 	localSummary, ok := outputData[3].GetPayload().([]byte)
 	require.True(t, ok)
 	snaps.MatchJSON(t, localSummary)
+
+	// Verify file upload client was called only for SBOM
+	fakeClient := fuClient.(*fileupload.FakeClient)
+	require.Equal(t, 1, fakeClient.GetUploadCount(), "Expected 1 upload (SBOM only)")
 }
 
 //nolint:gocritic // Not important for tests.
@@ -194,8 +207,7 @@ func setupTest(
 	t *testing.T,
 	ctrl *gomock.Controller,
 	jsonOutput bool,
-	reachability bool,
-) (workflow.InvocationContext, testapi.TestClient, bundlestore.Client, string, string, string) {
+) (workflow.InvocationContext, testapi.TestClient, fileupload.Client, string, string, string) {
 	t.Helper()
 	sbomPath := "./testdata/bom.json"
 	sourceCodePath := "./testdata/test_dir"
@@ -383,41 +395,11 @@ func setupTest(
 		},
 	}
 
-	// Create test subject
-	var testSubject testapi.TestSubject
-	if reachability {
-		err = testSubject.FromSbomReachabilitySubject(testapi.SbomReachabilitySubject{
-			Type:         testapi.SbomReachability,
-			CodeBundleId: "test-source-hash",
-			SbomBundleId: "test-sbom-hash",
-			Locator: testapi.LocalPathLocator{
-				Paths: []string{
-					sbomPath,
-					sourceCodePath,
-				},
-				Type: testapi.LocalPath,
-			},
-		})
-	} else {
-		err = testSubject.FromSbomSubject(testapi.SbomSubject{
-			Type:         testapi.SbomSubjectTypeSbom,
-			SbomBundleId: "test-sbom-hash",
-			Locator: testapi.LocalPathLocator{
-				Paths: []string{
-					sbomPath,
-				},
-				Type: testapi.LocalPath,
-			},
-		})
-	}
-
-	require.NoError(t, err)
-
 	// Mock TestResult with comprehensive data
 	mockTestResult := gafclientmocks.NewMockTestResult(ctrl)
 	mockTestResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
 	mockTestResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{findingData}, true, nil).AnyTimes()
-	mockTestResult.EXPECT().GetTestSubject().Return(&testSubject).AnyTimes()
+	mockTestResult.EXPECT().GetTestSubject().Return(nil).AnyTimes()
 	mockTestResult.EXPECT().GetEffectiveSummary().Return(summary).AnyTimes()
 	mockTestResult.EXPECT().GetRawSummary().Return(summary).AnyTimes()
 
@@ -454,12 +436,8 @@ func setupTest(
 	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
 	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Return(mockTestHandle, nil).Times(1)
 
-	// Mock BundleStore Client
-	mockBsClient := mocks.NewMockClient(ctrl)
-	mockBsClient.EXPECT().UploadSBOM(gomock.Any(), sbomPath).Return("test-sbom-hash", nil).Times(1)
-	if reachability {
-		mockBsClient.EXPECT().UploadSourceCode(gomock.Any(), sourceCodePath).Return("test-source-hash", nil).Times(1)
-	}
+	// Create file upload FakeClient
+	fuClient := fileupload.NewFakeClient()
 
 	// Mock Invocation Context
 	mockConfig := configuration.New()
@@ -478,5 +456,5 @@ func setupTest(
 	mockIctx.EXPECT().GetWorkflowIdentifier().Return(workflow.NewWorkflowIdentifier("test")).AnyTimes()
 	mockIctx.EXPECT().GetUserInterface().Return(mockUI).AnyTimes()
 
-	return mockIctx, mockTestClient, mockBsClient, orgID, sbomPath, sourceCodePath
+	return mockIctx, mockTestClient, fuClient, orgID, sbomPath, sourceCodePath
 }

@@ -36,9 +36,9 @@ const LogFieldCount = "count"
 // ErrNoSummaryData is returned when a test summary cannot be generated due to lack of data.
 var ErrNoSummaryData = std_errors.New("no summary data to create")
 
-// RunTest executes the common test flow with the provided test subject.
+// RunTestWithSubject executes the common test flow with the provided test subject.
 // Returns legacy JSON and/or human-readable workflow data, depending on parameters.
-func RunTest(
+func RunTestWithSubject(
 	ctx context.Context,
 	targetDir string,
 	testClient testapi.TestClient,
@@ -51,11 +51,47 @@ func RunTest(
 	orgID string,
 	localPolicy *testapi.LocalPolicy,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	startParams := testapi.NewStartTestParamsFromSubject(orgID, &subject, localPolicy)
+	return runTestInternal(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
+}
+
+// RunTestWithResources executes the test flow with the provided test resources (for SBOM flows).
+// Returns legacy JSON and/or human-readable workflow data, depending on parameters.
+func RunTestWithResources(
+	ctx context.Context,
+	targetDir string,
+	testClient testapi.TestClient,
+	resources []testapi.TestResourceCreateItem,
+	projectName string,
+	packageManager string,
+	depCount int,
+	targetFile string,
+	displayTargetFile string,
+	orgID string,
+	localPolicy *testapi.LocalPolicy,
+	scanConfig *testapi.ScanConfiguration,
+) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	startParams := testapi.NewStartTestParamsFromResources(orgID, &resources, localPolicy, scanConfig)
+	return runTestInternal(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
+}
+
+// runTestInternal is the shared implementation for RunTest and RunTestWithResources.
+func runTestInternal(
+	ctx context.Context,
+	targetDir string,
+	testClient testapi.TestClient,
+	startParams testapi.StartTestParams,
+	projectName string,
+	packageManager string,
+	depCount int,
+	targetFile string,
+	displayTargetFile string,
+) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	cfg := cmdctx.Config(ctx)
 	logger := cmdctx.Logger(ctx)
 	errFactory := cmdctx.ErrorFactory(ctx)
 
-	finalResult, findingsData, err := executeTest(ctx, testClient, orgID, subject, localPolicy)
+	finalResult, findingsData, err := executeTest(ctx, testClient, startParams)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -63,7 +99,7 @@ func RunTest(
 	orgSlugOrID := cfg.GetString(configuration.ORGANIZATION_SLUG)
 	if orgSlugOrID == "" {
 		logger.Info().Msg("No organization slug provided; using organization ID.")
-		orgSlugOrID = orgID
+		orgSlugOrID = startParams.OrgID
 	}
 
 	allFindingsData := findingsData
@@ -164,23 +200,15 @@ func GetDependencyCountFromTestFacts(result testapi.TestResult) int {
 	return 0
 }
 
-// executeTest runs the test and returns the results.
+// executeTest runs the test with the provided parameters and returns the results.
 func executeTest(
 	ctx context.Context,
 	testClient testapi.TestClient,
-	orgID string,
-	subject testapi.TestSubjectCreate,
-	localPolicy *testapi.LocalPolicy,
+	startParams testapi.StartTestParams,
 ) (testapi.TestResult, []testapi.FindingData, error) {
 	logger := cmdctx.Logger(ctx)
 	errFactory := cmdctx.ErrorFactory(ctx)
 	progressbar := cmdctx.ProgressBar(ctx)
-
-	startParams := testapi.StartTestParams{
-		OrgID:       orgID,
-		Subject:     &subject,
-		LocalPolicy: localPolicy,
-	}
 
 	progressbar.SetTitle("Starting test...")
 	handle, err := testClient.StartTest(ctx, startParams)

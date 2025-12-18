@@ -286,7 +286,7 @@ func Test_RunTest_ErrorsWhenFindingsError(t *testing.T) {
 	var subject testapi.TestSubjectCreate
 	_ = subject.FromDepGraphSubjectCreate(testapi.DepGraphSubjectCreate{Type: testapi.DepGraphSubjectCreateTypeDepGraph})
 
-	_, _, err := ostest.RunTest(ctx, ".", mockTestClient, subject, "", "", 0, "", "", "org", nil)
+	_, _, err := ostest.RunTestWithSubject(ctx, ".", mockTestClient, subject, "", "", 0, "", "", "org", nil)
 	require.Error(t, err)
 }
 
@@ -351,6 +351,65 @@ func Test_RunTest_ErrorsWhenFindingsIncomplete(t *testing.T) {
 	var subject testapi.TestSubjectCreate
 	_ = subject.FromDepGraphSubjectCreate(testapi.DepGraphSubjectCreate{Type: testapi.DepGraphSubjectCreateTypeDepGraph})
 
-	_, _, err := ostest.RunTest(ctx, ".", mockTestClient, subject, "", "", 0, "", "", "org", nil)
+	_, _, err := ostest.RunTestWithSubject(ctx, ".", mockTestClient, subject, "", "", 0, "", "", "org", nil)
+	require.Error(t, err)
+}
+
+// Test_RunTestWithResources_ErrorsWhenFindingsError verifies an error is returned when the Test passes but the Findings returns an error.
+func Test_RunTestWithResources_ErrorsWhenFindingsError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockHandle := gafclientmocks.NewMockTestHandle(ctrl)
+	mockResult := gafclientmocks.NewMockTestResult(ctrl)
+
+	// StartTest returns handle
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Return(mockHandle, nil)
+	// Wait succeeds
+	mockHandle.EXPECT().Wait(gomock.Any()).Return(nil)
+	// Result reports Finished
+	mockResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
+	// Findings returns error
+	mockResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{{}}, true, assert.AnError)
+	mockHandle.EXPECT().Result().Return(mockResult)
+
+	ef := xerrors.NewErrorFactory(&logger)
+	ctx := t.Context()
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+
+	resources := []testapi.TestResourceCreateItem{}
+
+	_, _, err := ostest.RunTestWithResources(ctx, ".", mockTestClient, resources, "", "", 0, "", "", "org", nil, nil)
+	require.Error(t, err)
+}
+
+// Test_RunTestWithResources_ErrorsWhenFindingsIncomplete verifies an error is returned when the Test passes but the Findings returns incomplete.
+func Test_RunTestWithResources_ErrorsWhenFindingsIncomplete(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockHandle := gafclientmocks.NewMockTestHandle(ctrl)
+	mockResult := gafclientmocks.NewMockTestResult(ctrl)
+
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Return(mockHandle, nil)
+	mockHandle.EXPECT().Wait(gomock.Any()).Return(nil)
+	mockResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
+	// Findings incomplete without error
+	mockResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{{}}, false, nil)
+	mockHandle.EXPECT().Result().Return(mockResult)
+
+	ef := xerrors.NewErrorFactory(&logger)
+	ctx := t.Context()
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+
+	resources := []testapi.TestResourceCreateItem{}
+
+	_, _, err := ostest.RunTestWithResources(ctx, ".", mockTestClient, resources, "", "", 0, "", "", "org", nil, nil)
 	require.Error(t, err)
 }

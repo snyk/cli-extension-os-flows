@@ -16,8 +16,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	codeclient "github.com/snyk/code-client-go"
-	codeclienthttp "github.com/snyk/code-client-go/http"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/code_workflow"
@@ -25,11 +23,11 @@ import (
 	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
-	"github.com/snyk/cli-extension-os-flows/internal/bundlestore"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	cmdutil "github.com/snyk/cli-extension-os-flows/internal/commands/util"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/instrumentation"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
@@ -100,40 +98,21 @@ func setupSettingsClient(ctx context.Context) settings.Client {
 	return sc
 }
 
-func setupBundlestoreClient(ctx context.Context) bundlestore.Client {
+func setupFileUploadClient(ctx context.Context, orgID uuid.UUID) fileupload.Client {
 	ictx := cmdctx.Ictx(ctx)
-	cfg := cmdctx.Config(ctx)
-	logger := cmdctx.Logger(ctx)
-	httpCodeClient := codeclienthttp.NewHTTPClient(
-		ictx.GetNetworkAccess().GetHttpClient,
-		codeclienthttp.WithLogger(logger),
-	)
-
-	codeScannerConfig := bundlestore.CodeClientConfig{
-		LocalConfiguration: cfg,
-	}
-
-	cScanner := codeclient.NewCodeScanner(
-		&codeScannerConfig,
-		httpCodeClient,
-		codeclient.WithLogger(logger),
-	)
-
-	bsClient := bundlestore.NewClient(ictx.GetNetworkAccess().GetHttpClient(), codeScannerConfig, cScanner, logger)
-
-	return bsClient
+	return fileupload.NewClientFromInvocationContext(ictx, orgID)
 }
 
 // handleSBOMFlow sets up and runs the SBOM flow (with or without reachability).
 func handleSBOMFlow(
 	ctx context.Context,
 	testClient testapi.TestClient,
-	orgID, sbom, sourceDir string,
+	orgUUID uuid.UUID, sbom, sourceDir string,
 	localPolicy *testapi.LocalPolicy,
 	reachability bool,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	bsClient := setupBundlestoreClient(ctx)
-	return RunSbomFlow(ctx, testClient, sbom, sourceDir, bsClient, orgID, localPolicy, reachability)
+	fuClient := setupFileUploadClient(ctx, orgUUID)
+	return RunSbomFlow(ctx, testClient, sbom, sourceDir, fuClient, orgUUID.String(), localPolicy, reachability)
 }
 
 func convertReachabilityFilterToSchema(reachabilityFilter string) *testapi.ReachabilityFilter {
@@ -376,7 +355,7 @@ func OSWorkflow(
 		var flowErr error
 		switch flow {
 		case SbomFlow:
-			legacyFindings, outputData, flowErr = handleSBOMFlow(ctx, testClient, orgID, sbom, sourceDir, localPolicy, flowCfg.Reachability)
+			legacyFindings, outputData, flowErr = handleSBOMFlow(ctx, testClient, orgUUID, sbom, sourceDir, localPolicy, flowCfg.Reachability)
 		case DepgraphReachabilityFlow:
 			legacyFindings, outputData, flowErr = RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID, localPolicy, &reachabilityOpts{sourceDir: sourceDir})
 		case DepgraphFlow:
