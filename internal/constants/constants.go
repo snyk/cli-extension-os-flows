@@ -9,9 +9,6 @@ const ForceLegacyCLIEnvVar = "SNYK_FORCE_LEGACY_CLI"
 // FeatureFlagReachabilityForCLI is to gate the reachability capability on the CLI.
 const FeatureFlagReachabilityForCLI = "internal_snyk_cli_reachability_enabled"
 
-// FeatureFlagSBOMTestReachability is used to gate the sbom test reachability feature.
-const FeatureFlagSBOMTestReachability = "internal_snyk_cli_sbom_test_reachability"
-
 // FeatureFlagRiskScore is used to gate the risk score feature.
 const FeatureFlagRiskScore = "internal_snyk_cli_experimental_risk_score"
 

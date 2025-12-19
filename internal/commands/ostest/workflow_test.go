@@ -546,15 +546,6 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			expectedError: "failed to get dependency graph",
 		},
 		{
-			name: "SBOM reachability without feature flag",
-			setup: func(config configuration.Configuration, _ *mocks.MockEngine) {
-				config.Set(flags.FlagReachability, true)
-				config.Set(flags.FlagSBOM, "bom.json")
-				// Don't set the feature flag
-			},
-			expectedError: "The feature you are trying to use is not available for your organization",
-		},
-		{
 			name: "Severity threshold set with FFs enabled, expects depgraph error",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				config.Set(constants.FeatureFlagRiskScore, true)

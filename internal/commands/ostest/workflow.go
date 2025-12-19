@@ -31,6 +31,8 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/instrumentation"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
+	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
+	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
 	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
@@ -60,7 +62,6 @@ func RegisterWorkflows(e workflow.Engine) error {
 
 	// Reachability FF.
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagReachabilityForCLI, "reachabilityForCli")
-	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagSBOMTestReachability, "sbomTestReachability")
 
 	// Risk score FFs.
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagRiskScore, "useExperimentalRiskScore")
@@ -101,6 +102,21 @@ func setupSettingsClient(ctx context.Context) settings.Client {
 func setupFileUploadClient(ctx context.Context, orgID uuid.UUID) fileupload.Client {
 	ictx := cmdctx.Ictx(ctx)
 	return fileupload.NewClientFromInvocationContext(ictx, orgID)
+}
+
+func showEarlyAccessBanner(ictx workflow.InvocationContext) {
+	cfg := ictx.GetConfiguration()
+
+	if cfg.GetString(flags.FlagSBOM) == "" {
+		return
+	}
+	if cfg.GetBool(outputworkflow.OutputConfigKeyJSON) {
+		return
+	}
+
+	banner := presenters.RenderEarlyAccessBanner(presenters.SBOMEarlyAccessDocsURL)
+	//nolint:errcheck // We don't need to fail the command due to UI errors.
+	ictx.GetUserInterface().Output(banner)
 }
 
 // handleSBOMFlow sets up and runs the SBOM flow (with or without reachability).
@@ -276,6 +292,9 @@ func OSWorkflow(
 ) ([]workflow.Data, error) {
 	ctx := context.Background()
 	cfg := ictx.GetConfiguration()
+
+	showEarlyAccessBanner(ictx)
+
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
 	progressBar := ictx.GetUserInterface().NewProgressBar()
@@ -372,5 +391,7 @@ func OSWorkflow(
 		allOutputData = append(allOutputData, outputData...)
 	}
 
+	//nolint:errcheck // We don't need to fail the command due to UI errors.
+	progressBar.Clear()
 	return handleOutput(ctx, allLegacyFindings, allOutputData)
 }

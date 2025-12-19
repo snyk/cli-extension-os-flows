@@ -444,11 +444,7 @@ func setupTest(
 	mockConfig.Set(outputworkflow.OutputConfigKeyJSON, jsonOutput)
 	mockConfig.Set(configuration.ORGANIZATION_SLUG, orgSlug)
 	mockUI := gafmocks.NewMockUserInterface(ctrl)
-	if !jsonOutput {
-		mockUI.EXPECT().Output(gomock.Any()).Return(nil).Times(1)
-	} else {
-		mockUI.EXPECT().Output(gomock.Any()).Return(nil).Times(0)
-	}
+	mockUI.EXPECT().Output(gomock.Any()).Return(nil).Times(0)
 	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
 	mockIctx.EXPECT().GetConfiguration().Return(mockConfig).AnyTimes()
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&nopLogger).AnyTimes()
