@@ -70,6 +70,9 @@ func RegisterWorkflows(e workflow.Engine) error {
 	// Test shim FF for routing depgraph tests through the new test API.
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagUseTestShimForOSCliTest, "useTestShimForOSCliTest")
 
+	// uv support FF.
+	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagUvCLI, "enableUvCLI")
+
 	return nil
 }
 

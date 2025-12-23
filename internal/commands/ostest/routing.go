@@ -148,7 +148,6 @@ type FlowConfig struct {
 	SBOM                      string
 	SBOMReachabilityTest      bool
 	ReachabilityFilter        string
-	ExperimentalUvSupport     bool
 	ForceLegacyTest           bool
 	RequiresLegacy            bool
 	Unmanaged                 bool
@@ -186,8 +185,6 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	allProjects := cfg.GetBool(flags.FlagAllProjects)
 	fileFlag := cfg.GetString(flags.FlagFile)
 
-	experimentalFlagSet := cfg.GetBool(configuration.FLAG_EXPERIMENTAL)
-	experimentalUvSupport := experimentalFlagSet && cfg.GetBool(constants.EnableExperimentalUvSupportEnvVar)
 	forceLegacyTest := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
 	requiresLegacy := cfg.GetBool(flags.FlagPrintGraph) ||
 		cfg.GetBool(flags.FlagPrintDeps) ||
@@ -223,7 +220,6 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 		SBOM:                      sbom,
 		SBOMReachabilityTest:      sbomReachabilityTest,
 		ReachabilityFilter:        reachabilityFilter,
-		ExperimentalUvSupport:     experimentalUvSupport,
 		ForceLegacyTest:           forceLegacyTest,
 		RequiresLegacy:            requiresLegacy,
 		Unmanaged:                 unmanaged,
@@ -237,13 +233,23 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string) (bool, error) {
 	errFactory := cmdctx.ErrorFactory(ctx)
 	logger := cmdctx.Logger(ctx)
+	cfg := cmdctx.Config(ctx)
 
 	if err := validateLegacyCLIOptions(fc, errFactory); err != nil {
 		return false, err
 	}
 
-	// Check if UV support should trigger, only if env var is set and uv.lock exists.
-	uvSupportWithLockFile := fc.ExperimentalUvSupport && util.HasUvLockFileInAnyDir(inputDirs, fc.FileFlag, fc.AllProjects, logger)
+	// Check if uv support should trigger, first check if uv.lock exists and then check if the FF is enabled.
+	uvLockExists := util.HasUvLockFileInAnyDir(inputDirs, fc.FileFlag, fc.AllProjects, logger)
+	var uvSupportWithLockFile bool
+	if uvLockExists {
+		ffUvCLI := cfg.GetBool(constants.FeatureFlagUvCLI)
+		uvSupportWithLockFile = ffUvCLI
+		logger.Debug().Msgf("uv.lock found, uv feature flag from registry: %t", ffUvCLI)
+	} else {
+		uvSupportWithLockFile = false
+		logger.Debug().Msg("uv.lock not found, skipping uv feature flag check")
+	}
 
 	hasNewFeatures := fc.RiskScoreTest || fc.Reachability || fc.SBOM != "" || fc.ReachabilityFilter != "" || uvSupportWithLockFile || fc.FFUseTestShimForOSCliTest
 	useLegacy := fc.ForceLegacyTest || fc.RequiresLegacy || !hasNewFeatures

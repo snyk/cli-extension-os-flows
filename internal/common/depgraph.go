@@ -43,21 +43,21 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 	errFactory := errors.NewErrorFactory(logger)
 
 	depGraphConfig := config.Clone()
-	experimentalFlagSet := config.GetBool(configuration.FLAG_EXPERIMENTAL)
 	allProjects := config.GetBool(flags.FlagAllProjects)
 	fileFlag := config.GetString(flags.FlagFile)
-	experimentalUvSupportEnabled := experimentalFlagSet && config.GetBool(constants.EnableExperimentalUvSupportEnvVar)
-	uvLockExists := util.HasUvLockFile(inputDir, fileFlag, allProjects, logger)
 
-	if experimentalUvSupportEnabled && uvLockExists {
-		logger.Info().Msg("Experimental uv support enabled and uv.lock found, using SBOM resolution in depgraph workflow")
-		depGraphConfig.Set("use-sbom-resolution", true)
-	} else {
-		if experimentalUvSupportEnabled && !uvLockExists {
-			logger.Info().Msg("Experimental uv support enabled but uv.lock not found, using standard depgraph workflow")
+	// Check if uv support should trigger, first check if uv.lock exists and then check if the FF is enabled.
+	uvLockExists := util.HasUvLockFile(inputDir, fileFlag, allProjects, logger)
+	if uvLockExists {
+		ffUvCLI := config.GetBool(constants.FeatureFlagUvCLI)
+		if ffUvCLI {
+			logger.Info().Msg("uv support enabled and uv.lock found, using SBOM resolution in depgraph workflow")
+			depGraphConfig.Set("use-sbom-resolution", true)
 		} else {
-			logger.Info().Msg("Invoking depgraph workflow")
+			logger.Info().Msg("uv.lock found but uv feature flag disabled, using standard depgraph workflow")
 		}
+	} else {
+		logger.Info().Msg("Invoking depgraph workflow")
 	}
 
 	// Overriding the INPUT_DIRECTORY flag which the depgraph workflow will use to extract the depgraphs.

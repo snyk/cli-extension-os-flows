@@ -29,7 +29,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
-// TestSBOMResolutionIntegration_DepGraphsPassedToUnifiedTestAPI verifies that when the UV test flow
+// TestSBOMResolutionIntegration_DepGraphsPassedToUnifiedTestAPI verifies that when the uv test flow
 // is enabled, dep-graphs from SBOM resolution are properly passed to the Unified Test API.
 func TestSBOMResolutionIntegration_DepGraphsPassedToUnifiedTestAPI(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -82,8 +82,7 @@ func setupSBOMResolutionIntegrationTest(
 	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
 
 	cfg := configuration.New()
-	cfg.Set(configuration.FLAG_EXPERIMENTAL, true)
-	cfg.Set(constants.EnableExperimentalUvSupportEnvVar, true)
+	cfg.Set(constants.FeatureFlagUvCLI, true)
 	cfg.Set(configuration.ORGANIZATION, "test-org-id")
 	cfg.Set(flags.FlagFile, "uv.lock")
 
@@ -112,7 +111,7 @@ func setupSBOMResolutionIntegrationTest(
 		InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
 		DoAndReturn(func(_ workflow.Identifier, cfg configuration.Configuration) ([]workflow.Data, error) {
 			// Verify that use-sbom-resolution flag is set
-			assert.True(t, cfg.GetBool("use-sbom-resolution"), "use-sbom-resolution flag should be set when UV support is enabled")
+			assert.True(t, cfg.GetBool("use-sbom-resolution"), "use-sbom-resolution flag should be set when uv support is enabled")
 			return []workflow.Data{depGraphData}, nil
 		}).
 		Times(1)
