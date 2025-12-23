@@ -45,3 +45,35 @@ func TestNewInvalidLegacyFlagError(t *testing.T) {
 		assert.Equal(t, "An internal error occurred while validating command-line flags.", catalogErr.Detail)
 	})
 }
+
+func TestNewUnsupportedFailOnValueError(t *testing.T) {
+	logger := zerolog.Nop()
+	errorFactory := errors.NewErrorFactory(&logger)
+
+	err := errorFactory.NewUnsupportedFailOnValueError("invalid-value")
+	var catalogErr snyk_errors.Error
+	require.ErrorAs(t, err, &catalogErr)
+	assert.Equal(t, "Unsupported value 'invalid-value' for --fail-on flag. Supported values are: 'all', 'upgradable'.", catalogErr.Detail)
+}
+
+func TestNewInvalidSourceDirError(t *testing.T) {
+	logger := zerolog.Nop()
+	errorFactory := errors.NewErrorFactory(&logger)
+
+	err := errorFactory.NewInvalidSourceDirError("/path/to/nonexistent")
+	var catalogErr snyk_errors.Error
+	require.ErrorAs(t, err, &catalogErr)
+	assert.Equal(t, "The provided --source-dir path '/path/to/nonexistent' does not exist.", catalogErr.Detail)
+	assert.Equal(t, "SNYK-CLI-0004", catalogErr.ErrorCode)
+}
+
+func TestNewSourceDirIsNotADirectoryError(t *testing.T) {
+	logger := zerolog.Nop()
+	errorFactory := errors.NewErrorFactory(&logger)
+
+	err := errorFactory.NewSourceDirIsNotADirectoryError("/path/to/file.txt")
+	var catalogErr snyk_errors.Error
+	require.ErrorAs(t, err, &catalogErr)
+	assert.Equal(t, "The provided --source-dir path '/path/to/file.txt' is not a directory.", catalogErr.Detail)
+	assert.Equal(t, "SNYK-CLI-0004", catalogErr.ErrorCode)
+}

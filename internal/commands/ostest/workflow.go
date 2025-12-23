@@ -203,6 +203,7 @@ func getFailOnPolicy(ctx context.Context) (supportedFailOnPolicy, error) {
 	case "upgradable", "all":
 		failOnPolicy.onUpgradable = util.Ptr(true)
 	default:
+		//nolint:wrapcheck // No need to wrap error factory errors.
 		return failOnPolicy, errFactory.NewUnsupportedFailOnValueError(failOnFromConfig)
 	}
 
@@ -264,6 +265,122 @@ func getSourceDir(cfg configuration.Configuration, inputDir string) string {
 	return inputDir
 }
 
+// initializeWorkflowContext creates and configures the context for the workflow.
+func initializeWorkflowContext(ictx workflow.InvocationContext) context.Context {
+	ctx := context.Background()
+	cfg := ictx.GetConfiguration()
+	logger := ictx.GetEnhancedLogger()
+	errFactory := errors.NewErrorFactory(logger)
+	progressBar := ictx.GetUserInterface().NewProgressBar()
+
+	ctx = cmdctx.WithIctx(ctx, ictx)
+	ctx = cmdctx.WithConfig(ctx, cfg)
+	ctx = cmdctx.WithLogger(ctx, logger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+	ctx = cmdctx.WithProgressBar(ctx, progressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, instrumentation.NewGAFInstrumentation(ictx.GetAnalytics()))
+
+	return ctx
+}
+
+// validateAndParseOrgID validates the organization ID is present and parses it as a UUID.
+func validateAndParseOrgID(ctx context.Context, orgID string) (uuid.UUID, error) {
+	logger := cmdctx.Logger(ctx)
+	errFactory := cmdctx.ErrorFactory(ctx)
+
+	if orgID == "" {
+		logger.Error().Msg("No organization ID provided")
+		return uuid.UUID{}, errFactory.NewEmptyOrgError()
+	}
+
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		return uuid.UUID{}, errFactory.NewInvalidOrgIDError(orgID)
+	}
+
+	return orgUUID, nil
+}
+
+// executeFlow runs the appropriate test flow based on the routing decision.
+func executeFlow(
+	ctx context.Context,
+	flow Flow,
+	testClient testapi.TestClient,
+	orgUUID uuid.UUID,
+	inputDir string,
+	sourceDir string,
+	sbom string,
+	localPolicy *testapi.LocalPolicy,
+	reachability bool,
+) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	switch flow {
+	case SbomFlow:
+		return handleSBOMFlow(ctx, testClient, orgUUID, sbom, sourceDir, localPolicy, reachability)
+	case DepgraphReachabilityFlow:
+		return RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID, localPolicy, &reachabilityOpts{sourceDir: sourceDir})
+	case DepgraphFlow:
+		return RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID, localPolicy, nil)
+	default:
+		return nil, nil, fmt.Errorf("unknown test flow: %s", flow)
+	}
+}
+
+// processInputDirectory handles testing a single input directory.
+func processInputDirectory(
+	ctx context.Context,
+	testClient testapi.TestClient,
+	inputDir string,
+	orgUUID uuid.UUID,
+	flowCfg *FlowConfig,
+	flow Flow,
+	sbom string,
+) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	cfg := cmdctx.Config(ctx)
+	errFactory := cmdctx.ErrorFactory(ctx)
+
+	sourceDir := getSourceDir(cfg, inputDir)
+
+	// Validate source directory exists when reachability is enabled
+	if flow == SbomFlow && flowCfg.Reachability {
+		if err := ValidateSourceDir(sourceDir, errFactory); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	localPolicy, err := CreateLocalPolicy(ctx, inputDir)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return executeFlow(ctx, flow, testClient, orgUUID, inputDir, sourceDir, sbom, localPolicy, flowCfg.Reachability)
+}
+
+// processAllInputDirectories iterates over all input directories and collects results.
+func processAllInputDirectories(
+	ctx context.Context,
+	testClient testapi.TestClient,
+	inputDirs []string,
+	orgUUID uuid.UUID,
+	flowCfg *FlowConfig,
+	flow Flow,
+	sbom string,
+) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	allLegacyFindings := []definitions.LegacyVulnerabilityResponse{}
+	allOutputData := []workflow.Data{}
+
+	for _, inputDir := range inputDirs {
+		legacyFindings, outputData, err := processInputDirectory(ctx, testClient, inputDir, orgUUID, flowCfg, flow, sbom)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		allLegacyFindings = append(allLegacyFindings, legacyFindings...)
+		allOutputData = append(allOutputData, outputData...)
+	}
+
+	return allLegacyFindings, allOutputData, nil
+}
+
 func getInputDirectories(ctx context.Context) ([]string, error) {
 	cfg := cmdctx.Config(ctx)
 	sbom := cfg.GetString(flags.FlagSBOM)
@@ -290,20 +407,11 @@ func OSWorkflow(
 	ictx workflow.InvocationContext,
 	_ []workflow.Data,
 ) ([]workflow.Data, error) {
-	ctx := context.Background()
-	cfg := ictx.GetConfiguration()
-
 	showEarlyAccessBanner(ictx)
 
-	logger := ictx.GetEnhancedLogger()
-	errFactory := errors.NewErrorFactory(logger)
-	progressBar := ictx.GetUserInterface().NewProgressBar()
-	ctx = cmdctx.WithIctx(ctx, ictx)
-	ctx = cmdctx.WithConfig(ctx, cfg)
-	ctx = cmdctx.WithLogger(ctx, logger)
-	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
-	ctx = cmdctx.WithProgressBar(ctx, progressBar)
-	ctx = cmdctx.WithInstrumentation(ctx, instrumentation.NewGAFInstrumentation(ictx.GetAnalytics()))
+	ctx := initializeWorkflowContext(ictx)
+	cfg := cmdctx.Config(ctx)
+	progressBar := cmdctx.ProgressBar(ctx)
 
 	progressBar.SetTitle("Validating configuration...")
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
@@ -325,70 +433,32 @@ func OSWorkflow(
 	if err != nil {
 		return nil, err
 	}
-
 	if useLegacy {
 		//nolint:errcheck // We don't need to fail the command due to UI errors.
 		progressBar.Clear()
 		return code_workflow.EntryPointLegacy(ictx)
 	}
 
-	orgID := cfg.GetString(configuration.ORGANIZATION)
-	if orgID == "" {
-		logger.Error().Msg("No organization ID provided")
-		return nil, errFactory.NewEmptyOrgError()
-	}
-
-	orgUUID, err := uuid.Parse(orgID)
-	if err != nil {
-		return nil, errFactory.NewInvalidOrgIDError(orgID)
-	}
-
-	// Determine which new flow to use
-	sc := setupSettingsClient(ctx)
-	flow, err := RouteToFlow(ctx, flowCfg, orgUUID, sc)
+	orgUUID, err := validateAndParseOrgID(ctx, cfg.GetString(configuration.ORGANIZATION))
 	if err != nil {
 		return nil, err
 	}
 
-	sbom := cfg.GetString(flags.FlagSBOM)
+	flow, err := RouteToFlow(ctx, flowCfg, orgUUID, setupSettingsClient(ctx))
+	if err != nil {
+		return nil, err
+	}
 
 	testClient, err := setupTestClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	allLegacyFindings := []definitions.LegacyVulnerabilityResponse{}
-	allOutputData := []workflow.Data{}
-	for _, inputDir := range inputDirs {
-		// Reachability
-		sourceDir := getSourceDir(cfg, inputDir)
-
-		localPolicy, err := CreateLocalPolicy(ctx, inputDir)
-		if err != nil {
-			return nil, err
-		}
-
-		// Route to the appropriate flow based on flags
-		var legacyFindings []definitions.LegacyVulnerabilityResponse
-		var outputData []workflow.Data
-		var flowErr error
-		switch flow {
-		case SbomFlow:
-			legacyFindings, outputData, flowErr = handleSBOMFlow(ctx, testClient, orgUUID, sbom, sourceDir, localPolicy, flowCfg.Reachability)
-		case DepgraphReachabilityFlow:
-			legacyFindings, outputData, flowErr = RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID, localPolicy, &reachabilityOpts{sourceDir: sourceDir})
-		case DepgraphFlow:
-			legacyFindings, outputData, flowErr = RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID, localPolicy, nil)
-		default:
-			flowErr = fmt.Errorf("unknown test flow: %s", flow)
-		}
-
-		if flowErr != nil {
-			return nil, flowErr
-		}
-
-		allLegacyFindings = append(allLegacyFindings, legacyFindings...)
-		allOutputData = append(allOutputData, outputData...)
+	allLegacyFindings, allOutputData, err := processAllInputDirectories(
+		ctx, testClient, inputDirs, orgUUID, flowCfg, flow, cfg.GetString(flags.FlagSBOM),
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
