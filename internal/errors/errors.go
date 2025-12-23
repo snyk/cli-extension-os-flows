@@ -179,9 +179,8 @@ func (ef *ErrorFactory) NewInvalidLegacyFlagError(flags ...string) error {
 
 // NewUnsupportedFailOnValueError creates a new error for when
 // an unsupported value is provided to the --fail-on flag.
-func (ef *ErrorFactory) NewUnsupportedFailOnValueError(value string) *OSFlowsExtensionError {
-	return ef.newErr(
-		fmt.Errorf("unsupported fail-on value: %s", value),
+func (ef *ErrorFactory) NewUnsupportedFailOnValueError(value string) error {
+	return snyk_cli_errors.NewInvalidFlagOptionError(
 		fmt.Sprintf("Unsupported value '%s' for --fail-on flag. Supported values are: 'all', 'upgradable'.", value),
 	)
 }

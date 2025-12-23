@@ -45,3 +45,13 @@ func TestNewInvalidLegacyFlagError(t *testing.T) {
 		assert.Equal(t, "An internal error occurred while validating command-line flags.", catalogErr.Detail)
 	})
 }
+
+func TestNewUnsupportedFailOnValueError(t *testing.T) {
+	logger := zerolog.Nop()
+	errorFactory := errors.NewErrorFactory(&logger)
+
+	err := errorFactory.NewUnsupportedFailOnValueError("invalid-value")
+	var catalogErr snyk_errors.Error
+	require.ErrorAs(t, err, &catalogErr)
+	assert.Equal(t, "Unsupported value 'invalid-value' for --fail-on flag. Supported values are: 'all', 'upgradable'.", catalogErr.Detail)
+}

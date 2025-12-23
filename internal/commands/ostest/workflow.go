@@ -203,6 +203,7 @@ func getFailOnPolicy(ctx context.Context) (supportedFailOnPolicy, error) {
 	case "upgradable", "all":
 		failOnPolicy.onUpgradable = util.Ptr(true)
 	default:
+		//nolint:wrapcheck // No need to wrap error factory errors.
 		return failOnPolicy, errFactory.NewUnsupportedFailOnValueError(failOnFromConfig)
 	}
 
