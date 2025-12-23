@@ -643,9 +643,8 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 				// Create temp directory with uv.lock file
 				tempDir := util.CreateTempDirWithUvLock(t)
 				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
-				config.Set(configuration.FLAG_EXPERIMENTAL, true)
 				config.Set(flags.FlagFile, "")
-				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
+				config.Set(constants.FeatureFlagUvCLI, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
 					DoAndReturn(func(_ workflow.Identifier, cfg configuration.Configuration) ([]workflow.Data, error) {
@@ -665,8 +664,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 				// Create temp directory without uv.lock file
 				tempDir := t.TempDir()
 				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
-				config.Set(configuration.FLAG_EXPERIMENTAL, true)
-				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
+				config.Set(constants.FeatureFlagUvCLI, true)
 
 				// Should route directly to legacy flow (not depgraph workflow)
 				mockEngine.EXPECT().
@@ -682,7 +680,7 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 		{
 			name: "UV test flow disabled should use legacy flow",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
-				config.Set(constants.EnableExperimentalUvSupportEnvVar, false)
+				config.Set(constants.FeatureFlagUvCLI, false)
 				// When UV is disabled, should route directly to legacy flow
 				mockEngine.EXPECT().
 					InvokeWithConfig(legacyWorkflowID, gomock.Any()).
@@ -732,9 +730,8 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 				// Create temp directory with uv.lock file
 				tempDir := util.CreateTempDirWithUvLock(t)
 				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
-				config.Set(configuration.FLAG_EXPERIMENTAL, true)
 				config.Set(flags.FlagFile, "")
-				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
+				config.Set(constants.FeatureFlagUvCLI, true)
 				// Explicitly disable the test shim FF
 				config.Set(constants.FeatureFlagUseTestShimForOSCliTest, false)
 				// UV support should override, still use new flow
