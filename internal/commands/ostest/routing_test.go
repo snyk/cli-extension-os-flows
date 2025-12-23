@@ -3,6 +3,7 @@ package ostest_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -582,6 +583,24 @@ func Test_ValidateSourceDir(t *testing.T) {
 		require.ErrorAs(t, err, &catalogErr)
 		assert.Equal(t, "SNYK-CLI-0004", catalogErr.ErrorCode)
 		assert.Contains(t, catalogErr.Detail, nonExistentDir)
+	})
+
+	t.Run("should return InvalidFlagOptionError when source dir is a file", func(t *testing.T) {
+		t.Parallel()
+		// Create a temporary file
+		tempFile, err := os.CreateTemp("", "test-file-*.txt")
+		require.NoError(t, err)
+		defer os.Remove(tempFile.Name())
+		tempFile.Close()
+
+		err = ostest.ValidateSourceDir(tempFile.Name(), errFactory)
+		require.Error(t, err)
+
+		var catalogErr snyk_errors.Error
+		require.ErrorAs(t, err, &catalogErr)
+		assert.Equal(t, "SNYK-CLI-0004", catalogErr.ErrorCode)
+		assert.Contains(t, catalogErr.Detail, "is not a directory")
+		assert.Contains(t, catalogErr.Detail, tempFile.Name())
 	})
 }
 

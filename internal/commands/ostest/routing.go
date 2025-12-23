@@ -116,22 +116,21 @@ func validateReachability(
 	return nil
 }
 
-// ValidateSourceDir checks if the source directory exists when reachability is enabled.
-// It returns an error if the directory does not exist or cannot be accessed.
+// ValidateSourceDir checks if the source directory exists and is a directory when reachability is enabled.
+// It returns an error if the path does not exist, cannot be accessed, or is not a directory.
 func ValidateSourceDir(
 	sourceDir string,
 	errFactory *internalErrors.ErrorFactory,
 ) error {
-	exists, err := doesPathExist(sourceDir)
+	info, err := os.Stat(sourceDir)
 	if err != nil {
-		// If we can't even stat the path, treat it as non-existent
 		//nolint:wrapcheck // No need to wrap error factory errors.
 		return errFactory.NewInvalidSourceDirError(sourceDir)
 	}
 
-	if !exists {
+	if !info.IsDir() {
 		//nolint:wrapcheck // No need to wrap error factory errors.
-		return errFactory.NewInvalidSourceDirError(sourceDir)
+		return errFactory.NewSourceDirIsNotADirectoryError(sourceDir)
 	}
 
 	return nil

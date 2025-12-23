@@ -94,22 +94,6 @@ func (ef *ErrorFactory) NewFeatureNotPermittedError(featureFlag string) *OSFlows
 	)
 }
 
-// NewDirectoryDoesNotExistError creates a new OSFlowsExtensionError for a directory that does not exist.
-func (ef *ErrorFactory) NewDirectoryDoesNotExistError(dirPath string) *OSFlowsExtensionError {
-	return ef.newErr(
-		fmt.Errorf("directory does not exist"),
-		fmt.Sprintf("The directory %s does not exist", dirPath),
-	)
-}
-
-// NewDirectoryIsEmptyError creates a new OSFlowsExtensionError for a directory that is empty.
-func (ef *ErrorFactory) NewDirectoryIsEmptyError(dirPath string) *OSFlowsExtensionError {
-	return ef.newErr(
-		fmt.Errorf("directory is empty"),
-		fmt.Sprintf("The directory %s is empty", dirPath),
-	)
-}
-
 // NewDepGraphWorkflowError creates a new error for failures in the dependency graph workflow.
 func (ef *ErrorFactory) NewDepGraphWorkflowError(err error) *OSFlowsExtensionError {
 	return ef.newErr(
@@ -196,5 +180,13 @@ func (ef *ErrorFactory) NewReachabilitySettingsDisabledError(message string) err
 func (ef *ErrorFactory) NewInvalidSourceDirError(sourceDir string) error {
 	return snyk_cli_errors.NewInvalidFlagOptionError(
 		fmt.Sprintf("The provided --source-dir path '%s' does not exist.", sourceDir),
+	)
+}
+
+// NewSourceDirIsNotADirectoryError creates a new error for when
+// the --source-dir flag points to a file instead of a directory.
+func (ef *ErrorFactory) NewSourceDirIsNotADirectoryError(sourceDir string) error {
+	return snyk_cli_errors.NewInvalidFlagOptionError(
+		fmt.Sprintf("The provided --source-dir path '%s' is not a directory.", sourceDir),
 	)
 }

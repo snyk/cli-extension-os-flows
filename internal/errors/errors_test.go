@@ -66,3 +66,14 @@ func TestNewInvalidSourceDirError(t *testing.T) {
 	assert.Equal(t, "The provided --source-dir path '/path/to/nonexistent' does not exist.", catalogErr.Detail)
 	assert.Equal(t, "SNYK-CLI-0004", catalogErr.ErrorCode)
 }
+
+func TestNewSourceDirIsNotADirectoryError(t *testing.T) {
+	logger := zerolog.Nop()
+	errorFactory := errors.NewErrorFactory(&logger)
+
+	err := errorFactory.NewSourceDirIsNotADirectoryError("/path/to/file.txt")
+	var catalogErr snyk_errors.Error
+	require.ErrorAs(t, err, &catalogErr)
+	assert.Equal(t, "The provided --source-dir path '/path/to/file.txt' is not a directory.", catalogErr.Detail)
+	assert.Equal(t, "SNYK-CLI-0004", catalogErr.ErrorCode)
+}
