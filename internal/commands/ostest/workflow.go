@@ -364,6 +364,14 @@ func OSWorkflow(
 		// Reachability
 		sourceDir := getSourceDir(cfg, inputDir)
 
+		// Validate source directory exists when reachability is enabled
+		requiresSourceDir := flow == SbomFlow && flowCfg.Reachability
+		if requiresSourceDir {
+			if err := ValidateSourceDir(sourceDir, errFactory); err != nil {
+				return nil, err
+			}
+		}
+
 		localPolicy, err := CreateLocalPolicy(ctx, inputDir)
 		if err != nil {
 			return nil, err

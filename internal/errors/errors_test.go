@@ -55,3 +55,14 @@ func TestNewUnsupportedFailOnValueError(t *testing.T) {
 	require.ErrorAs(t, err, &catalogErr)
 	assert.Equal(t, "Unsupported value 'invalid-value' for --fail-on flag. Supported values are: 'all', 'upgradable'.", catalogErr.Detail)
 }
+
+func TestNewInvalidSourceDirError(t *testing.T) {
+	logger := zerolog.Nop()
+	errorFactory := errors.NewErrorFactory(&logger)
+
+	err := errorFactory.NewInvalidSourceDirError("/path/to/nonexistent")
+	var catalogErr snyk_errors.Error
+	require.ErrorAs(t, err, &catalogErr)
+	assert.Equal(t, "The provided --source-dir path '/path/to/nonexistent' does not exist.", catalogErr.Detail)
+	assert.Equal(t, "SNYK-CLI-0004", catalogErr.ErrorCode)
+}

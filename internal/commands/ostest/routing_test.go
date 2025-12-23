@@ -546,6 +546,45 @@ func Test_RouteToFlow_ReachabilityFlow(t *testing.T) {
 	}
 }
 
+func Test_ValidateSourceDir(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should return no error when source dir exists", func(t *testing.T) {
+		t.Parallel()
+		tempDir := t.TempDir()
+
+		err := ostest.ValidateSourceDir(tempDir, errFactory)
+		require.NoError(t, err)
+	})
+
+	t.Run("should return InvalidFlagOptionError when source dir does not exist", func(t *testing.T) {
+		t.Parallel()
+		nonExistentDir := "/path/to/nonexistent/directory"
+
+		err := ostest.ValidateSourceDir(nonExistentDir, errFactory)
+		require.Error(t, err)
+
+		var catalogErr snyk_errors.Error
+		require.ErrorAs(t, err, &catalogErr)
+		assert.Equal(t, "SNYK-CLI-0004", catalogErr.ErrorCode)
+		assert.Contains(t, catalogErr.Detail, "The provided --source-dir path")
+		assert.Contains(t, catalogErr.Detail, nonExistentDir)
+	})
+
+	t.Run("should return InvalidFlagOptionError for relative nonexistent path", func(t *testing.T) {
+		t.Parallel()
+		nonExistentDir := "nonexistent-relative-dir"
+
+		err := ostest.ValidateSourceDir(nonExistentDir, errFactory)
+		require.Error(t, err)
+
+		var catalogErr snyk_errors.Error
+		require.ErrorAs(t, err, &catalogErr)
+		assert.Equal(t, "SNYK-CLI-0004", catalogErr.ErrorCode)
+		assert.Contains(t, catalogErr.Detail, nonExistentDir)
+	})
+}
+
 func Test_RouteToFlow_RiskScoreFlow(t *testing.T) {
 	t.Parallel()
 	defaultConfig := configuration.New()

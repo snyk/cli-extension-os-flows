@@ -190,3 +190,11 @@ func (ef *ErrorFactory) NewUnsupportedFailOnValueError(value string) error {
 func (ef *ErrorFactory) NewReachabilitySettingsDisabledError(message string) error {
 	return ecosystems.NewReachabilitySettingDisabledError(message)
 }
+
+// NewInvalidSourceDirError creates a new error for when
+// the --source-dir flag points to a path that does not exist.
+func (ef *ErrorFactory) NewInvalidSourceDirError(sourceDir string) error {
+	return snyk_cli_errors.NewInvalidFlagOptionError(
+		fmt.Sprintf("The provided --source-dir path '%s' does not exist.", sourceDir),
+	)
+}

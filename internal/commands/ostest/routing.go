@@ -116,6 +116,27 @@ func validateReachability(
 	return nil
 }
 
+// ValidateSourceDir checks if the source directory exists when reachability is enabled.
+// It returns an error if the directory does not exist or cannot be accessed.
+func ValidateSourceDir(
+	sourceDir string,
+	errFactory *internalErrors.ErrorFactory,
+) error {
+	exists, err := doesPathExist(sourceDir)
+	if err != nil {
+		// If we can't even stat the path, treat it as non-existent
+		//nolint:wrapcheck // No need to wrap error factory errors.
+		return errFactory.NewInvalidSourceDirError(sourceDir)
+	}
+
+	if !exists {
+		//nolint:wrapcheck // No need to wrap error factory errors.
+		return errFactory.NewInvalidSourceDirError(sourceDir)
+	}
+
+	return nil
+}
+
 // FlowConfig holds parsed configuration for flow routing decisions.
 type FlowConfig struct {
 	FFRiskScore               bool
