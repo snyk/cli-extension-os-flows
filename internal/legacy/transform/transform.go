@@ -451,10 +451,8 @@ func ProcessEvidenceForFinding(vuln *definitions.Vulnerability, ev *testapi.Evid
 			vuln.Reachability = util.Ptr(definitions.Reachable)
 		case testapi.ReachabilityTypeNoInfo:
 			vuln.Reachability = util.Ptr(definitions.NoPathFound)
-		case testapi.ReachabilityTypeNotApplicable:
-			vuln.Reachability = util.Ptr(definitions.NotApplicable)
 		default:
-			// No reachability value set for these types
+			vuln.Reachability = util.Ptr(definitions.NotApplicable)
 		}
 	}
 	return nil
@@ -500,6 +498,11 @@ func processEvidencesAndRemediation(
 			return nil, err
 		}
 
+		// Default to NotApplicable if no reachability evidence was found
+		if vuln.Reachability == nil {
+			vuln.Reachability = util.Ptr(definitions.NotApplicable)
+		}
+
 		if err := ProcessRemediationForFinding(&vuln, finding, logger); err != nil {
 			return nil, err
 		}
@@ -514,6 +517,11 @@ func processEvidencesAndRemediation(
 
 		if err := processOtherEvidence(&vuln, otherEvidences); err != nil {
 			return nil, err
+		}
+
+		// Default to NotApplicable if no reachability evidence was found
+		if vuln.Reachability == nil {
+			vuln.Reachability = util.Ptr(definitions.NotApplicable)
 		}
 
 		if err := ProcessRemediationForFinding(&vuln, finding, logger); err != nil {

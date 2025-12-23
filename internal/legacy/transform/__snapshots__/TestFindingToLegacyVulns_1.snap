@@ -82,6 +82,7 @@
     "packageName": "tar-fs",
     "patches": [],
     "publicationTime": "2025-06-03T10:14:39.000000Z",
+    "reachability": "not-applicable",
     "references": [
       {
         "title": "GitHub Commit",
@@ -195,6 +196,7 @@
     "packageName": "tar-fs",
     "patches": [],
     "publicationTime": "2025-06-03T10:14:39.000000Z",
+    "reachability": "not-applicable",
     "references": [
       {
         "title": "GitHub Commit",
