@@ -1,8 +1,5 @@
 package constants
 
-// EnableExperimentalUvSupportEnvVar is an internal environment variable to enable support for testing UV projects.
-const EnableExperimentalUvSupportEnvVar = "SNYK_ENABLE_EXPERIMENTAL_UV_SUPPORT"
-
 // ForceLegacyCLIEnvVar is an internal environment variable to force the legacy CLI flow.
 const ForceLegacyCLIEnvVar = "SNYK_FORCE_LEGACY_CLI"
 
@@ -17,6 +14,9 @@ const FeatureFlagRiskScoreInCLI = "internal_snyk_cli_experimental_risk_score_in_
 
 // FeatureFlagUseTestShimForOSCliTest gates routing DepGraph tests through the new test API.
 const FeatureFlagUseTestShimForOSCliTest = "internal_snyk_cli_use_test_shim_for_os_cli_test"
+
+// FeatureFlagUvCLI is used to gate UV support in the CLI.
+const FeatureFlagUvCLI = "internal_snyk_cli_uv_enabled"
 
 // UvLockFileName is the name of the UV lock file.
 const UvLockFileName = "uv.lock"
