@@ -26,6 +26,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	snyk_errors "github.com/snyk/error-catalog-golang-public/snyk_errors"
+
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
@@ -145,8 +147,10 @@ func TestOSWorkflow_CreateLocalPolicy_UnsupportedFailOnValue(t *testing.T) {
 	localPolicy, err := ostest.CreateLocalPolicy(ctx, ".")
 	require.Error(t, err)
 	assert.Nil(t, localPolicy)
-	assert.Contains(t, err.Error(), "Unsupported value 'unsupported' for --fail-on flag")
-	assert.Contains(t, err.Error(), "Supported values are: 'all', 'upgradable'")
+	var catalogErr snyk_errors.Error
+	require.ErrorAs(t, err, &catalogErr)
+	assert.Contains(t, catalogErr.Detail, "Unsupported value 'unsupported' for --fail-on flag")
+	assert.Contains(t, catalogErr.Detail, "Supported values are: 'all', 'upgradable'")
 }
 
 func TestOSWorkflow_CreateLocalPolicy_NoValues(t *testing.T) {
