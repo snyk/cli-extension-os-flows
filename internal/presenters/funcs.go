@@ -201,9 +201,10 @@ func getIntroducedBy(finding testapi.FindingData) string {
 }
 
 // getReachability returns the reachability status for a finding.
+// Returns empty string if reachability is not applicable or not available.
 func getReachability(finding testapi.FindingData) string {
 	if finding.Attributes == nil || len(finding.Attributes.Evidence) == 0 {
-		return notApplicable
+		return ""
 	}
 	for _, evidence := range finding.Attributes.Evidence {
 		evDisc, err := evidence.Discriminator()
@@ -223,11 +224,11 @@ func getReachability(finding testapi.FindingData) string {
 			case testapi.ReachabilityTypeNoInfo:
 				return "No Path Found"
 			default:
-				return "Not Applicable"
+				return ""
 			}
 		}
 	}
-	return "Not Applicable"
+	return ""
 }
 
 // getFromConfig returns a function that retrieves configuration values.
