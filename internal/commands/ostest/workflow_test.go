@@ -642,14 +642,13 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			expectedError: "Reachability settings not enabled",
 		},
 		{
-			name: "UV test flow enabled with uv.lock file should use depgraph workflow with SBOM resolution",
+			name: "uv test flow enabled with uv.lock file should use depgraph workflow with SBOM resolution",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				// Create temp directory with uv.lock file
 				tempDir := util.CreateTempDirWithUvLock(t)
 				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
-				config.Set(configuration.FLAG_EXPERIMENTAL, true)
 				config.Set(flags.FlagFile, "")
-				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
+				config.Set(constants.FeatureFlagUvCLI, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
 					DoAndReturn(func(_ workflow.Identifier, cfg configuration.Configuration) ([]workflow.Data, error) {
@@ -664,13 +663,12 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			expectedError: "failed to get dependency graph",
 		},
 		{
-			name: "UV test flow enabled without uv.lock file should fall back to legacy flow",
+			name: "uv test flow enabled without uv.lock file should fall back to legacy flow",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				// Create temp directory without uv.lock file
 				tempDir := t.TempDir()
 				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
-				config.Set(configuration.FLAG_EXPERIMENTAL, true)
-				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
+				config.Set(constants.FeatureFlagUvCLI, true)
 
 				// Should route directly to legacy flow (not depgraph workflow)
 				mockEngine.EXPECT().
@@ -684,10 +682,10 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			expectedError: "", // No error, should succeed via legacy flow
 		},
 		{
-			name: "UV test flow disabled should use legacy flow",
+			name: "uv test flow disabled should use legacy flow",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
-				config.Set(constants.EnableExperimentalUvSupportEnvVar, false)
-				// When UV is disabled, should route directly to legacy flow
+				config.Set(constants.FeatureFlagUvCLI, false)
+				// When uv is disabled, should route directly to legacy flow
 				mockEngine.EXPECT().
 					InvokeWithConfig(legacyWorkflowID, gomock.Any()).
 					Return([]workflow.Data{}, nil).
@@ -731,17 +729,16 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 			expectedError: "failed to get dependency graph",
 		},
 		{
-			name: "useTestShimForOSCliTest FF disabled WITH UV support active, expects depgraph workflow (new flow)",
+			name: "useTestShimForOSCliTest FF disabled WITH uv support active, expects depgraph workflow (new flow)",
 			setup: func(config configuration.Configuration, mockEngine *mocks.MockEngine) {
 				// Create temp directory with uv.lock file
 				tempDir := util.CreateTempDirWithUvLock(t)
 				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
-				config.Set(configuration.FLAG_EXPERIMENTAL, true)
 				config.Set(flags.FlagFile, "")
-				config.Set(constants.EnableExperimentalUvSupportEnvVar, true)
+				config.Set(constants.FeatureFlagUvCLI, true)
 				// Explicitly disable the test shim FF
 				config.Set(constants.FeatureFlagUseTestShimForOSCliTest, false)
-				// UV support should override, still use new flow
+				// uv support should override, still use new flow
 				mockEngine.EXPECT().
 					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
 					Return(nil, assert.AnError).
