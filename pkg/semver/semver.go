@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	composersemver "github.com/snyk/cli-extension-os-flows/pkg/semver/composer"
+	debsemver "github.com/snyk/cli-extension-os-flows/pkg/semver/deb"
 	golangsemver "github.com/snyk/cli-extension-os-flows/pkg/semver/go"
 	mavensemver "github.com/snyk/cli-extension-os-flows/pkg/semver/maven"
 	npmsemver "github.com/snyk/cli-extension-os-flows/pkg/semver/npm"
@@ -45,6 +46,9 @@ var (
 	Unmanaged = sync.OnceValues(func() (shared.Runtime, error) {
 		return shared.NewConcurrentRuntime(unmanagedsemver.New, PoolSize)
 	})
+	Deb = sync.OnceValues(func() (shared.Runtime, error) {
+		return shared.NewConcurrentRuntime(debsemver.New, PoolSize)
+	})
 )
 
 func GetSemver(pkgManager string) (shared.Runtime, error) {
@@ -68,6 +72,8 @@ func GetSemver(pkgManager string) (shared.Runtime, error) {
 		return Golang()
 	case "unmanaged", "cpp", "conan":
 		return Unmanaged()
+	case "deb":
+		return Deb()
 	default:
 		return nil, fmt.Errorf("no semver library defined for ecosystem: %s", pkgManager)
 	}
