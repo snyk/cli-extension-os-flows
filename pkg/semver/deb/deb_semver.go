@@ -5,6 +5,7 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
+
 	"github.com/snyk/cli-extension-os-flows/pkg/semver/jscompat"
 	"github.com/snyk/cli-extension-os-flows/pkg/semver/jscompat/nodejsstubs"
 	"github.com/snyk/cli-extension-os-flows/pkg/semver/shared"
