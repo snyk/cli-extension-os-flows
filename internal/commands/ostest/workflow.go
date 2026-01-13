@@ -73,6 +73,13 @@ func RegisterWorkflows(e workflow.Engine) error {
 	// uv support FF.
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagUvCLI, "enableUvCLI")
 
+	// SBOM support FF.
+	orgUUID, err := validateAndParseOrgID(context.Background(), e.GetConfiguration().GetString(configuration.ORGANIZATION))
+	if err != nil {
+		return fmt.Errorf("error while parsing orgId: %w", err)
+	}
+	config_utils.AddFeatureFlagGatewayToConfig(e, constants.FeatureFlagShowMavenBuildScope, orgUUID, "show-maven-build-scope")
+
 	return nil
 }
 

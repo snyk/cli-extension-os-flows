@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
@@ -29,6 +30,10 @@ func RunSbomFlow(
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
 	instrumentation := cmdctx.Instrumentation(ctx)
+
+	// Get the showMavenBuildScope flag value & set in instrumentation
+	cfg := cmdctx.Config(ctx)
+	instrumentation.RecordShowMavenBuildScopeFlag(cfg.GetBool(constants.FeatureFlagShowMavenBuildScope))
 
 	progressBar.SetTitle("Uploading SBOM document...")
 	sbomResult, err := fuClient.CreateRevisionFromFile(ctx, sbomPath, fileupload.UploadOptions{
