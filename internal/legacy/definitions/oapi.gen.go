@@ -227,6 +227,12 @@ type LicensesPolicy struct {
 	Severities      map[string]Severity    `json:"severities"`
 }
 
+// MavenModuleName defines model for MavenModuleName.
+type MavenModuleName struct {
+	ArtifactId string `json:"artifactId"`
+	GroupId    string `json:"groupId"`
+}
+
 // NewFunctionId defines model for NewFunctionId.
 type NewFunctionId struct {
 	FilePath     string `json:"filePath"`
@@ -399,6 +405,7 @@ type Vulnerability struct {
 	LegalInstructionsArray *[]LegalInstruction              `json:"legalInstructionsArray,omitempty"`
 	License                *string                          `json:"license,omitempty"`
 	Malicious              *bool                            `json:"malicious,omitempty"`
+	MavenModuleName        *MavenModuleName                 `json:"mavenModuleName,omitempty"`
 	ModificationTime       *string                          `json:"modificationTime,omitempty"`
 	ModuleName             *string                          `json:"moduleName,omitempty"`
 	Name                   string                           `json:"name"`

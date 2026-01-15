@@ -407,6 +407,16 @@ components:
           type: object
           additionalProperties:
             $ref: '#/components/schemas/LicenseRule'
+    MavenModuleName:
+      type: object
+      required:
+        - groupId
+        - artifactId
+      properties:
+        groupId:
+          type: string
+        artifactId:
+          type: string
     NewFunctionId:
       type: object
       required:
@@ -851,6 +861,8 @@ components:
           $ref: '#/components/schemas/AppliedPolicyRules'
         securityPolicyMetaData:
           $ref: '#/components/schemas/SecurityPolicyMetaData'
+        mavenModuleName:
+          $ref: '#/components/schemas/MavenModuleName'
     VulnerabilitySeverity:
       type: string
       enum:

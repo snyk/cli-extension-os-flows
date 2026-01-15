@@ -218,21 +218,38 @@ func processSnykVulnProblem(vuln *definitions.Vulnerability, prob *testapi.Probl
 	setVulnCvssInfo(vuln, &snykProblemVuln)
 	setVulnExploitDetails(vuln, &snykProblemVuln.ExploitDetails)
 	setVulnEpssDetails(vuln, snykProblemVuln.EpssDetails)
+	setMavenModuleName(vuln, &snykProblemVuln)
 	return nil
+}
+
+func setMavenModuleName(vuln *definitions.Vulnerability, snykProblemVuln *testapi.SnykVulnProblem) {
+	if vuln.PackageManager != nil && *vuln.PackageManager == "maven" && snykProblemVuln.PackageNamespace != nil {
+		vuln.MavenModuleName = &definitions.MavenModuleName{
+			GroupId:    *snykProblemVuln.PackageNamespace,
+			ArtifactId: snykProblemVuln.PackageName,
+		}
+	}
 }
 
 func setBasicVulnInfo(vuln *definitions.Vulnerability, snykProblemVuln *testapi.SnykVulnProblem) {
 	vuln.Id = snykProblemVuln.Id
+	vuln.SeverityBasedOn = snykProblemVuln.SeverityBasedOn
 	vuln.CreationTime = snykProblemVuln.CreatedAt.Format(legacyTimeFormat)
 	vuln.Version = snykProblemVuln.PackageVersion
 	vuln.DisclosureTime = util.Ptr(snykProblemVuln.DisclosedAt.Format(legacyTimeFormat))
-	vuln.PackageName = &snykProblemVuln.PackageName
+	vuln.PackageName = snykProblemVuln.PackageFullName
+	if snykProblemVuln.PackageFullName == nil {
+		vuln.PackageName = &snykProblemVuln.PackageName
+	}
 	vuln.Malicious = &snykProblemVuln.IsMalicious
+	vuln.IsDisputed = snykProblemVuln.IsDisputed
+	vuln.Proprietary = snykProblemVuln.IsProprietary
 	vuln.ModificationTime = util.Ptr(snykProblemVuln.ModifiedAt.Format(legacyTimeFormat))
 	vuln.PublicationTime = util.Ptr(snykProblemVuln.PublishedAt.Format(legacyTimeFormat))
 	vuln.SocialTrendAlert = &snykProblemVuln.IsSocialMediaTrending
 	vuln.Patches = utils.Ptr([]definitions.PatchInfo{})
 	vuln.Functions = utils.Ptr([]definitions.FunctionInfo{})
+	vuln.AlternativeIds = snykProblemVuln.AlternativeIds
 	if len(snykProblemVuln.Credits) > 0 {
 		vuln.Credit = &snykProblemVuln.Credits
 	}
@@ -304,7 +321,11 @@ func setEcosystem(vuln *definitions.Vulnerability, ecosystem *testapi.Snykvulndb
 	case string(testapi.Build):
 		if eco, err := ecosystem.AsSnykvulndbBuildPackageEcosystem(); err == nil {
 			vuln.Language = &eco.Language
-			vuln.PackageManager = &eco.PackageManager
+			if eco.Client != nil {
+				vuln.PackageManager = eco.Client
+			} else {
+				vuln.PackageManager = &eco.PackageManager
+			}
 		} else {
 			logger.Warn().Err(err).Msg("could not convert ecosystem to SnykvulndbBuildPackageEcosystem")
 		}
