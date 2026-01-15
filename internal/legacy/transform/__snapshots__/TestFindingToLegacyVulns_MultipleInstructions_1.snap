@@ -35,6 +35,7 @@
         },
         License:                &"GPL-3.0 OR MIT",
         Malicious:              (*bool)(nil),
+        MavenModuleName:        (*definitions.MavenModuleName)(nil),
         ModificationTime:       (*string)(nil),
         ModuleName:             (*string)(nil),
         Name:                   "dual-pkg",

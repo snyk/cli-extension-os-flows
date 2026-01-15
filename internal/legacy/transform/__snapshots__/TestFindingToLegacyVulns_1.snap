@@ -1,6 +1,7 @@
 [
   {
     "CVSSv3": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+    "alternativeIds": [],
     "creationTime": "2025-06-03T07:41:24.000000Z",
     "credit": [
       "Caleb Brown"
@@ -72,6 +73,7 @@
         "CWE-22"
       ]
     },
+    "isDisputed": false,
     "isPatchable": false,
     "isUpgradable": true,
     "language": "js",
@@ -81,6 +83,7 @@
     "packageManager": "npm",
     "packageName": "tar-fs",
     "patches": [],
+    "proprietary": false,
     "publicationTime": "2025-06-03T10:14:39.000000Z",
     "references": [
       {
@@ -101,6 +104,7 @@
       ]
     },
     "severity": "high",
+    "severityBasedOn": "CVSS",
     "severityWithCritical": "high",
     "socialTrendAlert": false,
     "title": "Improper Link Resolution Before File Access ('Link Following')",
@@ -114,6 +118,7 @@
   },
   {
     "CVSSv3": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+    "alternativeIds": [],
     "creationTime": "2025-06-03T07:41:24.000000Z",
     "credit": [
       "Caleb Brown"
@@ -185,6 +190,7 @@
         "CWE-22"
       ]
     },
+    "isDisputed": false,
     "isPatchable": false,
     "isUpgradable": true,
     "language": "js",
@@ -194,6 +200,7 @@
     "packageManager": "npm",
     "packageName": "tar-fs",
     "patches": [],
+    "proprietary": false,
     "publicationTime": "2025-06-03T10:14:39.000000Z",
     "references": [
       {
@@ -214,6 +221,7 @@
       ]
     },
     "severity": "high",
+    "severityBasedOn": "CVSS",
     "severityWithCritical": "high",
     "socialTrendAlert": false,
     "title": "Improper Link Resolution Before File Access ('Link Following')",

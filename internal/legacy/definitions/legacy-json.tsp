@@ -126,6 +126,12 @@ model Vulnerability {
   filtered?: VulnFiltered;
   appliedPolicyRules?: AppliedPolicyRules;
   securityPolicyMetaData?: SecurityPolicyMetaData;
+  mavenModuleName?: MavenModuleName;
+}
+
+model MavenModuleName {
+  groupId: string;
+  artifactId: string;
 }
 
 model SecurityPolicyMetaData {
