@@ -73,6 +73,9 @@ func RegisterWorkflows(e workflow.Engine) error {
 	// uv support FF.
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagUvCLI, "enableUvCLI")
 
+	// SBOM support FF.
+	config_utils.AddFeatureFlagGatewayToConfig(e, constants.FeatureFlagShowMavenBuildScope, constants.ShowMavenBuildScope)
+
 	return nil
 }
 
