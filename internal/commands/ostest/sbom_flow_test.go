@@ -41,6 +41,7 @@ func Test_RunSbomFlow_Reachability_JSON(t *testing.T) {
 	mi := mocks.NewMockInstrumentation(ctrl)
 	mi.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
 	mi.EXPECT().RecordShowMavenBuildScopeFlag(gomock.Any()).Times(1)
+	mi.EXPECT().RecordShowNpmBuildScopeFlag(gomock.Any()).Times(1)
 	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	ef := errors.NewErrorFactory(&nopLogger)
@@ -85,6 +86,7 @@ func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 	mi := mocks.NewMockInstrumentation(ctrl)
 	mi.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
 	mi.EXPECT().RecordShowMavenBuildScopeFlag(gomock.Any()).Times(1)
+	mi.EXPECT().RecordShowNpmBuildScopeFlag(gomock.Any()).Times(1)
 	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	ef := errors.NewErrorFactory(&nopLogger)
@@ -134,6 +136,7 @@ func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
 	defer ctrl.Finish()
 	mi := mocks.NewMockInstrumentation(ctrl)
 	mi.EXPECT().RecordShowMavenBuildScopeFlag(gomock.Any()).Times(1)
+	mi.EXPECT().RecordShowNpmBuildScopeFlag(gomock.Any()).Times(1)
 	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	ef := errors.NewErrorFactory(&nopLogger)
@@ -177,6 +180,7 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 	defer ctrl.Finish()
 	mi := mocks.NewMockInstrumentation(ctrl)
 	mi.EXPECT().RecordShowMavenBuildScopeFlag(gomock.Any()).Times(1)
+	mi.EXPECT().RecordShowNpmBuildScopeFlag(gomock.Any()).Times(1)
 	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	ef := errors.NewErrorFactory(&nopLogger)

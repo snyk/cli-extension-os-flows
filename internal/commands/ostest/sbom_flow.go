@@ -31,9 +31,10 @@ func RunSbomFlow(
 	progressBar := cmdctx.ProgressBar(ctx)
 	instrumentation := cmdctx.Instrumentation(ctx)
 
-	// Get the showMavenBuildScope flag value & set in instrumentation
+	// Get the showMavenBuildScope & showNpmBuildScope flags values & set in instrumentation
 	cfg := cmdctx.Config(ctx)
 	instrumentation.RecordShowMavenBuildScopeFlag(cfg.GetBool(constants.FeatureFlagShowMavenBuildScope))
+	instrumentation.RecordShowNpmBuildScopeFlag(cfg.GetBool(constants.FeatureFlagShowNpmBuildScope))
 
 	progressBar.SetTitle("Uploading SBOM document...")
 	sbomResult, err := fuClient.CreateRevisionFromFile(ctx, sbomPath, fileupload.UploadOptions{

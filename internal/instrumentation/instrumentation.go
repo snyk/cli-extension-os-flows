@@ -10,6 +10,7 @@ const (
 	codeAnalysisTimeMs  string = "codeAnalysisMs"
 	osAnalysisTimeMs    string = "osAnalysisMs"
 	showMavenBuildScope string = "showMavenBuildScope"
+	showNpmBuildScope   string = "showNpmBuildScope"
 )
 
 // Instrumentation defines the interface that we expect for instrumentation objects.
@@ -18,6 +19,7 @@ type Instrumentation interface {
 	RecordCodeAnalysisTime(timeMs int64)
 	RecordOSAnalysisTime(timeMs int64)
 	RecordShowMavenBuildScopeFlag(showMavenBuildScopeFlag bool)
+	RecordShowNpmBuildScopeFlag(showNpmBuildScopeFlag bool)
 }
 
 // GAFInstrumentation is an implementation of Instrumentation that uses the GAF analytics.
@@ -43,6 +45,11 @@ func (gafI *GAFInstrumentation) RecordOSAnalysisTime(timeMs int64) {
 // RecordShowMavenBuildScopeFlag is used to record the value of the show-maven-build-scope feature flag.
 func (gafI *GAFInstrumentation) RecordShowMavenBuildScopeFlag(showMavenBuildScopeFlag bool) {
 	gafI.analytics.AddExtensionBoolValue(showMavenBuildScope, showMavenBuildScopeFlag)
+}
+
+// RecordShowNpmBuildScopeFlag is used to record the value of the show-maven-build-scope feature flag.
+func (gafI *GAFInstrumentation) RecordShowNpmBuildScopeFlag(showNpmBuildScopeFlag bool) {
+	gafI.analytics.AddExtensionBoolValue(showNpmBuildScope, showNpmBuildScopeFlag)
 }
 
 // NewGAFInstrumentation will create a new GAFInstrumentation based on the provided GAF analytics.
