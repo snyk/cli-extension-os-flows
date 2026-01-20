@@ -11,7 +11,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"github.com/snyk/cli-extension-os-flows/internal/mocks"
 	"github.com/stretchr/testify/require"
 
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
@@ -26,6 +25,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
+	"github.com/snyk/cli-extension-os-flows/internal/mocks"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
