@@ -1,0 +1,149 @@
+[
+  {
+    "CVSSv3": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H/E:P",
+    "alternativeIds": [],
+    "creationTime": "2021-12-17T18:23:58.542986Z",
+    "credit": [
+      "Hideki Okamoto of Akamai Technologies"
+    ],
+    "cvssDetails": [
+      {
+        "assigner": "NVD",
+        "cvssV3BaseScore": 5.9,
+        "cvssV3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "modificationTime": "2024-03-11T07:56:51.867277Z",
+        "severity": "medium"
+      },
+      {
+        "assigner": "Red Hat",
+        "cvssV3BaseScore": 5.9,
+        "cvssV3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "modificationTime": "2024-03-11T07:58:24.170095Z",
+        "severity": "medium"
+      }
+    ],
+    "cvssScore": 7.5,
+    "cvssSources": [
+      {
+        "assigner": "Snyk",
+        "baseScore": 7.5,
+        "cvssVersion": "3.1",
+        "modificationTime": "2024-03-06T13:46:51.533564Z",
+        "severity": "high",
+        "type": "primary",
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H/E:P"
+      },
+      {
+        "assigner": "NVD",
+        "baseScore": 5.9,
+        "cvssVersion": "3.1",
+        "modificationTime": "2024-03-11T07:56:51.867277Z",
+        "severity": "medium",
+        "type": "secondary",
+        "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      },
+      {
+        "assigner": "Red Hat",
+        "baseScore": 5.9,
+        "cvssVersion": "3.1",
+        "modificationTime": "2024-03-11T07:58:24.170095Z",
+        "severity": "medium",
+        "type": "secondary",
+        "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      }
+    ],
+    "description": "## Overview\n[org.apache.logging.log4j:log4j-core](http://logging.apache.org/log4j/1.2/) is a logging library for Java.\n\nAffected versions of this package are vulnerable to Denial of Service (DoS). Does not protect against uncontrolled recursion from self-referential lookups. \r\n\r\nWhen the logging configuration uses a non-default Pattern Layout with a Context Lookup (for example, `$${ctx:loginId}`), attackers with control over Thread Context Map (MDC) input data can craft malicious input data that contains a recursive lookup, resulting in a `StackOverflowError` that will terminate the process.\r\n\r\n### PoC\r\n\r\nIn `log4j.properties`:\r\n```java\r\nappender.console.type = Console\r\nappender.console.name = console\r\nappender.console.layout.type = PatternLayout\r\nappender.console.layout.pattern = !${ctx:test}! %m%n\r\nrootLogger.level = ALL\r\nrootLogger.appenderRef.file.ref = console\r\n```\r\n\r\nIn `Main.java`:\r\n```java\r\nThreadContext.put(\"test\", \"${::-${ctx:test}}\");\r\nlogger.error(\"boom\"); // Will not be logged\r\n```\n\n## Details\n\nDenial of Service (DoS) describes a family of attacks, all aimed at making a system inaccessible to its intended and legitimate users.\n\nUnlike other vulnerabilities, DoS attacks usually do not aim at breaching security. Rather, they are focused on making websites and services unavailable to genuine users resulting in downtime.\n\nOne popular Denial of Service vulnerability is DDoS (a Distributed Denial of Service), an attack that attempts to clog network pipes to the system by generating a large volume of traffic from many machines.\n\nWhen it comes to open source libraries, DoS vulnerabilities allow attackers to trigger such a crash or crippling of the service by using a flaw either in the application code or from the use of open source libraries.\n\nTwo common types of DoS vulnerabilities:\n\n* High CPU/Memory Consumption- An attacker sending crafted requests that could cause the system to take a disproportionate amount of time to process. For example, [commons-fileupload:commons-fileupload](SNYK-JAVA-COMMONSFILEUPLOAD-30082).\n\n* Crash - An attacker sending crafted requests that could cause the system to crash. For Example,  [npm `ws` package](https://snyk.io/vuln/npm:ws:20171108)\n\n## Remediation\nUpgrade `org.apache.logging.log4j:log4j-core` to version 2.3.1, 2.12.3, 2.17.0 or higher.\n## References\n- [Apache Security](https://logging.apache.org/log4j/2.x/security.html)\n- [JIRA Issue](https://issues.apache.org/jira/browse/LOG4J2-3230)\n- [PoC in GitHub](https://github.com/cckuailong/Log4j_dos_CVE-2021-45105)\n",
+    "disclosureTime": "2021-12-17T18:20:21.000000Z",
+    "epssDetails": {
+      "modelVersion": "v2025.03.14",
+      "percentile": "0.98528",
+      "probability": "0.67558"
+    },
+    "exploit": "Proof of Concept",
+    "exploitDetails": {
+      "maturityLevels": [
+        {
+          "format": "CVSSv3",
+          "level": "Proof of Concept",
+          "type": "secondary"
+        },
+        {
+          "format": "CVSSv4",
+          "level": "Proof of Concept",
+          "type": "primary"
+        }
+      ],
+      "sources": [
+        "PoC in GitHub",
+        "Snyk"
+      ]
+    },
+    "fixedIn": [
+      "2.3.1",
+      "2.12.3",
+      "2.17.0"
+    ],
+    "from": [
+      "mvn-log4j-fixture:mvn-log4j-fixture@1.0-SNAPSHOT",
+      "org.apache.logging.log4j:log4j-core@2.14.1"
+    ],
+    "functions": [],
+    "id": "SNYK-JAVA-ORGAPACHELOGGINGLOG4J-2321524",
+    "identifiers": {
+      "CVE": [
+        "CVE-2021-45105"
+      ],
+      "CWE": [
+        "CWE-400"
+      ]
+    },
+    "isDisputed": false,
+    "isPatchable": false,
+    "isUpgradable": true,
+    "language": "java",
+    "malicious": false,
+    "mavenModuleName": {
+      "artifactId": "log4j-core",
+      "groupId": "org.apache.logging.log4j"
+    },
+    "modificationTime": "2025-08-13T05:20:05.717545Z",
+    "name": "org.apache.logging.log4j:log4j-core",
+    "packageManager": "maven",
+    "packageName": "org.apache.logging.log4j:log4j-core",
+    "patches": [],
+    "proprietary": false,
+    "publicationTime": "2021-12-18T07:05:00.000000Z",
+    "references": [
+      {
+        "title": "Apache Security",
+        "url": "https://logging.apache.org/log4j/2.x/security.html"
+      },
+      {
+        "title": "JIRA Issue",
+        "url": "https://issues.apache.org/jira/browse/LOG4J2-3230"
+      },
+      {
+        "title": "PoC in GitHub",
+        "url": "https://github.com/cckuailong/Log4j_dos_CVE-2021-45105"
+      }
+    ],
+    "riskScore": 328,
+    "semver": {
+      "vulnerable": [
+        "[2.0-beta9,2.3.1)",
+        "[2.4,2.12.3)",
+        "[2.13.0,2.17.0)"
+      ]
+    },
+    "severity": "high",
+    "severityBasedOn": "CVSS",
+    "severityWithCritical": "high",
+    "socialTrendAlert": false,
+    "title": "Denial of Service (DoS)",
+    "upgradePath": [
+      false,
+      "org.apache.logging.log4j:log4j-core@2.17.0"
+    ],
+    "version": "2.14.1"
+  }
+]

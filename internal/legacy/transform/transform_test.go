@@ -606,6 +606,27 @@ func TestFindingToLegacyVulns(t *testing.T) {
 	snaps.MatchStandaloneSnapshot(t, string(bts))
 }
 
+func TestFindingToLegacyVulns_Maven(t *testing.T) {
+	buf, err := os.ReadFile("testdata/maven-finding.json")
+	require.NoError(t, err)
+
+	var finding testapi.FindingData
+	err = json.Unmarshal(buf, &finding)
+	require.NoError(t, err)
+
+	logger := zerolog.Nop()
+	vulns, err := transform.FindingToLegacyVulns(
+		&finding,
+		&logger,
+	)
+	require.NoError(t, err)
+
+	bts, err := json.MarshalIndent(vulns, "", "  ")
+	require.NoError(t, err)
+
+	snaps.MatchStandaloneSnapshot(t, string(bts))
+}
+
 func TestLicenseInstructions(t *testing.T) {
 	t.Run("single instruction", func(t *testing.T) {
 		now := time.Now()

@@ -34,6 +34,7 @@
         },
         License:                &"AGPL-3.0",
         Malicious:              (*bool)(nil),
+        MavenModuleName:        (*definitions.MavenModuleName)(nil),
         ModificationTime:       (*string)(nil),
         ModuleName:             (*string)(nil),
         Name:                   "agpl-pkg",
