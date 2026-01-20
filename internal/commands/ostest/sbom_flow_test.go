@@ -11,13 +11,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
-	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
-	"github.com/snyk/cli-extension-os-flows/internal/errors"
-	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/mocks"
-	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
-	"github.com/snyk/cli-extension-os-flows/internal/util"
+	"github.com/stretchr/testify/require"
+
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
@@ -25,7 +21,13 @@ import (
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
 	"github.com/snyk/go-application-framework/pkg/utils/ufm"
 	"github.com/snyk/go-application-framework/pkg/workflow"
-	"github.com/stretchr/testify/require"
+
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
+	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
+	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 // idRgxp is used for replacing the "id" in the output for snapshot consistency.
