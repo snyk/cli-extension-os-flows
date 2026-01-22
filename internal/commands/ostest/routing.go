@@ -187,6 +187,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 
 	forceLegacyTest := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
 	requiresLegacy := cfg.GetBool(flags.FlagPrintGraph) ||
+		cfg.GetBool(flags.FlagPrintEffectiveGraph) ||
 		cfg.GetBool(flags.FlagPrintDeps) ||
 		cfg.GetBool(flags.FlagPrintDepPaths) ||
 		unmanaged

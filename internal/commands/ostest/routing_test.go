@@ -118,7 +118,7 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 	t.Run("when legacy options are set", func(t *testing.T) {
 		t.Parallel()
-		legacyOptions := []string{flags.FlagPrintGraph, flags.FlagPrintDeps, flags.FlagPrintDepPaths, flags.FlagUnmanaged}
+		legacyOptions := []string{flags.FlagPrintGraph, flags.FlagPrintEffectiveGraph, flags.FlagPrintDeps, flags.FlagPrintDepPaths, flags.FlagUnmanaged}
 		for _, legacyOption := range legacyOptions {
 			cfg := defaultConfig.Clone()
 			cfg.Set(legacyOption, true)
