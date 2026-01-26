@@ -25,6 +25,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
+	"github.com/snyk/cli-extension-os-flows/internal/mocks"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
@@ -37,6 +38,11 @@ var nopLogger = zerolog.Nop()
 func Test_RunSbomFlow_Reachability_JSON(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+	mi := mocks.NewMockInstrumentation(ctrl)
+	mi.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
+	mi.EXPECT().RecordShowMavenBuildScopeFlag(gomock.Any()).Times(1)
+	mi.EXPECT().RecordShowNpmBuildScopeFlag(gomock.Any()).Times(1)
+	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	ef := errors.NewErrorFactory(&nopLogger)
 	mockIctx, mockTestClient, fuClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, true)
@@ -46,6 +52,7 @@ func Test_RunSbomFlow_Reachability_JSON(t *testing.T) {
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
 	// This should now succeed with proper finding data
 	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, fuClient, orgID, nil, true)
@@ -76,6 +83,11 @@ func Test_RunSbomFlow_Reachability_JSON(t *testing.T) {
 func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+	mi := mocks.NewMockInstrumentation(ctrl)
+	mi.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
+	mi.EXPECT().RecordShowMavenBuildScopeFlag(gomock.Any()).Times(1)
+	mi.EXPECT().RecordShowNpmBuildScopeFlag(gomock.Any()).Times(1)
+	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	ef := errors.NewErrorFactory(&nopLogger)
 	mockIctx, mockTestClient, fuClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, false)
@@ -85,6 +97,7 @@ func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
 	// This should now succeed with proper finding data
 	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, fuClient, orgID, nil, true)
@@ -121,6 +134,10 @@ func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+	mi := mocks.NewMockInstrumentation(ctrl)
+	mi.EXPECT().RecordShowMavenBuildScopeFlag(gomock.Any()).Times(1)
+	mi.EXPECT().RecordShowNpmBuildScopeFlag(gomock.Any()).Times(1)
+	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	ef := errors.NewErrorFactory(&nopLogger)
 	mockIctx, mockTestClient, fuClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, true)
@@ -130,6 +147,7 @@ func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
 	// This should now succeed with proper finding data
 	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, fuClient, orgID, nil, false)
@@ -160,6 +178,10 @@ func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
 func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+	mi := mocks.NewMockInstrumentation(ctrl)
+	mi.EXPECT().RecordShowMavenBuildScopeFlag(gomock.Any()).Times(1)
+	mi.EXPECT().RecordShowNpmBuildScopeFlag(gomock.Any()).Times(1)
+	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	ef := errors.NewErrorFactory(&nopLogger)
 	mockIctx, mockTestClient, fuClient, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, false)
@@ -169,6 +191,7 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 	ctx = cmdctx.WithErrorFactory(ctx, ef)
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
 	// This should now succeed with proper finding data
 	legacyJSON, outputData, err := ostest.RunSbomFlow(ctx, mockTestClient, sbomPath, sourceCodePath, fuClient, orgID, nil, false)
