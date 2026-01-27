@@ -5,6 +5,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 )
 
+var nopLogger = zerolog.Nop()
+
 func Test_GetReachabilityID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -21,6 +24,7 @@ func Test_GetReachabilityID(t *testing.T) {
 	mi.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
 	mi.EXPECT().RecordCodeAnalysisTime(gomock.Any()).Times(1)
 	ctx := cmdctx.WithInstrumentation(t.Context(), mi)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 
 	orgID := uuid.New()
 	sourceDir := "."
@@ -42,6 +46,7 @@ func Test_GetReachabilityID_FailedUploadingSourceCode(t *testing.T) {
 	defer ctrl.Finish()
 	mi := mocks.NewMockInstrumentation(ctrl)
 	ctx := cmdctx.WithInstrumentation(t.Context(), mi)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 
 	orgID := uuid.New()
 	sourceDir := "."
@@ -61,6 +66,7 @@ func Test_GetReachabilityID_FailedToStartReachabilityAnalysis(t *testing.T) {
 	defer ctrl.Finish()
 	mi := mocks.NewMockInstrumentation(ctrl)
 	ctx := cmdctx.WithInstrumentation(t.Context(), mi)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 	mi.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
 
 	orgID := uuid.New()
@@ -82,6 +88,7 @@ func Test_GetReachabilityID_FailedToAwaitReachabilityAnalysis(t *testing.T) {
 	defer ctrl.Finish()
 	mi := mocks.NewMockInstrumentation(ctrl)
 	ctx := cmdctx.WithInstrumentation(t.Context(), mi)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
 	mi.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
 
 	orgID := uuid.New()
