@@ -42,6 +42,7 @@ func UploadSourceCode(
 	sourceDir string,
 ) (fileupload.UploadResult, error) {
 	instrumentation := cmdctx.Instrumentation(ctx)
+	logger := cmdctx.Logger(ctx)
 	codeUploadStart := time.Now()
 
 	res, err := fc.CreateRevisionFromDir(ctx, sourceDir, SourceCodeUploadOptions())
@@ -52,6 +53,15 @@ func UploadSourceCode(
 	if instrumentation != nil {
 		instrumentation.RecordCodeUploadTime(time.Since(codeUploadStart).Milliseconds())
 	}
+
+	for _, ff := range res.FilteredFiles {
+		logger.Debug().Str("file_path", ff.Path).Str("reason", ff.Reason.Error()).Msg("skipped file")
+	}
+
+	logger.Debug().
+		Int("uploaded_files_count", res.UploadedFilesCount).
+		Int("skipped_files_count", len(res.FilteredFiles)).
+		Msg("upload summary")
 
 	return res, nil
 }
