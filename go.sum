@@ -201,8 +201,8 @@ github.com/snyk/code-client-go v1.24.5 h1:ySsfTeaNmi3nWSuM3YaVIiSAG+H/ikD2hACxqn
 github.com/snyk/code-client-go v1.24.5/go.mod h1:YYggK3UbOHl5rg7uBhLzsKZBFNavcwFUse/EWCKWdzw=
 github.com/snyk/error-catalog-golang-public v0.0.0-20260108110943-21ad0c940c14 h1:R74dgtKtcrIOG/349YDV8arH7D09pob3lAcJc290FqI=
 github.com/snyk/error-catalog-golang-public v0.0.0-20260108110943-21ad0c940c14/go.mod h1:Ytttq7Pw4vOCu9NtRQaOeDU2dhBYUyNBe6kX4+nIIQ4=
-github.com/snyk/go-application-framework v0.0.0-20260126083422-c997413c310e h1:VEtn9Hy4J+QWkxdVIoi73ERjNprvq3QOkWck5PRw1ag=
-github.com/snyk/go-application-framework v0.0.0-20260126083422-c997413c310e/go.mod h1:LPR080GrK2jqNN9/hgVwKkXTVS3BlvwqmTN60lX5wdA=
+github.com/snyk/go-application-framework v0.0.0-20260128131754-a6b8623d9202 h1:sopCTkMeUHFn3UFphc325vhRn1oA8C2BzW59Y8w7PdU=
+github.com/snyk/go-application-framework v0.0.0-20260128131754-a6b8623d9202/go.mod h1:LPR080GrK2jqNN9/hgVwKkXTVS3BlvwqmTN60lX5wdA=
 github.com/snyk/go-httpauth v0.0.0-20231117135515-eb445fea7530 h1:s9PHNkL6ueYRiAKNfd8OVxlUOqU3qY0VDbgCD1f6WQY=
 github.com/snyk/go-httpauth v0.0.0-20231117135515-eb445fea7530/go.mod h1:88KbbvGYlmLgee4OcQ19yr0bNpXpOr2kciOthaSzCAg=
 github.com/sourcegraph/conc v0.3.0 h1:OQTbbt6P72L20UqAkXXuLOj79LfEanQ+YQFNpLA9ySo=
@@ -266,6 +266,8 @@ golang.org/x/crypto v0.46.0/go.mod h1:Evb/oLKmMraqjZ2iQTwDwvCtJkczlDuTmdJXoZVzqU
 golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 h1:2dVuKD2vS7b0QIHQbpyTISPd0LeHDbnYEryqj5Q1ug8=
 golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56/go.mod h1:M4RDyNAINzryxdtnbRXRL/OHtkFuWGRjvuhBJpk2IlY=
 golang.org/x/mod v0.4.2/go.mod h1:s0Qsj1ACt9ePp/hMypM3fl4fZqREWJwdYDEqhRiZZUA=
+golang.org/x/mod v0.30.0 h1:fDEXFVZ/fmCKProc/yAXXUijritrDzahmwwefnjoPFk=
+golang.org/x/mod v0.30.0/go.mod h1:lAsf5O2EvJeSFMiBxXDki7sCgAxEUcZHXoXMKT4GJKc=
 golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/net v0.0.0-20190620200207-3b0461eec859/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
 golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=

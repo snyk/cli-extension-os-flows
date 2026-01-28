@@ -209,6 +209,10 @@ func HandleContentTypeUnifiedModel(input []workflow.Data, invocation workflow.In
 	debugLogger := invocation.GetEnhancedLogger()
 	config := invocation.GetConfiguration()
 
+	if config.GetBool(output_workflow.OUTPUT_CONFIG_KEY_USE_UFM_PRESENTER) {
+		return input, nil
+	}
+
 	projectResults, remainingData := getUnifiedProjectResults(input, debugLogger)
 	if len(projectResults) == 0 {
 		debugLogger.Info().Msg("No complete projects with findings and summary to process")
