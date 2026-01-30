@@ -68,27 +68,3 @@ func (mr *MockInstrumentationMockRecorder) RecordOSAnalysisTime(arg0 interface{}
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordOSAnalysisTime", reflect.TypeOf((*MockInstrumentation)(nil).RecordOSAnalysisTime), arg0)
 }
-
-// RecordShowMavenBuildScopeFlag mocks base method.
-func (m *MockInstrumentation) RecordShowMavenBuildScopeFlag(arg0 bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RecordShowMavenBuildScopeFlag", arg0)
-}
-
-// RecordShowMavenBuildScopeFlag indicates an expected call of RecordShowMavenBuildScopeFlag.
-func (mr *MockInstrumentationMockRecorder) RecordShowMavenBuildScopeFlag(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordShowMavenBuildScopeFlag", reflect.TypeOf((*MockInstrumentation)(nil).RecordShowMavenBuildScopeFlag), arg0)
-}
-
-// RecordShowNpmBuildScopeFlag mocks base method.
-func (m *MockInstrumentation) RecordShowNpmBuildScopeFlag(arg0 bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RecordShowNpmBuildScopeFlag", arg0)
-}
-
-// RecordShowNpmBuildScopeFlag indicates an expected call of RecordShowNpmBuildScopeFlag.
-func (mr *MockInstrumentationMockRecorder) RecordShowNpmBuildScopeFlag(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordShowNpmBuildScopeFlag", reflect.TypeOf((*MockInstrumentation)(nil).RecordShowNpmBuildScopeFlag), arg0)
-}
