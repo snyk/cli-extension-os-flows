@@ -209,7 +209,8 @@ func HandleContentTypeUnifiedModel(input []workflow.Data, invocation workflow.In
 	debugLogger := invocation.GetEnhancedLogger()
 	config := invocation.GetConfiguration()
 
-	if config.GetBool(output_workflow.OUTPUT_CONFIG_KEY_USE_UFM_PRESENTER) {
+	// Temporary flag to disable local rendering of unified findings.
+	if config.GetBool("internal_use_ufm_presenter") {
 		return input, nil
 	}
 
