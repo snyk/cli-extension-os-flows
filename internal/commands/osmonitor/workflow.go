@@ -41,6 +41,12 @@ func RegisterWorkflows(e workflow.Engine) error {
 	// Reachability FF.
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagReachabilityForCLI, "reachabilityForCli")
 
+	// SBOM support FF.
+	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
+		constants.FeatureFlagShowMavenBuildScope: constants.ShowMavenBuildScope,
+		constants.FeatureFlagShowNpmScope:        constants.ShowNpmScope,
+	})
+
 	return nil
 }
 
@@ -167,6 +173,11 @@ func OSWorkflow(
 	engine := ictx.GetEngine()
 	cfg.Set(configuration.WORKFLOW_USE_STDIO, true)
 	cfg.Set(configuration.RAW_CMD_ARGS, legacyArgs)
+
+	// Get the showMavenBuildScope & showNpmBuildScope flags values & set in instrumentation
+	inst := cmdctx.Instrumentation(ctx)
+	inst.RecordShowMavenBuildScopeFlag(cfg.GetBool(constants.FeatureFlagShowMavenBuildScope))
+	inst.RecordShowNpmScopeFlag(cfg.GetBool(constants.FeatureFlagShowNpmScope))
 
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	progressBar.Clear()

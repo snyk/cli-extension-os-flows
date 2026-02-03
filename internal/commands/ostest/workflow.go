@@ -73,6 +73,12 @@ func RegisterWorkflows(e workflow.Engine) error {
 	// uv support FF.
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagUvCLI, "enableUvCLI")
 
+	// SBOM support FF.
+	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
+		constants.FeatureFlagShowMavenBuildScope: constants.ShowMavenBuildScope,
+		constants.FeatureFlagShowNpmScope:        constants.ShowNpmScope,
+	})
+
 	return nil
 }
 
@@ -431,6 +437,11 @@ func OSWorkflow(
 	if err != nil {
 		return nil, err
 	}
+
+	// Get the showMavenBuildScope & showNpmBuildScope flags values & set in instrumentation
+	inst := cmdctx.Instrumentation(ctx)
+	inst.RecordShowMavenBuildScopeFlag(cfg.GetBool(constants.FeatureFlagShowMavenBuildScope))
+	inst.RecordShowNpmScopeFlag(cfg.GetBool(constants.FeatureFlagShowNpmScope))
 
 	useLegacy, err := ShouldUseLegacyFlow(ctx, flowCfg, inputDirs)
 	if err != nil {
