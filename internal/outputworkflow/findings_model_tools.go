@@ -209,14 +209,15 @@ func HandleContentTypeUnifiedModel(input []workflow.Data, invocation workflow.In
 	debugLogger := invocation.GetEnhancedLogger()
 	config := invocation.GetConfiguration()
 
-	// Temporary flag to disable local rendering of unified findings.
-	if config.GetBool("internal_use_ufm_presenter") {
-		return input, nil
-	}
-
 	projectResults, remainingData := getUnifiedProjectResults(input, debugLogger)
 	if len(projectResults) == 0 {
 		debugLogger.Info().Msg("No complete projects with findings and summary to process")
+		return remainingData, nil
+	}
+
+	// Temporary flag to disable local rendering of unified findings.
+	if config.GetBool("internal_use_ufm_presenter") {
+		debugLogger.Info().Msg("UFM presenter is enabled, skipping rendering human readable output")
 		return remainingData, nil
 	}
 
