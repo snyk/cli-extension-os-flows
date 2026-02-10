@@ -1,4 +1,4 @@
-package filters
+package deeproxy
 
 import (
 	"context"
@@ -15,13 +15,13 @@ type AllowList struct {
 	Extensions  []string `json:"extensions"`
 }
 
-// Client defines the interface for the filters client.
+// Client defines the interface for the deeproxy client.
 type Client interface {
 	GetFilters(ctx context.Context, orgID uuid.UUID) (AllowList, error)
 }
 
-// DeeproxyClient is the deeproxy implementation of the Client interface.
-type DeeproxyClient struct {
+// HTTPClient is the deeproxy implementation of the Client interface.
+type HTTPClient struct {
 	httpClient *http.Client
 	cfg        Config
 }
@@ -32,11 +32,11 @@ type Config struct {
 	IsFedRamp bool
 }
 
-var _ Client = (*DeeproxyClient)(nil)
+var _ Client = (*HTTPClient)(nil)
 
-// NewDeeproxyClient creates a new DeeproxyClient with the given configuration and options.
-func NewDeeproxyClient(cfg Config, opts ...Opt) *DeeproxyClient {
-	c := &DeeproxyClient{
+// NewHTTPClient creates a new DeeproxyClient with the given configuration and options.
+func NewHTTPClient(cfg Config, opts ...Opt) *HTTPClient {
+	c := &HTTPClient{
 		cfg:        cfg,
 		httpClient: http.DefaultClient,
 	}
@@ -49,7 +49,7 @@ func NewDeeproxyClient(cfg Config, opts ...Opt) *DeeproxyClient {
 }
 
 // GetFilters returns the deeproxy filters in the form of an AllowList.
-func (c *DeeproxyClient) GetFilters(ctx context.Context, orgID uuid.UUID) (AllowList, error) {
+func (c *HTTPClient) GetFilters(ctx context.Context, orgID uuid.UUID) (AllowList, error) {
 	var allowList AllowList
 
 	url := getFilterURL(c.cfg.BaseURL, orgID, c.cfg.IsFedRamp)
