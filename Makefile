@@ -13,8 +13,7 @@
 ######################################################
 
 # Define GOCI_LINT_V for golangci-lint. The install.sh script handles OS/ARCH.
-# User requested v1.64.6 for local macOS use.
-GOCI_LINT_V?=v1.64.6
+GOCI_LINT_V?=v2.9.0
 # Define GOTESTSUM_V for gotestsum. The install.sh script handles OS/ARCH.
 GOTESTSUM_V?=1.13.0
 
@@ -38,7 +37,7 @@ install-tools: install-oapi-codegen install-tsp ## Install golangci-lint and oth
 	mkdir -p ${GO_BIN}
 ifndef CI
 	@echo "Installing golangci-lint ${GOCI_LINT_V} to ${GO_BIN}..."
-	curl -sSfL 'https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh' | sh -s -- -b ${GO_BIN} ${GOCI_LINT_V}
+	curl -sSfL 'https://raw.githubusercontent.com/golangci/golangci-lint/${GOCI_LINT_V}/install.sh' | sh -s -- -b ${GO_BIN} ${GOCI_LINT_V}
 	@echo "golangci-lint installed."
 	@echo "Installing gotestsum ${GOTESTSUM_V} to ${GO_BIN}..."
 	curl -sSfL 'https://github.com/gotestyourself/gotestsum/releases/download/v${GOTESTSUM_V}/gotestsum_${GOTESTSUM_V}_${OS}_${ARCH}.tar.gz' | tar -xz -C ${GO_BIN} gotestsum
@@ -64,7 +63,7 @@ lint: lint-go ## Run all linters (currently only golangci-lint)
 lint-go: ## Run golangci linters
 ifdef CI
 	mkdir -p test/results
-	golangci-lint run --out-format junit-xml ./... > test/results/lint-tests.xml
+	golangci-lint run --output.junit-xml.path=test/results/lint-tests.xml ./...
 else
 	golangci-lint run -v ./...
 endif
