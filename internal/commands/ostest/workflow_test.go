@@ -418,14 +418,17 @@ func TestOSWorkflow_LegacyFlow(t *testing.T) {
 	// Mock the legacy flow to return successfully
 	mockEngine.EXPECT().
 		InvokeWithConfig(legacyWorkflowID, gomock.Any()).
-		Return([]workflow.Data{}, nil).
+		Return([]workflow.Data{
+			workflow.NewData(workflow.NewTypeIdentifier(legacyWorkflowID, "legacycli"), "application/json", []byte{}),
+		}, nil).
 		Times(1)
 
 	// Execute
-	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
+	data, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
 
 	// Verify
 	assert.NoError(t, err)
+	assert.Equal(t, ostest.LegacyCLIContentType, data[0].GetContentType())
 }
 
 func TestOSWorkflow_OrgIDHandling(t *testing.T) {
