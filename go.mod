@@ -1,8 +1,6 @@
 module github.com/snyk/cli-extension-os-flows
 
-go 1.24.0
-
-toolchain go1.24.5
+go 1.25.7
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -110,7 +108,6 @@ require (
 	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
-	golang.org/x/tools v0.39.0 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
