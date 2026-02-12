@@ -428,7 +428,7 @@ func TestOSWorkflow_LegacyFlow(t *testing.T) {
 
 	// Verify
 	assert.NoError(t, err)
-	assert.Equal(t, ostest.LegacyCLIContentType, data[0].GetContentType())
+	assert.Equal(t, content_type.LEGACY_CLI_STDOUT, data[0].GetContentType())
 }
 
 func TestOSWorkflow_OrgIDHandling(t *testing.T) {

@@ -20,6 +20,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
@@ -42,10 +43,6 @@ import (
 
 // WorkflowID is the identifier for the Open Source Test workflow.
 var WorkflowID = workflow.NewWorkflowIdentifier("test")
-
-// LegacyCLIContentType is the  content type set on a WorkflowData
-// to indicate that the results are coming from the legacy CLI.
-const LegacyCLIContentType = "application/json; schema=legacy-cli"
 
 // PollInterval is the polling interval for the test API. It is exported to be configurable in tests.
 var PollInterval = 2 * time.Second
@@ -435,7 +432,7 @@ func withLegacyContentType(legacyData []workflow.Data) []workflow.Data {
 
 	for _, data := range legacyData {
 		if payload, ok := data.GetPayload().([]byte); ok {
-			newData = append(newData, NewWorkflowData(LegacyCLIContentType, payload))
+			newData = append(newData, NewWorkflowData(content_type.LEGACY_CLI_STDOUT, payload))
 		} else {
 			newData = append(newData, data)
 		}
