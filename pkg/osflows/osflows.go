@@ -19,10 +19,6 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 )
 
-// LegacyCLIContentType is the  content type set on a WorkflowData
-// to indicate that the results are coming from the legacy CLI.
-const LegacyCLIContentType = ostest.LegacyCLIContentType
-
 // Init registers the "test" workflow.
 func Init(e workflow.Engine) error {
 	if err := ostest.RegisterWorkflows(e); err != nil {
