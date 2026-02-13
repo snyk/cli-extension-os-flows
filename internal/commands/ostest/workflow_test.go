@@ -424,11 +424,10 @@ func TestOSWorkflow_LegacyFlow(t *testing.T) {
 		Times(1)
 
 	// Execute
-	data, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
+	_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
 
 	// Verify
 	assert.NoError(t, err)
-	assert.Equal(t, ostest.LegacyCLIContentType, data[0].GetContentType())
 }
 
 func TestOSWorkflow_OrgIDHandling(t *testing.T) {

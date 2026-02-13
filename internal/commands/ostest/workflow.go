@@ -43,10 +43,6 @@ import (
 // WorkflowID is the identifier for the Open Source Test workflow.
 var WorkflowID = workflow.NewWorkflowIdentifier("test")
 
-// LegacyCLIContentType is the  content type set on a WorkflowData
-// to indicate that the results are coming from the legacy CLI.
-const LegacyCLIContentType = "application/json; schema=legacy-cli"
-
 // PollInterval is the polling interval for the test API. It is exported to be configurable in tests.
 var PollInterval = 2 * time.Second
 
@@ -430,18 +426,27 @@ func getInputDirectories(ctx context.Context) ([]string, error) {
 	return inputDirs, nil
 }
 
-func withLegacyContentType(legacyData []workflow.Data) []workflow.Data {
-	newData := make([]workflow.Data, 0, len(legacyData))
+func legacyEntrypoint(ctx context.Context) ([]workflow.Data, error) {
+	ictx := cmdctx.Ictx(ctx)
+	progressBar := cmdctx.ProgressBar(ctx)
+	cfg := cmdctx.Config(ctx)
+	logger := cmdctx.Logger(ctx)
 
-	for _, data := range legacyData {
-		if payload, ok := data.GetPayload().([]byte); ok {
-			newData = append(newData, NewWorkflowData(LegacyCLIContentType, payload))
-		} else {
-			newData = append(newData, data)
-		}
+	//nolint:errcheck // We don't need to fail the command due to UI errors.
+	progressBar.Clear()
+
+	legacyConfig := cfg.Clone()
+	legacyArgs := cfg.GetStringSlice(configuration.RAW_CMD_ARGS)
+	if len(legacyArgs) == 0 {
+		legacyArgs = os.Args[1:]
 	}
+	legacyConfig.Set(configuration.RAW_CMD_ARGS, legacyArgs)
+	legacyConfig.Set(configuration.WORKFLOW_USE_STDIO, !cfg.GetBool(flags.FlagSuppressLegacySTDIO))
 
-	return newData
+	logger.Debug().Strs("legacy_args", legacyArgs).Msg("legacy scan: RAW_CMD_ARGS passed to legacy CLI")
+
+	//nolint:wrapcheck // No need to wrap legacy errors.
+	return ictx.GetEngine().InvokeWithConfig(workflow.NewWorkflowIdentifier("legacycli"), legacyConfig)
 }
 
 // OSWorkflow is the entry point for the Open Source Test workflow.
@@ -481,22 +486,7 @@ func OSWorkflow(
 		return nil, err
 	}
 	if useLegacy {
-		//nolint:errcheck // We don't need to fail the command due to UI errors.
-		progressBar.Clear()
-
-		legacyConfig := cfg.Clone()
-		legacyArgs := cfg.GetStringSlice(configuration.RAW_CMD_ARGS)
-		if len(legacyArgs) == 0 {
-			legacyArgs = os.Args[1:]
-		}
-		legacyConfig.Set(configuration.RAW_CMD_ARGS, legacyArgs)
-		legacyConfig.Set(configuration.WORKFLOW_USE_STDIO, false)
-
-		cmdctx.Logger(ctx).Debug().Strs("legacy_args", legacyArgs).Msg("legacy scan: RAW_CMD_ARGS passed to legacy CLI")
-
-		legacyData, legacyErr := ictx.GetEngine().InvokeWithConfig(workflow.NewWorkflowIdentifier("legacycli"), legacyConfig)
-
-		return withLegacyContentType(legacyData), legacyErr
+		return legacyEntrypoint(ctx)
 	}
 
 	orgUUID, err := validateAndParseOrgID(ctx, cfg.GetString(configuration.ORGANIZATION))
