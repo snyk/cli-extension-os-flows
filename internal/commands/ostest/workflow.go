@@ -441,7 +441,7 @@ func legacyEntrypoint(ctx context.Context) ([]workflow.Data, error) {
 		legacyArgs = os.Args[1:]
 	}
 	legacyConfig.Set(configuration.RAW_CMD_ARGS, legacyArgs)
-	legacyConfig.Set(configuration.WORKFLOW_USE_STDIO, !cfg.GetBool(flags.FlagSuppressLegacySTDIO))
+	legacyConfig.Set(configuration.WORKFLOW_USE_STDIO, true)
 
 	logger.Debug().Strs("legacy_args", legacyArgs).Msg("legacy scan: RAW_CMD_ARGS passed to legacy CLI")
 

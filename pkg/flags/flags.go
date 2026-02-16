@@ -66,8 +66,7 @@ const (
 	FlagProjectTags                = "project-tags"
 	FlagTags                       = "tags"
 
-	FlagReachabilityID      = "reachability-id"
-	FlagSuppressLegacySTDIO = "suppress-legacy-stdio"
+	FlagReachabilityID = "reachability-id"
 )
 
 // OSTestFlagSet returns a flag set for the Open Source Test workflow.
@@ -132,8 +131,6 @@ func OSTestFlagSet() *pflag.FlagSet {
 		"to the name of files inside a project along with any desired separators.")
 	flagSet.Bool(FlagDotnetRuntimeResolution, false, "You must use this option when you test .NET projects using Runtime Resolution Scanning.")
 	flagSet.String(FlagDotnetTargetFramework, "", "Specify the target framework for .NET projects.")
-
-	flagSet.Bool(FlagSuppressLegacySTDIO, false, "Suppress the legacy stdio output and return the raw workflow data.")
 
 	return flagSet
 }
