@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
-	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
 	"github.com/snyk/go-application-framework/pkg/ui"
@@ -15,8 +14,8 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
-	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/instrumentation"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
@@ -94,24 +93,14 @@ func runReachabilityScan(ctx context.Context) (uuid.UUID, error) {
 		sourceDir = "."
 	}
 
-	fc := fileupload.NewClient(
-		ictx.GetNetworkAccess().GetHttpClient(),
-		fileupload.Config{
-			BaseURL: cfg.GetString(configuration.API_URL),
-			OrgID:   orgID,
-		},
-		fileupload.WithLogger(ictx.GetEnhancedLogger()),
-	)
-	dc := deeproxy.NewHTTPClient(deeproxy.Config{
-		BaseURL:   cfg.GetString(configuration.API_URL),
-		IsFedRamp: cfg.GetBool(configuration.IS_FEDRAMP),
-	})
+	fuClient := fileupload.NewClientFromInvocationContext(ictx, orgID)
+
 	rc := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
 		BaseURL: cfg.GetString(configuration.API_URL),
 	})
 
 	progressBar.SetTitle("Uploading source code...")
-	scanID, err := reachability.GetReachabilityID(ctx, orgID, sourceDir, rc, fc, dc)
+	scanID, err := reachability.GetReachabilityID(ctx, orgID, sourceDir, rc, fuClient)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to analyze source code: %w", err)
 	}

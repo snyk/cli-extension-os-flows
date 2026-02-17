@@ -12,7 +12,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/snyk/error-catalog-golang-public/snyk_errors"
-	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
+
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 )
 
 // Config contains configuration options for the SCA Engine client.
