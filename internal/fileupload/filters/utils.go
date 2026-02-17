@@ -1,4 +1,4 @@
-package deeproxy
+package filters
 
 import (
 	"fmt"

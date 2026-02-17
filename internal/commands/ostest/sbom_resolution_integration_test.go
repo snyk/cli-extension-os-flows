@@ -10,7 +10,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
@@ -44,7 +43,6 @@ func TestSBOMResolutionIntegration_DepGraphsPassedToUnifiedTestAPI(t *testing.T)
 
 	// Set up context with dependencies
 	testErrFactory := errors.NewErrorFactory(testLogger)
-	ffc := fileupload.NewFakeClient()
 	nopProgressBar := &NopProgressBar{}
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, cfg)
@@ -55,7 +53,7 @@ func TestSBOMResolutionIntegration_DepGraphsPassedToUnifiedTestAPI(t *testing.T)
 	_, _, err := ostest.RunUnifiedTestFlow(
 		ctx,
 		tempDir,
-		ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc},
+		mockTestClient,
 		orgUUID,
 		nil,
 		nil,

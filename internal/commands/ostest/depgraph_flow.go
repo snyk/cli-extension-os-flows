@@ -17,6 +17,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	service "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
@@ -73,14 +74,18 @@ func enrichWithTargetReference(depgraphs []DepGraphWithMeta, targetReference str
 	}
 }
 
+type reachabilityOpts struct {
+	sourceDir string
+}
+
 // RunUnifiedTestFlow handles the unified test API flow.
 func RunUnifiedTestFlow(
 	ctx context.Context,
 	inputDir string,
-	clients FlowClients,
+	testClient testapi.TestClient,
 	orgUUID uuid.UUID,
 	localPolicy *testapi.LocalPolicy,
-	reachabilityOpts *ReachabilityOpts,
+	reachabilityOpts *reachabilityOpts,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	ictx := cmdctx.Ictx(ctx)
 	cfg := cmdctx.Config(ctx)
@@ -100,14 +105,12 @@ func RunUnifiedTestFlow(
 	if reachabilityOpts != nil {
 		progressBar.SetTitle("Uploading source code...")
 
-		scanID, scanErr := reachability.GetReachabilityID(
-			ctx,
-			orgUUID,
-			reachabilityOpts.SourceDir,
-			clients.ReachabilityClient,
-			clients.FileUploadClient,
-			clients.DeeproxyClient,
-		)
+		fuClient := fileupload.NewClientFromInvocationContext(ictx, orgUUID)
+		rc := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
+			BaseURL: cfg.GetString(configuration.API_URL),
+		})
+
+		scanID, scanErr := reachability.GetReachabilityID(ctx, orgUUID, reachabilityOpts.sourceDir, rc, fuClient)
 		if scanErr != nil {
 			return nil, nil, fmt.Errorf("failed to analyze source code: %w", scanErr)
 		}
@@ -122,7 +125,7 @@ func RunUnifiedTestFlow(
 	allLegacyFindings, allOutputData, err := testAllDepGraphs(
 		ctx,
 		inputDir,
-		clients.TestClient,
+		testClient,
 		orgUUID.String(),
 		localPolicy,
 		depGraphs,

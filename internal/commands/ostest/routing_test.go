@@ -440,7 +440,7 @@ func Test_RouteToFlow_ReachabilityFlow(t *testing.T) {
 				return ctx
 			},
 			orgID:        orgID,
-			expectedFlow: ostest.DepgraphFlow,
+			expectedFlow: ostest.DepgraphReachabilityFlow,
 		},
 		"--reachability with --reachability-filter should route to depgraph reachability flow when FF and reachability settings are enabled": {
 			ctx: func(ctx context.Context) context.Context {
@@ -456,7 +456,7 @@ func Test_RouteToFlow_ReachabilityFlow(t *testing.T) {
 				return ctx
 			},
 			orgID:        orgID,
-			expectedFlow: ostest.DepgraphFlow,
+			expectedFlow: ostest.DepgraphReachabilityFlow,
 		},
 		"--reachability should fail when FF is missing": {
 			ctx: func(ctx context.Context) context.Context {

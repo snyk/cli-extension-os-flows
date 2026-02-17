@@ -1,4 +1,4 @@
-package deeproxy //nolint:testpackage // Testing private utility functions.
+package filters //nolint:testpackage // Testing private utility functions.
 
 import (
 	"encoding/json"
@@ -25,7 +25,7 @@ func TestClients(t *testing.T) {
 				cleanup := func() {
 					s.Close()
 				}
-				c := NewHTTPClient(Config{BaseURL: s.URL, IsFedRamp: true}, WithHTTPClient(s.Client()))
+				c := NewDeeproxyClient(Config{BaseURL: s.URL, IsFedRamp: true}, WithHTTPClient(s.Client()))
 
 				return c, cleanup
 			},

@@ -8,19 +8,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload/uploadrevision"
 )
 
-// LoadedFile is a utility struct used for passing
-// a file path and it's content in tests.
-type LoadedFile struct {
-	Path      string
-	Content   string
-	Size      *int64
-	IsSymlink bool
-}
-
 // CreateTmpFiles is an utility function used to create temporary files in tests.
-func CreateTmpFiles(t *testing.T, files []LoadedFile) (dir *os.File) {
+func CreateTmpFiles(t *testing.T, files []uploadrevision.LoadedFile) (dir *os.File) {
 	t.Helper()
 
 	tempDir := t.TempDir()
@@ -37,30 +29,15 @@ func CreateTmpFiles(t *testing.T, files []LoadedFile) (dir *os.File) {
 			panic(err)
 		}
 
-		if file.IsSymlink {
-			if err := os.Symlink(file.Content, fullPath); err != nil {
-				panic(err)
-			}
-			continue
-		}
-
 		f, err := os.Create(fullPath)
 		if err != nil {
 			panic(err)
 		}
 
-		if _, err = f.WriteString(file.Content); err != nil {
+		if _, err := f.WriteString(file.Content); err != nil {
 			f.Close()
 			panic(err)
 		}
-
-		if file.Size != nil {
-			if err = f.Truncate(*file.Size); err != nil {
-				f.Close()
-				panic(err)
-			}
-		}
-
 		f.Close()
 	}
 

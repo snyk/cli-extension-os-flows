@@ -1,4 +1,4 @@
-package deeproxy //nolint:testpackage // Testing private utility functions.
+package filters //nolint:testpackage // Testing private utility functions.
 
 import (
 	"testing"

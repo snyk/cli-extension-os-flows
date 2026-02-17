@@ -6,13 +6,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
-	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
+	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 )
@@ -20,22 +18,22 @@ import (
 // RunSbomFlow runs the SBOM flow with optional reachability analysis.
 func RunSbomFlow(
 	ctx context.Context,
-	clients FlowClients,
+	testClient testapi.TestClient,
 	sbomPath string,
-	orgUUID uuid.UUID,
+	sourceCodePath string,
+	fuClient fileupload.Client,
+	orgID string,
 	localPolicy *testapi.LocalPolicy,
-	reachabilityOpts *ReachabilityOpts,
+	reachability bool,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
 	instrumentation := cmdctx.Instrumentation(ctx)
 
 	progressBar.SetTitle("Uploading SBOM document...")
-	fileChan := make(chan string, 1)
-	fileChan <- sbomPath
-	close(fileChan)
-
-	sbomResult, err := clients.FileUploadClient.CreateRevisionFromChan(ctx, fileChan, filepath.Dir(sbomPath))
+	sbomResult, err := fuClient.CreateRevisionFromFile(ctx, sbomPath, fileupload.UploadOptions{
+		SkipDeeproxyFiltering: true,
+	})
 	if err != nil {
 		logger.Error().Err(err).Str("sbomPath", sbomPath).Msg("Failed to upload SBOM")
 		return nil, nil, fmt.Errorf("failed to upload SBOM: %w", err)
@@ -49,11 +47,9 @@ func RunSbomFlow(
 
 	resources := []testapi.TestResourceCreateItem{sbomResource}
 
-	if reachabilityOpts != nil {
-		progressBar.SetTitle("Uploading source code...")
-
+	if reachability {
 		var sourceResource testapi.TestResourceCreateItem
-		sourceResource, err = uploadSourceCodeResource(ctx, orgUUID, clients.FileUploadClient, clients.DeeproxyClient, reachabilityOpts.SourceDir)
+		sourceResource, err = uploadSourceCodeResource(ctx, fuClient, sourceCodePath)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -67,20 +63,7 @@ func RunSbomFlow(
 		Sca: &testapi.ScaScanConfiguration{},
 	}
 
-	findings, summary, err := RunTestWithResources(
-		ctx,
-		targetDir,
-		clients.TestClient,
-		resources,
-		"",
-		"",
-		0,
-		sbomPath,
-		sbomPath,
-		orgUUID.String(),
-		localPolicy,
-		scanConfig,
-	)
+	findings, summary, err := RunTestWithResources(ctx, targetDir, testClient, resources, "", "", 0, sbomPath, sbomPath, orgID, localPolicy, scanConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -99,14 +82,14 @@ func RunSbomFlow(
 // uploadSourceCodeResource uploads source code and creates the test resource.
 func uploadSourceCodeResource(
 	ctx context.Context,
-	orgID uuid.UUID,
-	fc fileupload.Client,
-	dc deeproxy.Client,
+	fuClient fileupload.Client,
 	sourceCodePath string,
 ) (testapi.TestResourceCreateItem, error) {
 	logger := cmdctx.Logger(ctx)
+	progressBar := cmdctx.ProgressBar(ctx)
 
-	sourceResult, err := reachability.UploadSourceCode(ctx, orgID, fc, dc, sourceCodePath)
+	progressBar.SetTitle("Uploading source code...")
+	sourceResult, err := reachability.UploadSourceCode(ctx, fuClient, sourceCodePath)
 	if err != nil {
 		logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("Failed to upload source code")
 		return testapi.TestResourceCreateItem{}, fmt.Errorf("failed to upload source code: %w", err)
