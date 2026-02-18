@@ -72,6 +72,11 @@ func RegisterWorkflows(e workflow.Engine) error {
 	// uv support FF.
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagUvCLI, "enableUvCLI")
 
+	// Dragonfly rollout.
+	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
+		constants.FeatureFlagDlfyCLIRollout: "rollout-dfly-os-cli",
+	})
+
 	// SBOM support FF.
 	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
 		constants.FeatureFlagShowMavenBuildScope: constants.ShowMavenBuildScope,
@@ -324,6 +329,9 @@ func executeFlow(
 	switch flow {
 	case SbomFlow:
 		return handleSBOMFlow(ctx, testClient, orgUUID, sbom, sourceDir, localPolicy, reachability)
+	case DflyDepgraphFlow:
+		fuClient := setupFileUploadClient(ctx, orgUUID)
+		return RunDflyDepgraphFlow(ctx, inputDir, fuClient, testClient, orgUUID.String(), localPolicy)
 	case DepgraphReachabilityFlow:
 		return RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID, localPolicy, &reachabilityOpts{sourceDir: sourceDir})
 	case DepgraphFlow:
@@ -482,6 +490,7 @@ func OSWorkflow(
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("HERE FLOW", flow)
 
 	testClient, err := setupTestClient(ctx)
 	if err != nil {
