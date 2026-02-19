@@ -22,10 +22,9 @@ type Flow string
 
 // The list of all available flows.
 const (
-	LegacyFlow               Flow = "legacy"
-	SbomFlow                 Flow = "sbom-flow"
-	DepgraphReachabilityFlow Flow = "depgraph-reachability"
-	DepgraphFlow             Flow = "depgraph"
+	LegacyFlow   Flow = "legacy"
+	SbomFlow     Flow = "sbom-flow"
+	DepgraphFlow Flow = "depgraph"
 )
 
 func validateLegacyCLIOptions(
@@ -286,15 +285,14 @@ func RouteToFlow(ctx context.Context, fc *FlowConfig, orgUUID uuid.UUID, sc sett
 	switch {
 	case fc.SBOM != "":
 		return SbomFlow, nil
-	case fc.Reachability:
-		if !cfg.GetBool(constants.FeatureFlagReachabilityForCLI) {
+	default:
+		if fc.Reachability && !cfg.GetBool(constants.FeatureFlagReachabilityForCLI) {
 			//nolint:wrapcheck // No need to wrap error factory errors.
 			return "", errFactory.NewReachabilitySettingsDisabledError(
 				"In order to run the `test` command with `--reachability=true`, the feature must be enabled in the Snyk Preview.",
 			)
 		}
-		return DepgraphReachabilityFlow, nil
-	default:
+
 		return DepgraphFlow, nil
 	}
 }
