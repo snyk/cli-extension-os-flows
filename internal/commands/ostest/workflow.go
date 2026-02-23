@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
@@ -25,13 +26,14 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	cmdutil "github.com/snyk/cli-extension-os-flows/internal/commands/util"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
+	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
-	"github.com/snyk/cli-extension-os-flows/internal/fileupload"
 	"github.com/snyk/cli-extension-os-flows/internal/instrumentation"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
+	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
 	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
@@ -109,7 +111,15 @@ func setupSettingsClient(ctx context.Context) settings.Client {
 
 func setupFileUploadClient(ctx context.Context, orgID uuid.UUID) fileupload.Client {
 	ictx := cmdctx.Ictx(ctx)
-	return fileupload.NewClientFromInvocationContext(ictx, orgID)
+	cfg := cmdctx.Config(ctx)
+	return fileupload.NewClient(
+		ictx.GetNetworkAccess().GetHttpClient(),
+		fileupload.Config{
+			BaseURL: cfg.GetString(configuration.API_URL),
+			OrgID:   orgID,
+		},
+		fileupload.WithLogger(ictx.GetEnhancedLogger()),
+	)
 }
 
 func showEarlyAccessBanner(ictx workflow.InvocationContext) {
@@ -125,18 +135,6 @@ func showEarlyAccessBanner(ictx workflow.InvocationContext) {
 	banner := presenters.RenderEarlyAccessBanner(presenters.SBOMEarlyAccessDocsURL)
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	ictx.GetUserInterface().Output(banner)
-}
-
-// handleSBOMFlow sets up and runs the SBOM flow (with or without reachability).
-func handleSBOMFlow(
-	ctx context.Context,
-	testClient testapi.TestClient,
-	orgUUID uuid.UUID, sbom, sourceDir string,
-	localPolicy *testapi.LocalPolicy,
-	reachability bool,
-) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	fuClient := setupFileUploadClient(ctx, orgUUID)
-	return RunSbomFlow(ctx, testClient, sbom, sourceDir, fuClient, orgUUID.String(), localPolicy, reachability)
 }
 
 func convertReachabilityFilterToSchema(reachabilityFilter string) *testapi.ReachabilityFilter {
@@ -309,11 +307,26 @@ func validateAndParseOrgID(ctx context.Context, orgID string) (uuid.UUID, error)
 	return orgUUID, nil
 }
 
+// ReachabilityOpts is used for passing reachability related
+// setting in flows. If missing, then reachability is not requested.
+type ReachabilityOpts struct {
+	SourceDir string
+}
+
+// FlowClients is used for encapsulating all the clients needed
+// for running the flows.
+type FlowClients struct {
+	TestClient         testapi.TestClient
+	FileUploadClient   fileupload.Client
+	ReachabilityClient reachability.Client
+	DeeproxyClient     deeproxy.Client
+}
+
 // executeFlow runs the appropriate test flow based on the routing decision.
 func executeFlow(
 	ctx context.Context,
 	flow Flow,
-	testClient testapi.TestClient,
+	clients FlowClients,
 	orgUUID uuid.UUID,
 	inputDir string,
 	sourceDir string,
@@ -321,13 +334,16 @@ func executeFlow(
 	localPolicy *testapi.LocalPolicy,
 	reachability bool,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	var reachOpts *ReachabilityOpts
+	if reachability {
+		reachOpts = &ReachabilityOpts{SourceDir: sourceDir}
+	}
+
 	switch flow {
 	case SbomFlow:
-		return handleSBOMFlow(ctx, testClient, orgUUID, sbom, sourceDir, localPolicy, reachability)
-	case DepgraphReachabilityFlow:
-		return RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID, localPolicy, &reachabilityOpts{sourceDir: sourceDir})
+		return RunSbomFlow(ctx, clients, sbom, orgUUID, localPolicy, reachOpts)
 	case DepgraphFlow:
-		return RunUnifiedTestFlow(ctx, inputDir, testClient, orgUUID, localPolicy, nil)
+		return RunUnifiedTestFlow(ctx, inputDir, clients, orgUUID, localPolicy, reachOpts)
 	default:
 		return nil, nil, fmt.Errorf("unknown test flow: %s", flow)
 	}
@@ -336,11 +352,11 @@ func executeFlow(
 // processInputDirectory handles testing a single input directory.
 func processInputDirectory(
 	ctx context.Context,
-	testClient testapi.TestClient,
+	clients FlowClients,
 	inputDir string,
 	orgUUID uuid.UUID,
-	flowCfg *FlowConfig,
 	flow Flow,
+	reachability bool,
 	sbom string,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	cfg := cmdctx.Config(ctx)
@@ -349,7 +365,7 @@ func processInputDirectory(
 	sourceDir := getSourceDir(cfg, inputDir)
 
 	// Validate source directory exists when reachability is enabled
-	if flow == SbomFlow && flowCfg.Reachability {
+	if reachability {
 		if err := ValidateSourceDir(sourceDir, errFactory); err != nil {
 			return nil, nil, err
 		}
@@ -360,24 +376,24 @@ func processInputDirectory(
 		return nil, nil, err
 	}
 
-	return executeFlow(ctx, flow, testClient, orgUUID, inputDir, sourceDir, sbom, localPolicy, flowCfg.Reachability)
+	return executeFlow(ctx, flow, clients, orgUUID, inputDir, sourceDir, sbom, localPolicy, reachability)
 }
 
 // processAllInputDirectories iterates over all input directories and collects results.
 func processAllInputDirectories(
 	ctx context.Context,
-	testClient testapi.TestClient,
+	clients FlowClients,
 	inputDirs []string,
 	orgUUID uuid.UUID,
-	flowCfg *FlowConfig,
 	flow Flow,
+	reachability bool,
 	sbom string,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	allLegacyFindings := []definitions.LegacyVulnerabilityResponse{}
 	allOutputData := []workflow.Data{}
 
 	for _, inputDir := range inputDirs {
-		legacyFindings, outputData, err := processInputDirectory(ctx, testClient, inputDir, orgUUID, flowCfg, flow, sbom)
+		legacyFindings, outputData, err := processInputDirectory(ctx, clients, inputDir, orgUUID, flow, reachability, sbom)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -487,9 +503,28 @@ func OSWorkflow(
 	if err != nil {
 		return nil, err
 	}
+	fileUploadClient := setupFileUploadClient(ctx, orgUUID)
+	reachabilityClient := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
+		BaseURL: cfg.GetString(configuration.API_URL),
+	})
+	deeproxyClient := deeproxy.NewHTTPClient(deeproxy.Config{
+		BaseURL:   cfg.GetString(configuration.API_URL),
+		IsFedRamp: cfg.GetBool(configuration.IS_FEDRAMP),
+	})
 
 	allLegacyFindings, allOutputData, err := processAllInputDirectories(
-		ctx, testClient, inputDirs, orgUUID, flowCfg, flow, cfg.GetString(flags.FlagSBOM),
+		ctx,
+		FlowClients{
+			TestClient:         testClient,
+			FileUploadClient:   fileUploadClient,
+			ReachabilityClient: reachabilityClient,
+			DeeproxyClient:     deeproxyClient,
+		},
+		inputDirs,
+		orgUUID,
+		flow,
+		flowCfg.Reachability,
+		flowCfg.SBOM,
 	)
 	if err != nil {
 		return nil, err

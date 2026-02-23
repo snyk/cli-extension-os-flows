@@ -11,6 +11,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
@@ -143,6 +144,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	// Mock TestClient to track concurrency in their Wait calls.
 	var current, peak atomic.Int32
 	mockTestClient := mockConcurrentStartTest(ctrl, n, &current, &peak)
+	fakeFileUploadClient := fileupload.NewFakeClient()
 
 	// Run
 	ef := errors.NewErrorFactory(&logger)
@@ -154,7 +156,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
-	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: fakeFileUploadClient}, orgUUID, nil, nil)
 	require.NoError(t, err)
 
 	p := peak.Load()
@@ -214,6 +216,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 
 	var current, peak atomic.Int32
 	mockTestClient := mockConcurrentStartTest(ctrl, n, &current, &peak)
+	fakeFileUploadClient := fileupload.NewFakeClient()
 
 	// Run
 	ef := errors.NewErrorFactory(&logger)
@@ -225,7 +228,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
-	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: fakeFileUploadClient}, orgUUID, nil, nil)
 	require.NoError(t, err)
 
 	p := peak.Load()
@@ -320,6 +323,7 @@ func Test_RunUnifiedTestFlow_WithIgnorePolicyFlag(t *testing.T) {
 
 		return handle, nil
 	}).Times(1)
+	fakeFileUploadClient := fileupload.NewFakeClient()
 
 	// Run
 	ef := errors.NewErrorFactory(&logger)
@@ -331,7 +335,7 @@ func Test_RunUnifiedTestFlow_WithIgnorePolicyFlag(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
-	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
+	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: fakeFileUploadClient}, orgUUID, nil, nil)
 	require.NoError(t, err)
 }
 
@@ -423,6 +427,7 @@ func Test_RunUnifiedTestFlow_WithProjectNameOverride(t *testing.T) {
 
 		return handle, nil
 	}).Times(1)
+	fakeFileUploadClient := fileupload.NewFakeClient()
 
 	// Run
 	ef := errors.NewErrorFactory(&logger)
@@ -434,7 +439,7 @@ func Test_RunUnifiedTestFlow_WithProjectNameOverride(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
-	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
+	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: fakeFileUploadClient}, orgUUID, nil, nil)
 	require.NoError(t, err)
 }
 
@@ -526,6 +531,7 @@ func Test_RunUnifiedTestFlow_WithTargetReference(t *testing.T) {
 
 		return handle, nil
 	}).Times(1)
+	fakeFileUploadClient := fileupload.NewFakeClient()
 
 	// Run
 	ef := errors.NewErrorFactory(&logger)
@@ -537,7 +543,7 @@ func Test_RunUnifiedTestFlow_WithTargetReference(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
-	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
+	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: fakeFileUploadClient}, orgUUID, nil, nil)
 	require.NoError(t, err)
 }
 
@@ -610,6 +616,7 @@ func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
 		}).Times(1)
 		return handle, nil
 	}).Times(n)
+	fakeFileUploadClient := fileupload.NewFakeClient()
 
 	// Run with a timeout to avoid hanging in case of failure.
 	runCtx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
@@ -623,7 +630,7 @@ func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
-	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", mockTestClient, orgUUID, nil, nil)
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: fakeFileUploadClient}, orgUUID, nil, nil)
 	require.Error(t, err)
 
 	// At least one sibling should have observed cancellation.
