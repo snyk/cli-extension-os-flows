@@ -1286,13 +1286,13 @@ func TestRenderWarnings_HumanReadable(t *testing.T) {
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithWarnings(ctx, warnings)
 
-	ostest.RenderWarnings(ctx, false)
+	ostest.RenderWarnings(ctx, true)
 
 	assert.Contains(t, captured, "WARNING")
 	assert.Contains(t, captured, "connection timeout")
 }
 
-func TestRenderWarnings_JSON_WritesToStderr(t *testing.T) {
+func TestRenderWarnings_NonHumanReadable_WritesToStderr(t *testing.T) {
 	warnings := &[]string{"upload failed. Could not determine reachability for vulnerabilities."}
 	ctx := context.Background()
 	ctx = cmdctx.WithWarnings(ctx, warnings)
@@ -1303,7 +1303,7 @@ func TestRenderWarnings_JSON_WritesToStderr(t *testing.T) {
 	origStderr := os.Stderr
 	os.Stderr = w
 
-	ostest.RenderWarnings(ctx, true)
+	ostest.RenderWarnings(ctx, false)
 
 	os.Stderr = origStderr
 	w.Close()
