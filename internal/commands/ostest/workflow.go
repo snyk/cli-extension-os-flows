@@ -278,6 +278,7 @@ func initializeWorkflowContext(ictx workflow.InvocationContext) context.Context 
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
 	progressBar := ictx.GetUserInterface().NewProgressBar()
+	warnings := &[]string{}
 
 	ctx = cmdctx.WithIctx(ctx, ictx)
 	ctx = cmdctx.WithConfig(ctx, cfg)
@@ -285,6 +286,7 @@ func initializeWorkflowContext(ictx workflow.InvocationContext) context.Context 
 	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
 	ctx = cmdctx.WithProgressBar(ctx, progressBar)
 	ctx = cmdctx.WithInstrumentation(ctx, instrumentation.NewGAFInstrumentation(ictx.GetAnalytics()))
+	ctx = cmdctx.WithWarnings(ctx, warnings)
 
 	return ctx
 }
@@ -532,5 +534,30 @@ func OSWorkflow(
 
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	progressBar.Clear()
+
+	jsonOutput := cfg.GetBool(outputworkflow.OutputConfigKeyJSON)
+	RenderWarnings(ctx, jsonOutput)
+
 	return handleOutput(ctx, allLegacyFindings, allOutputData)
+}
+
+// RenderWarnings outputs any accumulated warnings to the user.
+// In human-readable mode, warnings are styled and sent to the UI.
+// In JSON mode, warnings are written to stderr to avoid polluting JSON stdout.
+func RenderWarnings(ctx context.Context, jsonOutput bool) {
+	warnings := cmdctx.Warnings(ctx)
+	if warnings == nil || len(*warnings) == 0 {
+		return
+	}
+
+	ictx := cmdctx.Ictx(ctx)
+	for _, w := range *warnings {
+		if jsonOutput {
+			fmt.Fprintln(os.Stderr, "WARNING: "+w)
+		} else {
+			styled := presenters.RenderWarning("Reachability analysis failed", w)
+			//nolint:errcheck // Best-effort warning output.
+			ictx.GetUserInterface().Output(styled)
+		}
+	}
 }

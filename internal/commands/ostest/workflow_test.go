@@ -1,6 +1,8 @@
 package ostest_test
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -1263,4 +1265,53 @@ func createTempLegacyPolicy(t *testing.T, policy string) string {
 	require.NoError(t, err)
 
 	return dir
+}
+
+func TestRenderWarnings_HumanReadable(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUI := mocks.NewMockUserInterface(ctrl)
+	mockIctx := mocks.NewMockInvocationContext(ctrl)
+	mockIctx.EXPECT().GetUserInterface().Return(mockUI).AnyTimes()
+
+	var captured string
+	mockUI.EXPECT().Output(gomock.Any()).DoAndReturn(func(s string) error {
+		captured = s
+		return nil
+	}).Times(1)
+
+	warnings := &[]string{"connection timeout. Could not determine reachability for vulnerabilities."}
+	ctx := context.Background()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithWarnings(ctx, warnings)
+
+	ostest.RenderWarnings(ctx, false)
+
+	assert.Contains(t, captured, "WARNING")
+	assert.Contains(t, captured, "connection timeout")
+}
+
+func TestRenderWarnings_JSON_WritesToStderr(t *testing.T) {
+	warnings := &[]string{"upload failed. Could not determine reachability for vulnerabilities."}
+	ctx := context.Background()
+	ctx = cmdctx.WithWarnings(ctx, warnings)
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+
+	origStderr := os.Stderr
+	os.Stderr = w
+
+	ostest.RenderWarnings(ctx, true)
+
+	os.Stderr = origStderr
+	w.Close()
+
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(r)
+	require.NoError(t, err)
+
+	assert.Contains(t, buf.String(), "WARNING:")
+	assert.Contains(t, buf.String(), "upload failed")
 }

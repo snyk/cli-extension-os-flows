@@ -26,618 +26,382 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	common "github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
+	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/mocks"
+	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 var orgUUID = uuid.MustParse("8c2def96-233c-41b2-ab52-590c016e81e0")
 
-// mockConcurrentStartTest sets up a mock TestClient whose Wait calls simulate concurrency
-// and record the peak concurrency observed. Extracted to avoid duplication across tests.
-func mockConcurrentStartTest(ctrl *gomock.Controller, n int, current, peak *atomic.Int32) *gafclientmocks.MockTestClient {
-	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
-	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, _ testapi.StartTestParams) (testapi.TestHandle, error) {
-		handle := gafclientmocks.NewMockTestHandle(ctrl)
-		// Wait: bump concurrency, sleep, then decrement
-		handle.EXPECT().Wait(gomock.Any()).DoAndReturn(func(_ context.Context) error {
-			c := current.Add(1)
-			for {
-				m := peak.Load()
-				if c > m {
-					if peak.CompareAndSwap(m, c) {
-						break
-					}
-					continue
-				}
-				break
-			}
-			time.Sleep(50 * time.Millisecond)
-			current.Add(-1)
-			return nil
-		}).Times(1)
-
-		// Result: minimal finished result with empty findings
-		result := gafclientmocks.NewMockTestResult(ctrl)
-		result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
-		result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
-		result.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
-
-		// Mock calls for serialized test result
-		result.EXPECT().GetTestID().Return(&uuid.UUID{}).AnyTimes()
-		result.EXPECT().GetTestConfiguration().Return(&testapi.TestConfiguration{}).AnyTimes()
-		result.EXPECT().GetCreatedAt().Return(&time.Time{}).AnyTimes()
-		result.EXPECT().GetErrors().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
-		result.EXPECT().GetWarnings().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
-		passFail := testapi.Pass
-		result.EXPECT().GetPassFail().Return(&passFail).AnyTimes()
-		outcomeReason := testapi.TestOutcomeReasonOther
-		result.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
-		result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
-		result.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
-		result.EXPECT().GetTestFacts().Return(nil).AnyTimes()
-		result.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
-		result.EXPECT().GetTestSubject().Return(&testapi.TestSubject{}).AnyTimes()
-		result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
-		result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
-
-		handle.EXPECT().Result().Return(result).Times(1)
-
-		return handle, nil
-	}).Times(n)
-	return mockTestClient
+type flowTestHarness struct {
+	t      *testing.T
+	ctrl   *gomock.Controller
+	cfg    configuration.Configuration
+	engine *gafmocks.MockEngine
+	ictx   *gafmocks.MockInvocationContext
+	instr  *mocks.MockInstrumentation
+	logger zerolog.Logger
 }
 
-// Test_RunUnifiedTestFlow_ConcurrencyLimit verifies that at most 5 depgraph tests run concurrently.
+func newFlowTestHarness(t *testing.T) *flowTestHarness {
+	t.Helper()
+
+	ctrl := gomock.NewController(t)
+	t.Cleanup(ctrl.Finish)
+
+	cfg := configuration.New()
+	cfg.Set(constants.FeatureFlagRiskScore, true)
+	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
+
+	logger := zerolog.Nop()
+	engine := gafmocks.NewMockEngine(ctrl)
+	ictx := gafmocks.NewMockInvocationContext(ctrl)
+	instr := mocks.NewMockInstrumentation(ctrl)
+
+	ictx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
+	ictx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
+	ictx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
+	ictx.EXPECT().GetWorkflowIdentifier().Return(common.DepGraphWorkflowID).AnyTimes()
+	ictx.EXPECT().GetEngine().Return(engine).AnyTimes()
+
+	return &flowTestHarness{
+		t:      t,
+		ctrl:   ctrl,
+		cfg:    cfg,
+		engine: engine,
+		ictx:   ictx,
+		instr:  instr,
+		logger: logger,
+	}
+}
+
+func (h *flowTestHarness) buildContext() context.Context {
+	h.t.Helper()
+	ef := errors.NewErrorFactory(&h.logger)
+	ctx := h.t.Context()
+	ctx = cmdctx.WithIctx(ctx, h.ictx)
+	ctx = cmdctx.WithConfig(ctx, h.cfg)
+	ctx = cmdctx.WithLogger(ctx, &h.logger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+	ctx = cmdctx.WithInstrumentation(ctx, h.instr)
+	return ctx
+}
+
+func (h *flowTestHarness) defaultClients(testClient testapi.TestClient) ostest.FlowClients {
+	return ostest.FlowClients{
+		TestClient:       testClient,
+		FileUploadClient: fileupload.NewFakeClient(),
+	}
+}
+
+func (h *flowTestHarness) registerDepGraphs(n int) {
+	h.t.Helper()
+	datas := newMockDepGraphDatas(h.t, h.ctrl, n)
+	h.engine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return(datas, nil).Times(1)
+}
+
+func newMockDepGraphData(t *testing.T, ctrl *gomock.Controller) workflow.Data {
+	t.Helper()
+	dg := testapi.IoSnykApiV1testdepgraphRequestDepGraph{
+		SchemaVersion: "1.2.0",
+		PkgManager:    testapi.IoSnykApiV1testdepgraphRequestPackageManager{Name: "npm"},
+		Pkgs: []testapi.IoSnykApiV1testdepgraphRequestPackage{
+			{Id: "proj@1.0.0", Info: testapi.IoSnykApiV1testdepgraphRequestPackageInfo{Name: "proj", Version: "1.0.0"}},
+		},
+		Graph: testapi.IoSnykApiV1testdepgraphRequestGraph{RootNodeId: "root"},
+	}
+	b, err := json.Marshal(dg)
+	require.NoError(t, err)
+
+	d := gafmocks.NewMockData(ctrl)
+	d.EXPECT().GetPayload().Return(b).AnyTimes()
+	d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj/package.json", nil).AnyTimes()
+	d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("proj/package.json", nil).AnyTimes()
+	d.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
+	return d
+}
+
+func newMockDepGraphDatas(t *testing.T, ctrl *gomock.Controller, n int) []workflow.Data {
+	t.Helper()
+	datas := make([]workflow.Data, 0, n)
+	for range n {
+		datas = append(datas, newMockDepGraphData(t, ctrl))
+	}
+	return datas
+}
+
+func newPassingTestResult(ctrl *gomock.Controller) *gafclientmocks.MockTestResult {
+	result := gafclientmocks.NewMockTestResult(ctrl)
+	result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
+	result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
+	result.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
+	result.EXPECT().GetTestID().Return(&uuid.UUID{}).AnyTimes()
+	result.EXPECT().GetTestConfiguration().Return(&testapi.TestConfiguration{}).AnyTimes()
+	result.EXPECT().GetCreatedAt().Return(&time.Time{}).AnyTimes()
+	result.EXPECT().GetErrors().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
+	result.EXPECT().GetWarnings().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
+	passFail := testapi.Pass
+	result.EXPECT().GetPassFail().Return(&passFail).AnyTimes()
+	outcomeReason := testapi.TestOutcomeReasonOther
+	result.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
+	result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
+	result.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
+	result.EXPECT().GetTestFacts().Return(nil).AnyTimes()
+	result.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
+	result.EXPECT().GetTestSubject().Return(&testapi.TestSubject{}).AnyTimes()
+	result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
+	result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
+	return result
+}
+
+func newAssertingTestClient(
+	t *testing.T,
+	ctrl *gomock.Controller,
+	assertFn func(t *testing.T, params testapi.StartTestParams),
+) *gafclientmocks.MockTestClient {
+	t.Helper()
+	client := gafclientmocks.NewMockTestClient(ctrl)
+	client.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, params testapi.StartTestParams) (testapi.TestHandle, error) {
+			assertFn(t, params)
+			handle := gafclientmocks.NewMockTestHandle(ctrl)
+			handle.EXPECT().Wait(gomock.Any()).Return(nil).Times(1)
+			result := newPassingTestResult(ctrl)
+			handle.EXPECT().Result().Return(result).Times(1)
+			return handle, nil
+		},
+	).Times(1)
+	return client
+}
+
 func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	t.Parallel()
+	h := newFlowTestHarness(t)
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	h.cfg.Set(flags.FlagAllProjects, true)
+	h.cfg.Set(configuration.MAX_THREADS, 99)
+	h.instr.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
-	// Prepare mocks for InvocationContext and Engine to return many depgraphs
-	mockEngine := gafmocks.NewMockEngine(ctrl)
-	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
-
-	cfg := configuration.New()
-	cfg.Set(constants.FeatureFlagRiskScore, true)
-	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
-	cfg.Set(flags.FlagAllProjects, true)
-	// Ensure the effective limit is the default (5)
-	cfg.Set(configuration.MAX_THREADS, 99)
-
-	logger := zerolog.Nop()
-	mi := mocks.NewMockInstrumentation(ctrl)
-	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
-
-	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
-	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
-	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
-	mockIctx.EXPECT().GetWorkflowIdentifier().Return(common.DepGraphWorkflowID).AnyTimes()
-	// Engine is used by createDepGraphs
-	mockIctx.EXPECT().GetEngine().Return(mockEngine).AnyTimes()
-
-	// Build N depgraphs
 	const n = 12
-	depGraphDatas := make([]workflow.Data, 0, n)
-	for i := 0; i < n; i++ {
-		dg := testapi.IoSnykApiV1testdepgraphRequestDepGraph{
-			SchemaVersion: "1.2.0",
-			PkgManager:    testapi.IoSnykApiV1testdepgraphRequestPackageManager{Name: "npm"},
-			Pkgs: []testapi.IoSnykApiV1testdepgraphRequestPackage{
-				{Id: "proj@1.0.0", Info: testapi.IoSnykApiV1testdepgraphRequestPackageInfo{Name: "proj", Version: "1.0.0"}},
-			},
-			Graph: testapi.IoSnykApiV1testdepgraphRequestGraph{RootNodeId: "root"},
-		}
-		bytes, err := json.Marshal(dg)
-		require.NoError(t, err)
-		d := gafmocks.NewMockData(ctrl)
-		d.EXPECT().GetPayload().Return(bytes).AnyTimes()
-		d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj/package.json", nil).AnyTimes()
-		d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("proj/package.json", nil).AnyTimes()
-		d.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
-		depGraphDatas = append(depGraphDatas, d)
-	}
+	h.registerDepGraphs(n)
 
-	mockEngine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return(depGraphDatas, nil).Times(1)
-
-	// Mock TestClient to track concurrency in their Wait calls.
 	var current, peak atomic.Int32
-	mockTestClient := mockConcurrentStartTest(ctrl, n, &current, &peak)
-	fakeFileUploadClient := fileupload.NewFakeClient()
+	mockTestClient := gafclientmocks.NewMockTestClient(h.ctrl)
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ testapi.StartTestParams) (testapi.TestHandle, error) {
+			handle := gafclientmocks.NewMockTestHandle(h.ctrl)
+			handle.EXPECT().Wait(gomock.Any()).DoAndReturn(func(_ context.Context) error {
+				c := current.Add(1)
+				for {
+					m := peak.Load()
+					if c > m {
+						if peak.CompareAndSwap(m, c) {
+							break
+						}
+						continue
+					}
+					break
+				}
+				time.Sleep(50 * time.Millisecond)
+				current.Add(-1)
+				return nil
+			}).Times(1)
+			result := newPassingTestResult(h.ctrl)
+			handle.EXPECT().Result().Return(result).Times(1)
+			return handle, nil
+		},
+	).Times(n)
 
-	// Run
-	ef := errors.NewErrorFactory(&logger)
-	ctx := t.Context()
-	ctx = cmdctx.WithIctx(ctx, mockIctx)
-	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
-	ctx = cmdctx.WithLogger(ctx, &logger)
-	ctx = cmdctx.WithErrorFactory(ctx, ef)
-	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
-	ctx = cmdctx.WithInstrumentation(ctx, mi)
-
-	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: fakeFileUploadClient}, orgUUID, nil, nil)
+	ctx := h.buildContext()
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", h.defaultClients(mockTestClient), orgUUID, nil, nil)
 	require.NoError(t, err)
 
-	p := peak.Load()
 	const limit int32 = 5
-	require.LessOrEqualf(t, p, limit, "observed concurrency %d exceeds limit %d", p, limit)
+	require.LessOrEqualf(t, peak.Load(), limit, "observed concurrency %d exceeds limit %d", peak.Load(), limit)
 }
 
-// Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads verifies that when MAX_THREADS is set lower than
-// the default, it is respected as the upper bound for concurrent tests.
 func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 	t.Parallel()
+	h := newFlowTestHarness(t)
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockEngine := gafmocks.NewMockEngine(ctrl)
-	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
-
-	cfg := configuration.New()
-	// Ensure a predictable bound lower than the default 5
-	cfg.Set(configuration.MAX_THREADS, 3)
-	cfg.Set(constants.FeatureFlagRiskScore, true)
-	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
-	cfg.Set(flags.FlagAllProjects, true)
-
-	logger := zerolog.Nop()
-	mi := mocks.NewMockInstrumentation(ctrl)
-	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
-
-	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
-	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
-	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
-	mockIctx.EXPECT().GetEngine().Return(mockEngine).AnyTimes()
-	mockIctx.EXPECT().GetWorkflowIdentifier().Return(common.DepGraphWorkflowID).AnyTimes()
+	h.cfg.Set(configuration.MAX_THREADS, 3)
+	h.cfg.Set(flags.FlagAllProjects, true)
+	h.instr.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 
 	const n = 10
-	depGraphDatas := make([]workflow.Data, 0, n)
-	for i := 0; i < n; i++ {
-		dg := testapi.IoSnykApiV1testdepgraphRequestDepGraph{
-			SchemaVersion: "1.2.0",
-			PkgManager:    testapi.IoSnykApiV1testdepgraphRequestPackageManager{Name: "npm"},
-			Pkgs: []testapi.IoSnykApiV1testdepgraphRequestPackage{
-				{Id: "proj@1.0.0", Info: testapi.IoSnykApiV1testdepgraphRequestPackageInfo{Name: "proj", Version: "1.0.0"}},
-			},
-			Graph: testapi.IoSnykApiV1testdepgraphRequestGraph{RootNodeId: "root"},
-		}
-		bytes, err := json.Marshal(dg)
-		require.NoError(t, err)
-		d := gafmocks.NewMockData(ctrl)
-		d.EXPECT().GetPayload().Return(bytes).AnyTimes()
-		d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj/package.json", nil).AnyTimes()
-		d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("proj/package.json", nil).AnyTimes()
-		d.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
-		depGraphDatas = append(depGraphDatas, d)
-	}
-	mockEngine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return(depGraphDatas, nil).Times(1)
+	h.registerDepGraphs(n)
 
 	var current, peak atomic.Int32
-	mockTestClient := mockConcurrentStartTest(ctrl, n, &current, &peak)
-	fakeFileUploadClient := fileupload.NewFakeClient()
+	mockTestClient := gafclientmocks.NewMockTestClient(h.ctrl)
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ testapi.StartTestParams) (testapi.TestHandle, error) {
+			handle := gafclientmocks.NewMockTestHandle(h.ctrl)
+			handle.EXPECT().Wait(gomock.Any()).DoAndReturn(func(_ context.Context) error {
+				c := current.Add(1)
+				for {
+					m := peak.Load()
+					if c > m {
+						if peak.CompareAndSwap(m, c) {
+							break
+						}
+						continue
+					}
+					break
+				}
+				time.Sleep(50 * time.Millisecond)
+				current.Add(-1)
+				return nil
+			}).Times(1)
+			result := newPassingTestResult(h.ctrl)
+			handle.EXPECT().Result().Return(result).Times(1)
+			return handle, nil
+		},
+	).Times(n)
 
-	// Run
-	ef := errors.NewErrorFactory(&logger)
-	ctx := t.Context()
-	ctx = cmdctx.WithIctx(ctx, mockIctx)
-	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
-	ctx = cmdctx.WithLogger(ctx, &logger)
-	ctx = cmdctx.WithErrorFactory(ctx, ef)
-	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
-	ctx = cmdctx.WithInstrumentation(ctx, mi)
-
-	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: fakeFileUploadClient}, orgUUID, nil, nil)
+	ctx := h.buildContext()
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", h.defaultClients(mockTestClient), orgUUID, nil, nil)
 	require.NoError(t, err)
 
-	p := peak.Load()
 	const limit int32 = 3
-	require.LessOrEqualf(t, p, limit, "observed concurrency %d exceeds limit %d", p, limit)
+	require.LessOrEqualf(t, peak.Load(), limit, "observed concurrency %d exceeds limit %d", peak.Load(), limit)
 }
 
-// Test_RunUnifiedTestFlow_WithIgnorePolicyFlag verifies that the ignore-policy flag
-// is correctly added to depgraphs before being sent to the test API.
-func Test_RunUnifiedTestFlow_WithIgnorePolicyFlag(t *testing.T) {
+func Test_RunUnifiedTestFlow_DepGraphEnrichment(t *testing.T) {
 	t.Parallel()
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockEngine := gafmocks.NewMockEngine(ctrl)
-	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
-
-	cfg := configuration.New()
-	cfg.Set(constants.FeatureFlagRiskScore, true)
-	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
-	cfg.Set(flags.FlagIgnorePolicy, true)
-
-	logger := zerolog.Nop()
-	mi := mocks.NewMockInstrumentation(ctrl)
-	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
-
-	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
-	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
-	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
-	mockIctx.EXPECT().GetWorkflowIdentifier().Return(common.DepGraphWorkflowID).AnyTimes()
-	mockIctx.EXPECT().GetEngine().Return(mockEngine).AnyTimes()
-
-	// Create a single depgraph
-	dg := testapi.IoSnykApiV1testdepgraphRequestDepGraph{
-		SchemaVersion: "1.2.0",
-		PkgManager:    testapi.IoSnykApiV1testdepgraphRequestPackageManager{Name: "npm"},
-		Pkgs: []testapi.IoSnykApiV1testdepgraphRequestPackage{
-			{Id: "proj@1.0.0", Info: testapi.IoSnykApiV1testdepgraphRequestPackageInfo{Name: "proj", Version: "1.0.0"}},
+	tests := []struct {
+		name     string
+		flagKey  string
+		flagVal  any
+		dgField  string
+		expected any
+	}{
+		{
+			name:     "ignorePolicy flag is set on depgraph",
+			flagKey:  flags.FlagIgnorePolicy,
+			flagVal:  true,
+			dgField:  "ignorePolicy",
+			expected: true,
 		},
-		Graph: testapi.IoSnykApiV1testdepgraphRequestGraph{RootNodeId: "root"},
+		{
+			name:     "projectNameOverride flag is set on depgraph",
+			flagKey:  flags.FlagProjectName,
+			flagVal:  "my-custom-project-name",
+			dgField:  "projectNameOverride",
+			expected: "my-custom-project-name",
+		},
+		{
+			name:     "targetReference flag is set on depgraph",
+			flagKey:  flags.FlagTargetReference,
+			flagVal:  "feature-branch-123",
+			dgField:  "targetReference",
+			expected: "feature-branch-123",
+		},
 	}
-	bytes, err := json.Marshal(dg)
-	require.NoError(t, err)
-	d := gafmocks.NewMockData(ctrl)
-	d.EXPECT().GetPayload().Return(bytes).AnyTimes()
-	d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj/package.json", nil).AnyTimes()
-	d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("proj/package.json", nil).AnyTimes()
-	d.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
 
-	mockEngine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return([]workflow.Data{d}, nil).Times(1)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			h := newFlowTestHarness(t)
 
-	// Mock TestClient to capture the StartTest call and verify the depgraph contains ignorePolicy
-	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
-	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, params testapi.StartTestParams) (testapi.TestHandle, error) {
-		// Verify the depgraph has the ignorePolicy field set
-		subject := params.Subject
-		depGraphSubject, dgErr := subject.AsDepGraphSubjectCreate()
-		require.NoError(t, dgErr)
+			h.cfg.Set(tt.flagKey, tt.flagVal)
+			h.instr.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
+			h.registerDepGraphs(1)
 
-		value, exists := depGraphSubject.DepGraph.Get("ignorePolicy")
-		require.True(t, exists, "depgraph should have ignorePolicy field set")
-		require.Equal(t, true, value, "ignorePolicy should be true")
+			mockTestClient := newAssertingTestClient(t, h.ctrl, func(t *testing.T, params testapi.StartTestParams) {
+				t.Helper()
+				depGraphSubject, err := params.Subject.AsDepGraphSubjectCreate()
+				require.NoError(t, err)
 
-		// Return a successful test result
-		handle := gafclientmocks.NewMockTestHandle(ctrl)
-		handle.EXPECT().Wait(gomock.Any()).Return(nil).Times(1)
+				value, exists := depGraphSubject.DepGraph.Get(tt.dgField)
+				require.True(t, exists, "depgraph should have %s field set", tt.dgField)
+				require.Equal(t, tt.expected, value)
+			})
 
-		result := gafclientmocks.NewMockTestResult(ctrl)
-		result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
-		result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
-		result.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
-		handle.EXPECT().Result().Return(result).Times(1)
-
-		// Mock calls for serialized test result
-		result.EXPECT().GetTestID().Return(&uuid.UUID{}).AnyTimes()
-		result.EXPECT().GetTestConfiguration().Return(&testapi.TestConfiguration{}).AnyTimes()
-		result.EXPECT().GetCreatedAt().Return(&time.Time{}).AnyTimes()
-		result.EXPECT().GetErrors().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
-		result.EXPECT().GetWarnings().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
-		passFail := testapi.Pass
-		result.EXPECT().GetPassFail().Return(&passFail).AnyTimes()
-		outcomeReason := testapi.TestOutcomeReasonOther
-		result.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
-		result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
-		result.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
-		result.EXPECT().GetTestFacts().Return(nil).AnyTimes()
-		result.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
-		result.EXPECT().GetTestSubject().Return(&testapi.TestSubject{}).AnyTimes()
-		result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
-		result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
-
-		return handle, nil
-	}).Times(1)
-	fakeFileUploadClient := fileupload.NewFakeClient()
-
-	// Run
-	ef := errors.NewErrorFactory(&logger)
-	ctx := t.Context()
-	ctx = cmdctx.WithIctx(ctx, mockIctx)
-	ctx = cmdctx.WithConfig(ctx, cfg)
-	ctx = cmdctx.WithLogger(ctx, &logger)
-	ctx = cmdctx.WithErrorFactory(ctx, ef)
-	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
-	ctx = cmdctx.WithInstrumentation(ctx, mi)
-
-	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: fakeFileUploadClient}, orgUUID, nil, nil)
-	require.NoError(t, err)
+			ctx := h.buildContext()
+			_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", h.defaultClients(mockTestClient), orgUUID, nil, nil)
+			require.NoError(t, err)
+		})
+	}
 }
 
-// Test_RunUnifiedTestFlow_WithProjectNameOverride verifies that the project-name flag
-// is correctly added to depgraphs as projectNameOverride before being sent to the test API.
-func Test_RunUnifiedTestFlow_WithProjectNameOverride(t *testing.T) {
-	t.Parallel()
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockEngine := gafmocks.NewMockEngine(ctrl)
-	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
-
-	cfg := configuration.New()
-	cfg.Set(constants.FeatureFlagRiskScore, true)
-	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
-	cfg.Set(flags.FlagProjectName, "my-custom-project-name")
-
-	logger := zerolog.Nop()
-	mi := mocks.NewMockInstrumentation(ctrl)
-	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
-
-	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
-	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
-	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
-	mockIctx.EXPECT().GetWorkflowIdentifier().Return(common.DepGraphWorkflowID).AnyTimes()
-	mockIctx.EXPECT().GetEngine().Return(mockEngine).AnyTimes()
-
-	// Create a single depgraph
-	dg := testapi.IoSnykApiV1testdepgraphRequestDepGraph{
-		SchemaVersion: "1.2.0",
-		PkgManager:    testapi.IoSnykApiV1testdepgraphRequestPackageManager{Name: "npm"},
-		Pkgs: []testapi.IoSnykApiV1testdepgraphRequestPackage{
-			{Id: "proj@1.0.0", Info: testapi.IoSnykApiV1testdepgraphRequestPackageInfo{Name: "proj", Version: "1.0.0"}},
-		},
-		Graph: testapi.IoSnykApiV1testdepgraphRequestGraph{RootNodeId: "root"},
-	}
-	bytes, err := json.Marshal(dg)
-	require.NoError(t, err)
-	d := gafmocks.NewMockData(ctrl)
-	d.EXPECT().GetPayload().Return(bytes).AnyTimes()
-	d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj/package.json", nil).AnyTimes()
-	d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("proj/package.json", nil).AnyTimes()
-	d.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
-
-	mockEngine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return([]workflow.Data{d}, nil).Times(1)
-
-	// Mock TestClient to capture the StartTest call and verify the depgraph contains projectNameOverride
-	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
-	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, params testapi.StartTestParams) (testapi.TestHandle, error) {
-		// Verify the depgraph has the projectNameOverride field set
-		subject := params.Subject
-		depGraphSubject, dgErr := subject.AsDepGraphSubjectCreate()
-		require.NoError(t, dgErr)
-
-		value, exists := depGraphSubject.DepGraph.Get("projectNameOverride")
-		require.True(t, exists, "depgraph should have projectNameOverride field set")
-		require.Equal(t, "my-custom-project-name", value, "projectNameOverride should match the flag value")
-
-		// Return a successful test result
-		handle := gafclientmocks.NewMockTestHandle(ctrl)
-		handle.EXPECT().Wait(gomock.Any()).Return(nil).Times(1)
-
-		result := gafclientmocks.NewMockTestResult(ctrl)
-		result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
-		result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
-		result.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
-
-		// Mock calls for serialized test result
-		result.EXPECT().GetTestID().Return(&uuid.UUID{}).AnyTimes()
-		result.EXPECT().GetTestConfiguration().Return(&testapi.TestConfiguration{}).AnyTimes()
-		result.EXPECT().GetCreatedAt().Return(&time.Time{}).AnyTimes()
-		result.EXPECT().GetErrors().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
-		result.EXPECT().GetWarnings().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
-		passFail := testapi.Pass
-		result.EXPECT().GetPassFail().Return(&passFail).AnyTimes()
-		outcomeReason := testapi.TestOutcomeReasonOther
-		result.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
-		result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
-		result.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
-		result.EXPECT().GetTestFacts().Return(nil).AnyTimes()
-		result.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
-		result.EXPECT().GetTestSubject().Return(&testapi.TestSubject{}).AnyTimes()
-		result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
-		result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
-
-		handle.EXPECT().Result().Return(result).Times(1)
-
-		return handle, nil
-	}).Times(1)
-	fakeFileUploadClient := fileupload.NewFakeClient()
-
-	// Run
-	ef := errors.NewErrorFactory(&logger)
-	ctx := t.Context()
-	ctx = cmdctx.WithIctx(ctx, mockIctx)
-	ctx = cmdctx.WithConfig(ctx, cfg)
-	ctx = cmdctx.WithLogger(ctx, &logger)
-	ctx = cmdctx.WithErrorFactory(ctx, ef)
-	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
-	ctx = cmdctx.WithInstrumentation(ctx, mi)
-
-	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: fakeFileUploadClient}, orgUUID, nil, nil)
-	require.NoError(t, err)
-}
-
-// Test_RunUnifiedTestFlow_WithTargetReference verifies that the target-reference flag
-// is correctly added to depgraphs as targetReference before being sent to the test API.
-func Test_RunUnifiedTestFlow_WithTargetReference(t *testing.T) {
-	t.Parallel()
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockEngine := gafmocks.NewMockEngine(ctrl)
-	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
-
-	cfg := configuration.New()
-	cfg.Set(constants.FeatureFlagRiskScore, true)
-	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
-	cfg.Set(flags.FlagTargetReference, "feature-branch-123")
-
-	logger := zerolog.Nop()
-	mi := mocks.NewMockInstrumentation(ctrl)
-	mi.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
-
-	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
-	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
-	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
-	mockIctx.EXPECT().GetWorkflowIdentifier().Return(common.DepGraphWorkflowID).AnyTimes()
-	mockIctx.EXPECT().GetEngine().Return(mockEngine).AnyTimes()
-
-	// Create a single depgraph
-	dg := testapi.IoSnykApiV1testdepgraphRequestDepGraph{
-		SchemaVersion: "1.2.0",
-		PkgManager:    testapi.IoSnykApiV1testdepgraphRequestPackageManager{Name: "npm"},
-		Pkgs: []testapi.IoSnykApiV1testdepgraphRequestPackage{
-			{Id: "proj@1.0.0", Info: testapi.IoSnykApiV1testdepgraphRequestPackageInfo{Name: "proj", Version: "1.0.0"}},
-		},
-		Graph: testapi.IoSnykApiV1testdepgraphRequestGraph{RootNodeId: "root"},
-	}
-	bytes, err := json.Marshal(dg)
-	require.NoError(t, err)
-	d := gafmocks.NewMockData(ctrl)
-	d.EXPECT().GetPayload().Return(bytes).AnyTimes()
-	d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj/package.json", nil).AnyTimes()
-	d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("proj/package.json", nil).AnyTimes()
-	d.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
-
-	mockEngine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return([]workflow.Data{d}, nil).Times(1)
-
-	// Mock TestClient to capture the StartTest call and verify the depgraph contains targetReference
-	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
-	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, params testapi.StartTestParams) (testapi.TestHandle, error) {
-		// Verify the depgraph has the targetReference field set
-		subject := params.Subject
-		depGraphSubject, dgErr := subject.AsDepGraphSubjectCreate()
-		require.NoError(t, dgErr)
-
-		value, exists := depGraphSubject.DepGraph.Get("targetReference")
-		require.True(t, exists, "depgraph should have targetReference field set")
-		require.Equal(t, "feature-branch-123", value, "targetReference should match the flag value")
-
-		// Return a successful test result
-		handle := gafclientmocks.NewMockTestHandle(ctrl)
-		handle.EXPECT().Wait(gomock.Any()).Return(nil).Times(1)
-
-		result := gafclientmocks.NewMockTestResult(ctrl)
-		result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
-		result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
-		result.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
-
-		// Mock calls for serialized test result
-		result.EXPECT().GetTestID().Return(&uuid.UUID{}).AnyTimes()
-		result.EXPECT().GetTestConfiguration().Return(&testapi.TestConfiguration{}).AnyTimes()
-		result.EXPECT().GetCreatedAt().Return(&time.Time{}).AnyTimes()
-		result.EXPECT().GetErrors().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
-		result.EXPECT().GetWarnings().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
-		passFail := testapi.Pass
-		result.EXPECT().GetPassFail().Return(&passFail).AnyTimes()
-		outcomeReason := testapi.TestOutcomeReasonOther
-		result.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
-		result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
-		result.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
-		result.EXPECT().GetTestFacts().Return(nil).AnyTimes()
-		result.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
-		result.EXPECT().GetTestSubject().Return(&testapi.TestSubject{}).AnyTimes()
-		result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
-		result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
-
-		handle.EXPECT().Result().Return(result).Times(1)
-
-		return handle, nil
-	}).Times(1)
-	fakeFileUploadClient := fileupload.NewFakeClient()
-
-	// Run
-	ef := errors.NewErrorFactory(&logger)
-	ctx := t.Context()
-	ctx = cmdctx.WithIctx(ctx, mockIctx)
-	ctx = cmdctx.WithConfig(ctx, cfg)
-	ctx = cmdctx.WithLogger(ctx, &logger)
-	ctx = cmdctx.WithErrorFactory(ctx, ef)
-	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
-	ctx = cmdctx.WithInstrumentation(ctx, mi)
-
-	_, _, err = ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: fakeFileUploadClient}, orgUUID, nil, nil)
-	require.NoError(t, err)
-}
-
-// Test_RunUnifiedTestFlow_CancelsOnError verifies that an error from one depgraph
-// cancels siblings via the errgroup context and raises the error.
 func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
 	t.Parallel()
+	h := newFlowTestHarness(t)
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockEngine := gafmocks.NewMockEngine(ctrl)
-	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
-
-	cfg := configuration.New()
-	cfg.Set(constants.FeatureFlagRiskScore, true)
-	cfg.Set(constants.FeatureFlagRiskScoreInCLI, true)
-	cfg.Set(flags.FlagAllProjects, true)
-
-	logger := zerolog.Nop()
-	mi := mocks.NewMockInstrumentation(ctrl)
-
-	mockIctx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
-	mockIctx.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
-	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
-	mockIctx.EXPECT().GetEngine().Return(mockEngine).AnyTimes()
+	h.cfg.Set(flags.FlagAllProjects, true)
 
 	const n = 6
-	depGraphDatas := make([]workflow.Data, 0, n)
-	for i := 0; i < n; i++ {
-		dg := testapi.IoSnykApiV1testdepgraphRequestDepGraph{
-			SchemaVersion: "1.2.0",
-			PkgManager:    testapi.IoSnykApiV1testdepgraphRequestPackageManager{Name: "npm"},
-			Pkgs: []testapi.IoSnykApiV1testdepgraphRequestPackage{
-				{Id: "proj@1.0.0", Info: testapi.IoSnykApiV1testdepgraphRequestPackageInfo{Name: "proj", Version: "1.0.0"}},
-			},
-			Graph: testapi.IoSnykApiV1testdepgraphRequestGraph{RootNodeId: "root"},
-		}
-		bytes, err := json.Marshal(dg)
-		require.NoError(t, err)
-		d := gafmocks.NewMockData(ctrl)
-		d.EXPECT().GetPayload().Return(bytes).AnyTimes()
-		d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj/package.json", nil).AnyTimes()
-		d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("proj/package.json", nil).AnyTimes()
-		d.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
-		depGraphDatas = append(depGraphDatas, d)
-	}
-	mockEngine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return(depGraphDatas, nil).Times(1)
+	h.registerDepGraphs(n)
 
-	// Mock TestClient where first Wait errors, others are canceled.
 	var canceledCount atomic.Int32
 	var callIndex atomic.Int32
-	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
-	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, _ testapi.StartTestParams) (testapi.TestHandle, error) {
-		idx := callIndex.Add(1)
-		handle := gafclientmocks.NewMockTestHandle(ctrl)
-		handle.EXPECT().Wait(gomock.Any()).DoAndReturn(func(wctx context.Context) error {
-			if idx == 1 {
-				// Trigger group error immediately
-				return fmt.Errorf("forced error")
-			}
-			select {
-			case <-wctx.Done():
-				canceledCount.Add(1)
-				return wctx.Err()
-			case <-time.After(2 * time.Second):
-				// Fallback to avoid hanging tests
-				return nil
-			}
-		}).Times(1)
-		return handle, nil
-	}).Times(n)
-	fakeFileUploadClient := fileupload.NewFakeClient()
+	mockTestClient := gafclientmocks.NewMockTestClient(h.ctrl)
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ testapi.StartTestParams) (testapi.TestHandle, error) {
+			idx := callIndex.Add(1)
+			handle := gafclientmocks.NewMockTestHandle(h.ctrl)
+			handle.EXPECT().Wait(gomock.Any()).DoAndReturn(func(wctx context.Context) error {
+				if idx == 1 {
+					return fmt.Errorf("forced error")
+				}
+				select {
+				case <-wctx.Done():
+					canceledCount.Add(1)
+					return wctx.Err()
+				case <-time.After(2 * time.Second):
+					return nil
+				}
+			}).Times(1)
+			return handle, nil
+		},
+	).Times(n)
 
-	// Run with a timeout to avoid hanging in case of failure.
-	runCtx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	runCtx, cancel := context.WithTimeout(h.buildContext(), 3*time.Second)
 	defer cancel()
-	ef := errors.NewErrorFactory(&logger)
-	ctx := runCtx
-	ctx = cmdctx.WithIctx(ctx, mockIctx)
-	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
-	ctx = cmdctx.WithLogger(ctx, &logger)
-	ctx = cmdctx.WithErrorFactory(ctx, ef)
-	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
-	ctx = cmdctx.WithInstrumentation(ctx, mi)
 
-	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: fakeFileUploadClient}, orgUUID, nil, nil)
+	_, _, err := ostest.RunUnifiedTestFlow(runCtx, ".", h.defaultClients(mockTestClient), orgUUID, nil, nil)
 	require.Error(t, err)
+	require.Positive(t, canceledCount.Load(), "expected at least one canceled sibling")
+}
 
-	// At least one sibling should have observed cancellation.
-	if canceledCount.Load() == 0 {
-		count := canceledCount.Load()
-		t.Fatalf("expected at least one canceled sibling, got %d", count)
-	}
+func Test_RunUnifiedTestFlow_ReachabilityFailureFallback(t *testing.T) {
+	t.Parallel()
+	h := newFlowTestHarness(t)
+
+	h.instr.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
+	h.instr.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
+	h.registerDepGraphs(1)
+
+	mockTestClient := newAssertingTestClient(t, h.ctrl, func(t *testing.T, params testapi.StartTestParams) {
+		t.Helper()
+		depGraphSubject, err := params.Subject.AsDepGraphSubjectCreate()
+		require.NoError(t, err)
+
+		_, hasScanID := depGraphSubject.DepGraph.Get("reachabilityScanId")
+		assert.False(t, hasScanID, "depgraph should NOT have reachabilityScanId when reachability failed")
+	})
+
+	fakeReachabilityClient := reachability.NewFakeClient(uuid.Nil)
+	fakeReachabilityClient.WithStartErr(fmt.Errorf("simulated upload failure"))
+
+	warnings := &[]string{}
+	ctx := h.buildContext()
+	ctx = cmdctx.WithWarnings(ctx, warnings)
+
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{
+		TestClient:         mockTestClient,
+		FileUploadClient:   fileupload.NewFakeClient(),
+		ReachabilityClient: fakeReachabilityClient,
+		DeeproxyClient:     deeproxy.NewFakeClient(deeproxy.AllowList{Extensions: []string{".js"}}, nil),
+	}, orgUUID, nil, &ostest.ReachabilityOpts{SourceDir: "."})
+
+	require.NoError(t, err, "scan should succeed even when reachability fails")
+	require.Len(t, *warnings, 1, "exactly one warning should be recorded")
+	assert.Contains(t, (*warnings)[0], "simulated upload failure")
 }
 
 func TestMappingTargetParamsToDepGraph(t *testing.T) {

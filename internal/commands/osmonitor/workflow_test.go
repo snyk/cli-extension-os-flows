@@ -7,14 +7,17 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/analytics"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/networking"
+	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/osmonitor"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 func Test_AppendScanIDToArgs(t *testing.T) {
@@ -97,10 +100,35 @@ func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engin
 		icontext.EXPECT().GetEngine().Return(nil).AnyTimes()
 	}
 
+	icontext.EXPECT().GetUserInterface().Return(ui.DefaultUi()).AnyTimes()
+	icontext.EXPECT().GetAnalytics().Return(analytics.New()).AnyTimes()
+
 	// Mock network access
 	mockNetwork := mocks.NewMockNetworkAccess(ctrl)
 	mockNetwork.EXPECT().GetHttpClient().Return(&http.Client{}).AnyTimes()
 	icontext.EXPECT().GetNetworkAccess().Return(mockNetwork).AnyTimes()
 
 	return icontext
+}
+
+func TestOSWorkflow_ReachabilityFailureFallback(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	legacyWorkflowID := workflow.NewWorkflowIdentifier("legacycli")
+	mockEngine := mocks.NewMockEngine(ctrl)
+	mockIctx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+	cfg := mockIctx.GetConfiguration()
+
+	cfg.Set(flags.FlagReachability, true)
+
+	mockEngine.EXPECT().
+		InvokeWithConfig(legacyWorkflowID, gomock.Any()).
+		Return([]workflow.Data{}, nil).
+		Times(1)
+
+	result, err := osmonitor.OSWorkflow(mockIctx, []workflow.Data{})
+
+	assert.NoError(t, err, "monitor should succeed even when reachability fails")
+	assert.NotNil(t, result)
 }

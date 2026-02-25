@@ -109,10 +109,11 @@ func RunUnifiedTestFlow(
 			clients.DeeproxyClient,
 		)
 		if scanErr != nil {
-			return nil, nil, fmt.Errorf("failed to analyze source code: %w", scanErr)
+			logger.Warn().Err(scanErr).Msg("Reachability analysis failed, proceeding without reachability")
+			cmdctx.AddWarning(ctx, reachability.WarningDetail(scanErr))
+		} else {
+			enrichWithScanID(depGraphs, &scanID)
 		}
-
-		enrichWithScanID(depGraphs, &scanID)
 	}
 	enrichWithIgnorePolicy(depGraphs, cfg.GetBool(flags.FlagIgnorePolicy))
 	enrichWithProjectNameOverride(depGraphs, cfg.GetString(flags.FlagProjectName))

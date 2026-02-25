@@ -83,6 +83,36 @@ func Test_RenderError(t *testing.T) {
 	})
 }
 
+func Test_RenderWarning(t *testing.T) {
+	t.Run("contains WARNING label, title and detail", func(t *testing.T) {
+		lipgloss.SetColorProfile(termenv.TrueColor)
+		lipgloss.SetHasDarkBackground(false)
+
+		output := presenters.RenderWarning(
+			"Reachability analysis failed",
+			"connection timeout. Could not determine reachability for vulnerabilities.",
+		)
+
+		assert.Contains(t, output, "WARNING")
+		assert.Contains(t, output, "Reachability analysis failed")
+		assert.Contains(t, output, "connection timeout")
+		snaps.MatchSnapshot(t, output)
+	})
+
+	t.Run("renders in dark mode", func(t *testing.T) {
+		lipgloss.SetColorProfile(termenv.TrueColor)
+		lipgloss.SetHasDarkBackground(true)
+
+		output := presenters.RenderWarning(
+			"Reachability analysis failed",
+			"upload error. Could not determine reachability for vulnerabilities.",
+		)
+
+		assert.Contains(t, output, "WARNING")
+		snaps.MatchSnapshot(t, output)
+	})
+}
+
 func Test_RenderEarlyAccessBanner(t *testing.T) {
 	testDocsURL := "https://docs.snyk.io/test"
 
