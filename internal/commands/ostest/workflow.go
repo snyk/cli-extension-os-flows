@@ -20,6 +20,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/output_workflow"
 	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
@@ -535,8 +536,9 @@ func OSWorkflow(
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	progressBar.Clear()
 
-	jsonOutput := cfg.GetBool(outputworkflow.OutputConfigKeyJSON)
-	RenderWarnings(ctx, jsonOutput)
+	jsonOutput := cfg.GetBool(output_workflow.OUTPUT_CONFIG_KEY_JSON)
+	sarifOutput := cfg.GetBool(output_workflow.OUTPUT_CONFIG_KEY_SARIF)
+	RenderWarnings(ctx, !jsonOutput && !sarifOutput)
 
 	return handleOutput(ctx, allLegacyFindings, allOutputData)
 }
@@ -544,7 +546,7 @@ func OSWorkflow(
 // RenderWarnings outputs any accumulated warnings to the user.
 // In human-readable mode, warnings are styled and sent to the UI.
 // In JSON mode, warnings are written to stderr to avoid polluting JSON stdout.
-func RenderWarnings(ctx context.Context, jsonOutput bool) {
+func RenderWarnings(ctx context.Context, humanReadable bool) {
 	warnings := cmdctx.Warnings(ctx)
 	if warnings == nil || len(*warnings) == 0 {
 		return
@@ -552,12 +554,12 @@ func RenderWarnings(ctx context.Context, jsonOutput bool) {
 
 	ictx := cmdctx.Ictx(ctx)
 	for _, w := range *warnings {
-		if jsonOutput {
-			fmt.Fprintln(os.Stderr, "WARNING: "+w)
-		} else {
+		if humanReadable {
 			styled := presenters.RenderWarning("Reachability analysis failed", w)
 			//nolint:errcheck // Best-effort warning output.
 			ictx.GetUserInterface().Output(styled)
+		} else {
+			fmt.Fprintln(os.Stderr, "WARNING: "+w)
 		}
 	}
 }
