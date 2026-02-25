@@ -134,3 +134,18 @@ ID:      urn:snyk:interaction:some-UUID
 [38;2;85;85;85m╰──────────────────────────────────────────────────────────╯[0m
 
 ---
+
+[Test_RenderWarning/contains_WARNING_label,_title_and_detail - 1]
+
+[43m [0m[30;43mWARNING[0m[43m [0m  [1mReachability analysis failed[0m
+         connection timeout. Could not determine reachability for               
+         vulnerabilities.                                                       
+
+---
+
+[Test_RenderWarning/renders_in_dark_mode - 1]
+
+[43m [0m[30;43mWARNING[0m[43m [0m  [1mReachability analysis failed[0m
+         upload error. Could not determine reachability for vulnerabilities.    
+
+---

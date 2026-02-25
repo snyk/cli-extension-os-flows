@@ -5,6 +5,14 @@ import (
 	"fmt"
 )
 
+// WarningTitle is the title used when rendering reachability failure warnings.
+const WarningTitle = "Reachability analysis failed"
+
+// WarningDetail formats a reachability failure error into a user-facing warning message.
+func WarningDetail(err error) string {
+	return fmt.Sprintf("%s. Could not determine reachability for vulnerabilities.", err.Error())
+}
+
 // Sentinel errors for common conditions.
 var (
 	ErrEmptyOrgID          = errors.New("organization ID cannot be empty")

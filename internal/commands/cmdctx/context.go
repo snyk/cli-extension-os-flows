@@ -23,6 +23,7 @@ const (
 	ErrorFactoryKey    CtxKey = "errFactory"
 	ProgressBarKey     CtxKey = "progressBar"
 	InstrumentationKey CtxKey = "instrumentation"
+	WarningsKey        CtxKey = "warnings"
 )
 
 // WithIctx adds an invocation context to the current context.
@@ -53,6 +54,28 @@ func WithProgressBar(ctx context.Context, progressBar ui.ProgressBar) context.Co
 // WithInstrumentation adds instrumentation to the current context.
 func WithInstrumentation(ctx context.Context, instrumentation instrumentation.Instrumentation) context.Context {
 	return context.WithValue(ctx, InstrumentationKey, instrumentation)
+}
+
+// WithWarnings adds a warnings collector to the current context.
+func WithWarnings(ctx context.Context, warnings *[]string) context.Context {
+	return context.WithValue(ctx, WarningsKey, warnings)
+}
+
+// Warnings retrieves the warnings collector from the command context.
+// It will return nil if the value wasn't set on the context.
+func Warnings(ctx context.Context) *[]string {
+	if w, ok := ctx.Value(WarningsKey).(*[]string); ok {
+		return w
+	}
+	return nil
+}
+
+// AddWarning appends a warning message to the collector in the context.
+// It is a no-op if no collector has been set.
+func AddWarning(ctx context.Context, msg string) {
+	if w := Warnings(ctx); w != nil {
+		*w = append(*w, msg)
+	}
 }
 
 // Ictx will retrieve the invocation context from the command context.

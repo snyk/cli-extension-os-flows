@@ -18,6 +18,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/instrumentation"
+	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
@@ -168,17 +169,16 @@ func OSWorkflow(
 	defer progressBar.Clear()
 
 	args := os.Args[1:]
-	var legacyArgs []string
+	legacyArgs := args
 	if cfg.GetBool(flags.FlagReachability) {
 		scanID, err := runReachabilityScan(ctx)
 		if err != nil {
-			return nil, err
+			logger.Warn().Err(err).Msg("Reachability analysis failed, proceeding without reachability")
+			fmt.Fprintln(os.Stderr, presenters.RenderWarning(reachability.WarningTitle, reachability.WarningDetail(err)))
+		} else {
+			cfg.Set(flags.FlagReachabilityID, scanID)
+			legacyArgs = AppendScanIDToArgs(args, scanID)
 		}
-
-		cfg.Set(flags.FlagReachabilityID, scanID)
-		legacyArgs = AppendScanIDToArgs(args, scanID)
-	} else {
-		legacyArgs = args
 	}
 
 	engine := ictx.GetEngine()
