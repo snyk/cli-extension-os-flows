@@ -110,7 +110,8 @@ func RunUnifiedTestFlow(
 		)
 		if scanErr != nil {
 			logger.Warn().Err(scanErr).Msg("Reachability analysis failed, proceeding without reachability")
-			cmdctx.AddWarning(ctx, reachability.WarningDetail(scanErr))
+			//nolint:errcheck // Best-effort warning output.
+			ictx.GetUserInterface().OutputError(reachability.NewWarning(scanErr))
 		} else {
 			enrichWithScanID(depGraphs, &scanID)
 		}
