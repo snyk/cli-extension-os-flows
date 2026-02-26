@@ -3,14 +3,33 @@ package reachability
 import (
 	"errors"
 	"fmt"
+
+	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 )
 
-// WarningTitle is the title used when rendering reachability failure warnings.
-const WarningTitle = "Reachability analysis failed"
+// NewWarning creates a warn-level snyk_errors.Error for a reachability failure.
+func NewWarning(cause error, options ...snyk_errors.Option) snyk_errors.Error {
+	var snykErr snyk_errors.Error
+	if errors.As(cause, &snykErr) {
+		snykErr.Level = "warn"
+		for _, option := range options {
+			option(&snykErr)
+		}
+		return snykErr
+	}
 
-// WarningDetail formats a reachability failure error into a user-facing warning message.
-func WarningDetail(err error) string {
-	return fmt.Sprintf("%s. Could not determine reachability for vulnerabilities.", err.Error())
+	err := snyk_errors.Error{
+		Title:  "Reachability analysis failed",
+		Detail: fmt.Sprintf("%s. Falling back to testing without reachability information.", cause.Error()),
+		Level:  "warn",
+	}
+
+	options = append(options, snyk_errors.WithCause(cause))
+	for _, option := range options {
+		option(&err)
+	}
+
+	return err
 }
 
 // Sentinel errors for common conditions.

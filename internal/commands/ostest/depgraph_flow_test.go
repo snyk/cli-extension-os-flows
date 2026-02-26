@@ -388,9 +388,15 @@ func Test_RunUnifiedTestFlow_ReachabilityFailureFallback(t *testing.T) {
 	fakeReachabilityClient := reachability.NewFakeClient(uuid.Nil)
 	fakeReachabilityClient.WithStartErr(fmt.Errorf("simulated upload failure"))
 
-	warnings := &[]string{}
+	mockUI := gafmocks.NewMockUserInterface(h.ctrl)
+	var capturedErr error
+	mockUI.EXPECT().OutputError(gomock.Any()).DoAndReturn(func(err error, _ ...interface{}) error {
+		capturedErr = err
+		return nil
+	}).Times(1)
+	h.ictx.EXPECT().GetUserInterface().Return(mockUI).AnyTimes()
+
 	ctx := h.buildContext()
-	ctx = cmdctx.WithWarnings(ctx, warnings)
 
 	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{
 		TestClient:         mockTestClient,
@@ -400,8 +406,8 @@ func Test_RunUnifiedTestFlow_ReachabilityFailureFallback(t *testing.T) {
 	}, orgUUID, nil, &ostest.ReachabilityOpts{SourceDir: "."})
 
 	require.NoError(t, err, "scan should succeed even when reachability fails")
-	require.Len(t, *warnings, 1, "exactly one warning should be recorded")
-	assert.Contains(t, (*warnings)[0], "simulated upload failure")
+	require.NotNil(t, capturedErr, "OutputError should have been called with a warning")
+	assert.Contains(t, capturedErr.Error(), "Reachability analysis failed")
 }
 
 func TestMappingTargetParamsToDepGraph(t *testing.T) {

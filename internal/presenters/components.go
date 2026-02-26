@@ -121,13 +121,6 @@ func RenderError(ctx context.Context, err *snyk_errors.Error) string {
 		strings.Join(body, "\n")
 }
 
-// RenderWarning renders a styled warning block with a title and detail message.
-func RenderWarning(title, detail string) string {
-	label := errorLevelToStyle("warn").MarginRight(1).Render("WARNING")
-	body := lipgloss.NewStyle().PaddingLeft(9).Width(valueStyleWidth).Render(detail)
-	return "\n" + label + " " + renderBold(title) + "\n" + body + "\n"
-}
-
 // RenderLink renders a string as a hyperlink.
 func RenderLink(str string) string {
 	return lipgloss.NewStyle().
