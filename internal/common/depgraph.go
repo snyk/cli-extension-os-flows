@@ -1,15 +1,14 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
-	"github.com/snyk/cli-extension-os-flows/internal/constants"
-	"github.com/snyk/cli-extension-os-flows/internal/errors"
-	"github.com/snyk/cli-extension-os-flows/internal/util"
-	"github.com/snyk/cli-extension-os-flows/pkg/flags"
+	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems"
+	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
 )
 
 // NormalisedTargetFileKey is used by the dep graph workflow to embed the target file path in the workflow data.
@@ -37,44 +36,72 @@ type RawDepGraphWithMeta struct {
 
 // GetDepGraph retrieves the dependency graph for the given invocation context.
 func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGraphWithMeta, error) {
-	engine := ictx.GetEngine()
+	// engine := ictx.GetEngine()
 	config := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
-	errFactory := errors.NewErrorFactory(logger)
+	// errFactory := errors.NewErrorFactory(logger)
+	//
+	// depGraphConfig := config.Clone()
+	// allProjects := config.GetBool(flags.FlagAllProjects)
+	// fileFlag := config.GetString(flags.FlagFile)
+	//
+	// // Check if uv support should trigger, first check if uv.lock exists and then check if the FF is enabled.
+	// uvLockExists := util.HasUvLockFile(inputDir, fileFlag, allProjects, logger)
+	// if uvLockExists {
+	// 	ffUvCLI := config.GetBool(constants.FeatureFlagUvCLI)
+	// 	if ffUvCLI {
+	// 		logger.Info().Msg("uv support enabled and uv.lock found, using SBOM resolution in depgraph workflow")
+	// 		depGraphConfig.Set("use-sbom-resolution", true)
+	// 	} else {
+	// 		logger.Info().Msg("uv.lock found but uv feature flag disabled, using standard depgraph workflow")
+	// 	}
+	// } else {
+	// 	logger.Info().Msg("Invoking depgraph workflow")
+	// }
+	//
+	// // Overriding the INPUT_DIRECTORY flag which the depgraph workflow will use to extract the depgraphs.
+	// depGraphConfig.Set(configuration.INPUT_DIRECTORY, inputDir)
+	// depGraphConfig.Set(ConfigFlagEffectiveDepGraphs, true)
+	// depGraphsData, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)
+	// if err != nil {
+	// 	return nil, errFactory.NewDepGraphWorkflowError(err)
+	// }
+	//
+	// logger.Printf("Generating documents for %d depgraph(s)\n", len(depGraphsData))
+	// _, err = util.MapWithErr(depGraphsData, WorkflowOutputToRawDepGraphWithMeta)
+	// if err != nil {
+	// 	return nil, errFactory.NewDepGraphWorkflowError(err)
+	// }
 
-	depGraphConfig := config.Clone()
-	allProjects := config.GetBool(flags.FlagAllProjects)
-	fileFlag := config.GetString(flags.FlagFile)
+	logger.Printf("Generated depGraphs with new interface")
+	rawFlags := config.GetStringSlice(configuration.RAW_CMD_ARGS)
+	logger.Printf("Raw flags", rawFlags)
+	dgs := make([]RawDepGraphWithMeta, 0)
+	res, err := orchestrator.ResolveDepgraphs(ictx, inputDir, ecosystems.SCAPluginOptions{
+		Global: ecosystems.GlobalOptions{
+			RawFlags: rawFlags,
+		},
+	})
+	if err != nil {
+	}
 
-	// Check if uv support should trigger, first check if uv.lock exists and then check if the FF is enabled.
-	uvLockExists := util.HasUvLockFile(inputDir, fileFlag, allProjects, logger)
-	if uvLockExists {
-		ffUvCLI := config.GetBool(constants.FeatureFlagUvCLI)
-		if ffUvCLI {
-			logger.Info().Msg("uv support enabled and uv.lock found, using SBOM resolution in depgraph workflow")
-			depGraphConfig.Set("use-sbom-resolution", true)
-		} else {
-			logger.Info().Msg("uv.lock found but uv feature flag disabled, using standard depgraph workflow")
+	for scaRes := range res {
+		logger.Printf("SCA RESULT", scaRes.Error, *scaRes.DepGraph)
+		if scaRes.Error != nil {
+			return nil, scaRes.Error
 		}
-	} else {
-		logger.Info().Msg("Invoking depgraph workflow")
+		bts, err := json.Marshal(scaRes.DepGraph)
+		if err != nil {
+			return nil, err
+		}
+		dgs = append(dgs, RawDepGraphWithMeta{
+			Payload:              bts,
+			TargetFileFromPlugin: &scaRes.Metadata.TargetFile,
+		})
 	}
+	logger.Printf("Nums of generated depGraphs", len(dgs))
 
-	// Overriding the INPUT_DIRECTORY flag which the depgraph workflow will use to extract the depgraphs.
-	depGraphConfig.Set(configuration.INPUT_DIRECTORY, inputDir)
-	depGraphConfig.Set(ConfigFlagEffectiveDepGraphs, true)
-	depGraphsData, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)
-	if err != nil {
-		return nil, errFactory.NewDepGraphWorkflowError(err)
-	}
-
-	logger.Printf("Generating documents for %d depgraph(s)\n", len(depGraphsData))
-	depGraphs, err := util.MapWithErr(depGraphsData, WorkflowOutputToRawDepGraphWithMeta)
-	if err != nil {
-		return nil, errFactory.NewDepGraphWorkflowError(err)
-	}
-
-	return depGraphs, nil
+	return dgs, nil
 }
 
 // WorkflowOutputToRawDepGraphWithMeta converts a workflow output to a RawDepGraphWithMeta.
