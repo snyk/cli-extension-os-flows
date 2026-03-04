@@ -51,7 +51,8 @@ func RunTestWithSubject(
 	orgID string,
 	localPolicy *testapi.LocalPolicy,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	startParams := testapi.NewStartTestParamsFromSubject(orgID, &subject, localPolicy)
+	testConfig := testapi.TestConfiguration{LocalPolicy: localPolicy}
+	startParams := testapi.NewStartTestParamsFromSubject(orgID, &subject, &testConfig)
 	return runTestInternal(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
 }
 
@@ -71,7 +72,8 @@ func RunTestWithResources(
 	localPolicy *testapi.LocalPolicy,
 	scanConfig *testapi.ScanConfiguration,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	startParams := testapi.NewStartTestParamsFromResources(orgID, &resources, localPolicy, scanConfig)
+	testConfig := testapi.TestConfiguration{LocalPolicy: localPolicy, ScanConfig: scanConfig}
+	startParams := testapi.NewStartTestParamsFromResources(orgID, &resources, &testConfig)
 	return runTestInternal(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
 }
 
@@ -99,7 +101,7 @@ func runTestInternal(
 	orgSlugOrID := cfg.GetString(configuration.ORGANIZATION_SLUG)
 	if orgSlugOrID == "" {
 		logger.Info().Msg("No organization slug provided; using organization ID.")
-		orgSlugOrID = startParams.OrgID
+		orgSlugOrID = startParams.OrgID()
 	}
 
 	allFindingsData := findingsData

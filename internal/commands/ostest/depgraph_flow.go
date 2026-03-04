@@ -248,7 +248,7 @@ func testAllDepGraphs(
 // createTestSubject creates a test subject from a depGraph and display target file.
 func createTestSubject(depGraph DepGraphWithMeta) (testapi.TestSubjectCreate, error) {
 	depGraphSubject := testapi.DepGraphSubjectCreate{
-		Type:     testapi.DepGraphSubjectCreateTypeDepGraph,
+		Type:     testapi.DepGraph,
 		DepGraph: *depGraph.Payload,
 		Locator: testapi.LocalPathLocator{
 			Paths: []string{depGraph.DisplayTargetFile},

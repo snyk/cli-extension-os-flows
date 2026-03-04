@@ -523,7 +523,7 @@ func TestProcessProblemForVuln_License(t *testing.T) {
 	// Case 3: Other Ecosystem (should be ignored)
 	otherEcosystem := testapi.SnykvulndbPackageEcosystem{}
 	err = otherEcosystem.FromSnykvulndbOtherPackageEcosystem(testapi.SnykvulndbOtherPackageEcosystem{
-		Type: testapi.Other,
+		Type: testapi.SnykvulndbOtherPackageEcosystemTypeOther,
 	})
 	require.NoError(t, err)
 
