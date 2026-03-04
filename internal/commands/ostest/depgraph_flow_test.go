@@ -313,7 +313,7 @@ func Test_RunUnifiedTestFlow_DepGraphEnrichment(t *testing.T) {
 
 			mockTestClient := newAssertingTestClient(t, h.ctrl, func(t *testing.T, params testapi.StartTestParams) {
 				t.Helper()
-				depGraphSubject, err := params.Subject.AsDepGraphSubjectCreate()
+				depGraphSubject, err := params.Subject().AsDepGraphSubjectCreate()
 				require.NoError(t, err)
 
 				value, exists := depGraphSubject.DepGraph.Get(tt.dgField)
@@ -378,7 +378,7 @@ func Test_RunUnifiedTestFlow_ReachabilityFailureFallback(t *testing.T) {
 
 	mockTestClient := newAssertingTestClient(t, h.ctrl, func(t *testing.T, params testapi.StartTestParams) {
 		t.Helper()
-		depGraphSubject, err := params.Subject.AsDepGraphSubjectCreate()
+		depGraphSubject, err := params.Subject().AsDepGraphSubjectCreate()
 		require.NoError(t, err)
 
 		_, hasScanID := depGraphSubject.DepGraph.Get("reachabilityScanId")

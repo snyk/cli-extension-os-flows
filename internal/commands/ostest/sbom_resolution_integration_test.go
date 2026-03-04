@@ -123,7 +123,7 @@ func setupSBOMResolutionIntegrationTest(
 		DoAndReturn(func(_ context.Context, params testapi.StartTestParams) (testapi.TestHandle, error) {
 			require.NotNil(t, params.Subject)
 
-			depGraphSubject, subjectErr := params.Subject.AsDepGraphSubjectCreate()
+			depGraphSubject, subjectErr := params.Subject().AsDepGraphSubjectCreate()
 			require.NoError(t, subjectErr)
 
 			assert.Equal(t, mockDepGraph, depGraphSubject.DepGraph)
