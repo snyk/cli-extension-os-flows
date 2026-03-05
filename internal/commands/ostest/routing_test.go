@@ -667,3 +667,47 @@ func Test_RouteToFlow_RiskScoreFlow(t *testing.T) {
 		})
 	}
 }
+
+func Test_RouteToFlow_DlfyRllout(t *testing.T) {
+	t.Parallel()
+	defaultConfig := configuration.New()
+	defaultConfig.Set(flags.FlagRiskScoreThreshold, -1)
+	sc := setupSettingsClient(t)
+	tcs := map[string]struct {
+		ctx                 func(context.Context) context.Context
+		expectedFlow        ostest.Flow
+		expectErrorContains string
+	}{
+		"should route to depgraph flow when dfly rollout FF is enabled": {
+			ctx: func(ctx context.Context) context.Context {
+				cfg := defaultConfig.Clone()
+				cfg.Set(constants.FeatureFlagDlfyCLIRollout, true)
+
+				ctx = cmdctx.WithConfig(ctx, cfg)
+				ctx = cmdctx.WithLogger(ctx, &nopLogger)
+				ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+				return ctx
+			},
+			expectedFlow: ostest.DflyDepgraphFlow,
+		},
+	}
+	for tcName, tc := range tcs {
+		t.Run(tcName, func(t *testing.T) {
+			t.Parallel()
+			ctx := tc.ctx(t.Context())
+			cfg := cmdctx.Config(ctx)
+			flowCfg, err := ostest.ParseFlowConfig(cfg)
+			require.NoError(t, err)
+
+			flow, err := ostest.RouteToFlow(ctx, flowCfg, orgID, sc)
+
+			if tc.expectErrorContains == "" {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expectedFlow, flow)
+			} else {
+				assert.ErrorContains(t, err, tc.expectErrorContains)
+			}
+		})
+	}
+}

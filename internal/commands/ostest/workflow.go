@@ -25,6 +25,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	cmdutil "github.com/snyk/cli-extension-os-flows/internal/commands/util"
+	service "github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -73,6 +74,11 @@ func RegisterWorkflows(e workflow.Engine) error {
 
 	// uv support FF.
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagUvCLI, "enableUvCLI")
+
+	// Dragonfly rollout.
+	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
+		constants.FeatureFlagDlfyCLIRollout: "rollout-dfly-os-cli",
+	})
 
 	// SBOM support FF.
 	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
@@ -342,6 +348,9 @@ func executeFlow(
 	switch flow {
 	case SbomFlow:
 		return RunSbomFlow(ctx, clients, sbom, orgUUID, localPolicy, reachOpts)
+	case DflyDepgraphFlow:
+		dgResolver := service.NewDepgraphResolver()
+		return RunDflyDepgraphFlow(ctx, inputDir, dgResolver, clients, orgUUID, localPolicy, reachOpts)
 	case DepgraphFlow:
 		return RunUnifiedTestFlow(ctx, inputDir, clients, orgUUID, localPolicy, reachOpts)
 	default:

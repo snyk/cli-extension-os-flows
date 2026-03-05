@@ -12,6 +12,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
@@ -50,7 +51,7 @@ func RunSbomFlow(
 	resources := []testapi.TestResourceCreateItem{sbomResource}
 
 	if reachabilityOpts != nil {
-		progressBar.SetTitle("Uploading source code...")
+		progressBar.SetTitle(constants.UploadingSourceCodeMessage)
 
 		var sourceResource testapi.TestResourceCreateItem
 		sourceResource, err = uploadSourceCodeResource(ctx, orgUUID, clients.FileUploadClient, clients.DeeproxyClient, reachabilityOpts.SourceDir)

@@ -17,6 +17,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	service "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
@@ -98,7 +99,7 @@ func RunUnifiedTestFlow(
 	}
 
 	if reachabilityOpts != nil {
-		progressBar.SetTitle("Uploading source code...")
+		progressBar.SetTitle(constants.UploadingSourceCodeMessage)
 
 		scanID, scanErr := reachability.GetReachabilityID(
 			ctx,
@@ -299,7 +300,7 @@ func handleOutput(
 	if wantsHumanReadable {
 		outputDestination := outputworkflow.NewOutputDestination()
 		// The output workflow returns data it did not handle, like test summaries for exit code calculation.
-		//nolint:contextcheck // The outputworkflow.EntryPoint call chain is not context-aware
+		//nolint:contextcheck // The outputworkflow.EntryPoint call chain is not context-aware.
 		remainingData, err := outputworkflow.EntryPoint(ictx, allOutputData, outputDestination)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process output workflow: %w", err)

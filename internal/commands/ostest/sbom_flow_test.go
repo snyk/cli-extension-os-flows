@@ -77,8 +77,7 @@ func Test_RunSbomFlow_Reachability_JSON(t *testing.T) {
 	require.Len(t, testResult, 1)
 
 	// Verify file upload client was called for both SBOM and source code
-	fakeClient := ffc.(*fileupload.FakeClient)
-	require.Equal(t, 2, fakeClient.GetUploadCount(), "Expected 2 uploads (SBOM + source code)")
+	require.Equal(t, 2, ffc.GetUploadCount(), "Expected 2 uploads (SBOM + source code)")
 }
 
 func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
@@ -129,8 +128,7 @@ func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 	snaps.MatchJSON(t, localSummary)
 
 	// Verify file upload client was called for both SBOM and source code
-	fakeClient := ffc.(*fileupload.FakeClient)
-	require.Equal(t, 2, fakeClient.GetUploadCount(), "Expected 2 uploads (SBOM + source code)")
+	require.Equal(t, 2, ffc.GetUploadCount(), "Expected 2 uploads (SBOM + source code)")
 }
 
 func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
@@ -175,8 +173,7 @@ func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
 	require.Len(t, testResult, 1)
 
 	// Verify file upload client was called only for SBOM
-	fakeClient := ffc.(*fileupload.FakeClient)
-	require.Equal(t, 1, fakeClient.GetUploadCount(), "Expected 1 upload (SBOM only)")
+	require.Equal(t, 1, ffc.GetUploadCount(), "Expected 1 upload (SBOM only)")
 }
 
 func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
@@ -227,8 +224,7 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 	snaps.MatchJSON(t, localSummary)
 
 	// Verify file upload client was called only for SBOM
-	fakeClient := ffc.(*fileupload.FakeClient)
-	require.Equal(t, 1, fakeClient.GetUploadCount(), "Expected 1 upload (SBOM only)")
+	require.Equal(t, 1, ffc.GetUploadCount(), "Expected 1 upload (SBOM only)")
 }
 
 //nolint:gocritic // Not important for tests.
@@ -237,9 +233,9 @@ func setupTest(
 	ctrl *gomock.Controller,
 	jsonOutput bool,
 ) (
-	workflow.InvocationContext,
+	*gafmocks.MockInvocationContext,
 	testapi.TestClient,
-	fileupload.Client,
+	*fileupload.FakeClient,
 	deeproxy.Client,
 	uuid.UUID,
 	string,

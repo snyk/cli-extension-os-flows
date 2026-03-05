@@ -110,7 +110,7 @@ func runReachabilityScan(ctx context.Context) (uuid.UUID, error) {
 		BaseURL: cfg.GetString(configuration.API_URL),
 	})
 
-	progressBar.SetTitle("Uploading source code...")
+	progressBar.SetTitle(constants.UploadingSourceCodeMessage)
 	scanID, err := reachability.GetReachabilityID(ctx, orgID, sourceDir, rc, fc, dc)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to analyze source code: %w", err)
