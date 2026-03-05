@@ -543,6 +543,12 @@ func processEvidencesAndRemediation(
 		vulns = append(vulns, vuln)
 	}
 
+	for i := range vulns {
+		if isLicenseVuln(&vulns[i]) {
+			vulns[i].Reachability = nil
+		}
+	}
+
 	return vulns, nil
 }
 
@@ -554,6 +560,10 @@ func processOtherEvidence(vuln *definitions.Vulnerability, otherEvidences []test
 		}
 	}
 	return nil
+}
+
+func isLicenseVuln(vuln *definitions.Vulnerability) bool {
+	return vuln.Type != nil && *vuln.Type == "license"
 }
 
 func ensurePackageManager(vuln *definitions.Vulnerability, defaultPackageManager string) {

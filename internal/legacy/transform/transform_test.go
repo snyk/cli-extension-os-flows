@@ -968,6 +968,40 @@ func TestFindingToLegacyVulns_NoInstructions(t *testing.T) {
 	snaps.MatchStandaloneSnapshot(t, vulns)
 }
 
+func TestFindingToLegacyVulns_LicenseFindingShouldNotHaveReachability(t *testing.T) {
+	now := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	buildEcosystem := testapi.SnykvulndbPackageEcosystem{}
+	err := buildEcosystem.FromSnykvulndbBuildPackageEcosystem(testapi.SnykvulndbBuildPackageEcosystem{
+		Type: testapi.Build, Language: "python", PackageManager: "pip",
+	})
+	require.NoError(t, err)
+
+	var problem testapi.Problem
+	err = problem.FromSnykLicenseProblem(testapi.SnykLicenseProblem{
+		Id: "snyk:lic:pip:gpl-pkg:GPL-3.0", Source: testapi.SnykLicense,
+		CreatedAt: now, PublishedAt: now, Severity: testapi.SeverityMedium,
+		PackageName: "gpl-pkg", PackageVersion: "1.0.0", License: "GPL-3.0",
+		Ecosystem: buildEcosystem,
+	})
+	require.NoError(t, err)
+
+	var reachEv testapi.Evidence
+	err = reachEv.FromReachabilityEvidence(testapi.ReachabilityEvidence{
+		Reachability: testapi.ReachabilityTypeFunction, Source: testapi.Reachability,
+	})
+	require.NoError(t, err)
+
+	finding := minimumFinding
+	finding.Attributes.Problems = []testapi.Problem{problem}
+	finding.Attributes.Evidence = []testapi.Evidence{reachEv}
+
+	vuln, vulnJSON := transformFinding(t, finding)
+
+	assert.Nil(t, vuln.Reachability)
+	assert.NotContains(t, vulnJSON, `"reachability"`)
+}
+
 func TestUniqueCount(t *testing.T) {
 	vulns := []definitions.Vulnerability{
 		{Id: "SNYK-TEST-ID-1"},
