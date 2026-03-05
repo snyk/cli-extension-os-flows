@@ -22,9 +22,10 @@ type Flow string
 
 // The list of all available flows.
 const (
-	LegacyFlow   Flow = "legacy"
-	SbomFlow     Flow = "sbom-flow"
-	DepgraphFlow Flow = "depgraph"
+	LegacyFlow       Flow = "legacy"
+	SbomFlow         Flow = "sbom-flow"
+	DepgraphFlow     Flow = "depgraph"
+	DflyDepgraphFlow Flow = "dfly-depgraph"
 )
 
 func validateLegacyCLIOptions(
@@ -137,6 +138,7 @@ func ValidateSourceDir(
 
 // FlowConfig holds parsed configuration for flow routing decisions.
 type FlowConfig struct {
+	FFDflyRollout             bool
 	FFRiskScore               bool
 	FFRiskScoreInCLI          bool
 	FFUseTestShimForOSCliTest bool
@@ -175,6 +177,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
 	riskScoreThreshold := cfg.GetInt(flags.FlagRiskScoreThreshold)
 	riskScoreTest := riskScoreFFsEnabled || riskScoreThreshold != -1
+	ffDflyRollout := cfg.GetBool(constants.FeatureFlagDlfyCLIRollout)
 
 	reachability := cfg.GetBool(flags.FlagReachability)
 	sbom := cfg.GetString(flags.FlagSBOM)
@@ -210,6 +213,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	}
 
 	return &FlowConfig{
+		FFDflyRollout:             ffDflyRollout,
 		FFRiskScore:               ffRiskScore,
 		FFRiskScoreInCLI:          ffRiskScoreInCLI,
 		FFUseTestShimForOSCliTest: ffUseTestShimForOSCliTest,
@@ -251,17 +255,25 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 		logger.Debug().Msg("uv.lock not found, skipping uv feature flag check")
 	}
 
-	hasNewFeatures := fc.RiskScoreTest || fc.Reachability || fc.SBOM != "" || fc.ReachabilityFilter != "" || uvSupportWithLockFile || fc.FFUseTestShimForOSCliTest
+	hasNewFeatures := fc.FFDflyRollout ||
+		fc.RiskScoreTest ||
+		fc.Reachability ||
+		fc.SBOM != "" ||
+		fc.ReachabilityFilter != "" ||
+		uvSupportWithLockFile ||
+		fc.FFUseTestShimForOSCliTest
 	useLegacy := fc.ForceLegacyTest || fc.RequiresLegacy || !hasNewFeatures
 
 	logger.Debug().Msgf(
-		"Using legacy flow: %t. Legacy CLI Env var: %t. SBOM Reachability Test: %t. Risk Score Test: %t. Experimental uv Support: %t. Test Shim FF: %t.",
+		"Using legacy flow: %t. Legacy CLI Env var: %t. SBOM Reachability Test: %t."+
+			"Risk Score Test: %t. Experimental uv Support: %t. Test Shim FF: %t. Dfly Rollout: %t.",
 		useLegacy,
 		fc.ForceLegacyTest,
 		fc.SBOMReachabilityTest,
 		fc.RiskScoreTest,
 		uvSupportWithLockFile,
 		fc.FFUseTestShimForOSCliTest,
+		fc.FFDflyRollout,
 	)
 
 	return useLegacy, nil
@@ -285,6 +297,16 @@ func RouteToFlow(ctx context.Context, fc *FlowConfig, orgUUID uuid.UUID, sc sett
 	switch {
 	case fc.SBOM != "":
 		return SbomFlow, nil
+
+	case fc.FFDflyRollout:
+		if fc.Reachability && !cfg.GetBool(constants.FeatureFlagReachabilityForCLI) {
+			//nolint:wrapcheck // No need to wrap error factory errors.
+			return "", errFactory.NewReachabilitySettingsDisabledError(
+				"In order to run the `test` command with `--reachability=true`, the feature must be enabled in the Snyk Preview.",
+			)
+		}
+
+		return DflyDepgraphFlow, nil
 	default:
 		if fc.Reachability && !cfg.GetBool(constants.FeatureFlagReachabilityForCLI) {
 			//nolint:wrapcheck // No need to wrap error factory errors.

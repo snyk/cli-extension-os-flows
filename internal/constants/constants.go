@@ -32,3 +32,10 @@ const FeatureFlagShowNpmScope = "internal_snyk_show_npm_scope_enabled"
 
 // ShowNpmScope is the feature flag name for the npm build scope feature.
 const ShowNpmScope = "show-npm-scope"
+
+// FeatureFlagDlfyCLIRollout is used to rollout the CLI flow to the dragonfly stack.
+const FeatureFlagDlfyCLIRollout = "internal_snyk_cli_rollout_dfly_os_cli"
+
+// UploadingSourceCodeMessage is the message that's being rendered in the UI spinner while
+// the source code is being uploaded.
+const UploadingSourceCodeMessage = "Uploading source code..."
