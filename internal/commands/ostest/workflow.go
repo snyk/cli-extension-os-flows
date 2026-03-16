@@ -32,6 +32,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/instrumentation"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
+	"github.com/snyk/cli-extension-os-flows/internal/legacy/validation"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
@@ -474,6 +475,11 @@ func OSWorkflow(
 	progressBar.UpdateProgress(ui.InfiniteProgress)
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	defer progressBar.Clear()
+
+	//nolint:wrapcheck // Validation errors are coming from the error catalog.
+	if err := validation.ValidateFlagValues(cfg, validation.CommandTest); err != nil {
+		return nil, err
+	}
 
 	flowCfg, err := ParseFlowConfig(cfg)
 	if err != nil {

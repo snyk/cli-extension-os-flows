@@ -18,6 +18,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/instrumentation"
+	"github.com/snyk/cli-extension-os-flows/internal/legacy/validation"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
@@ -166,6 +167,11 @@ func OSWorkflow(
 	progressBar.UpdateProgress(ui.InfiniteProgress)
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	defer progressBar.Clear()
+
+	//nolint:wrapcheck // Validation errors are coming from the error catalog.
+	if err := validation.ValidateFlagValues(cfg, validation.CommandMonitor); err != nil {
+		return nil, err
+	}
 
 	args := os.Args[1:]
 	legacyArgs := args
