@@ -649,7 +649,6 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 				// Create temp directory with uv.lock file
 				tempDir := util.CreateTempDirWithUvLock(t)
 				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
-				config.Set(flags.FlagFile, "")
 				config.Set(constants.FeatureFlagUvCLI, true)
 				mockEngine.EXPECT().
 					InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
@@ -736,7 +735,6 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 				// Create temp directory with uv.lock file
 				tempDir := util.CreateTempDirWithUvLock(t)
 				config.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
-				config.Set(flags.FlagFile, "")
 				config.Set(constants.FeatureFlagUvCLI, true)
 				// Explicitly disable the test shim FF
 				config.Set(constants.FeatureFlagUseTestShimForOSCliTest, false)

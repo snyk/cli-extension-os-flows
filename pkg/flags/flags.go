@@ -3,6 +3,14 @@ package flags
 
 import "github.com/spf13/pflag"
 
+// InvalidFlagValue is the sentinel value used as NoOptDefVal for optional-value string flags.
+// pflag only treats a flag as not requiring a value when NoOptDefVal is non-empty.
+// When a user passes --flag with no = (e.g. --exclude), pflag sets the flag's
+// value to InvalidFlagValue instead of erroring with "flag needs an argument".
+// Validation code then checks for both "" (from --flag=) and InvalidFlagValue (from --flag)
+// to produce a proper user-facing error message.
+const InvalidFlagValue = "INVALID_FLAG_VALUE"
+
 // Defines the command-line flags used in the OS-Flows CLI extension.
 const (
 	// Open Source.
@@ -67,6 +75,10 @@ const (
 	FlagTags                       = "tags"
 
 	FlagReachabilityID = "reachability-id"
+
+	// Output file flags (used by test and validation).
+	FlagJSONFileOutput  = "json-file-output"
+	FlagSarifFileOutput = "sarif-file-output"
 )
 
 // OSTestFlagSet returns a flag set for the Open Source Test workflow.
@@ -87,10 +99,21 @@ func OSTestFlagSet() *pflag.FlagSet {
 
 	flagSet.String(FlagSBOM, "", "Specify an SBOM file to be tested.")
 	flagSet.String(FlagSourceDir, "", "Path of the directory containing the source code.")
+	flagSet.String(FlagJSONFileOutput, "", "Write JSON output to a file.")
+	if f := flagSet.Lookup(FlagJSONFileOutput); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
+	flagSet.String(FlagSarifFileOutput, "", "Write SARIF output to a file.")
+	if f := flagSet.Lookup(FlagSarifFileOutput); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
 
 	// Unused flags for passing to legacy CLI
 	flagSet.Bool(FlagAllProjects, false, "Auto-detect all projects in the working directory (including Yarn workspaces).")
 	flagSet.String(FlagExclude, "", "Can be used with --all-projects to indicate directory names and file names to exclude. Must be comma separated.")
+	if f := flagSet.Lookup(FlagExclude); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
 	flagSet.String(FlagDetectionDepth, "", "Use with --all-projects to indicate how many subdirectories to search. "+
 		"DEPTH must be a number, 1 or greater; zero (0) is the current directory.")
 	flagSet.Bool(FlagExperimental, false, "Deprecated. Will be ignored.")
@@ -153,6 +176,9 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 	flagSet.String(FlagDetectionDepth, "", "Use with --all-projects to indicate how many subdirectories to search. "+
 		"DEPTH must be a number, 1 or greater; zero (0) is the current directory.")
 	flagSet.String(FlagExclude, "", "Can be used with --all-projects to indicate directory names and file names to exclude. Must be comma separated.")
+	if f := flagSet.Lookup(FlagExclude); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
 	flagSet.BoolP(FlagPruneRepeatedSubDependencies, "p", false, "Prune dependency trees, removing duplicate sub-dependencies.")
 	flagSet.Bool(FlagPrintGraph, false, "Print the dependency graph of the project.")
 	flagSet.Bool(FlagPrintDeps, false, "Print the dependency tree before sending it for analysis.")
@@ -166,9 +192,21 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 	flagSet.String(FlagTargetReference, "", "Specify a reference that differentiates this project, for example, a branch name or version.")
 	flagSet.String(FlagPolicyPath, "", "Manually pass a path to a .snyk policy file.")
 	flagSet.String(FlagProjectEnvironment, "", "Set the project environment project attribute to one or more values (comma-separated).")
+	if f := flagSet.Lookup(FlagProjectEnvironment); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
 	flagSet.String(FlagProjectLifecycle, "", "Set the project lifecycle project attribute to one or more values (comma-separated).")
+	if f := flagSet.Lookup(FlagProjectLifecycle); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
 	flagSet.String(FlagProjectBusinessCriticality, "", "Set the project business criticality project attribute to one or more values (comma-separated).")
+	if f := flagSet.Lookup(FlagProjectBusinessCriticality); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
 	flagSet.String(FlagProjectTags, "", `Set the project tags to one or more values (comma-separated key value pairs with an "=" separator).`)
+	if f := flagSet.Lookup(FlagProjectTags); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
 	flagSet.String(FlagTags, "", "This is an alias for --project-tags")
 	flagSet.Bool(FlagMavenAggregateProject, false, "Ensure all modules are resolvable by the Maven reactor.")
 	flagSet.Bool(FlagScanUnmanaged, false, "Specify an individual JAR, WAR, or AAR file.")
@@ -190,6 +228,15 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 	flagSet.Bool(FlagYarnWorkspaces, false, "Detect and scan Yarn Workspaces only when a lockfile is in the root.")
 	flagSet.String(FlagPythonCommand, "", "Indicate which specific Python commands to use based on the Python version.")
 	flagSet.Bool(FlagPythonSkipUnresolved, false, "Skip Python packages that cannot be found in the environment.")
+
+	flagSet.String(FlagJSONFileOutput, "", "Write JSON output to a file.")
+	if f := flagSet.Lookup(FlagJSONFileOutput); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
+	flagSet.String(FlagSarifFileOutput, "", "Write SARIF output to a file.")
+	if f := flagSet.Lookup(FlagSarifFileOutput); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
 
 	flagSet.String(FlagReachabilityID, "", "The reachability scan ID of the analyzed source code")
 

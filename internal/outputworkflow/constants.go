@@ -7,6 +7,8 @@ const (
 	OutputConfigKeyJSON = "json"
 	// OutputConfigKeyJSONFile is a constant for the JSON file output configuration key.
 	OutputConfigKeyJSONFile = "json-file-output"
+	// OutputConfigKeySarifFileOutput is a constant for the SARIF file output configuration key.
+	OutputConfigKeySarifFileOutput = "sarif-file-output"
 	// OutputConfigTemplateFile is a constant for the template file output configuration key.
 	OutputConfigTemplateFile = "internal_template_file"
 	// OutputConfigKeyFileWriters is a constant for the file writers output configuration key.
