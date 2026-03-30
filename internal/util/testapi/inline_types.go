@@ -22,8 +22,14 @@ type FindingRelationship = struct {
 			Type string    "json:\"type\""
 		} "json:\"data,omitempty\""
 	} "json:\"org,omitempty\""
-	Policy *PolicyRelationship `json:"policy,omitempty"`
-	Test   *struct {
+	Policy  *PolicyRelationship `json:"policy,omitempty"`
+	Project *struct {
+		Data *struct {
+			Id   uuid.UUID "json:\"id\""
+			Type string    "json:\"type\""
+		} "json:\"data,omitempty\""
+	} "json:\"project,omitempty\""
+	Test *struct {
 		Data *struct {
 			Id   uuid.UUID "json:\"id\""
 			Type string    "json:\"type\""
