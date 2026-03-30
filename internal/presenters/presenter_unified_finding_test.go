@@ -280,6 +280,12 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
 					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
 				} "json:\"policy,omitempty\""
+				Project *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+				} "json:\"project,omitempty\""
 				Test *struct {
 					Data *struct {
 						Id   uuid.UUID "json:\"id\""
@@ -367,6 +373,12 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
 					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
 				} "json:\"policy,omitempty\""
+				Project *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+				} "json:\"project,omitempty\""
 				Test *struct {
 					Data *struct {
 						Id   uuid.UUID "json:\"id\""
@@ -524,6 +536,12 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
 					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
 				} "json:\"policy,omitempty\""
+				Project *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+				} "json:\"project,omitempty\""
 				Test *struct {
 					Data *struct {
 						Id   uuid.UUID "json:\"id\""
@@ -662,6 +680,12 @@ func TestUnifiedFindingPresenter_CliOutput(t *testing.T) {
 					Links testapi.IoSnykApiCommonRelatedLink "json:\"links\""
 					Meta  *testapi.IoSnykApiCommonMeta       "json:\"meta,omitempty\""
 				} "json:\"policy,omitempty\""
+				Project *struct {
+					Data *struct {
+						Id   uuid.UUID "json:\"id\""
+						Type string    "json:\"type\""
+					} "json:\"data,omitempty\""
+				} "json:\"project,omitempty\""
 				Test *struct {
 					Data *struct {
 						Id   uuid.UUID "json:\"id\""

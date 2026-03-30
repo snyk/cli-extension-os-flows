@@ -428,6 +428,12 @@ func aFinding(t *testing.T) testapi.FindingData {
 				// Meta Free-form object that may contain non-standard information.
 				Meta *testapi.IoSnykApiCommonMeta `json:"meta,omitempty"`
 			} `json:"policy,omitempty"`
+			Project *struct {
+				Data *struct {
+					Id   uuid.UUID "json:\"id\""
+					Type string    "json:\"type\""
+				} "json:\"data,omitempty\""
+			} "json:\"project,omitempty\""
 			Test *struct {
 				Data *struct {
 					Id   uuid.UUID "json:\"id\""
