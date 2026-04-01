@@ -76,7 +76,7 @@ func GetSemver(pkgManager string) (shared.Runtime, error) {
 	case "composer":
 		return Composer()
 	case "maven", "gradle", "sbt",
-		"pip", "poetry", "pipenv":
+		"pip", "poetry", "pipenv", "uv":
 		return Maven()
 	case "nuget", "packet":
 		return Nuget()
