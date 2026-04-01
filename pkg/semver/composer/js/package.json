@@ -2,6 +2,9 @@
   "dependencies": {
     "@snyk/composer-semver": "^1"
   },
+  "overrides": {
+    "lodash": ">=4.17.23"
+  },
   "devDependencies": {
     "esbuild": "^0"
   },
