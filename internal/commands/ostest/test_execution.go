@@ -69,11 +69,9 @@ func RunTestWithResources(
 	targetFile string,
 	displayTargetFile string,
 	orgID string,
-	localPolicy *testapi.LocalPolicy,
-	scanConfig *testapi.ScanConfiguration,
+	testConfig *testapi.TestConfiguration,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	testConfig := testapi.TestConfiguration{LocalPolicy: localPolicy, ScanConfig: scanConfig}
-	startParams := testapi.NewStartTestParamsFromResources(orgID, &resources, &testConfig)
+	startParams := testapi.NewStartTestParamsFromResources(orgID, &resources, testConfig)
 	return runTestInternal(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
 }
 

@@ -12,9 +12,11 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 
 	"github.com/google/uuid"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
+	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 )
 
@@ -96,15 +98,30 @@ func RunDflyDepgraphFlow(
 		return nil, nil, fmt.Errorf("failed to upload dependency graphs: %w", err)
 	}
 
-	uploadResource, err := newUploadResource(uploadRes.RevisionID.String(), testapi.UploadResourceContentTypeSbom)
+	cfg := cmdctx.Config(ctx)
+
+	if override := cfg.GetString(flags.FlagProjectName); override != "" {
+		for i := range depGraphs {
+			depGraphs[i].Identity.Name = override
+		}
+	}
+
+	scmInfo := ResolveScmInfo(inputDir, cfg.GetString(flags.FlagRemoteRepoURL), logger)
+
+	var scmCtx *testapi.ScmContext
+	if scmInfo != nil {
+		scmCtx = &testapi.ScmContext{
+			RepoUrl: &scmInfo.RemoteURL,
+			Branch:  &scmInfo.Branch,
+		}
+	}
+
+	uploadResource, err := newUploadResource(uploadRes.RevisionID.String(), testapi.UploadResourceContentTypeSbom, scmCtx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create upload resource: %w", err)
 	}
 
 	resources := []testapi.TestResourceCreateItem{uploadResource}
-	scanConfig := &testapi.ScanConfiguration{
-		Sca: &testapi.ScaScanConfiguration{},
-	}
 
 	if reachabilityOpts != nil {
 		progressBar.SetTitle(constants.UploadingSourceCodeMessage)
@@ -120,8 +137,16 @@ func RunDflyDepgraphFlow(
 		}
 	}
 
+	testConfig := buildTestConfig(cfg, localPolicy)
+
+	projectName := depGraphs[0].Identity.Name
+	targetFile := depGraphs[0].Identity.TargetFile
+
 	osAnalysisStart := time.Now()
-	legacyVuln, wfData, err := RunTestWithResources(ctx, inputDir, clients.TestClient, resources, "", "", 0, "", "", orgUUID.String(), localPolicy, scanConfig)
+	legacyVuln, wfData, err := RunTestWithResources(
+		ctx, inputDir, clients.TestClient, resources,
+		projectName, "", 0, targetFile, targetFile, orgUUID.String(), testConfig,
+	)
 	if instrumentation != nil {
 		instrumentation.RecordOSAnalysisTime(time.Since(osAnalysisStart).Milliseconds())
 	}
@@ -132,4 +157,17 @@ func RunDflyDepgraphFlow(
 	}
 
 	return legacyVulnRes, wfData, err
+}
+
+func buildTestConfig(cfg configuration.Configuration, localPolicy *testapi.LocalPolicy) *testapi.TestConfiguration {
+	testConfig := &testapi.TestConfiguration{
+		LocalPolicy: localPolicy,
+		ScanConfig: &testapi.ScanConfiguration{
+			Sca: &testapi.ScaScanConfiguration{},
+		},
+	}
+	if tr := cfg.GetString(flags.FlagTargetReference); tr != "" {
+		testConfig.TargetReference = &tr
+	}
+	return testConfig
 }

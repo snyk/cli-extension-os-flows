@@ -86,7 +86,7 @@
 [Test_RunDflyDepgraphFlow_JSON - 1]
 {
  "dependencyCount": 0,
- "displayTargetFile": "",
+ "displayTargetFile": "proj/package.json",
  "filesystemPolicy": false,
  "filtered": {
   "ignore": [],
@@ -126,7 +126,7 @@
   }
  },
  "summary": "1 vulnerable dependency path",
- "targetFile": "",
+ "targetFile": "proj/package.json",
  "uniqueCount": 1,
  "vulnerabilities": [
   {
@@ -324,7 +324,7 @@
 [Test_RunDflyDepgraphFlow_HumanReadable - 3]
 {
  "dependencyCount": 0,
- "displayTargetFile": "",
+ "displayTargetFile": "proj/package.json",
  "packageManager": "",
  "projectName": "",
  "summary": {
