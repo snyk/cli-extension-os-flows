@@ -43,7 +43,7 @@ func RunSbomFlow(
 	}
 	logger.Debug().Str("sbomRevisionID", sbomResult.RevisionID.String()).Msg("SBOM uploaded successfully")
 
-	sbomResource, err := newUploadResource(sbomResult.RevisionID.String(), testapi.UploadResourceContentTypeSbom)
+	sbomResource, err := newUploadResource(sbomResult.RevisionID.String(), testapi.UploadResourceContentTypeSbom, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create SBOM resource: %w", err)
 	}
@@ -64,8 +64,11 @@ func RunSbomFlow(
 	targetDir := filepath.Dir(sbomPath)
 	osAnalysisStart := time.Now()
 
-	scanConfig := &testapi.ScanConfiguration{
-		Sca: &testapi.ScaScanConfiguration{},
+	testConfig := &testapi.TestConfiguration{
+		LocalPolicy: localPolicy,
+		ScanConfig: &testapi.ScanConfiguration{
+			Sca: &testapi.ScaScanConfiguration{},
+		},
 	}
 
 	findings, summary, err := RunTestWithResources(
@@ -79,8 +82,7 @@ func RunSbomFlow(
 		sbomPath,
 		sbomPath,
 		orgUUID.String(),
-		localPolicy,
-		scanConfig,
+		testConfig,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -114,16 +116,17 @@ func uploadSourceCodeResource(
 	}
 	logger.Debug().Str("sourceRevisionID", sourceResult.RevisionID.String()).Msg("Source code uploaded successfully")
 
-	return newUploadResource(sourceResult.RevisionID.String(), testapi.UploadResourceContentTypeSource)
+	return newUploadResource(sourceResult.RevisionID.String(), testapi.UploadResourceContentTypeSource, nil)
 }
 
-// newUploadResource creates a TestResourceCreateItem from a revision ID and content type.
-func newUploadResource(revisionID string, contentType testapi.UploadResourceContentType) (testapi.TestResourceCreateItem, error) {
+// newUploadResource creates a TestResourceCreateItem from a revision ID, content type, and optional SCM context.
+func newUploadResource(revisionID string, contentType testapi.UploadResourceContentType, scmCtx *testapi.ScmContext) (testapi.TestResourceCreateItem, error) {
 	uploadResource := testapi.UploadResource{
 		ContentType:  contentType,
 		FilePatterns: []string{},
 		RevisionId:   revisionID,
 		Type:         testapi.Upload,
+		ScmContext:   scmCtx,
 	}
 
 	var resourceVariant testapi.BaseResourceVariantCreateItem

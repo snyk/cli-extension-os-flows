@@ -25,6 +25,22 @@ type DepgraphWithIdentity struct {
 	Identity Identity           `json:"identity"`
 }
 
+// BuildIdentity constructs an Identity from a depgraph and its associated metadata.
+func BuildIdentity(dg *depgraph.DepGraph, targetFile, runtime string) Identity {
+	id := Identity{TargetFile: targetFile}
+	if runtime != "" {
+		id.TargetRuntime = &runtime
+	}
+	if dg == nil {
+		return id
+	}
+	id.Type = dg.PkgManager.Name
+	if rootPkg := dg.GetRootPkg(); rootPkg != nil {
+		id.Name = rootPkg.Info.Name
+	}
+	return id
+}
+
 type depgraphResolver struct{}
 
 // DepgraphResolver is the interface for resolving dependency graphs with their associated identities.
@@ -62,9 +78,7 @@ func (dr *depgraphResolver) GetDepGraphsWithIdentity(ictx workflow.InvocationCon
 		}
 		dgs = append(dgs, DepgraphWithIdentity{
 			DepGraph: res.DepGraph,
-			Identity: Identity{
-				TargetFile: res.Metadata.TargetFile,
-			},
+			Identity: BuildIdentity(res.DepGraph, res.Metadata.TargetFile, res.Metadata.Runtime),
 		})
 	}
 
