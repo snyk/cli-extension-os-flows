@@ -27,7 +27,6 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
-	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 // idRgxp is used for replacing the "id" in the output for snapshot consistency.
@@ -438,12 +437,14 @@ func setupTest(
 	mockTestResult := gafclientmocks.NewMockTestResult(ctrl)
 	mockTestResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
 	mockTestResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{findingData}, true, nil).AnyTimes()
-	mockTestResult.EXPECT().GetTestSubject().Return(nil).AnyTimes()
 	mockTestResult.EXPECT().GetEffectiveSummary().Return(summary).AnyTimes()
-	mockTestResult.EXPECT().GetRawSummary().Return(summary).AnyTimes()
 
 	passFail := testapi.Pass
 	outcomeReason := testapi.TestOutcomeReasonOther
+	projectID := uuid.MustParse("5c520c95-a964-4de0-9284-02a16f9f88d5")
+	resultMeta := map[string]interface{}{
+		testapi.MetadataKeyProjectID: projectID.String(),
+	}
 	// Mock calls for serialized test result
 	mockTestResult.EXPECT().GetTestID().Return(&uuid.UUID{}).AnyTimes()
 	mockTestResult.EXPECT().GetTestConfiguration().Return(&testapi.TestConfiguration{}).AnyTimes()
@@ -453,18 +454,10 @@ func setupTest(
 	mockTestResult.EXPECT().GetPassFail().Return(&passFail).AnyTimes()
 	mockTestResult.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
 	mockTestResult.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
-	mockTestResult.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
-	mockTestResult.EXPECT().GetTestFacts().Return(nil).AnyTimes()
-	mockTestResult.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
-
-	var tsl testapi.TestSubjectLocator
-	projectID := uuid.MustParse("5c520c95-a964-4de0-9284-02a16f9f88d5")
-	err = tsl.FromProjectEntityLocator(testapi.ProjectEntityLocator{
-		ProjectId: projectID,
-		Type:      testapi.ProjectEntity,
-	})
-	require.NoError(t, err)
-	mockTestResult.EXPECT().GetSubjectLocators().Return(util.Ptr([]testapi.TestSubjectLocator{tsl})).AnyTimes()
+	mockTestResult.EXPECT().GetMetadataValue(gomock.Any()).DoAndReturn(func(key string) interface{} {
+		return resultMeta[key]
+	}).AnyTimes()
+	mockTestResult.EXPECT().ShallowMetadataCopy().Return(resultMeta).AnyTimes()
 
 	// Mock TestHandle
 	mockTestHandle := gafclientmocks.NewMockTestHandle(ctrl)

@@ -294,32 +294,25 @@ func Test_GetDependencyCountFromTestFacts(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	t.Run("returns 0 when test facts is nil", func(t *testing.T) {
+	t.Run("returns 0 when metadata has no dependency count", func(t *testing.T) {
 		mockResult := gafclientmocks.NewMockTestResult(ctrl)
-		mockResult.EXPECT().GetTestFacts().Return(nil)
+		mockResult.EXPECT().GetMetadataValue(testapi.MetadataKeyDependencyCount).Return(nil)
 
 		count := ostest.GetDependencyCountFromTestFacts(mockResult)
 		assert.Equal(t, 0, count)
 	})
 
-	t.Run("returns 0 when test facts is empty", func(t *testing.T) {
+	t.Run("returns 0 when dependency count metadata is wrong type", func(t *testing.T) {
 		mockResult := gafclientmocks.NewMockTestResult(ctrl)
-		emptyFacts := []testapi.TestFact{}
-		mockResult.EXPECT().GetTestFacts().Return(&emptyFacts)
+		mockResult.EXPECT().GetMetadataValue(testapi.MetadataKeyDependencyCount).Return("not-a-number")
 
 		count := ostest.GetDependencyCountFromTestFacts(mockResult)
 		assert.Equal(t, 0, count)
 	})
 
-	t.Run("returns dependency count from test facts", func(t *testing.T) {
+	t.Run("returns dependency count from metadata", func(t *testing.T) {
 		mockResult := gafclientmocks.NewMockTestResult(ctrl)
-		facts := []testapi.TestFact{
-			{
-				TotalDependencyCount: 42,
-				Type:                 testapi.DependencyCountFactTypeDependencyCountFact,
-			},
-		}
-		mockResult.EXPECT().GetTestFacts().Return(&facts)
+		mockResult.EXPECT().GetMetadataValue(testapi.MetadataKeyDependencyCount).Return(42)
 
 		count := ostest.GetDependencyCountFromTestFacts(mockResult)
 		assert.Equal(t, 42, count)

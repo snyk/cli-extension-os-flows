@@ -160,46 +160,36 @@ func runTestInternal(
 }
 
 func getTestProjectID(result testapi.TestResult) (*string, error) {
-	locators := result.GetSubjectLocators()
-	if locators == nil {
+	v := result.GetMetadataValue(testapi.MetadataKeyProjectID)
+	if v == nil {
 		//nolint:nilnil // Nil is a proper value to be returned, indicating a missing project id.
 		return nil, nil
 	}
-
-	for _, loc := range *locators {
-		disc, err := loc.Discriminator()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get subject locator discriminator: %w", err)
-		}
-		if disc != string(testapi.ProjectEntity) {
-			continue
-		}
-		peLoc, err := loc.AsProjectEntityLocator()
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert subject locator to project entity locator: %w", err)
-		}
-		return util.Ptr(peLoc.ProjectId.String()), nil
+	s, ok := v.(string)
+	if !ok || s == "" {
+		//nolint:nilnil // Nil is a proper value to be returned, indicating a missing project id.
+		return nil, nil
 	}
-
-	//nolint:nilnil // Nil is a proper value to be returned, indicating a missing project id.
-	return nil, nil
+	return util.Ptr(s), nil
 }
 
-// GetDependencyCountFromTestFacts extracts the total dependency count from test facts.
-// Returns 0 if no dependency count fact is found.
+// GetDependencyCountFromTestFacts extracts the total dependency count from test result metadata.
+// Returns 0 if no dependency count is present.
 func GetDependencyCountFromTestFacts(result testapi.TestResult) int {
-	testFacts := result.GetTestFacts()
-	if testFacts == nil {
+	v := result.GetMetadataValue(testapi.MetadataKeyDependencyCount)
+	if v == nil {
 		return 0
 	}
-
-	for _, fact := range *testFacts {
-		if fact.Type == testapi.DependencyCountFactTypeDependencyCountFact {
-			return int(fact.TotalDependencyCount)
-		}
+	switch n := v.(type) {
+	case int:
+		return n
+	case int64:
+		return int(n)
+	case float64:
+		return int(n)
+	default:
+		return 0
 	}
-
-	return 0
 }
 
 // executeTest runs the test with the provided parameters and returns the results.
@@ -281,11 +271,11 @@ func prepareOutput(
 	}
 
 	// set metadata on the test result
-	params.TestResult.SetMetadata("package-manager", params.PackageManager)
-	params.TestResult.SetMetadata("project-name", params.ProjectName)
-	params.TestResult.SetMetadata("display-target-file", params.DisplayTargetFile)
-	params.TestResult.SetMetadata("target-directory", params.TargetDir)
-	params.TestResult.SetMetadata("dependency-count", params.DepCount)
+	params.TestResult.SetMetadata(testapi.MetadataKeyPackageManager, params.PackageManager)
+	params.TestResult.SetMetadata(testapi.MetadataKeyProjectName, params.ProjectName)
+	params.TestResult.SetMetadata(testapi.MetadataKeyDisplayTargetFile, params.DisplayTargetFile)
+	params.TestResult.SetMetadata(testapi.MetadataKeyTargetDirectory, params.TargetDir)
+	params.TestResult.SetMetadata(testapi.MetadataKeyDependencyCount, params.DepCount)
 
 	// always output the test result
 	testResultData := ufm.CreateWorkflowDataFromTestResults(ictx.GetWorkflowIdentifier(), []testapi.TestResult{params.TestResult})

@@ -134,10 +134,10 @@ func setupSBOMResolutionIntegrationTest(
 			result := gafclientmocks.NewMockTestResult(ctrl)
 			result.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
 			result.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
-			result.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
 			handle.EXPECT().Result().Return(result).Times(1)
 
 			// Mockup calls for serialized test result
+			emptyMeta := make(map[string]interface{})
 			result.EXPECT().GetTestID().Return(&uuid.UUID{}).AnyTimes()
 			result.EXPECT().GetTestConfiguration().Return(&testapi.TestConfiguration{}).AnyTimes()
 			result.EXPECT().GetCreatedAt().Return(&time.Time{}).AnyTimes()
@@ -148,12 +148,9 @@ func setupSBOMResolutionIntegrationTest(
 			outcomeReason := testapi.TestOutcomeReasonOther
 			result.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
 			result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
-			result.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
-			result.EXPECT().GetTestFacts().Return(nil).AnyTimes()
-			result.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
-			result.EXPECT().GetTestSubject().Return(&testapi.TestSubject{}).AnyTimes()
+			result.EXPECT().GetMetadataValue(gomock.Any()).Return(nil).AnyTimes()
+			result.EXPECT().ShallowMetadataCopy().Return(emptyMeta).AnyTimes()
 			result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
-			result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 
 			return handle, nil
 		}).
