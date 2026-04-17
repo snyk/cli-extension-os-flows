@@ -5,9 +5,12 @@ import (
 
 	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems"
 	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
+	"github.com/snyk/cli-extension-dep-graph/pkg/identity"
 	"github.com/snyk/dep-graph/go/pkg/depgraph"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
+
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 // Identity holds the fields required to determine a project's identity.
@@ -26,15 +29,16 @@ type DepgraphWithIdentity struct {
 }
 
 // BuildIdentity constructs an Identity from a depgraph and its associated metadata.
-func BuildIdentity(dg *depgraph.DepGraph, targetFile, runtime string) Identity {
-	id := Identity{TargetFile: targetFile}
-	if runtime != "" {
-		id.TargetRuntime = &runtime
+func BuildIdentity(dg *depgraph.DepGraph, projDesc *identity.ProjectDescriptor) Identity {
+	id := Identity{
+		TargetFile:    util.DefaultValue(projDesc.Identity.TargetFile, ""),
+		TargetRuntime: projDesc.Identity.TargetRuntime,
+		Type:          projDesc.Identity.Type,
 	}
 	if dg == nil {
 		return id
 	}
-	id.Type = dg.PkgManager.Name
+	// N.B.: this should probably be another project id descriptor, coming from the dep-graph extension.
 	if rootPkg := dg.GetRootPkg(); rootPkg != nil {
 		id.Name = rootPkg.Info.Name
 	}
@@ -78,7 +82,7 @@ func (dr *depgraphResolver) GetDepGraphsWithIdentity(ictx workflow.InvocationCon
 		}
 		dgs = append(dgs, DepgraphWithIdentity{
 			DepGraph: res.DepGraph,
-			Identity: BuildIdentity(res.DepGraph, res.Metadata.TargetFile, res.Metadata.Runtime),
+			Identity: BuildIdentity(res.DepGraph, &res.ProjectDescriptor),
 		})
 	}
 
