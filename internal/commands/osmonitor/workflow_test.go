@@ -1,6 +1,7 @@
 package osmonitor_test
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/networking"
+	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
 	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/assert"
@@ -69,7 +71,7 @@ func TestRegisterWorkflows(t *testing.T) {
 	mockEngine.EXPECT().
 		Register(osmonitor.WorkflowID, gomock.Any(), gomock.Any()).
 		Times(1)
-	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
 	mockConfig := mockInvocationCtx.GetConfiguration()
 
 	mockEngine.EXPECT().GetConfiguration().Return(mockConfig).AnyTimes()
@@ -78,14 +80,13 @@ func TestRegisterWorkflows(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engine workflow.Engine, mockServerURL string) workflow.InvocationContext {
+func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engine workflow.Engine) *mocks.MockInvocationContext {
 	t.Helper()
 
 	mockConfig := configuration.New()
 	mockConfig.Set(configuration.AUTHENTICATION_TOKEN, "<SOME API TOKEN>")
 	mockConfig.Set(configuration.ORGANIZATION, uuid.New().String())
 	mockConfig.Set(configuration.ORGANIZATION_SLUG, "some-org")
-	mockConfig.Set(configuration.API_URL, mockServerURL)
 
 	mockLogger := zerolog.Nop()
 
@@ -93,6 +94,9 @@ func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engin
 	icontext.EXPECT().GetConfiguration().Return(mockConfig).AnyTimes()
 	icontext.EXPECT().GetEnhancedLogger().Return(&mockLogger).AnyTimes()
 	icontext.EXPECT().GetNetworkAccess().Return(networking.NewNetworkAccess(mockConfig)).AnyTimes()
+	icontext.EXPECT().GetWorkflowIdentifier().Return(workflow.NewWorkflowIdentifier("monitor")).AnyTimes()
+	icontext.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
+	icontext.EXPECT().Context().Return(context.Background()).AnyTimes()
 
 	if engine != nil {
 		icontext.EXPECT().GetEngine().Return(engine).AnyTimes()
@@ -117,7 +121,7 @@ func TestOSWorkflow_ReachabilityFailureFallback(t *testing.T) {
 
 	legacyWorkflowID := workflow.NewWorkflowIdentifier("legacycli")
 	mockEngine := mocks.NewMockEngine(ctrl)
-	mockIctx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+	mockIctx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
 	cfg := mockIctx.GetConfiguration()
 
 	cfg.Set(flags.FlagReachability, true)

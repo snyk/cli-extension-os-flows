@@ -1,4 +1,4 @@
-package ostest
+package common
 
 import (
 	"github.com/rs/zerolog"

@@ -24,7 +24,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
-	common "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
@@ -55,7 +55,7 @@ func TestSBOMResolutionIntegration_DepGraphsPassedToUnifiedTestAPI(t *testing.T)
 	_, _, err := ostest.RunUnifiedTestFlow(
 		ctx,
 		tempDir,
-		ostest.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc},
+		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc},
 		orgUUID,
 		nil,
 		nil,
