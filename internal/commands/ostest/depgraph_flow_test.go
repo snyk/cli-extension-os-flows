@@ -24,7 +24,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
-	common "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -90,8 +90,8 @@ func (h *flowTestHarness) buildContext() context.Context {
 	return ctx
 }
 
-func (h *flowTestHarness) defaultClients(testClient testapi.TestClient) ostest.FlowClients {
-	return ostest.FlowClients{
+func (h *flowTestHarness) defaultClients(testClient testapi.TestClient) common.FlowClients {
+	return common.FlowClients{
 		TestClient:       testClient,
 		FileUploadClient: fileupload.NewFakeClient(),
 	}
@@ -398,12 +398,12 @@ func Test_RunUnifiedTestFlow_ReachabilityFailureFallback(t *testing.T) {
 
 	ctx := h.buildContext()
 
-	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", ostest.FlowClients{
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", common.FlowClients{
 		TestClient:         mockTestClient,
 		FileUploadClient:   fileupload.NewFakeClient(),
 		ReachabilityClient: fakeReachabilityClient,
 		DeeproxyClient:     deeproxy.NewFakeClient(deeproxy.AllowList{Extensions: []string{".js"}}, nil),
-	}, orgUUID, nil, &ostest.ReachabilityOpts{SourceDir: "."})
+	}, orgUUID, nil, &common.ReachabilityOpts{SourceDir: "."})
 
 	require.NoError(t, err, "scan should succeed even when reachability fails")
 	require.NotNil(t, capturedErr, "OutputError should have been called with a warning")

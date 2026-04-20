@@ -13,7 +13,9 @@ import (
 	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
+	"github.com/snyk/cli-extension-os-flows/internal/commands/clientsetup"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -42,6 +44,11 @@ func RegisterWorkflows(e workflow.Engine) error {
 
 	// Reachability FF.
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagReachabilityForCLI, "reachabilityForCli")
+
+	// Dragonfly rollout.
+	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
+		constants.FeatureFlagDlfyCLIRollout: "rollout-dfly-os-cli",
+	})
 
 	// SBOM support FF.
 	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
@@ -173,6 +180,54 @@ func OSWorkflow(
 		return nil, err
 	}
 
+	inst := cmdctx.Instrumentation(ctx)
+	inst.RecordShowMavenBuildScopeFlag(cfg.GetBool(constants.FeatureFlagShowMavenBuildScope))
+	inst.RecordShowNpmScopeFlag(cfg.GetBool(constants.FeatureFlagShowNpmScope))
+
+	ffDflyRollout := cfg.GetBool(constants.FeatureFlagDlfyCLIRollout)
+	forceLegacy := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
+
+	if ffDflyRollout && !forceLegacy {
+		return runDflyMonitorEntrypoint(ctx)
+	}
+
+	return runLegacyMonitorFlow(ctx)
+}
+
+func runDflyMonitorEntrypoint(ctx context.Context) ([]workflow.Data, error) {
+	cfg := cmdctx.Config(ctx)
+
+	orgUUID, err := common.ValidateAndParseOrgID(ctx, cfg.GetString(configuration.ORGANIZATION))
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate org ID: %w", err)
+	}
+
+	inputDirs, err := common.GetInputDirectories(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get input directories: %w", err)
+	}
+
+	testClient, err := clientsetup.SetupTestClient(ctx, common.PollInterval)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set up test client: %w", err)
+	}
+
+	clients := common.FlowClients{
+		TestClient:         testClient,
+		FileUploadClient:   clientsetup.SetupFileUploadClient(ctx, orgUUID),
+		ReachabilityClient: clientsetup.SetupReachabilityClient(ctx),
+		DeeproxyClient:     clientsetup.SetupDeeproxyClient(ctx),
+	}
+
+	return RunDflyMonitorFlow(ctx, inputDirs, orgUUID, clients)
+}
+
+func runLegacyMonitorFlow(ctx context.Context) ([]workflow.Data, error) {
+	ictx := cmdctx.Ictx(ctx)
+	cfg := cmdctx.Config(ctx)
+	logger := cmdctx.Logger(ctx)
+	progressBar := cmdctx.ProgressBar(ctx)
+
 	args := os.Args[1:]
 	legacyArgs := args
 	if cfg.GetBool(flags.FlagReachability) {
@@ -190,11 +245,6 @@ func OSWorkflow(
 	engine := ictx.GetEngine()
 	cfg.Set(configuration.WORKFLOW_USE_STDIO, true)
 	cfg.Set(configuration.RAW_CMD_ARGS, legacyArgs)
-
-	// Get the showMavenBuildScope & showNpmBuildScope flags values & set in instrumentation
-	inst := cmdctx.Instrumentation(ctx)
-	inst.RecordShowMavenBuildScopeFlag(cfg.GetBool(constants.FeatureFlagShowMavenBuildScope))
-	inst.RecordShowNpmScopeFlag(cfg.GetBool(constants.FeatureFlagShowNpmScope))
 
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	progressBar.Clear()

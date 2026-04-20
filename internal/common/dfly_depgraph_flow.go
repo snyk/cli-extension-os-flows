@@ -1,26 +1,26 @@
-package ostest
+package common
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
-
-	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
-	service "github.com/snyk/cli-extension-os-flows/internal/common"
-	"github.com/snyk/cli-extension-os-flows/internal/constants"
-	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
-	"github.com/snyk/cli-extension-os-flows/internal/reachability"
-	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 
 	"github.com/google/uuid"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
+
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	"github.com/snyk/cli-extension-os-flows/internal/constants"
+	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
+	"github.com/snyk/cli-extension-os-flows/internal/reachability"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
-func createDepgraphTmpFiles(depGraphs []service.DepgraphWithIdentity) (rootTmpDir string, tmpFilePaths []string, err error) {
+func createDepgraphTmpFiles(depGraphs []DepgraphWithIdentity) (rootTmpDir string, tmpFilePaths []string, err error) {
 	rootTmpDir, err = os.MkdirTemp("", "snyk-depgraphs-*")
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to create temp directory: %w", err)
@@ -49,19 +49,25 @@ func createDepgraphTmpFiles(depGraphs []service.DepgraphWithIdentity) (rootTmpDi
 }
 
 // RunDflyDepgraphFlow handles the depGraph flow, fully through dragonfly.
+// publishReport controls whether the test result is persisted as a monitored project;
+// pass util.Ptr(true) for monitor, nil for test.
+// runTest is the function used to execute the actual test against the test API.
 func RunDflyDepgraphFlow(
 	ctx context.Context,
 	inputDir string,
-	dgResolver service.DepgraphResolver,
+	dgResolver DepgraphResolver,
 	clients FlowClients,
 	orgUUID uuid.UUID,
 	localPolicy *testapi.LocalPolicy,
 	reachabilityOpts *ReachabilityOpts,
+	publishReport *bool,
+	runTest RunTestWithResourcesFunc,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	ictx := cmdctx.Ictx(ctx)
+	cfg := cmdctx.Config(ctx)
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
-	instrumentation := cmdctx.Instrumentation(ctx)
+	inst := cmdctx.Instrumentation(ctx)
 
 	logger.Info().Msg("Starting open source test")
 
@@ -98,8 +104,6 @@ func RunDflyDepgraphFlow(
 		return nil, nil, fmt.Errorf("failed to upload dependency graphs: %w", err)
 	}
 
-	cfg := cmdctx.Config(ctx)
-
 	if override := cfg.GetString(flags.FlagProjectName); override != "" {
 		for i := range depGraphs {
 			depGraphs[i].Identity.Name = override
@@ -116,7 +120,7 @@ func RunDflyDepgraphFlow(
 		}
 	}
 
-	uploadResource, err := newUploadResource(uploadRes.RevisionID.String(), testapi.UploadResourceContentTypeSbom, scmCtx)
+	uploadResource, err := NewUploadResource(uploadRes.RevisionID.String(), testapi.UploadResourceContentTypeSbom, scmCtx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create upload resource: %w", err)
 	}
@@ -127,7 +131,7 @@ func RunDflyDepgraphFlow(
 		progressBar.SetTitle(constants.UploadingSourceCodeMessage)
 
 		var sourceResource testapi.TestResourceCreateItem
-		sourceResource, err = uploadSourceCodeResource(ctx, orgUUID, clients.FileUploadClient, clients.DeeproxyClient, reachabilityOpts.SourceDir)
+		sourceResource, err = UploadSourceCodeResource(ctx, orgUUID, clients.FileUploadClient, clients.DeeproxyClient, reachabilityOpts.SourceDir)
 		if err != nil {
 			logger.Warn().Err(err).Msg("Failed to upload source code, proceeding without reachability")
 			//nolint:errcheck // Best-effort warning output.
@@ -137,18 +141,18 @@ func RunDflyDepgraphFlow(
 		}
 	}
 
-	testConfig := buildTestConfig(cfg, localPolicy)
+	testConfig := BuildTestConfig(cfg, localPolicy, publishReport)
 
 	projectName := depGraphs[0].Identity.Name
 	targetFile := depGraphs[0].Identity.TargetFile
 
 	osAnalysisStart := time.Now()
-	legacyVuln, wfData, err := RunTestWithResources(
+	legacyVuln, wfData, err := runTest(
 		ctx, inputDir, clients.TestClient, resources,
 		projectName, "", 0, targetFile, targetFile, orgUUID.String(), testConfig,
 	)
-	if instrumentation != nil {
-		instrumentation.RecordOSAnalysisTime(time.Since(osAnalysisStart).Milliseconds())
+	if inst != nil {
+		inst.RecordOSAnalysisTime(time.Since(osAnalysisStart).Milliseconds())
 	}
 
 	var legacyVulnRes []definitions.LegacyVulnerabilityResponse
@@ -159,15 +163,37 @@ func RunDflyDepgraphFlow(
 	return legacyVulnRes, wfData, err
 }
 
-func buildTestConfig(cfg configuration.Configuration, localPolicy *testapi.LocalPolicy) *testapi.TestConfiguration {
+// BuildTestConfig creates a TestConfiguration from CLI flags, a local policy, and an optional publish report flag.
+func BuildTestConfig(cfg configuration.Configuration, localPolicy *testapi.LocalPolicy, publishReport *bool) *testapi.TestConfiguration {
 	testConfig := &testapi.TestConfiguration{
 		LocalPolicy: localPolicy,
 		ScanConfig: &testapi.ScanConfiguration{
 			Sca: &testapi.ScaScanConfiguration{},
 		},
+		PublishReport: publishReport,
 	}
 	if tr := cfg.GetString(flags.FlagTargetReference); tr != "" {
 		testConfig.TargetReference = &tr
 	}
+	if pbc := cfg.GetString(flags.FlagProjectBusinessCriticality); pbc != "" {
+		testConfig.ProjectBusinessCriticality = &pbc
+	}
+	if pe := cfg.GetString(flags.FlagProjectEnvironment); pe != "" {
+		vals := strings.Split(pe, ",")
+		testConfig.ProjectEnvironment = &vals
+	}
+	if pl := cfg.GetString(flags.FlagProjectLifecycle); pl != "" {
+		vals := strings.Split(pl, ",")
+		testConfig.ProjectLifecycle = &vals
+	}
+	pt := cfg.GetString(flags.FlagProjectTags)
+	if pt == "" {
+		pt = cfg.GetString(flags.FlagTags)
+	}
+	if pt != "" {
+		vals := strings.Split(pt, ",")
+		testConfig.ProjectTags = &vals
+	}
+
 	return testConfig
 }

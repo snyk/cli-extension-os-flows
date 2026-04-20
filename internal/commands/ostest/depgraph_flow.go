@@ -16,7 +16,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
-	service "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
@@ -78,10 +78,10 @@ func enrichWithTargetReference(depgraphs []DepGraphWithMeta, targetReference str
 func RunUnifiedTestFlow(
 	ctx context.Context,
 	inputDir string,
-	clients FlowClients,
+	clients common.FlowClients,
 	orgUUID uuid.UUID,
 	localPolicy *testapi.LocalPolicy,
-	reachabilityOpts *ReachabilityOpts,
+	reachabilityOpts *common.ReachabilityOpts,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	ictx := cmdctx.Ictx(ctx)
 	cfg := cmdctx.Config(ctx)
@@ -92,7 +92,6 @@ func RunUnifiedTestFlow(
 	logger.Info().Msg("Starting open source test")
 
 	progressBar.SetTitle("Listing dependencies...")
-	// Create depgraphs and get their associated target files
 	depGraphs, err := createDepGraphs(ictx, inputDir)
 	if err != nil {
 		return nil, nil, err
@@ -140,14 +139,12 @@ func RunUnifiedTestFlow(
 	return allLegacyFindings, allOutputData, err
 }
 
-// testProcessor contains the context and dependencies for running a depGraph test.
 type testProcessor struct {
 	testClient  testapi.TestClient
 	orgID       string
 	localPolicy *testapi.LocalPolicy
 }
 
-// runDepGraphTest runs a test for a single depGraph.
 func (p *testProcessor) runDepGraphTest(
 	ctx context.Context,
 	targetDir string,
@@ -177,8 +174,6 @@ func (p *testProcessor) runDepGraphTest(
 	)
 }
 
-// testAllDepGraphs tests depGraphs in parallel, up to maxConcurrency at a time, until completion or error.
-// Returns legacy JSON and/or human-readable workflow data, depending on parameters.
 func testAllDepGraphs(
 	ctx context.Context,
 	targetDir string,
@@ -247,7 +242,6 @@ func testAllDepGraphs(
 	return allLegacyFindings, allOutputData, nil
 }
 
-// createTestSubject creates a test subject from a depGraph and display target file.
 func createTestSubject(depGraph DepGraphWithMeta) (testapi.TestSubjectCreate, error) {
 	depGraphSubject := testapi.DepGraphSubjectCreate{
 		Type:     testapi.DepGraph,
@@ -268,8 +262,6 @@ func createTestSubject(depGraph DepGraphWithMeta) (testapi.TestSubjectCreate, er
 
 func getProjectName(ctx context.Context, depGraph DepGraphWithMeta) string {
 	cfg := cmdctx.Config(ctx)
-	// Project name assigned as follows: --project-name || config project name || scannedProject?.depTree?.name
-	// TODO: use project name from Config file
 	projectName := cfg.GetString(flags.FlagProjectName)
 	if projectName == "" && len(depGraph.Payload.Pkgs) > 0 {
 		projectName = depGraph.Payload.Pkgs[0].Info.Name
@@ -277,10 +269,6 @@ func getProjectName(ctx context.Context, depGraph DepGraphWithMeta) string {
 	return projectName
 }
 
-// handleOutput processes both legacy JSON and human-readable findings into their respective outputs.
-// Human-readable output is processed by the local template renderer.
-// JSON file output is written to file here, while JSON stdout is added to the output workflow.
-// Summary data is added to the output workflow for exit code calculation.
 func handleOutput(
 	ctx context.Context,
 	allLegacyFindings []definitions.LegacyVulnerabilityResponse,
@@ -291,7 +279,6 @@ func handleOutput(
 	jsonOutput := cfg.GetBool(outputworkflow.OutputConfigKeyJSON)
 	jsonFileOutput := cfg.GetString(outputworkflow.OutputConfigKeyJSONFile)
 
-	// Human-readable output is suppressed only when --json is specified.
 	wantsHumanReadable := !jsonOutput
 	wantsJSONFile := jsonFileOutput != ""
 	wantsJSONStdOut := jsonOutput
@@ -299,7 +286,6 @@ func handleOutput(
 	var finalOutput []workflow.Data
 	if wantsHumanReadable {
 		outputDestination := outputworkflow.NewOutputDestination()
-		// The output workflow returns data it did not handle, like test summaries for exit code calculation.
 		//nolint:contextcheck // The outputworkflow.EntryPoint call chain is not context-aware.
 		remainingData, err := outputworkflow.EntryPoint(ictx, allOutputData, outputDestination)
 		if err != nil {
@@ -308,7 +294,6 @@ func handleOutput(
 		finalOutput = append(finalOutput, remainingData...)
 	}
 
-	// Handle JSON output to a file or stdout.
 	if !wantsJSONFile && !wantsJSONStdOut || len(allLegacyFindings) == 0 {
 		return finalOutput, nil
 	}
@@ -331,7 +316,6 @@ func handleOutput(
 	return finalOutput, nil
 }
 
-// prepareJSONOutput prepares legacy JSON output from findings.
 func prepareJSONOutput(
 	ctx context.Context,
 	allLegacyFindings []definitions.LegacyVulnerabilityResponse,
@@ -356,13 +340,11 @@ func prepareJSONOutput(
 	if err := encoder.Encode(findingsData); err != nil {
 		return nil, errFactory.NewLegacyJSONTransformerError(fmt.Errorf("marshaling to json: %w", err))
 	}
-	// encoder.Encode adds a newline, which we trim to match Marshal's behavior.
 	return bytes.TrimRight(buffer.Bytes(), "\n"), nil
 }
 
-// createDepGraphs creates depgraphs from the file parameter in the context.
 func createDepGraphs(ictx workflow.InvocationContext, inputDir string) ([]DepGraphWithMeta, error) {
-	rawDepGraphs, err := service.GetDepGraph(ictx, inputDir)
+	rawDepGraphs, err := common.GetDepGraph(ictx, inputDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get dependency graph: %w", err)
 	}
@@ -376,7 +358,7 @@ func createDepGraphs(ictx workflow.InvocationContext, inputDir string) ([]DepGra
 }
 
 // ParseDepGraph parses a raw depgraph into a DepGraphWithMeta.
-func ParseDepGraph(rawDepGraph service.RawDepGraphWithMeta) (DepGraphWithMeta, error) {
+func ParseDepGraph(rawDepGraph common.RawDepGraphWithMeta) (DepGraphWithMeta, error) {
 	var targetFile string
 	var payload testapi.IoSnykApiV1testdepgraphRequestDepGraph
 	err := json.Unmarshal(rawDepGraph.Payload, &payload)

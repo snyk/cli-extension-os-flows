@@ -1,4 +1,4 @@
-package service_test
+package common_test
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	service "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
@@ -16,7 +16,7 @@ func TestBuildIdentity(t *testing.T) {
 	t.Run("populates all fields from depgraph", func(t *testing.T) {
 		dg := newDepGraph(t, "npm", "my-project@1.0.0", "my-project", "1.0.0")
 
-		id := service.BuildIdentity(dg, &identity.ProjectDescriptor{
+		id := common.BuildIdentity(dg, &identity.ProjectDescriptor{
 			Identity: identity.ProjectIdentity{
 				Type:          "npm",
 				TargetFile:    util.Ptr("proj/package.json"),
@@ -34,7 +34,7 @@ func TestBuildIdentity(t *testing.T) {
 	t.Run("empty runtime produces nil pointer", func(t *testing.T) {
 		dg := newDepGraph(t, "npm", "proj@1.0.0", "proj", "1.0.0")
 
-		id := service.BuildIdentity(dg, &identity.ProjectDescriptor{
+		id := common.BuildIdentity(dg, &identity.ProjectDescriptor{
 			Identity: identity.ProjectIdentity{
 				TargetRuntime: nil,
 			},
@@ -46,7 +46,7 @@ func TestBuildIdentity(t *testing.T) {
 	t.Run("empty pkg manager", func(t *testing.T) {
 		dg := newDepGraph(t, "", "app@2.0.0", "app", "2.0.0")
 
-		id := service.BuildIdentity(dg, &identity.ProjectDescriptor{
+		id := common.BuildIdentity(dg, &identity.ProjectDescriptor{
 			Identity: identity.ProjectIdentity{
 				TargetFile: util.Ptr("pom.xml"),
 			},
@@ -58,7 +58,7 @@ func TestBuildIdentity(t *testing.T) {
 	})
 
 	t.Run("nil depgraph", func(t *testing.T) {
-		id := service.BuildIdentity(nil, &identity.ProjectDescriptor{
+		id := common.BuildIdentity(nil, &identity.ProjectDescriptor{
 			Identity: identity.ProjectIdentity{
 				TargetFile:    util.Ptr("some/path"),
 				TargetRuntime: util.Ptr("python@3.11"),
@@ -81,7 +81,7 @@ func TestBuildIdentity(t *testing.T) {
 		}
 		require.NoError(t, dg.BuildGraph())
 
-		id := service.BuildIdentity(dg, &identity.ProjectDescriptor{
+		id := common.BuildIdentity(dg, &identity.ProjectDescriptor{
 			Identity: identity.ProjectIdentity{
 				Type:       "maven",
 				TargetFile: util.Ptr("pom.xml"),
@@ -96,7 +96,7 @@ func TestBuildIdentity(t *testing.T) {
 	t.Run("empty target file", func(t *testing.T) {
 		dg := newDepGraph(t, "pip", "mylib@0.1.0", "mylib", "0.1.0")
 
-		id := service.BuildIdentity(dg, &identity.ProjectDescriptor{
+		id := common.BuildIdentity(dg, &identity.ProjectDescriptor{
 			Identity: identity.ProjectIdentity{
 				Type:          "pip",
 				TargetRuntime: util.Ptr("python@3.11.0"),

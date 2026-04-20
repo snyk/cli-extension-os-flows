@@ -11,42 +11,30 @@ package ostest
 import (
 	"context"
 	"fmt"
-	"math"
 	"os"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
 	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
+	"github.com/snyk/cli-extension-os-flows/internal/commands/clientsetup"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
-	cmdutil "github.com/snyk/cli-extension-os-flows/internal/commands/util"
-	service "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
-	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/instrumentation"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
-	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/validation"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
-	"github.com/snyk/cli-extension-os-flows/internal/reachability"
-	"github.com/snyk/cli-extension-os-flows/internal/settings"
-	"github.com/snyk/cli-extension-os-flows/internal/snykclient"
-	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 // WorkflowID is the identifier for the Open Source Test workflow.
 var WorkflowID = workflow.NewWorkflowIdentifier("test")
-
-// PollInterval is the polling interval for the test API. It is exported to be configurable in tests.
-var PollInterval = 2 * time.Second
 
 // RegisterWorkflows registers the "test" workflow.
 func RegisterWorkflows(e workflow.Engine) error {
@@ -90,45 +78,6 @@ func RegisterWorkflows(e workflow.Engine) error {
 	return nil
 }
 
-func setupTestClient(ctx context.Context) (testapi.TestClient, error) {
-	cfg := cmdctx.Config(ctx)
-	ictx := cmdctx.Ictx(ctx)
-	httpClient := ictx.GetNetworkAccess().GetHttpClient()
-	snykClient := snykclient.NewSnykClient(httpClient, cfg.GetString(configuration.API_URL), cfg.GetString(configuration.ORGANIZATION))
-
-	testClient, err := testapi.NewTestClient(
-		snykClient.GetAPIBaseURL(),
-		testapi.WithPollInterval(PollInterval),
-		testapi.WithCustomHTTPClient(snykClient.GetClient()),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create test client: %w", err)
-	}
-
-	return testClient, nil
-}
-
-func setupSettingsClient(ctx context.Context) settings.Client {
-	ictx := cmdctx.Ictx(ctx)
-	cfg := cmdctx.Config(ctx)
-	sc := settings.NewClient(ictx.GetNetworkAccess().GetHttpClient(), settings.Config{BaseURL: cfg.GetString(configuration.API_URL)})
-
-	return sc
-}
-
-func setupFileUploadClient(ctx context.Context, orgID uuid.UUID) fileupload.Client {
-	ictx := cmdctx.Ictx(ctx)
-	cfg := cmdctx.Config(ctx)
-	return fileupload.NewClient(
-		ictx.GetNetworkAccess().GetHttpClient(),
-		fileupload.Config{
-			BaseURL: cfg.GetString(configuration.API_URL),
-			OrgID:   orgID,
-		},
-		fileupload.WithLogger(ictx.GetEnhancedLogger()),
-	)
-}
-
 func showEarlyAccessBanner(ictx workflow.InvocationContext) {
 	cfg := ictx.GetConfiguration()
 
@@ -142,140 +91,6 @@ func showEarlyAccessBanner(ictx workflow.InvocationContext) {
 	banner := presenters.RenderEarlyAccessBanner(presenters.SBOMEarlyAccessDocsURL)
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	ictx.GetUserInterface().Output(banner)
-}
-
-func convertReachabilityFilterToSchema(reachabilityFilter string) *testapi.ReachabilityFilter {
-	if reachabilityFilter == "" {
-		return nil
-	}
-
-	switch reachabilityFilter {
-	case "not-applicable", "not applicable":
-		return util.Ptr(testapi.ReachabilityFilterNoInfo)
-	case "no-path-found", "no path found":
-		return util.Ptr(testapi.ReachabilityFilterNoPathFound)
-	case "reachable":
-		return util.Ptr(testapi.ReachabilityFilterReachable)
-	default:
-		return nil
-	}
-}
-
-func getRiskScoreThreshold(ctx context.Context) *uint16 {
-	cfg := cmdctx.Config(ctx)
-	logger := cmdctx.Logger(ctx)
-	riskScoreThresholdInt := cfg.GetInt(flags.FlagRiskScoreThreshold)
-	if riskScoreThresholdInt >= math.MaxUint16 {
-		// the API will enforce a range from the test spec
-		logger.Warn().Msgf("Risk score threshold %d exceeds maximum uint16 value. Setting to maximum.", riskScoreThresholdInt)
-		maxVal := uint16(math.MaxUint16)
-		return &maxVal
-	} else if riskScoreThresholdInt >= 0 {
-		rs := uint16(riskScoreThresholdInt)
-		return &rs
-	}
-	return nil
-}
-
-func getSeverityThreshold(ctx context.Context) *testapi.Severity {
-	cfg := cmdctx.Config(ctx)
-	severityThresholdStr := cfg.GetString(flags.FlagSeverityThreshold)
-	if severityThresholdStr != "" {
-		st := testapi.Severity(severityThresholdStr)
-		return &st
-	}
-	return nil
-}
-
-func getReachabilityFilter(ctx context.Context) *testapi.ReachabilityFilter {
-	cfg := cmdctx.Config(ctx)
-	reachabilityFiltersFromConfig := convertReachabilityFilterToSchema(cfg.GetString(flags.FlagReachabilityFilter))
-
-	if reachabilityFiltersFromConfig != nil {
-		return reachabilityFiltersFromConfig
-	}
-
-	return nil
-}
-
-type supportedFailOnPolicy struct {
-	onUpgradable *bool
-}
-
-func getFailOnPolicy(ctx context.Context) (supportedFailOnPolicy, error) {
-	cfg := cmdctx.Config(ctx)
-	errFactory := cmdctx.ErrorFactory(ctx)
-	failOnFromConfig := cfg.GetString(flags.FlagFailOn)
-
-	var failOnPolicy supportedFailOnPolicy
-	if failOnFromConfig == "" {
-		return failOnPolicy, nil
-	}
-
-	switch failOnFromConfig {
-	case "upgradable", "all":
-		failOnPolicy.onUpgradable = util.Ptr(true)
-	default:
-		//nolint:wrapcheck // No need to wrap error factory errors.
-		return failOnPolicy, errFactory.NewUnsupportedFailOnValueError(failOnFromConfig)
-	}
-
-	return failOnPolicy, nil
-}
-
-func getLocalIgnores(ctx context.Context, inputDir string) (*[]testapi.LocalIgnore, error) {
-	policy, err := cmdutil.GetLocalPolicy(ctx, inputDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get local ignores: %w", err)
-	}
-	if policy != nil {
-		return transform.LocalPolicyToSchema(policy), nil
-	}
-	//nolint:nilnil // Intentionally returning nil ignores if no policy is present.
-	return nil, nil
-}
-
-// CreateLocalPolicy will create a local policy only if risk score or severity threshold or reachability filters are specified in the config.
-func CreateLocalPolicy(cmdCtx context.Context, inputDir string) (*testapi.LocalPolicy, error) {
-	riskScoreThreshold := getRiskScoreThreshold(cmdCtx)
-	severityThreshold := getSeverityThreshold(cmdCtx)
-	reachabilityFilter := getReachabilityFilter(cmdCtx)
-	failOnPolicy, err := getFailOnPolicy(cmdCtx)
-	if err != nil {
-		return nil, err
-	}
-	localIgnores, err := getLocalIgnores(cmdCtx, inputDir)
-	if err != nil {
-		return nil, err
-	}
-
-	// if everything is nil, return nil for local policy (no error, just no policy)
-	if riskScoreThreshold == nil && severityThreshold == nil && reachabilityFilter == nil && failOnPolicy.onUpgradable == nil && localIgnores == nil {
-		var noPolicy *testapi.LocalPolicy
-		return noPolicy, nil
-	}
-
-	// if we have some policy but no severity threshold, default to None
-	if severityThreshold == nil {
-		severityThreshold = util.Ptr(testapi.SeverityNone)
-	}
-
-	return &testapi.LocalPolicy{
-		RiskScoreThreshold: riskScoreThreshold,
-		SeverityThreshold:  severityThreshold,
-		ReachabilityFilter: reachabilityFilter,
-		FailOnUpgradable:   failOnPolicy.onUpgradable,
-		Ignores:            localIgnores,
-	}, nil
-}
-
-func getSourceDir(cfg configuration.Configuration, inputDir string) string {
-	sourceDir := cfg.GetString(flags.FlagSourceDir)
-	if sourceDir != "" {
-		return sourceDir
-	}
-
-	return inputDir
 }
 
 // initializeWorkflowContext creates and configures the context for the workflow.
@@ -296,44 +111,11 @@ func initializeWorkflowContext(ictx workflow.InvocationContext) context.Context 
 	return ctx
 }
 
-// validateAndParseOrgID validates the organization ID is present and parses it as a UUID.
-func validateAndParseOrgID(ctx context.Context, orgID string) (uuid.UUID, error) {
-	logger := cmdctx.Logger(ctx)
-	errFactory := cmdctx.ErrorFactory(ctx)
-
-	if orgID == "" {
-		logger.Error().Msg("No organization ID provided")
-		return uuid.UUID{}, errFactory.NewEmptyOrgError()
-	}
-
-	orgUUID, err := uuid.Parse(orgID)
-	if err != nil {
-		return uuid.UUID{}, errFactory.NewInvalidOrgIDError(orgID)
-	}
-
-	return orgUUID, nil
-}
-
-// ReachabilityOpts is used for passing reachability related
-// setting in flows. If missing, then reachability is not requested.
-type ReachabilityOpts struct {
-	SourceDir string
-}
-
-// FlowClients is used for encapsulating all the clients needed
-// for running the flows.
-type FlowClients struct {
-	TestClient         testapi.TestClient
-	FileUploadClient   fileupload.Client
-	ReachabilityClient reachability.Client
-	DeeproxyClient     deeproxy.Client
-}
-
 // executeFlow runs the appropriate test flow based on the routing decision.
 func executeFlow(
 	ctx context.Context,
 	flow Flow,
-	clients FlowClients,
+	clients common.FlowClients,
 	orgUUID uuid.UUID,
 	inputDir string,
 	sourceDir string,
@@ -341,17 +123,21 @@ func executeFlow(
 	localPolicy *testapi.LocalPolicy,
 	reachability bool,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	var reachOpts *ReachabilityOpts
+	var reachOpts *common.ReachabilityOpts
 	if reachability {
-		reachOpts = &ReachabilityOpts{SourceDir: sourceDir}
+		reachOpts = &common.ReachabilityOpts{SourceDir: sourceDir}
 	}
 
 	switch flow {
 	case SbomFlow:
 		return RunSbomFlow(ctx, clients, sbom, orgUUID, localPolicy, reachOpts)
 	case DflyDepgraphFlow:
-		dgResolver := service.NewDepgraphResolver()
-		return RunDflyDepgraphFlow(ctx, inputDir, dgResolver, clients, orgUUID, localPolicy, reachOpts)
+		dgResolver := common.NewDepgraphResolver()
+		findings, data, err := common.RunDflyDepgraphFlow(ctx, inputDir, dgResolver, clients, orgUUID, localPolicy, reachOpts, nil, RunTestWithResources)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to run depgraph flow: %w", err)
+		}
+		return findings, data, nil
 	case DepgraphFlow:
 		return RunUnifiedTestFlow(ctx, inputDir, clients, orgUUID, localPolicy, reachOpts)
 	default:
@@ -362,7 +148,7 @@ func executeFlow(
 // processInputDirectory handles testing a single input directory.
 func processInputDirectory(
 	ctx context.Context,
-	clients FlowClients,
+	clients common.FlowClients,
 	inputDir string,
 	orgUUID uuid.UUID,
 	flow Flow,
@@ -372,18 +158,17 @@ func processInputDirectory(
 	cfg := cmdctx.Config(ctx)
 	errFactory := cmdctx.ErrorFactory(ctx)
 
-	sourceDir := getSourceDir(cfg, inputDir)
+	sourceDir := common.GetSourceDir(cfg, inputDir)
 
-	// Validate source directory exists when reachability is enabled
 	if reachability {
-		if err := ValidateSourceDir(sourceDir, errFactory); err != nil {
-			return nil, nil, err
+		if err := common.ValidateSourceDir(sourceDir, errFactory); err != nil {
+			return nil, nil, fmt.Errorf("failed to validate source directory: %w", err)
 		}
 	}
 
-	localPolicy, err := CreateLocalPolicy(ctx, inputDir)
+	localPolicy, err := common.CreateLocalPolicy(ctx, inputDir)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to create local policy: %w", err)
 	}
 
 	return executeFlow(ctx, flow, clients, orgUUID, inputDir, sourceDir, sbom, localPolicy, reachability)
@@ -392,7 +177,7 @@ func processInputDirectory(
 // processAllInputDirectories iterates over all input directories and collects results.
 func processAllInputDirectories(
 	ctx context.Context,
-	clients FlowClients,
+	clients common.FlowClients,
 	inputDirs []string,
 	orgUUID uuid.UUID,
 	flow Flow,
@@ -504,32 +289,27 @@ func OSWorkflow(
 		return legacyEntrypoint(ctx)
 	}
 
-	orgUUID, err := validateAndParseOrgID(ctx, cfg.GetString(configuration.ORGANIZATION))
+	orgUUID, err := common.ValidateAndParseOrgID(ctx, cfg.GetString(configuration.ORGANIZATION))
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate org ID: %w", err)
+	}
+
+	flow, err := RouteToFlow(ctx, flowCfg, orgUUID, clientsetup.SetupSettingsClient(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	flow, err := RouteToFlow(ctx, flowCfg, orgUUID, setupSettingsClient(ctx))
+	testClient, err := clientsetup.SetupTestClient(ctx, common.PollInterval)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to set up test client: %w", err)
 	}
-
-	testClient, err := setupTestClient(ctx)
-	if err != nil {
-		return nil, err
-	}
-	fileUploadClient := setupFileUploadClient(ctx, orgUUID)
-	reachabilityClient := reachability.NewClient(ictx.GetNetworkAccess().GetHttpClient(), reachability.Config{
-		BaseURL: cfg.GetString(configuration.API_URL),
-	})
-	deeproxyClient := deeproxy.NewHTTPClient(deeproxy.Config{
-		BaseURL:   cfg.GetString(configuration.API_URL),
-		IsFedRamp: cfg.GetBool(configuration.IS_FEDRAMP),
-	})
+	fileUploadClient := clientsetup.SetupFileUploadClient(ctx, orgUUID)
+	reachabilityClient := clientsetup.SetupReachabilityClient(ctx)
+	deeproxyClient := clientsetup.SetupDeeproxyClient(ctx)
 
 	allLegacyFindings, allOutputData, err := processAllInputDirectories(
 		ctx,
-		FlowClients{
+		common.FlowClients{
 			TestClient:         testClient,
 			FileUploadClient:   fileUploadClient,
 			ReachabilityClient: reachabilityClient,

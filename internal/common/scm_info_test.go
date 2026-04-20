@@ -1,4 +1,4 @@
-package ostest_test
+package common_test
 
 import (
 	"os"
@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
+	"github.com/snyk/cli-extension-os-flows/internal/common"
 )
 
 func TestResolveScmInfo(t *testing.T) {
@@ -22,7 +22,7 @@ func TestResolveScmInfo(t *testing.T) {
 	t.Run("returns remote url and branch from git repo", func(t *testing.T) {
 		dir := initGitRepo(t, "https://github.com/acme/repo.git")
 
-		info := ostest.ResolveScmInfo(dir, "", &nop)
+		info := common.ResolveScmInfo(dir, "", &nop)
 
 		require.NotNil(t, info)
 		assert.Equal(t, "https://github.com/acme/repo.git", info.RemoteURL)
@@ -32,7 +32,7 @@ func TestResolveScmInfo(t *testing.T) {
 	t.Run("override replaces detected remote url", func(t *testing.T) {
 		dir := initGitRepo(t, "https://github.com/acme/repo.git")
 
-		info := ostest.ResolveScmInfo(dir, "https://custom.example.com/override.git", &nop)
+		info := common.ResolveScmInfo(dir, "https://custom.example.com/override.git", &nop)
 
 		require.NotNil(t, info)
 		assert.Equal(t, "https://custom.example.com/override.git", info.RemoteURL)
@@ -41,7 +41,7 @@ func TestResolveScmInfo(t *testing.T) {
 	t.Run("returns nil for non-git directory", func(t *testing.T) {
 		dir := t.TempDir()
 
-		info := ostest.ResolveScmInfo(dir, "", &nop)
+		info := common.ResolveScmInfo(dir, "", &nop)
 
 		assert.Nil(t, info)
 	})
@@ -49,7 +49,7 @@ func TestResolveScmInfo(t *testing.T) {
 	t.Run("override with non-git directory still returns info", func(t *testing.T) {
 		dir := t.TempDir()
 
-		info := ostest.ResolveScmInfo(dir, "https://override.example.com/repo.git", &nop)
+		info := common.ResolveScmInfo(dir, "https://override.example.com/repo.git", &nop)
 
 		require.NotNil(t, info)
 		assert.Equal(t, "https://override.example.com/repo.git", info.RemoteURL)

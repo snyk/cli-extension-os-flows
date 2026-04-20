@@ -1,10 +1,10 @@
-package service_test
+package common_test
 
 import (
 	"net/url"
 	"testing"
 
-	service "github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/common"
 
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/assert"
@@ -13,11 +13,11 @@ import (
 
 func TestOutputConversion_WhenAllFieldsArePresent(t *testing.T) {
 	data := workflow.NewData(mustBeURL(t, "https://abc.com/def"), "application/json", []byte("dep graph JSON bytes"))
-	data.SetMetaData(service.NormalisedTargetFileKey, "some normalised target file")
-	data.SetMetaData(service.TargetFileFromPluginKey, "some target file from plugin")
-	data.SetMetaData(service.TargetKey, `target JSON bytes`)
+	data.SetMetaData(common.NormalisedTargetFileKey, "some normalised target file")
+	data.SetMetaData(common.TargetFileFromPluginKey, "some target file from plugin")
+	data.SetMetaData(common.TargetKey, `target JSON bytes`)
 
-	depGraph, err := service.WorkflowOutputToRawDepGraphWithMeta(data)
+	depGraph, err := common.WorkflowOutputToRawDepGraphWithMeta(data)
 
 	require.NoError(t, err)
 	assert.Equal(t, "dep graph JSON bytes", string(depGraph.Payload))
@@ -30,9 +30,9 @@ func TestOutputConversion_WhenAllFieldsArePresent(t *testing.T) {
 
 func TestOutputConversion_WhenOptionalFieldsAreMissing(t *testing.T) {
 	data := workflow.NewData(mustBeURL(t, "https://abc.com/def"), "application/json", []byte{})
-	data.SetMetaData(service.NormalisedTargetFileKey, "")
+	data.SetMetaData(common.NormalisedTargetFileKey, "")
 
-	depGraph, err := service.WorkflowOutputToRawDepGraphWithMeta(data)
+	depGraph, err := common.WorkflowOutputToRawDepGraphWithMeta(data)
 
 	require.NoError(t, err)
 	assert.Nil(t, depGraph.TargetFileFromPlugin)

@@ -7,25 +7,23 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
-	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
-	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 )
 
 // RunSbomFlow runs the SBOM flow with optional reachability analysis.
 func RunSbomFlow(
 	ctx context.Context,
-	clients FlowClients,
+	clients common.FlowClients,
 	sbomPath string,
 	orgUUID uuid.UUID,
 	localPolicy *testapi.LocalPolicy,
-	reachabilityOpts *ReachabilityOpts,
+	reachabilityOpts *common.ReachabilityOpts,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
@@ -43,7 +41,7 @@ func RunSbomFlow(
 	}
 	logger.Debug().Str("sbomRevisionID", sbomResult.RevisionID.String()).Msg("SBOM uploaded successfully")
 
-	sbomResource, err := newUploadResource(sbomResult.RevisionID.String(), testapi.UploadResourceContentTypeSbom, nil)
+	sbomResource, err := common.NewUploadResource(sbomResult.RevisionID.String(), testapi.UploadResourceContentTypeSbom, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create SBOM resource: %w", err)
 	}
@@ -54,9 +52,9 @@ func RunSbomFlow(
 		progressBar.SetTitle(constants.UploadingSourceCodeMessage)
 
 		var sourceResource testapi.TestResourceCreateItem
-		sourceResource, err = uploadSourceCodeResource(ctx, orgUUID, clients.FileUploadClient, clients.DeeproxyClient, reachabilityOpts.SourceDir)
+		sourceResource, err = common.UploadSourceCodeResource(ctx, orgUUID, clients.FileUploadClient, clients.DeeproxyClient, reachabilityOpts.SourceDir)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("failed to upload source code: %w", err)
 		}
 		resources = append(resources, sourceResource)
 	}
@@ -97,52 +95,4 @@ func RunSbomFlow(
 	}
 
 	return allLegacyFindings, summary, nil
-}
-
-// uploadSourceCodeResource uploads source code and creates the test resource.
-func uploadSourceCodeResource(
-	ctx context.Context,
-	orgID uuid.UUID,
-	fc fileupload.Client,
-	dc deeproxy.Client,
-	sourceCodePath string,
-) (testapi.TestResourceCreateItem, error) {
-	logger := cmdctx.Logger(ctx)
-
-	sourceResult, err := reachability.UploadSourceCode(ctx, orgID, fc, dc, sourceCodePath)
-	if err != nil {
-		logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("Failed to upload source code")
-		return testapi.TestResourceCreateItem{}, fmt.Errorf("failed to upload source code: %w", err)
-	}
-	logger.Debug().Str("sourceRevisionID", sourceResult.RevisionID.String()).Msg("Source code uploaded successfully")
-
-	return newUploadResource(sourceResult.RevisionID.String(), testapi.UploadResourceContentTypeSource, nil)
-}
-
-// newUploadResource creates a TestResourceCreateItem from a revision ID, content type, and optional SCM context.
-func newUploadResource(revisionID string, contentType testapi.UploadResourceContentType, scmCtx *testapi.ScmContext) (testapi.TestResourceCreateItem, error) {
-	uploadResource := testapi.UploadResource{
-		ContentType:  contentType,
-		FilePatterns: []string{},
-		RevisionId:   revisionID,
-		Type:         testapi.Upload,
-		ScmContext:   scmCtx,
-	}
-
-	var resourceVariant testapi.BaseResourceVariantCreateItem
-	if err := resourceVariant.FromUploadResource(uploadResource); err != nil {
-		return testapi.TestResourceCreateItem{}, fmt.Errorf("failed to create resource variant: %w", err)
-	}
-
-	baseResource := testapi.BaseResourceCreateItem{
-		Resource: resourceVariant,
-		Type:     testapi.BaseResourceCreateItemTypeBase,
-	}
-
-	var testResource testapi.TestResourceCreateItem
-	if err := testResource.FromBaseResourceCreateItem(baseResource); err != nil {
-		return testapi.TestResourceCreateItem{}, fmt.Errorf("failed to create test resource: %w", err)
-	}
-
-	return testResource, nil
 }
