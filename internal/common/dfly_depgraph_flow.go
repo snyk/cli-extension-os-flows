@@ -82,6 +82,12 @@ func RunDflyDepgraphFlow(
 		return nil, nil, fmt.Errorf("no testable projects found")
 	}
 
+	if override := cfg.GetString(flags.FlagProjectName); override != "" {
+		for i := range depGraphs {
+			depGraphs[i].Identity.Name = override
+		}
+	}
+
 	tmpRootDir, paths, err := createDepgraphTmpFiles(depGraphs)
 	defer func() {
 		tmpDirRmErr := os.RemoveAll(tmpRootDir)
@@ -102,12 +108,6 @@ func RunDflyDepgraphFlow(
 	uploadRes, err := clients.FileUploadClient.CreateRevisionFromChan(ctx, pathsChan, tmpRootDir)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to upload dependency graphs: %w", err)
-	}
-
-	if override := cfg.GetString(flags.FlagProjectName); override != "" {
-		for i := range depGraphs {
-			depGraphs[i].Identity.Name = override
-		}
 	}
 
 	scmInfo := ResolveScmInfo(inputDir, cfg.GetString(flags.FlagRemoteRepoURL), logger)

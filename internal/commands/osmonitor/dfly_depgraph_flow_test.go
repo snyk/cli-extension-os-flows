@@ -131,6 +131,7 @@ func Test_OSWorkflow_DflyFFEnabled_UsesDflyFlow(t *testing.T) {
 	cfg := mockIctx.GetConfiguration()
 	cfg.Set(constants.FeatureFlagDlfyCLIRollout, true)
 	cfg.Set(configuration.INPUT_DIRECTORY, t.TempDir())
+	cfg.Set(configuration.RAW_CMD_ARGS, "monitor "+t.TempDir())
 
 	// The dfly flow will fail trying to resolve dep graphs since there's no real project,
 	// but that's expected -- we're verifying routing, not the full flow.

@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems"
 	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
@@ -57,6 +58,9 @@ func (dr *depgraphResolver) GetDepGraphsWithIdentity(ictx workflow.InvocationCon
 	logger := ictx.GetEnhancedLogger()
 
 	rawFlags := config.GetStringSlice(configuration.RAW_CMD_ARGS)
+	// For monitor we need to change the passed command to "test", otherwise the legacy CLI will
+	// attempt to monitor the depgraphs itself
+	rawFlags[0] = strings.Replace(rawFlags[0], "monitor", "test", 1)
 	opts, err := ecosystems.NewPluginOptionsFromRawFlags(rawFlags)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert raw flags to options: %w", err)
