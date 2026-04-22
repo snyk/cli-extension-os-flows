@@ -50,6 +50,11 @@ func RegisterWorkflows(e workflow.Engine) error {
 		constants.FeatureFlagDlfyCLIRollout: "rollout-dfly-os-cli",
 	})
 
+	// Unified Test API for OS CLI test.
+	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
+		constants.FeatureFlagUseUnifiedTestAPIForOSCliTest: "unified-test-api-os-cli",
+	})
+
 	// SBOM support FF.
 	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
 		constants.FeatureFlagShowMavenBuildScope: constants.ShowMavenBuildScope,
