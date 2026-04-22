@@ -28,21 +28,14 @@ type DepgraphWithIdentity struct {
 	Identity Identity           `json:"identity"`
 }
 
-// BuildIdentity constructs an Identity from a depgraph and its associated metadata.
-func BuildIdentity(dg *depgraph.DepGraph, projDesc *identity.ProjectDescriptor) Identity {
-	id := Identity{
+// BuildIdentity constructs an Identity from a project descriptor.
+func BuildIdentity(projDesc *identity.ProjectDescriptor) Identity {
+	return Identity{
 		TargetFile:    util.DefaultValue(projDesc.Identity.TargetFile, ""),
 		TargetRuntime: projDesc.Identity.TargetRuntime,
-		Type:          projDesc.Identity.Type,
+		Type:          projDesc.Identity.ProjectType,
+		Name:          projDesc.Identity.RootComponentName,
 	}
-	if dg == nil {
-		return id
-	}
-	// N.B.: this should probably be another project id descriptor, coming from the dep-graph extension.
-	if rootPkg := dg.GetRootPkg(); rootPkg != nil {
-		id.Name = rootPkg.Info.Name
-	}
-	return id
 }
 
 type depgraphResolver struct{}
@@ -82,7 +75,7 @@ func (dr *depgraphResolver) GetDepGraphsWithIdentity(ictx workflow.InvocationCon
 		}
 		dgs = append(dgs, DepgraphWithIdentity{
 			DepGraph: res.DepGraph,
-			Identity: BuildIdentity(res.DepGraph, &res.ProjectDescriptor),
+			Identity: BuildIdentity(&res.ProjectDescriptor),
 		})
 	}
 
