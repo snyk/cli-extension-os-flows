@@ -12,6 +12,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/util"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 // Identity holds the fields required to determine a project's identity.
@@ -30,12 +31,16 @@ type DepgraphWithIdentity struct {
 }
 
 // BuildIdentity constructs an Identity from a project descriptor.
-func BuildIdentity(projDesc *identity.ProjectDescriptor) Identity {
+func BuildIdentity(cfg configuration.Configuration, projDesc *identity.ProjectDescriptor) Identity {
+	name := cfg.GetString(flags.FlagProjectName)
+	if name == "" {
+		name = projDesc.Identity.RootComponentName
+	}
 	return Identity{
 		TargetFile:    util.DefaultValue(projDesc.Identity.TargetFile, ""),
 		TargetRuntime: projDesc.Identity.TargetRuntime,
 		Type:          projDesc.Identity.ProjectType,
-		Name:          projDesc.Identity.RootComponentName,
+		Name:          name,
 	}
 }
 
@@ -79,7 +84,7 @@ func (dr *depgraphResolver) GetDepGraphsWithIdentity(ictx workflow.InvocationCon
 		}
 		dgs = append(dgs, DepgraphWithIdentity{
 			DepGraph: res.DepGraph,
-			Identity: BuildIdentity(&res.ProjectDescriptor),
+			Identity: BuildIdentity(config, &res.ProjectDescriptor),
 		})
 	}
 
