@@ -653,3 +653,24 @@ func Test_RouteToFlow_DlfyRllout(t *testing.T) {
 		})
 	}
 }
+
+func Test_RouteToFlow_UnifiedTestAPIForOSCliTest(t *testing.T) {
+	t.Parallel()
+
+	cfg := configuration.New()
+	cfg.Set(flags.FlagRiskScoreThreshold, -1)
+	cfg.Set(constants.FeatureFlagUseUnifiedTestAPIForOSCliTest, true)
+
+	ctx := t.Context()
+	ctx = cmdctx.WithConfig(ctx, cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+	flowCfg, err := ostest.ParseFlowConfig(cfg)
+	require.NoError(t, err)
+
+	flow, err := ostest.RouteToFlow(ctx, flowCfg, orgID, setupSettingsClient(t))
+
+	require.NoError(t, err)
+	assert.Equal(t, ostest.DepgraphFlow, flow)
+}

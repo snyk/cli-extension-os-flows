@@ -36,6 +36,10 @@ const ShowNpmScope = "show-npm-scope"
 // FeatureFlagDlfyCLIRollout is used to rollout the CLI flow to the dragonfly stack.
 const FeatureFlagDlfyCLIRollout = "internal_snyk_cli_rollout_dfly_os_cli"
 
+// FeatureFlagUseUnifiedTestAPIForOSCliTest is used to enable tests via the Unified Test API and resolves dep-graphs
+// through the Composition Analysis orchestrator.
+const FeatureFlagUseUnifiedTestAPIForOSCliTest = "internal_snyk_cli_use_unified_test_api_for_os_cli_test"
+
 // UploadingSourceCodeMessage is the message that's being rendered in the UI spinner while
 // the source code is being uploaded.
 const UploadingSourceCodeMessage = "Uploading source code..."
