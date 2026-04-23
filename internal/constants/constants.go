@@ -40,6 +40,9 @@ const FeatureFlagDlfyCLIRollout = "internal_snyk_cli_rollout_dfly_os_cli"
 // through the Composition Analysis orchestrator.
 const FeatureFlagUseUnifiedTestAPIForOSCliTest = "internal_snyk_cli_use_unified_test_api_for_os_cli_test"
 
+// FeatureFlagDflySbomMonitor is used to rollout the SBOM monitor flow to the dragonfly stack.
+const FeatureFlagDflySbomMonitor = "internal_snyk_cli_rollout_dfly_sbom_monitor"
+
 // UploadingSourceCodeMessage is the message that's being rendered in the UI spinner while
 // the source code is being uploaded.
 const UploadingSourceCodeMessage = "Uploading source code..."

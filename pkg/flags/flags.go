@@ -166,6 +166,9 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 		"Use --reachability=true to enable, or --reachability=false to disable.")
 	flagSet.String(FlagSourceDir, "", "Path of the directory containing the source code.")
 
+	// SBOM monitor
+	flagSet.String(FlagSBOM, "", "Specify an SBOM file to be monitored.")
+
 	// Open Source
 	flagSet.String(FlagFile, "", "Specify a package file.")
 	flagSet.String(FlagProjectName, "", "Specify a name for the project.")

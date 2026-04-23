@@ -130,7 +130,11 @@ func executeFlow(
 
 	switch flow {
 	case SbomFlow:
-		return RunSbomFlow(ctx, clients, sbom, orgUUID, localPolicy, reachOpts)
+		findings, data, err := common.RunSbomFlow(ctx, sbom, clients, orgUUID, localPolicy, reachOpts, nil, RunTestWithResources)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to run sbom flow: %w", err)
+		}
+		return findings, data, nil
 	case DflyDepgraphFlow:
 		dgResolver := common.NewDepgraphResolver()
 		findings, data, err := common.RunDflyDepgraphFlow(ctx, inputDir, dgResolver, clients, orgUUID, localPolicy, reachOpts, nil, RunTestWithResources)
