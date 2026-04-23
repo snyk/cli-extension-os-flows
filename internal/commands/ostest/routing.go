@@ -118,23 +118,24 @@ func validateReachability(
 
 // FlowConfig holds parsed configuration for flow routing decisions.
 type FlowConfig struct {
-	FFDflyRollout             bool
-	FFRiskScore               bool
-	FFRiskScoreInCLI          bool
-	FFUseTestShimForOSCliTest bool
-	RiskScoreFFsEnabled       bool
-	RiskScoreThreshold        int
-	RiskScoreTest             bool
-	Reachability              bool
-	SBOM                      string
-	SBOMReachabilityTest      bool
-	ReachabilityFilter        string
-	ForceLegacyTest           bool
-	RequiresLegacy            bool
-	Unmanaged                 bool
-	TargetPackage             string
-	AllProjects               bool
-	FileFlag                  string
+	FFDflyRollout                   bool
+	FFRiskScore                     bool
+	FFRiskScoreInCLI                bool
+	FFUseTestShimForOSCliTest       bool
+	FFUseUnifiedTestAPIForOSCliTest bool
+	RiskScoreFFsEnabled             bool
+	RiskScoreThreshold              int
+	RiskScoreTest                   bool
+	Reachability                    bool
+	SBOM                            string
+	SBOMReachabilityTest            bool
+	ReachabilityFilter              string
+	ForceLegacyTest                 bool
+	RequiresLegacy                  bool
+	Unmanaged                       bool
+	TargetPackage                   string
+	AllProjects                     bool
+	FileFlag                        string
 }
 
 func doesPathExist(path string) (bool, error) {
@@ -154,6 +155,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	ffRiskScore := cfg.GetBool(constants.FeatureFlagRiskScore)
 	ffRiskScoreInCLI := cfg.GetBool(constants.FeatureFlagRiskScoreInCLI)
 	ffUseTestShimForOSCliTest := cfg.GetBool(constants.FeatureFlagUseTestShimForOSCliTest)
+	ffUseUnifiedTestAPIForOSCliTest := cfg.GetBool(constants.FeatureFlagUseUnifiedTestAPIForOSCliTest)
 	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
 	riskScoreThreshold := cfg.GetInt(flags.FlagRiskScoreThreshold)
 	riskScoreTest := riskScoreFFsEnabled || riskScoreThreshold != -1
@@ -193,23 +195,24 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	}
 
 	return &FlowConfig{
-		FFDflyRollout:             ffDflyRollout,
-		FFRiskScore:               ffRiskScore,
-		FFRiskScoreInCLI:          ffRiskScoreInCLI,
-		FFUseTestShimForOSCliTest: ffUseTestShimForOSCliTest,
-		RiskScoreFFsEnabled:       riskScoreFFsEnabled,
-		RiskScoreThreshold:        riskScoreThreshold,
-		RiskScoreTest:             riskScoreTest,
-		Reachability:              reachability,
-		SBOM:                      sbom,
-		SBOMReachabilityTest:      sbomReachabilityTest,
-		ReachabilityFilter:        reachabilityFilter,
-		ForceLegacyTest:           forceLegacyTest,
-		RequiresLegacy:            requiresLegacy,
-		Unmanaged:                 unmanaged,
-		TargetPackage:             targetPackage,
-		AllProjects:               allProjects,
-		FileFlag:                  fileFlag,
+		FFDflyRollout:                   ffDflyRollout,
+		FFRiskScore:                     ffRiskScore,
+		FFRiskScoreInCLI:                ffRiskScoreInCLI,
+		FFUseTestShimForOSCliTest:       ffUseTestShimForOSCliTest,
+		FFUseUnifiedTestAPIForOSCliTest: ffUseUnifiedTestAPIForOSCliTest,
+		RiskScoreFFsEnabled:             riskScoreFFsEnabled,
+		RiskScoreThreshold:              riskScoreThreshold,
+		RiskScoreTest:                   riskScoreTest,
+		Reachability:                    reachability,
+		SBOM:                            sbom,
+		SBOMReachabilityTest:            sbomReachabilityTest,
+		ReachabilityFilter:              reachabilityFilter,
+		ForceLegacyTest:                 forceLegacyTest,
+		RequiresLegacy:                  requiresLegacy,
+		Unmanaged:                       unmanaged,
+		TargetPackage:                   targetPackage,
+		AllProjects:                     allProjects,
+		FileFlag:                        fileFlag,
 	}, nil
 }
 
@@ -241,7 +244,8 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 		fc.SBOM != "" ||
 		fc.ReachabilityFilter != "" ||
 		uvSupportWithLockFile ||
-		fc.FFUseTestShimForOSCliTest
+		fc.FFUseTestShimForOSCliTest ||
+		fc.FFUseUnifiedTestAPIForOSCliTest
 	useLegacy := fc.ForceLegacyTest || fc.RequiresLegacy || !hasNewFeatures
 
 	logger.Debug().Msgf(
