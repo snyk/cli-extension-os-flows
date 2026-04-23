@@ -50,11 +50,6 @@ func RegisterWorkflows(e workflow.Engine) error {
 		constants.FeatureFlagDlfyCLIRollout: "rollout-dfly-os-cli",
 	})
 
-	// Unified Test API for OS CLI test.
-	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
-		constants.FeatureFlagUseUnifiedTestAPIForOSCliTest: "unified-test-api-os-cli",
-	})
-
 	// Dragonfly SBOM monitor rollout.
 	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
 		constants.FeatureFlagDflySbomMonitor: "rollout-dfly-sbom-monitor",
