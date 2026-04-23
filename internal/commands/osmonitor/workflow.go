@@ -55,6 +55,11 @@ func RegisterWorkflows(e workflow.Engine) error {
 		constants.FeatureFlagUseUnifiedTestAPIForOSCliTest: "unified-test-api-os-cli",
 	})
 
+	// Dragonfly SBOM monitor rollout.
+	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
+		constants.FeatureFlagDflySbomMonitor: "rollout-dfly-sbom-monitor",
+	})
+
 	// SBOM support FF.
 	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
 		constants.FeatureFlagShowMavenBuildScope: constants.ShowMavenBuildScope,
@@ -189,32 +194,35 @@ func OSWorkflow(
 	inst.RecordShowMavenBuildScopeFlag(cfg.GetBool(constants.FeatureFlagShowMavenBuildScope))
 	inst.RecordShowNpmScopeFlag(cfg.GetBool(constants.FeatureFlagShowNpmScope))
 
-	ffDflyRollout := cfg.GetBool(constants.FeatureFlagDlfyCLIRollout)
 	forceLegacy := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
+	if !forceLegacy {
+		if sbomPath := cfg.GetString(flags.FlagSBOM); sbomPath != "" {
+			errFactory := cmdctx.ErrorFactory(ctx)
+			if !cfg.GetBool(constants.FeatureFlagDflySbomMonitor) {
+				return nil, errFactory.NewFeatureNotPermittedError(constants.FeatureFlagDflySbomMonitor)
+			}
+			return runSbomMonitorEntrypoint(ctx, sbomPath)
+		}
 
-	if ffDflyRollout && !forceLegacy {
-		return runDflyMonitorEntrypoint(ctx)
+		if cfg.GetBool(constants.FeatureFlagDlfyCLIRollout) {
+			return runDflyMonitorEntrypoint(ctx)
+		}
 	}
 
 	return runLegacyMonitorFlow(ctx)
 }
 
-func runDflyMonitorEntrypoint(ctx context.Context) ([]workflow.Data, error) {
+func setupDflyMonitor(ctx context.Context) (uuid.UUID, common.FlowClients, error) {
 	cfg := cmdctx.Config(ctx)
 
 	orgUUID, err := common.ValidateAndParseOrgID(ctx, cfg.GetString(configuration.ORGANIZATION))
 	if err != nil {
-		return nil, fmt.Errorf("failed to validate org ID: %w", err)
-	}
-
-	inputDirs, err := common.GetInputDirectories(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get input directories: %w", err)
+		return uuid.Nil, common.FlowClients{}, fmt.Errorf("failed to validate org ID: %w", err)
 	}
 
 	testClient, err := clientsetup.SetupTestClient(ctx, common.PollInterval)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set up test client: %w", err)
+		return uuid.Nil, common.FlowClients{}, fmt.Errorf("failed to set up test client: %w", err)
 	}
 
 	clients := common.FlowClients{
@@ -222,6 +230,29 @@ func runDflyMonitorEntrypoint(ctx context.Context) ([]workflow.Data, error) {
 		FileUploadClient:   clientsetup.SetupFileUploadClient(ctx, orgUUID),
 		ReachabilityClient: clientsetup.SetupReachabilityClient(ctx),
 		DeeproxyClient:     clientsetup.SetupDeeproxyClient(ctx),
+	}
+
+	return orgUUID, clients, nil
+}
+
+func runSbomMonitorEntrypoint(ctx context.Context, sbomPath string) ([]workflow.Data, error) {
+	orgUUID, clients, err := setupDflyMonitor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return RunSbomMonitorFlow(ctx, clients, sbomPath, orgUUID)
+}
+
+func runDflyMonitorEntrypoint(ctx context.Context) ([]workflow.Data, error) {
+	orgUUID, clients, err := setupDflyMonitor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	inputDirs, err := common.GetInputDirectories(cmdctx.Config(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get input directories: %w", err)
 	}
 
 	return RunDflyMonitorFlow(ctx, inputDirs, orgUUID, clients)

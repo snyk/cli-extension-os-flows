@@ -50,13 +50,14 @@ func Test_RunSbomFlow_Reachability_JSON(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
-	legacyJSON, outputData, err := ostest.RunSbomFlow(
+	legacyJSON, outputData, err := common.RunSbomFlow(
 		ctx,
-		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		sbomPath,
+		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
 		&common.ReachabilityOpts{SourceDir: sourceCodePath},
+		nil, ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
 
@@ -95,13 +96,14 @@ func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
-	legacyJSON, outputData, err := ostest.RunSbomFlow(
+	legacyJSON, outputData, err := common.RunSbomFlow(
 		ctx,
-		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		sbomPath,
+		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
 		&common.ReachabilityOpts{SourceDir: sourceCodePath},
+		nil, ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
 
@@ -146,13 +148,14 @@ func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
-	legacyJSON, outputData, err := ostest.RunSbomFlow(
+	legacyJSON, outputData, err := common.RunSbomFlow(
 		ctx,
-		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		sbomPath,
+		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
 		nil,
+		nil, ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
 
@@ -191,13 +194,14 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
 
 	// This should now succeed with proper finding data
-	legacyJSON, outputData, err := ostest.RunSbomFlow(
+	legacyJSON, outputData, err := common.RunSbomFlow(
 		ctx,
-		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		sbomPath,
+		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
 		nil,
+		nil, ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
 

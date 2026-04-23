@@ -152,3 +152,29 @@ func setupCapturingTestClient(ctrl *gomock.Controller) (client *gafclientmocks.M
 
 	return mockTestClient, func() *testapi.TestConfiguration { return capturedConfig }
 }
+
+func setupCapturingTestClientWithResources(ctrl *gomock.Controller) (
+	client *gafclientmocks.MockTestClient,
+	getConfig func() *testapi.TestConfiguration,
+	getResources func() *[]testapi.TestResourceCreateItem,
+) {
+	mockTestResult := mustSetupMockTestResultEmpty(ctrl)
+	mockTestHandle := gafclientmocks.NewMockTestHandle(ctrl)
+	mockTestHandle.EXPECT().Wait(gomock.Any()).Return(nil).Times(1)
+	mockTestHandle.EXPECT().Result().Return(mockTestResult).Times(1)
+
+	var capturedConfig *testapi.TestConfiguration
+	var capturedResources *[]testapi.TestResourceCreateItem
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ interface{}, params testapi.StartTestParams) (testapi.TestHandle, error) {
+			capturedConfig = params.TestConfig()
+			capturedResources = params.Resources()
+			return mockTestHandle, nil
+		},
+	).Times(1)
+
+	return mockTestClient,
+		func() *testapi.TestConfiguration { return capturedConfig },
+		func() *[]testapi.TestResourceCreateItem { return capturedResources }
+}
