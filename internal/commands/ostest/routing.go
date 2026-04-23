@@ -250,7 +250,7 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 
 	logger.Debug().Msgf(
 		"Using legacy flow: %t. Legacy CLI Env var: %t. SBOM Reachability Test: %t."+
-			"Risk Score Test: %t. Experimental uv Support: %t. Test Shim FF: %t. Dfly Rollout: %t.",
+			"Risk Score Test: %t. Experimental uv Support: %t. Test Shim FF: %t. Dfly Rollout: %t. Unified Test API FF: %t.",
 		useLegacy,
 		fc.ForceLegacyTest,
 		fc.SBOMReachabilityTest,
@@ -258,6 +258,7 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 		uvSupportWithLockFile,
 		fc.FFUseTestShimForOSCliTest,
 		fc.FFDflyRollout,
+		fc.FFUseUnifiedTestAPIForOSCliTest,
 	)
 
 	return useLegacy, nil
