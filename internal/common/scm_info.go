@@ -7,8 +7,8 @@ import (
 
 // ScmInfo holds SCM metadata resolved from the local git repository.
 type ScmInfo struct {
-	RemoteURL string
-	Branch    string
+	RemoteURL string `json:"remoteUrl"`
+	Branch    string `json:"branch"`
 }
 
 // ResolveScmInfo resolves SCM info from the git repository at inputDir.
