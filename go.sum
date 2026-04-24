@@ -198,6 +198,8 @@ github.com/skeema/knownhosts v1.3.1 h1:X2osQ+RAjK76shCbvhHHHVl3ZlgDm8apHEHFqRjnB
 github.com/skeema/knownhosts v1.3.1/go.mod h1:r7KTdC8l4uxWRyK2TpQZ/1o5HaSzh06ePQNxPwTcfiY=
 github.com/snyk/cli-extension-dep-graph v1.4.0 h1:P2rGlV4QuZrIDaWvanJJASfBXbezPxFKJd31z2UI1Ec=
 github.com/snyk/cli-extension-dep-graph v1.4.0/go.mod h1:66H2oCkziptQrUDibPe3m8rx+S6XcpnUL5udT+wfrmY=
+github.com/snyk/cli-extension-dep-graph v1.5.0 h1:4o1TAHTJClIHlSJLWzuXCdojk30QC5MjMNRRVUK2WOw=
+github.com/snyk/cli-extension-dep-graph v1.5.0/go.mod h1:UbsWeKktdH+6XWBOfZqE8N2eTrC8GgZHog8l9ehPA9I=
 github.com/snyk/code-client-go v1.24.5 h1:ySsfTeaNmi3nWSuM3YaVIiSAG+H/ikD2hACxqneIZJw=
 github.com/snyk/code-client-go v1.24.5/go.mod h1:YYggK3UbOHl5rg7uBhLzsKZBFNavcwFUse/EWCKWdzw=
 github.com/snyk/dep-graph/go v0.0.0-20260127160647-c836da762c62 h1:kgZNQ5ztI4+n3YKLR5LJbqL8WJmUYgDSbFKREIY79g0=
@@ -270,6 +272,8 @@ golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56/go.mod h1:M4RDyNAINzryxdtnbR
 golang.org/x/mod v0.4.2/go.mod h1:s0Qsj1ACt9ePp/hMypM3fl4fZqREWJwdYDEqhRiZZUA=
 golang.org/x/mod v0.30.0 h1:fDEXFVZ/fmCKProc/yAXXUijritrDzahmwwefnjoPFk=
 golang.org/x/mod v0.30.0/go.mod h1:lAsf5O2EvJeSFMiBxXDki7sCgAxEUcZHXoXMKT4GJKc=
+golang.org/x/mod v0.35.0 h1:Ww1D637e6Pg+Zb2KrWfHQUnH2dQRLBQyAtpr/haaJeM=
+golang.org/x/mod v0.35.0/go.mod h1:+GwiRhIInF8wPm+4AoT6L0FA1QWAad3OMdTRx4tFYlU=
 golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/net v0.0.0-20190620200207-3b0461eec859/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
 golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
