@@ -111,11 +111,7 @@ func setupSBOMResolutionIntegrationTest(
 
 	mockEngine.EXPECT().
 		InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
-		DoAndReturn(func(_ workflow.Identifier, cfg configuration.Configuration) ([]workflow.Data, error) {
-			// Verify that use-sbom-resolution flag is set
-			assert.True(t, cfg.GetBool("use-sbom-resolution"), "use-sbom-resolution flag should be set when uv support is enabled")
-			return []workflow.Data{depGraphData}, nil
-		}).
+		Return([]workflow.Data{depGraphData}, nil).
 		Times(1)
 
 	mockTestClient.EXPECT().

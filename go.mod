@@ -117,4 +117,4 @@ require (
 )
 
 // replace github.com/snyk/go-application-framework => ../go-application-framework
-// replace github.com/snyk/cli-extension-dep-graph => ../cli-extension-dep-graph
+replace github.com/snyk/cli-extension-dep-graph => ../cli-extension-dep-graph
