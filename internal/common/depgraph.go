@@ -5,12 +5,9 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog"
-	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems"
-	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
-	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
@@ -40,44 +37,19 @@ type RawDepGraphWithMeta struct {
 }
 
 // GetDepGraph retrieves the dependency graph for the given invocation context.
+// All resolution strategy decisions (legacy CLI, SBOM, orchestrator) are handled
+// by the dep-graph extension's callback based on feature flags and lockfile detection.
 func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGraphWithMeta, error) {
 	engine := ictx.GetEngine()
 	config := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
 
-	// Branch off to get dep-graphs plus project identities from the orchestrator.
-	// TODO: move this FF check and branching logic into the dep-graph extension. The main workflow should be the canonical entrypoint for all OS flows.
-	if config.GetBool(constants.FeatureFlagUseUnifiedTestAPIForOSCliTest) {
-		opts, err := ecosystems.NewPluginOptionsFromRawFlags(config.GetStringSlice(configuration.RAW_CMD_ARGS))
-		if err != nil {
-			return nil, errFactory.NewDepGraphWorkflowError(err)
-		}
-		return getDepgraphsFromOrchestrator(ictx, inputDir, opts)
-	}
-
 	depGraphConfig := config.Clone()
-	allProjects := config.GetBool(flags.FlagAllProjects)
-	fileFlag := config.GetString(flags.FlagFile)
-
-	// Check if uv support should trigger, first check if uv.lock exists and then check if the FF is enabled.
-	// TODO: move this FF check and branching logic into the dep-graph extension.
-	uvLockExists := util.HasUvLockFile(inputDir, fileFlag, allProjects, logger)
-	if uvLockExists {
-		ffUvCLI := config.GetBool(constants.FeatureFlagUvCLI)
-		if ffUvCLI {
-			logger.Info().Msg("uv support enabled and uv.lock found, using SBOM resolution in depgraph workflow")
-			depGraphConfig.Set("use-sbom-resolution", true)
-		} else {
-			logger.Info().Msg("uv.lock found but uv feature flag disabled, using standard depgraph workflow")
-		}
-	} else {
-		logger.Info().Msg("Invoking depgraph workflow")
-	}
-
-	// Overriding the INPUT_DIRECTORY flag which the depgraph workflow will use to extract the depgraphs.
 	depGraphConfig.Set(configuration.INPUT_DIRECTORY, inputDir)
 	depGraphConfig.Set(ConfigFlagEffectiveDepGraphs, true)
+
+	logger.Info().Msg("Invoking depgraph workflow")
 	depGraphsData, err := engine.InvokeWithConfig(DepGraphWorkflowID, depGraphConfig)
 	if err != nil {
 		return nil, errFactory.NewDepGraphWorkflowError(err)
@@ -88,6 +60,8 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 	if err != nil {
 		return nil, errFactory.NewDepGraphWorkflowError(err)
 	}
+
+	addSCMContext(depGraphs, inputDir, config.GetString(flags.FlagRemoteRepoURL), logger)
 
 	return depGraphs, nil
 }
@@ -148,54 +122,29 @@ func optionalMetaDataBytes(data workflow.Data, key string) []byte {
 	return []byte(*strValue)
 }
 
-func getDepgraphsFromOrchestrator(ictx workflow.InvocationContext, inputDir string, opts *ecosystems.SCAPluginOptions) ([]RawDepGraphWithMeta, error) {
-	results, err := orchestrator.ResolveDepgraphs(ictx, inputDir, *opts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve depgraphs through ecosystems orchestrator: %w", err)
-	}
+// addSCMContext resolves SCM metadata (remote URL, branch) and attaches it
+// to any dep-graph results that don't already carry a target.
+func addSCMContext(depGraphs []RawDepGraphWithMeta, inputDir, remoteRepoURL string, logger *zerolog.Logger) {
+	var target []byte
+	resolved := false
 
-	logger := ictx.GetEnhancedLogger()
-	config := ictx.GetConfiguration()
-	target := resolveTarget(inputDir, config.GetString(flags.FlagRemoteRepoURL), logger)
-
-	rawDepGraphs := make([]RawDepGraphWithMeta, 0)
-	for result := range results {
-		dg, err := mapToRawDepGraphWithMeta(&result, target)
-		if err != nil {
-			return nil, err
+	for i := range depGraphs {
+		if depGraphs[i].Target != nil {
+			continue
 		}
-		rawDepGraphs = append(rawDepGraphs, *dg)
+		if !resolved {
+			scm := ResolveScmInfo(inputDir, remoteRepoURL, logger)
+			if scm == nil {
+				return
+			}
+			var err error
+			target, err = json.Marshal(scm)
+			if err != nil {
+				logger.Warn().Err(err).Msg("Failed to marshal SCM info, proceeding without target context")
+				return
+			}
+			resolved = true
+		}
+		depGraphs[i].Target = target
 	}
-	return rawDepGraphs, nil
-}
-
-func resolveTarget(inputDir, remoteRepoURL string, logger *zerolog.Logger) []byte {
-	scmInfo := ResolveScmInfo(inputDir, remoteRepoURL, logger)
-	if scmInfo == nil {
-		return nil
-	}
-	target, err := json.Marshal(scmInfo)
-	if err != nil {
-		logger.Warn().Err(err).Msg("Failed to marshal SCM info, proceeding without SCM context")
-	}
-	return target
-}
-
-func mapToRawDepGraphWithMeta(result *ecosystems.SCAResult, target []byte) (*RawDepGraphWithMeta, error) {
-	if result.Error != nil {
-		return nil, fmt.Errorf("failed to resolve depgraph for %s: %w",
-			result.ProjectDescriptor.GetTargetFile(), result.Error)
-	}
-
-	payload, err := json.Marshal(result.DepGraph)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal depgraph: %w", err)
-	}
-
-	return &RawDepGraphWithMeta{
-		Payload:              payload,
-		NormalisedTargetFile: util.DefaultValue(result.ProjectDescriptor.Identity.TargetFile, ""),
-		TargetFileFromPlugin: result.ProjectDescriptor.Identity.TargetFile,
-		Target:               target,
-	}, nil
 }

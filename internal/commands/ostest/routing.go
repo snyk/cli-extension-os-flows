@@ -13,7 +13,6 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	internalErrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
-	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
@@ -123,6 +122,7 @@ type FlowConfig struct {
 	FFRiskScoreInCLI                bool
 	FFUseTestShimForOSCliTest       bool
 	FFUseUnifiedTestAPIForOSCliTest bool
+	FFUvCLI                         bool
 	RiskScoreFFsEnabled             bool
 	RiskScoreThreshold              int
 	RiskScoreTest                   bool
@@ -160,6 +160,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	riskScoreThreshold := cfg.GetInt(flags.FlagRiskScoreThreshold)
 	riskScoreTest := riskScoreFFsEnabled || riskScoreThreshold != -1
 	ffDflyRollout := cfg.GetBool(constants.FeatureFlagDlfyCLIRollout)
+	ffUvCLI := cfg.GetBool(constants.FeatureFlagUvCLI)
 
 	reachability := cfg.GetBool(flags.FlagReachability)
 	sbom := cfg.GetString(flags.FlagSBOM)
@@ -200,6 +201,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 		FFRiskScoreInCLI:                ffRiskScoreInCLI,
 		FFUseTestShimForOSCliTest:       ffUseTestShimForOSCliTest,
 		FFUseUnifiedTestAPIForOSCliTest: ffUseUnifiedTestAPIForOSCliTest,
+		FFUvCLI:                         ffUvCLI,
 		RiskScoreFFsEnabled:             riskScoreFFsEnabled,
 		RiskScoreThreshold:              riskScoreThreshold,
 		RiskScoreTest:                   riskScoreTest,
@@ -220,22 +222,9 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string) (bool, error) {
 	errFactory := cmdctx.ErrorFactory(ctx)
 	logger := cmdctx.Logger(ctx)
-	cfg := cmdctx.Config(ctx)
 
 	if err := validateLegacyCLIOptions(fc, errFactory); err != nil {
 		return false, err
-	}
-
-	// Check if uv support should trigger, first check if uv.lock exists and then check if the FF is enabled.
-	uvLockExists := util.HasUvLockFileInAnyDir(inputDirs, fc.FileFlag, fc.AllProjects, logger)
-	var uvSupportWithLockFile bool
-	if uvLockExists {
-		ffUvCLI := cfg.GetBool(constants.FeatureFlagUvCLI)
-		uvSupportWithLockFile = ffUvCLI
-		logger.Debug().Msgf("uv.lock found, uv feature flag from registry: %t", ffUvCLI)
-	} else {
-		uvSupportWithLockFile = false
-		logger.Debug().Msg("uv.lock not found, skipping uv feature flag check")
 	}
 
 	hasNewFeatures := fc.FFDflyRollout ||
@@ -243,19 +232,19 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 		fc.Reachability ||
 		fc.SBOM != "" ||
 		fc.ReachabilityFilter != "" ||
-		uvSupportWithLockFile ||
+		fc.FFUvCLI ||
 		fc.FFUseTestShimForOSCliTest ||
 		fc.FFUseUnifiedTestAPIForOSCliTest
 	useLegacy := fc.ForceLegacyTest || fc.RequiresLegacy || !hasNewFeatures
 
 	logger.Debug().Msgf(
 		"Using legacy flow: %t. Legacy CLI Env var: %t. SBOM Reachability Test: %t."+
-			"Risk Score Test: %t. Experimental uv Support: %t. Test Shim FF: %t. Dfly Rollout: %t. Unified Test API FF: %t.",
+			"Risk Score Test: %t. uv FF: %t. Test Shim FF: %t. Dfly Rollout: %t. Unified Test API FF: %t.",
 		useLegacy,
 		fc.ForceLegacyTest,
 		fc.SBOMReachabilityTest,
 		fc.RiskScoreTest,
-		uvSupportWithLockFile,
+		fc.FFUvCLI,
 		fc.FFUseTestShimForOSCliTest,
 		fc.FFDflyRollout,
 		fc.FFUseUnifiedTestAPIForOSCliTest,
