@@ -68,3 +68,31 @@ func TestReachabilityFlag(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoteRepoURLFlag(t *testing.T) {
+	flagSets := []struct {
+		name     string
+		createFn func() *pflag.FlagSet
+	}{
+		{
+			name:     "OSTestFlagSet",
+			createFn: flags.OSTestFlagSet,
+		},
+		{
+			name:     "OSMonitorFlagSet",
+			createFn: flags.OSMonitorFlagSet,
+		},
+	}
+
+	for _, fs := range flagSets {
+		t.Run(fs.name, func(t *testing.T) {
+			flagSet := fs.createFn()
+			err := flagSet.Parse([]string{"--remote-repo-url=https://github.com/example/repo.git"})
+			require.NoError(t, err, "flag parsing should not fail")
+
+			value, err := flagSet.GetString(flags.FlagRemoteRepoURL)
+			require.NoError(t, err, "getting flag value should not fail")
+			assert.Equal(t, "https://github.com/example/repo.git", value)
+		})
+	}
+}
