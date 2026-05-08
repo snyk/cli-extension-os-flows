@@ -154,6 +154,7 @@ func OSTestFlagSet() *pflag.FlagSet {
 		"to the name of files inside a project along with any desired separators.")
 	flagSet.Bool(FlagDotnetRuntimeResolution, false, "You must use this option when you test .NET projects using Runtime Resolution Scanning.")
 	flagSet.String(FlagDotnetTargetFramework, "", "Specify the target framework for .NET projects.")
+	flagSet.String(FlagRemoteRepoURL, "", "Set or override the remote URL for the repository.")
 
 	return flagSet
 }
