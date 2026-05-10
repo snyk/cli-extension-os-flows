@@ -162,7 +162,7 @@ func OSWorkflow(
 	ictx workflow.InvocationContext,
 	_ []workflow.Data,
 ) ([]workflow.Data, error) {
-	ctx := context.Background()
+	ctx := ictx.Context()
 	cfg := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)

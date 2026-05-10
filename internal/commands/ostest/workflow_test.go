@@ -1,6 +1,7 @@
 package ostest_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -498,6 +499,7 @@ func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engin
 	mockNetwork.EXPECT().GetHttpClient().Return(&http.Client{}).AnyTimes()
 	icontext.EXPECT().GetNetworkAccess().Return(mockNetwork).AnyTimes()
 	icontext.EXPECT().GetAnalytics().Return(analytics.New()).AnyTimes()
+	icontext.EXPECT().Context().Return(context.Background()).AnyTimes()
 
 	return icontext
 }
