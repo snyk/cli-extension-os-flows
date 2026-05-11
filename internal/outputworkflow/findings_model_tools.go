@@ -1,7 +1,6 @@
 package outputworkflow
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"strings"
@@ -231,7 +230,7 @@ func HandleContentTypeUnifiedModel(input []workflow.Data, invocation workflow.In
 	debugLogger.Info().Msgf("Thread count: %d", threadCount)
 
 	// iterate over all writers and render for each of them
-	ctx := context.Background()
+	ctx := invocation.Context()
 	availableThreads := semaphore.NewWeighted(threadCount)
 	for k, v := range writerMap {
 		err = availableThreads.Acquire(ctx, 1)

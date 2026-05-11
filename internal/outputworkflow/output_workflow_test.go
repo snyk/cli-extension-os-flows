@@ -3,6 +3,7 @@ package outputworkflow
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -178,6 +179,7 @@ func TestUnifiedFindingsHandling_renderFilesAndUI(t *testing.T) {
 	invocationContextMock.EXPECT().GetEnhancedLogger().Return(&logger).AnyTimes()
 	invocationContextMock.EXPECT().GetRuntimeInfo().Return(
 		runtimeinfo.New(runtimeinfo.WithName("snyk-cli"), runtimeinfo.WithVersion("1.2.3"))).AnyTimes()
+	invocationContextMock.EXPECT().Context().Return(context.Background()).AnyTimes()
 
 	byteBuffer := &bytes.Buffer{}
 	outputDestination.EXPECT().GetWriter().Return(byteBuffer).AnyTimes()

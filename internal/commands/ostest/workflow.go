@@ -100,7 +100,7 @@ func showEarlyAccessBanner(ictx workflow.InvocationContext) {
 
 // initializeWorkflowContext creates and configures the context for the workflow.
 func initializeWorkflowContext(ictx workflow.InvocationContext) context.Context {
-	ctx := context.Background()
+	ctx := ictx.Context()
 	cfg := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)

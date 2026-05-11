@@ -286,7 +286,6 @@ func handleOutput(
 	var finalOutput []workflow.Data
 	if wantsHumanReadable {
 		outputDestination := outputworkflow.NewOutputDestination()
-		//nolint:contextcheck // The outputworkflow.EntryPoint call chain is not context-aware.
 		remainingData, err := outputworkflow.EntryPoint(ictx, allOutputData, outputDestination)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process output workflow: %w", err)
