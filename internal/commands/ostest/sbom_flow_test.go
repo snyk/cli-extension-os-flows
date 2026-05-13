@@ -462,6 +462,13 @@ func setupTest(
 	mockTestResult.EXPECT().GetTestFacts().Return(nil).AnyTimes()
 	mockTestResult.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
 
+	mockTestResult.EXPECT().Get(testapi.TestResultTestSubject).Return(nil).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultBreachedPolicies).Return(&testapi.PolicyRefSet{}).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultRawSummary).Return(summary).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultTestFacts).Return(nil).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultMetadata).Return(make(map[string]interface{})).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultComponents).Return(&[]testapi.TestComponent{}).AnyTimes()
+
 	var tsl testapi.TestSubjectLocator
 	projectID := uuid.MustParse("5c520c95-a964-4de0-9284-02a16f9f88d5")
 	err = tsl.FromProjectEntityLocator(testapi.ProjectEntityLocator{
@@ -470,6 +477,7 @@ func setupTest(
 	})
 	require.NoError(t, err)
 	mockTestResult.EXPECT().GetSubjectLocators().Return(util.Ptr([]testapi.TestSubjectLocator{tsl})).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultSubjectLocators).Return(util.Ptr([]testapi.TestSubjectLocator{tsl})).AnyTimes()
 
 	// Mock TestHandle
 	mockTestHandle := gafclientmocks.NewMockTestHandle(ctrl)

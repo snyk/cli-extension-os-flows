@@ -445,6 +445,15 @@ func setupDflyMockTestResultEmpty(ctrl *gomock.Controller) *gafclientmocks.MockT
 	mockTestResult.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
 	mockTestResult.EXPECT().GetTestFacts().Return(nil).AnyTimes()
 	mockTestResult.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
+
+	mockTestResult.EXPECT().Get(testapi.TestResultTestSubject).Return(nil).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultSubjectLocators).Return(nil).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultBreachedPolicies).Return(&testapi.PolicyRefSet{}).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultRawSummary).Return(&testapi.FindingSummary{}).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultTestFacts).Return(nil).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultMetadata).Return(make(map[string]interface{})).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultComponents).Return(&[]testapi.TestComponent{}).AnyTimes()
+
 	return mockTestResult
 }
 
@@ -508,6 +517,14 @@ func setupDflyTestClient(t *testing.T, ctrl *gomock.Controller) *gafclientmocks.
 	mockTestResult.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
 	mockTestResult.EXPECT().GetTestFacts().Return(nil).AnyTimes()
 	mockTestResult.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
+
+	mockTestResult.EXPECT().Get(testapi.TestResultTestSubject).Return(nil).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultSubjectLocators).Return(util.Ptr([]testapi.TestSubjectLocator{tsl})).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultBreachedPolicies).Return(&testapi.PolicyRefSet{}).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultRawSummary).Return(&testapi.FindingSummary{}).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultTestFacts).Return(nil).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultMetadata).Return(make(map[string]interface{})).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultComponents).Return(&[]testapi.TestComponent{}).AnyTimes()
 
 	mockTestHandle := gafclientmocks.NewMockTestHandle(ctrl)
 	mockTestHandle.EXPECT().Wait(gomock.Any()).Return(nil).Times(1)
