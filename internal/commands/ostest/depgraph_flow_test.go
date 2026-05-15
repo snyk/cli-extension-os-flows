@@ -154,6 +154,14 @@ func newPassingTestResult(ctrl *gomock.Controller) *gafclientmocks.MockTestResul
 	result.EXPECT().GetTestSubject().Return(&testapi.TestSubject{}).AnyTimes()
 	result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 	result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
+
+	result.EXPECT().Get(testapi.TestResultTestSubject).Return(&testapi.TestSubject{}).AnyTimes()
+	result.EXPECT().Get(testapi.TestResultSubjectLocators).Return(nil).AnyTimes()
+	result.EXPECT().Get(testapi.TestResultBreachedPolicies).Return(&testapi.PolicyRefSet{}).AnyTimes()
+	result.EXPECT().Get(testapi.TestResultRawSummary).Return(&testapi.FindingSummary{}).AnyTimes()
+	result.EXPECT().Get(testapi.TestResultTestFacts).Return(nil).AnyTimes()
+	result.EXPECT().Get(testapi.TestResultMetadata).Return(make(map[string]interface{})).AnyTimes()
+	result.EXPECT().Get(testapi.TestResultComponents).Return(nil).AnyTimes()
 	return result
 }
 

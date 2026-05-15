@@ -296,7 +296,7 @@ func Test_GetDependencyCountFromTestFacts(t *testing.T) {
 
 	t.Run("returns 0 when test facts is nil", func(t *testing.T) {
 		mockResult := gafclientmocks.NewMockTestResult(ctrl)
-		mockResult.EXPECT().GetTestFacts().Return(nil)
+		mockResult.EXPECT().Get(testapi.TestResultTestFacts).Return(nil)
 
 		count := ostest.GetDependencyCountFromTestFacts(mockResult)
 		assert.Equal(t, 0, count)
@@ -305,8 +305,8 @@ func Test_GetDependencyCountFromTestFacts(t *testing.T) {
 	t.Run("returns 0 when test facts is empty", func(t *testing.T) {
 		mockResult := gafclientmocks.NewMockTestResult(ctrl)
 		emptyFacts := []testapi.TestFact{}
-		mockResult.EXPECT().GetTestFacts().Return(&emptyFacts)
 
+		mockResult.EXPECT().Get(testapi.TestResultTestFacts).Return(&emptyFacts)
 		count := ostest.GetDependencyCountFromTestFacts(mockResult)
 		assert.Equal(t, 0, count)
 	})
@@ -319,7 +319,7 @@ func Test_GetDependencyCountFromTestFacts(t *testing.T) {
 				Type:                 testapi.DependencyCountFactTypeDependencyCountFact,
 			},
 		}
-		mockResult.EXPECT().GetTestFacts().Return(&facts)
+		mockResult.EXPECT().Get(testapi.TestResultTestFacts).Return(&facts)
 
 		count := ostest.GetDependencyCountFromTestFacts(mockResult)
 		assert.Equal(t, 42, count)

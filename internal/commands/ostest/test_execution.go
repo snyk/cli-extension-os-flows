@@ -158,8 +158,8 @@ func runTestInternal(
 }
 
 func getTestProjectID(result testapi.TestResult) (*string, error) {
-	locators := result.GetSubjectLocators()
-	if locators == nil {
+	locators, ok := result.Get(testapi.TestResultSubjectLocators).(*[]testapi.TestSubjectLocator)
+	if !ok || locators == nil {
 		//nolint:nilnil // Nil is a proper value to be returned, indicating a missing project id.
 		return nil, nil
 	}
@@ -186,8 +186,8 @@ func getTestProjectID(result testapi.TestResult) (*string, error) {
 // GetDependencyCountFromTestFacts extracts the total dependency count from test facts.
 // Returns 0 if no dependency count fact is found.
 func GetDependencyCountFromTestFacts(result testapi.TestResult) int {
-	testFacts := result.GetTestFacts()
-	if testFacts == nil {
+	testFacts, ok := result.Get(testapi.TestResultTestFacts).(*[]testapi.TestFact)
+	if !ok || testFacts == nil {
 		return 0
 	}
 

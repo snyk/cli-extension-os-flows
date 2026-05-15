@@ -155,6 +155,14 @@ func setupSBOMResolutionIntegrationTest(
 			result.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 			result.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
 
+			result.EXPECT().Get(testapi.TestResultTestSubject).Return(nil).AnyTimes()
+			result.EXPECT().Get(testapi.TestResultSubjectLocators).Return(nil).AnyTimes()
+			result.EXPECT().Get(testapi.TestResultBreachedPolicies).Return(&testapi.PolicyRefSet{}).AnyTimes()
+			result.EXPECT().Get(testapi.TestResultRawSummary).Return(&testapi.FindingSummary{}).AnyTimes()
+			result.EXPECT().Get(testapi.TestResultTestFacts).Return(nil).AnyTimes()
+			result.EXPECT().Get(testapi.TestResultMetadata).Return(make(map[string]interface{})).AnyTimes()
+			result.EXPECT().Get(testapi.TestResultComponents).Return(&[]testapi.TestComponent{}).AnyTimes()
+
 			return handle, nil
 		}).
 		Times(1)
