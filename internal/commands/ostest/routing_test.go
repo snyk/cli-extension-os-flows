@@ -17,7 +17,6 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
-	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 var (
@@ -255,14 +254,10 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 		assert.Equal(t, "The argument 'lodash@1.2.3' cannot be combined with flags --reachability.", catalogErr.Detail)
 	})
 
-	t.Run("when uv support is enabled with uv.lock file present and feature flag set", func(t *testing.T) {
+	t.Run("when uv feature flag is enabled should use new flow", func(t *testing.T) {
 		t.Parallel()
 		cfg := defaultConfig.Clone()
 		cfg.Set(constants.FeatureFlagUvCLI, true)
-
-		// Create temp directory with uv.lock file
-		tempDir := util.CreateTempDirWithUvLock(t)
-		cfg.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
 
 		ctx := t.Context()
 		ctx = cmdctx.WithConfig(ctx, cfg)
@@ -271,43 +266,17 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{tempDir})
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
 		require.NoError(t, err)
 
-		assert.False(t, useLegacy, "should use new flow when uv feature flag is enabled and uv.lock exists")
+		assert.False(t, useLegacy, "should use new flow when uv feature flag is enabled")
 	})
 
-	t.Run("when uv feature flag is enabled but uv.lock file is missing", func(t *testing.T) {
-		t.Parallel()
-		cfg := defaultConfig.Clone()
-		cfg.Set(constants.FeatureFlagUvCLI, true)
-
-		// Create temp directory without uv.lock file
-		tempDir := t.TempDir()
-		cfg.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
-
-		ctx := t.Context()
-		ctx = cmdctx.WithConfig(ctx, cfg)
-		ctx = cmdctx.WithLogger(ctx, &nopLogger)
-		ctx = cmdctx.WithErrorFactory(ctx, errFactory)
-
-		flowCfg, err := ostest.ParseFlowConfig(cfg)
-		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{tempDir})
-		require.NoError(t, err)
-
-		assert.True(t, useLegacy, "should use legacy flow when uv feature flag is enabled but uv.lock is missing")
-	})
-
-	t.Run("when uv feature flag is disabled even with uv.lock present", func(t *testing.T) {
+	t.Run("when uv feature flag is disabled should use legacy flow", func(t *testing.T) {
 		t.Parallel()
 		cfg := defaultConfig.Clone()
 		cfg.Set(constants.FeatureFlagUvCLI, false)
 
-		// Create temp directory with uv.lock file
-		tempDir := util.CreateTempDirWithUvLock(t)
-		cfg.Set(configuration.INPUT_DIRECTORY, []string{tempDir})
-
 		ctx := t.Context()
 		ctx = cmdctx.WithConfig(ctx, cfg)
 		ctx = cmdctx.WithLogger(ctx, &nopLogger)
@@ -315,10 +284,10 @@ func Test_ShouldUseLegacyFlow(t *testing.T) {
 
 		flowCfg, err := ostest.ParseFlowConfig(cfg)
 		require.NoError(t, err)
-		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{tempDir})
+		useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
 		require.NoError(t, err)
 
-		assert.True(t, useLegacy, "should use legacy flow when uv support is disabled regardless of uv.lock presence")
+		assert.True(t, useLegacy, "should use legacy flow when uv feature flag is disabled")
 	})
 }
 
