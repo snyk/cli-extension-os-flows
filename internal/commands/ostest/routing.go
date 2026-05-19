@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/google/uuid"
+	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
@@ -155,7 +156,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	ffRiskScore := cfg.GetBool(constants.FeatureFlagRiskScore)
 	ffRiskScoreInCLI := cfg.GetBool(constants.FeatureFlagRiskScoreInCLI)
 	ffUseTestShimForOSCliTest := cfg.GetBool(constants.FeatureFlagUseTestShimForOSCliTest)
-	ffUseUnifiedTestAPIForOSCliTest := cfg.GetBool(constants.FeatureFlagUseUnifiedTestAPIForOSCliTest)
+	ffUseUnifiedTestAPIForOSCliTest := cfg.GetBool(orchestrator.FlagUnifiedTestAPIOsCLI.Key)
 	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
 	riskScoreThreshold := cfg.GetInt(flags.FlagRiskScoreThreshold)
 	riskScoreTest := riskScoreFFsEnabled || riskScoreThreshold != -1

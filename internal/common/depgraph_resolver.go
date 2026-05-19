@@ -72,10 +72,12 @@ func (dr *depgraphResolver) GetDepGraphsWithIdentity(ictx workflow.InvocationCon
 	}
 
 	logger.Info().Msgf("invoking ecosystems orchestrator with raw flags: %s", rawFlags)
-	results, err := orchestrator.ResolveDepgraphs(ictx, inputDir, *opts)
+	registry, err := orchestrator.NewDefaultPluginRegistry(ictx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolved dependency graphs: %w", err)
+		return nil, fmt.Errorf("failed to create plugin registry: %w", err)
 	}
+
+	results := registry.ResolveDepgraphs(inputDir, opts)
 
 	dgs := make([]DepgraphWithIdentity, 0)
 	for res := range results {

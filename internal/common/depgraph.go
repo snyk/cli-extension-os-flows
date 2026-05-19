@@ -55,7 +55,7 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 	uvLockExists := util.HasUvLockFile(inputDir, fileFlag, allProjects, logger)
 	useUv := uvLockExists && config.GetBool(constants.FeatureFlagUvCLI)
 
-	if !useUv && config.GetBool(constants.FeatureFlagUseUnifiedTestAPIForOSCliTest) {
+	if !useUv && config.GetBool(orchestrator.FlagUnifiedTestAPIOsCLI.Key) {
 		return resolveViaOrchestrator(ictx, inputDir, errFactory)
 	}
 	return resolveViaWorkflow(ictx, inputDir, useUv, uvLockExists, errFactory)
@@ -169,10 +169,12 @@ func optionalMetaDataBytes(data workflow.Data, key string) []byte {
 }
 
 func getDepgraphsFromOrchestrator(ictx workflow.InvocationContext, inputDir string, opts *ecosystems.SCAPluginOptions) ([]RawDepGraphWithMeta, error) {
-	results, err := orchestrator.ResolveDepgraphs(ictx, inputDir, *opts)
+	registry, err := orchestrator.NewDefaultPluginRegistry(ictx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve depgraphs through ecosystems orchestrator: %w", err)
+		return nil, fmt.Errorf("failed to create plugin registry: %w", err)
 	}
+
+	results := registry.ResolveDepgraphs(inputDir, opts)
 
 	logger := ictx.GetEnhancedLogger()
 	config := ictx.GetConfiguration()
