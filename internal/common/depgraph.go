@@ -40,38 +40,58 @@ type RawDepGraphWithMeta struct {
 }
 
 // GetDepGraph retrieves the dependency graph for the given invocation context.
+//
+// Priority: uv handling (uv.lock + FeatureFlagUvCLI) takes precedence over the unified-test-api
+// orchestrator path so that uv repos keep their SBOM-resolution behavior as the unified FF rolls out.
 func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGraphWithMeta, error) {
-	engine := ictx.GetEngine()
 	config := ictx.GetConfiguration()
 	logger := ictx.GetEnhancedLogger()
 	errFactory := errors.NewErrorFactory(logger)
 
-	// Branch off to get dep-graphs plus project identities from the orchestrator.
-	// TODO: move this FF check and branching logic into the dep-graph extension. The main workflow should be the canonical entrypoint for all OS flows.
-	if config.GetBool(constants.FeatureFlagUseUnifiedTestAPIForOSCliTest) {
-		opts, err := ecosystems.NewPluginOptionsFromRawFlags(config.GetStringSlice(configuration.RAW_CMD_ARGS))
-		if err != nil {
-			return nil, errFactory.NewDepGraphWorkflowError(err)
-		}
-		return getDepgraphsFromOrchestrator(ictx, inputDir, opts)
-	}
-
-	depGraphConfig := config.Clone()
 	allProjects := config.GetBool(flags.FlagAllProjects)
 	fileFlag := config.GetString(flags.FlagFile)
 
-	// Check if uv support should trigger, first check if uv.lock exists and then check if the FF is enabled.
-	// TODO: move this FF check and branching logic into the dep-graph extension.
+	// FeatureFlagUvCLI is only looked up when uv.lock is present, matching the prior cascading check.
 	uvLockExists := util.HasUvLockFile(inputDir, fileFlag, allProjects, logger)
-	if uvLockExists {
-		ffUvCLI := config.GetBool(constants.FeatureFlagUvCLI)
-		if ffUvCLI {
-			logger.Info().Msg("uv support enabled and uv.lock found, using SBOM resolution in depgraph workflow")
-			depGraphConfig.Set("use-sbom-resolution", true)
-		} else {
-			logger.Info().Msg("uv.lock found but uv feature flag disabled, using standard depgraph workflow")
-		}
-	} else {
+	useUv := uvLockExists && config.GetBool(constants.FeatureFlagUvCLI)
+
+	if !useUv && config.GetBool(constants.FeatureFlagUseUnifiedTestAPIForOSCliTest) {
+		return resolveViaOrchestrator(ictx, inputDir, errFactory)
+	}
+	return resolveViaWorkflow(ictx, inputDir, useUv, uvLockExists, errFactory)
+}
+
+func resolveViaOrchestrator(
+	ictx workflow.InvocationContext,
+	inputDir string,
+	errFactory *errors.ErrorFactory,
+) ([]RawDepGraphWithMeta, error) {
+	config := ictx.GetConfiguration()
+	opts, err := ecosystems.NewPluginOptionsFromRawFlags(config.GetStringSlice(configuration.RAW_CMD_ARGS))
+	if err != nil {
+		return nil, errFactory.NewDepGraphWorkflowError(err)
+	}
+	return getDepgraphsFromOrchestrator(ictx, inputDir, opts)
+}
+
+func resolveViaWorkflow(
+	ictx workflow.InvocationContext,
+	inputDir string,
+	useUv, uvLockExists bool,
+	errFactory *errors.ErrorFactory,
+) ([]RawDepGraphWithMeta, error) {
+	engine := ictx.GetEngine()
+	config := ictx.GetConfiguration()
+	logger := ictx.GetEnhancedLogger()
+
+	depGraphConfig := config.Clone()
+	switch {
+	case useUv:
+		logger.Info().Msg("uv support enabled and uv.lock found, using SBOM resolution in depgraph workflow")
+		depGraphConfig.Set("use-sbom-resolution", true)
+	case uvLockExists:
+		logger.Info().Msg("uv.lock found but uv feature flag disabled, using standard depgraph workflow")
+	default:
 		logger.Info().Msg("Invoking depgraph workflow")
 	}
 
