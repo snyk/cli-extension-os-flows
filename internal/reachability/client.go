@@ -33,7 +33,7 @@ const (
 
 	minPollInteval      = 1 * time.Second
 	defaultPollInterval = 2 * time.Second
-	defaultPollTimeout  = 2 * time.Minute
+	defaultPollTimeout  = 20 * time.Minute // was 2 min; backend job timeout is 1h, large bundles can take 15+ min
 )
 
 // Client defines the interface for reachability analysis operations.
