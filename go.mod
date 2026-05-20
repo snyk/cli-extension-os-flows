@@ -14,7 +14,7 @@ require (
 	github.com/muesli/termenv v0.16.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/rs/zerolog v1.34.0
-	github.com/snyk/cli-extension-dep-graph v1.5.0
+	github.com/snyk/cli-extension-dep-graph v1.18.1
 	github.com/snyk/dep-graph/go v0.0.0-20260127160647-c836da762c62
 	github.com/snyk/error-catalog-golang-public v0.0.0-20260410094451-50af33399e90
 	github.com/snyk/go-application-framework v0.0.0-20260511100036-100e7116aec5
