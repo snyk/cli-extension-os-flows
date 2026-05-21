@@ -4,6 +4,7 @@ package sources
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 
@@ -35,6 +36,10 @@ var supportedExtensions = map[string]struct{}{
 // the org / feature flags before invoking this function — it only inspects
 // the file tree.
 func HasSupportedSources(path string, logger *zerolog.Logger) (bool, error) {
+	if _, err := os.Stat(path); err != nil {
+		return false, fmt.Errorf("failed to stat %s: %w", path, err)
+	}
+
 	files, err := listsources.ForPath(path, logger, runtime.NumCPU())
 	if err != nil {
 		return false, fmt.Errorf("failed to list files in %s: %w", path, err)
