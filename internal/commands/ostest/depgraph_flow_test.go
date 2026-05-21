@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -380,6 +382,8 @@ func Test_RunUnifiedTestFlow_ReachabilityFailureFallback(t *testing.T) {
 	t.Parallel()
 	h := newFlowTestHarness(t)
 
+	sourceDir := tempDirWithJSFile(t)
+
 	h.instr.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
 	h.instr.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
 	h.registerDepGraphs(1)
@@ -411,11 +415,55 @@ func Test_RunUnifiedTestFlow_ReachabilityFailureFallback(t *testing.T) {
 		FileUploadClient:   fileupload.NewFakeClient(),
 		ReachabilityClient: fakeReachabilityClient,
 		DeeproxyClient:     deeproxy.NewFakeClient(deeproxy.AllowList{Extensions: []string{".js"}}, nil),
-	}, orgUUID, nil, &common.ReachabilityOpts{SourceDir: "."})
+	}, orgUUID, nil, &common.ReachabilityOpts{SourceDir: sourceDir})
 
 	require.NoError(t, err, "scan should succeed even when reachability fails")
 	require.NotNil(t, capturedErr, "OutputError should have been called with a warning")
 	assert.Contains(t, capturedErr.Error(), "Reachability analysis failed")
+}
+
+func Test_RunUnifiedTestFlow_SkipsReachabilityWhenNoSupportedSources(t *testing.T) {
+	t.Parallel()
+	h := newFlowTestHarness(t)
+
+	// Source dir with only unsupported files — reachability must be skipped.
+	sourceDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "main.go"), []byte("package main"), 0o600))
+
+	// RecordCodeUploadTime is NOT expected — its absence asserts that the
+	// reachability upload path was skipped.
+	h.instr.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
+	h.registerDepGraphs(1)
+
+	mockTestClient := newAssertingTestClient(t, h.ctrl, func(t *testing.T, params testapi.StartTestParams) {
+		t.Helper()
+		depGraphSubject, err := params.Subject().AsDepGraphSubjectCreate()
+		require.NoError(t, err)
+
+		_, hasScanID := depGraphSubject.DepGraph.Get("reachabilityScanId")
+		assert.False(t, hasScanID, "depgraph must not be enriched when reachability is skipped")
+	})
+
+	// Reachability client that would panic if called — proves it isn't.
+	fakeReachabilityClient := reachability.NewFakeClient(uuid.New())
+
+	ctx := h.buildContext()
+
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", common.FlowClients{
+		TestClient:         mockTestClient,
+		FileUploadClient:   fileupload.NewFakeClient(),
+		ReachabilityClient: fakeReachabilityClient,
+		DeeproxyClient:     deeproxy.NewFakeClient(deeproxy.AllowList{}, nil),
+	}, orgUUID, nil, &common.ReachabilityOpts{SourceDir: sourceDir})
+
+	require.NoError(t, err)
+}
+
+func tempDirWithJSFile(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "app.js"), []byte("console.log('hi')"), 0o600))
+	return dir
 }
 
 func TestMappingTargetParamsToDepGraph(t *testing.T) {

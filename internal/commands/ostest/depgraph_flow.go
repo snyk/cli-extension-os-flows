@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
@@ -21,6 +22,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
+	"github.com/snyk/cli-extension-os-flows/internal/reachability/sources"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
@@ -97,7 +99,7 @@ func RunUnifiedTestFlow(
 		return nil, nil, err
 	}
 
-	if reachabilityOpts != nil {
+	if reachabilityOpts != nil && shouldRunReachability(reachabilityOpts.SourceDir, logger) {
 		progressBar.SetTitle(constants.UploadingSourceCodeMessage)
 
 		scanID, scanErr := reachability.GetReachabilityID(
@@ -388,4 +390,20 @@ type DepGraphWithMeta struct {
 	Payload              *testapi.IoSnykApiV1testdepgraphRequestDepGraph
 	DisplayTargetFile    string
 	TargetFileFromPlugin string
+}
+
+// shouldRunReachability checks whether the source directory contains any files
+// in a reachability-supported language. On error inspecting the directory we
+// fall through (return true) so a transient IO issue never costs the user a
+// scan they asked for; the existing upload path will surface the real error.
+func shouldRunReachability(sourceDir string, logger *zerolog.Logger) bool {
+	hasSources, err := sources.HasSupportedSources(sourceDir, logger)
+	if err != nil {
+		logger.Warn().Err(err).Str("sourceDir", sourceDir).Msg("Failed to inspect source directory for reachability; proceeding with upload")
+		return true
+	}
+	if !hasSources {
+		logger.Info().Str("sourceDir", sourceDir).Msg("No reachability-supported source files found; skipping upload")
+	}
+	return hasSources
 }
