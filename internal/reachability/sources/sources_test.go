@@ -47,7 +47,7 @@ func TestHasSupportedSources_AllSupportedExtensions(t *testing.T) {
 			got, err := sources.HasSupportedSources(dir, nopLogger())
 
 			require.NoError(t, err)
-			assert.True(t, got, "expected %s to be recognised as supported", ext)
+			assert.True(t, got, "expected %s to be recognized as supported", ext)
 		})
 	}
 }

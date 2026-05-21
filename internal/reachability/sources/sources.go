@@ -56,11 +56,11 @@ func HasSupportedSources(path string, logger *zerolog.Logger) (bool, error) {
 
 // unblockFileWalker drains the remaining file paths in the background so the
 // producer goroutines inside utils.FileFilter — which accept no context and
-// cannot be cancelled — can finish sending and exit cleanly after we've
+// cannot be canceled — can finish sending and exit cleanly after we've
 // already found what we were looking for.
 func unblockFileWalker(files <-chan string) {
 	go func() {
-		for range files {
+		for range files { //nolint:revive // intentional drain to unblock producer
 		}
 	}()
 }

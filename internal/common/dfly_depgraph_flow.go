@@ -121,7 +121,7 @@ func RunDflyDepgraphFlow(
 
 	resources := []testapi.TestResourceCreateItem{uploadResource}
 
-	if reachabilityOpts != nil {
+	if reachabilityOpts != nil && ShouldRunReachability(reachabilityOpts.SourceDir, logger) {
 		progressBar.SetTitle(constants.UploadingSourceCodeMessage)
 
 		var sourceResource testapi.TestResourceCreateItem
