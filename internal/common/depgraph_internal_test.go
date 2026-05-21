@@ -32,6 +32,9 @@ func TestMapToRawDepGraphWithMeta_Success(t *testing.T) {
 				TargetFile: util.Ptr("package.json"),
 			},
 		},
+		ResolverMetadata: &ecosystems.ResolverMetadata{
+			NormalisedTargetFile: "package.json",
+		},
 	}
 
 	raw, err := mapToRawDepGraphWithMeta(result, target)
@@ -61,6 +64,7 @@ func TestMapToRawDepGraphWithMeta_NilTargetFile(t *testing.T) {
 				TargetFile: nil,
 			},
 		},
+		ResolverMetadata: &ecosystems.ResolverMetadata{},
 	}
 
 	raw, err := mapToRawDepGraphWithMeta(result, nil)

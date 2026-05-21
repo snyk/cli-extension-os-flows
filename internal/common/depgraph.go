@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog"
-	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems"
-	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
+
+	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems"
+	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
 
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -56,6 +57,7 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 	useUv := uvLockExists && config.GetBool(constants.FeatureFlagUvCLI)
 
 	if !useUv && config.GetBool(orchestrator.FlagUnifiedTestAPIOsCLI.Key) {
+		logger.Info().Msgf("Using unifed scanners")
 		return resolveViaOrchestrator(ictx, inputDir, errFactory)
 	}
 	return resolveViaWorkflow(ictx, inputDir, useUv, uvLockExists, errFactory)
@@ -216,7 +218,7 @@ func mapToRawDepGraphWithMeta(result *ecosystems.SCAResult, target []byte) (*Raw
 
 	return &RawDepGraphWithMeta{
 		Payload:              payload,
-		NormalisedTargetFile: util.DefaultValue(result.ProjectDescriptor.Identity.TargetFile, ""),
+		NormalisedTargetFile: result.ResolverMetadata.NormalisedTargetFile,
 		TargetFileFromPlugin: result.ProjectDescriptor.Identity.TargetFile,
 		Target:               target,
 	}, nil
