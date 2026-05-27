@@ -8,13 +8,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
+	uvutils "github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/python/uv"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	internalErrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
-	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
@@ -228,7 +228,7 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 	}
 
 	// Check if uv support should trigger, first check if uv.lock exists and then check if the FF is enabled.
-	uvLockExists := util.HasUvLockFileInAnyDir(inputDirs, fc.FileFlag, fc.AllProjects, logger)
+	uvLockExists := uvutils.HasUvLockFileInAnyDir(inputDirs, fc.FileFlag, fc.AllProjects, logger)
 	var uvSupportWithLockFile bool
 	if uvLockExists {
 		ffUvCLI := cfg.GetBool(constants.FeatureFlagUvCLI)
