@@ -47,6 +47,7 @@ func HasSupportedSources(path string, logger *zerolog.Logger) (bool, error) {
 
 	for f := range files {
 		if _, ok := supportedExtensions[filepath.Ext(f)]; ok {
+			logger.Info().Str("extension", filepath.Ext(f)).Msg("supported extension found")
 			unblockFileWalker(files)
 			return true, nil
 		}
