@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog"
-	"github.com/snyk/go-application-framework/pkg/configuration"
-	"github.com/snyk/go-application-framework/pkg/workflow"
-
 	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems"
 	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
+	uvutils "github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/python/uv"
+	"github.com/snyk/go-application-framework/pkg/configuration"
+	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -53,7 +53,7 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 	fileFlag := config.GetString(flags.FlagFile)
 
 	// FeatureFlagUvCLI is only looked up when uv.lock is present, matching the prior cascading check.
-	uvLockExists := util.HasUvLockFile(inputDir, fileFlag, allProjects, logger)
+	uvLockExists := uvutils.HasUvLockFile(inputDir, fileFlag, allProjects, logger)
 	useUv := uvLockExists && config.GetBool(constants.FeatureFlagUvCLI)
 
 	if !useUv && config.GetBool(orchestrator.FlagUnifiedTestAPIOsCLI.Key) {
