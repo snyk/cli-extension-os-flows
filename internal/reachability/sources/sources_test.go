@@ -38,17 +38,18 @@ func TestHasSupportedSources_SingleJavaFile_ReturnsTrue(t *testing.T) {
 }
 
 func TestHasSupportedSources_AllSupportedExtensions(t *testing.T) {
-	exts := []string{".java", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".py", ".cs"}
-	for _, ext := range exts {
-		t.Run(ext, func(t *testing.T) {
-			dir := t.TempDir()
-			writeFile(t, dir, "file"+ext, "// content")
+	for lang, exts := range sources.SupportedExtensionsByLanguage {
+		for _, ext := range exts {
+			t.Run(lang+"/"+ext, func(t *testing.T) {
+				dir := t.TempDir()
+				writeFile(t, dir, "file"+ext, "// content")
 
-			got, err := sources.HasSupportedSources(dir, nopLogger())
+				got, err := sources.HasSupportedSources(dir, nopLogger())
 
-			require.NoError(t, err)
-			assert.True(t, got, "expected %s to be recognized as supported", ext)
-		})
+				require.NoError(t, err)
+				assert.True(t, got, "expected %s (%s) to be recognized as supported", ext, lang)
+			})
+		}
 	}
 }
 

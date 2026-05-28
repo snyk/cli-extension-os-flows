@@ -13,22 +13,29 @@ import (
 	listsources "github.com/snyk/cli-extension-os-flows/internal/files"
 )
 
-// supportedExtensions is the curated set of file extensions that belong to a
-// reachability-supported language. Mirrors
+// SupportedExtensionsByLanguage maps each reachability-supported language to
+// the file extensions Code recognises for it. Mirrors the corresponding subset
+// of snyk/deepcode analysis/analysis_settings/analysis_settings.json (the
+// authoritative source) and must be re-synced when Code adds extensions for
+// Java/JS/TS/Python/C#. The public docs at
 // https://docs.snyk.io/manage-risk/prioritize-issues-for-fixing/reachability-analysis
-// and must be kept in sync manually when reachability adds a language.
-// Verify against the registry and sast-analysis-api definitions before extending.
-var supportedExtensions = map[string]struct{}{
-	".java": {},
-	".js":   {},
-	".jsx":  {},
-	".mjs":  {},
-	".cjs":  {},
-	".ts":   {},
-	".tsx":  {},
-	".py":   {},
-	".cs":   {},
+// list the supported languages but not the full extension set.
+var SupportedExtensionsByLanguage = map[string][]string{
+	"Java":                  {".java", ".jsp", ".jspx"},
+	"JavaScript/TypeScript": {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".cts", ".mts", ".vue", ".htm", ".html", ".ejs", ".es", ".es6"},
+	"Python":                {".py"},
+	"C#":                    {".cs", ".aspx"},
 }
+
+var supportedExtensions = func() map[string]struct{} {
+	m := make(map[string]struct{})
+	for _, exts := range SupportedExtensionsByLanguage {
+		for _, ext := range exts {
+			m[ext] = struct{}{}
+		}
+	}
+	return m
+}()
 
 // HasSupportedSources reports whether the given directory contains at least
 // one file whose extension belongs to a language supported by reachability

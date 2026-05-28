@@ -26,7 +26,10 @@ func ShouldRunReachability(sourceDir string, logger *zerolog.Logger) bool {
 		return true
 	}
 	if !hasSources {
-		logger.Info().Str("sourceDir", sourceDir).Msg("No reachability-supported source files found; skipping upload")
+		logger.Info().
+			Str("sourceDir", sourceDir).
+			Interface("supportedLanguages", sources.SupportedExtensionsByLanguage).
+			Msg("No reachability-supported source files found; skipping upload")
 	}
 	return hasSources
 }
