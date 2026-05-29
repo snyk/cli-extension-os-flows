@@ -3,6 +3,8 @@ package common_test
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
 	"time"
@@ -240,6 +242,50 @@ func Test_RunDflyDepgraphFlow_DepgraphResolverFails(t *testing.T) {
 		orgID, nil, nil, nil, ostest.RunTestWithResources,
 	)
 	assert.ErrorContains(t, err, "failed to extract dependency graphs")
+}
+
+func Test_RunDflyDepgraphFlow_SkipsSourceUploadWhenNoSupportedSources(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Source dir with only unsupported files — reachability upload must be skipped.
+	sourceDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "main.go"), []byte("package main"), 0o600))
+
+	orgID := uuid.New()
+	mockIctx := setupDflyInvocationContext(t, ctrl, true)
+	mockTestClient := setupDflyTestClient(t, ctrl)
+	ffc := fileupload.NewFakeClient()
+	fdr := common.NewFakeDepgraphResolver([]common.DepgraphWithIdentity{
+		{
+			Identity: common.Identity{TargetFile: "proj/package.json"},
+			DepGraph: &depgraph.DepGraph{
+				SchemaVersion: "1.2.0",
+				PkgManager:    depgraph.PkgManager{Name: "npm"},
+				Pkgs: []depgraph.Pkg{
+					{ID: "proj@1.0.0", Info: depgraph.PkgInfo{Name: "proj", Version: "1.0.0"}},
+				},
+				Graph: depgraph.Graph{RootNodeID: "root"},
+			},
+		},
+	}, nil)
+
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
+	ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+
+	_, _, err := common.RunDflyDepgraphFlow(
+		ctx, ".", fdr,
+		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
+		orgID, nil, &common.ReachabilityOpts{SourceDir: sourceDir}, nil,
+		ostest.RunTestWithResources,
+	)
+	require.NoError(t, err)
+
+	// Only the depgraph upload; the source code upload must be skipped.
+	assert.Equal(t, 1, ffc.GetUploadCount())
 }
 
 func Test_RunDflyDepgraphFlow_ConfigMetadataForwarded(t *testing.T) {

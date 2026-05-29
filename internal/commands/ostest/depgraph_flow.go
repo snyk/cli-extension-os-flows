@@ -97,7 +97,7 @@ func RunUnifiedTestFlow(
 		return nil, nil, err
 	}
 
-	if reachabilityOpts != nil {
+	if reachabilityOpts != nil && common.ShouldRunReachability(reachabilityOpts.SourceDir, logger) {
 		progressBar.SetTitle(constants.UploadingSourceCodeMessage)
 
 		scanID, scanErr := reachability.GetReachabilityID(

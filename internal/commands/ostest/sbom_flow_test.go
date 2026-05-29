@@ -3,6 +3,8 @@ package ostest_test
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
 	"time"
@@ -230,6 +232,37 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 
 	// Verify file upload client was called only for SBOM
 	require.Equal(t, 1, ffc.GetUploadCount(), "Expected 1 upload (SBOM only)")
+}
+
+func Test_RunSbomFlow_SkipsSourceUploadWhenNoSupportedSources(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ef := errors.NewErrorFactory(&nopLogger)
+	mockIctx, mockTestClient, ffc, fdc, orgID, sbomPath, _ := setupTest(t, ctrl, true)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+
+	// Source dir with only unsupported files — upload must be skipped.
+	sourceDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "main.go"), []byte("package main"), 0o600))
+
+	_, _, err := common.RunSbomFlow(
+		ctx,
+		sbomPath,
+		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
+		orgID,
+		nil,
+		&common.ReachabilityOpts{SourceDir: sourceDir},
+		nil, ostest.RunTestWithResources,
+	)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, ffc.GetUploadCount(), "Expected only the SBOM upload; source code upload must be skipped")
 }
 
 //nolint:gocritic // Not important for tests.
