@@ -14,7 +14,7 @@ import (
 )
 
 // SupportedExtensionsByLanguage maps each reachability-supported language to
-// the file extensions Code recognises for it. Mirrors the corresponding subset
+// the file extensions Code recognizes for it. Mirrors the corresponding subset
 // of snyk/deepcode analysis/analysis_settings/analysis_settings.json (the
 // authoritative source) and must be re-synced when Code adds extensions for
 // Java/JS/TS/Python/C#. The public docs at
