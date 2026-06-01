@@ -6,11 +6,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/clientsetup"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
+	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability/sources"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
@@ -32,6 +34,34 @@ func ShouldRunReachability(sourceDir string, logger *zerolog.Logger) bool {
 			Msg("No reachability-supported source files found; skipping upload")
 	}
 	return hasSources
+}
+
+// uploadReachabilitySourcesIfAny uploads source code for reachability analysis when the
+// source directory contains supported files. Returns the upload resource on success, nil
+// if skipped (no supported files) or if the upload fails; in both nil cases a user-facing
+// warning is emitted via OutputError.
+func uploadReachabilitySourcesIfAny(ctx context.Context, orgUUID uuid.UUID, clients FlowClients, opts *ReachabilityOpts) *testapi.TestResourceCreateItem {
+	ictx := cmdctx.Ictx(ctx)
+	logger := cmdctx.Logger(ctx)
+	progressBar := cmdctx.ProgressBar(ctx)
+
+	if !ShouldRunReachability(opts.SourceDir, logger) {
+		//nolint:errcheck // Best-effort warning output.
+		ictx.GetUserInterface().OutputError(reachability.NewWarning(fmt.Errorf("no reachability-supported source files were found; skipping reachability analysis")))
+		return nil
+	}
+
+	progressBar.SetTitle(constants.UploadingSourceCodeMessage)
+
+	resource, err := UploadSourceCodeResource(ctx, orgUUID, clients.FileUploadClient, clients.DeeproxyClient, opts.SourceDir)
+	if err != nil {
+		logger.Warn().Err(err).Msg("Failed to upload source code, proceeding without reachability")
+		//nolint:errcheck // Best-effort warning output.
+		ictx.GetUserInterface().OutputError(reachability.NewWarning(err))
+		return nil
+	}
+
+	return &resource
 }
 
 // ResolveMonitorReachabilityOpts determines the reachability options for the monitor flow.

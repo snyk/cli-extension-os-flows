@@ -14,9 +14,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
-	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
-	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
@@ -121,17 +119,9 @@ func RunDflyDepgraphFlow(
 
 	resources := []testapi.TestResourceCreateItem{uploadResource}
 
-	if reachabilityOpts != nil && ShouldRunReachability(reachabilityOpts.SourceDir, logger) {
-		progressBar.SetTitle(constants.UploadingSourceCodeMessage)
-
-		var sourceResource testapi.TestResourceCreateItem
-		sourceResource, err = UploadSourceCodeResource(ctx, orgUUID, clients.FileUploadClient, clients.DeeproxyClient, reachabilityOpts.SourceDir)
-		if err != nil {
-			logger.Warn().Err(err).Msg("Failed to upload source code, proceeding without reachability")
-			//nolint:errcheck // Best-effort warning output.
-			ictx.GetUserInterface().OutputError(reachability.NewWarning(err))
-		} else {
-			resources = append(resources, sourceResource)
+	if reachabilityOpts != nil {
+		if upload := uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, reachabilityOpts); upload != nil {
+			resources = append(resources, *upload)
 		}
 	}
 
