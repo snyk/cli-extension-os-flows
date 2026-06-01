@@ -533,6 +533,7 @@ func setupTest(
 	mockConfig.Set(configuration.ORGANIZATION_SLUG, orgSlug)
 	mockUI := gafmocks.NewMockUserInterface(ctrl)
 	mockUI.EXPECT().Output(gomock.Any()).Return(nil).Times(0)
+	mockUI.EXPECT().OutputError(gomock.Any()).Return(nil).AnyTimes()
 	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
 	mockIctx.EXPECT().GetConfiguration().Return(mockConfig).AnyTimes()
 	mockIctx.EXPECT().GetEnhancedLogger().Return(&nopLogger).AnyTimes()

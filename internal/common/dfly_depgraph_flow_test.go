@@ -512,6 +512,7 @@ func setupDflyInvocationContext(t *testing.T, ctrl *gomock.Controller, jsonOutpu
 
 	mockUI := gafmocks.NewMockUserInterface(ctrl)
 	mockUI.EXPECT().Output(gomock.Any()).Return(nil).Times(0)
+	mockUI.EXPECT().OutputError(gomock.Any()).Return(nil).AnyTimes()
 
 	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
 	mockIctx.EXPECT().GetConfiguration().Return(fakeConfig).AnyTimes()

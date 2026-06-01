@@ -34,6 +34,30 @@ const (
 	targetReferenceField     = "targetReference"
 )
 
+func applyReachability(ctx context.Context, orgUUID uuid.UUID, clients common.FlowClients, opts *common.ReachabilityOpts, depGraphs []DepGraphWithMeta) {
+	ictx := cmdctx.Ictx(ctx)
+	logger := cmdctx.Logger(ctx)
+	progressBar := cmdctx.ProgressBar(ctx)
+
+	if !common.ShouldRunReachability(opts.SourceDir, logger) {
+		//nolint:errcheck // Best-effort warning output.
+		ictx.GetUserInterface().OutputError(reachability.NewWarning(errors.New("no reachability-supported source files were found; skipping reachability analysis")))
+		return
+	}
+
+	progressBar.SetTitle(constants.UploadingSourceCodeMessage)
+
+	scanID, err := reachability.GetReachabilityID(ctx, orgUUID, opts.SourceDir, clients.ReachabilityClient, clients.FileUploadClient, clients.DeeproxyClient)
+	if err != nil {
+		logger.Warn().Err(err).Msg("Reachability analysis failed, proceeding without reachability")
+		//nolint:errcheck // Best-effort warning output.
+		ictx.GetUserInterface().OutputError(reachability.NewWarning(err))
+		return
+	}
+
+	enrichWithScanID(depGraphs, &scanID)
+}
+
 func enrichWithScanID(depgraphs []DepGraphWithMeta, reachabilityScanID *reachability.ID) {
 	if reachabilityScanID == nil {
 		return
@@ -97,24 +121,8 @@ func RunUnifiedTestFlow(
 		return nil, nil, err
 	}
 
-	if reachabilityOpts != nil && common.ShouldRunReachability(reachabilityOpts.SourceDir, logger) {
-		progressBar.SetTitle(constants.UploadingSourceCodeMessage)
-
-		scanID, scanErr := reachability.GetReachabilityID(
-			ctx,
-			orgUUID,
-			reachabilityOpts.SourceDir,
-			clients.ReachabilityClient,
-			clients.FileUploadClient,
-			clients.DeeproxyClient,
-		)
-		if scanErr != nil {
-			logger.Warn().Err(scanErr).Msg("Reachability analysis failed, proceeding without reachability")
-			//nolint:errcheck // Best-effort warning output.
-			ictx.GetUserInterface().OutputError(reachability.NewWarning(scanErr))
-		} else {
-			enrichWithScanID(depGraphs, &scanID)
-		}
+	if reachabilityOpts != nil {
+		applyReachability(ctx, orgUUID, clients, reachabilityOpts, depGraphs)
 	}
 	enrichWithIgnorePolicy(depGraphs, cfg.GetBool(flags.FlagIgnorePolicy))
 	enrichWithProjectNameOverride(depGraphs, cfg.GetString(flags.FlagProjectName))

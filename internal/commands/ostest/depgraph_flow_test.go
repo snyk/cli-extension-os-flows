@@ -430,6 +430,10 @@ func Test_RunUnifiedTestFlow_SkipsReachabilityWhenNoSupportedSources(t *testing.
 	sourceDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "main.go"), []byte("package main"), 0o600))
 
+	mockUI := gafmocks.NewMockUserInterface(h.ctrl)
+	mockUI.EXPECT().OutputError(gomock.Any()).Return(nil).Times(1)
+	h.ictx.EXPECT().GetUserInterface().Return(mockUI).Times(1)
+
 	// RecordCodeUploadTime is NOT expected — its absence asserts that the
 	// reachability upload path was skipped.
 	h.instr.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
