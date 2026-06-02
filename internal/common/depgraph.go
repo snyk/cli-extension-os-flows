@@ -2,7 +2,12 @@ package common
 
 import (
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
+	"path/filepath"
+	"strings"
+
+	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 
 	"github.com/rs/zerolog"
 	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems"
@@ -182,13 +187,66 @@ func getDepgraphsFromOrchestrator(ictx workflow.InvocationContext, inputDir stri
 	config := ictx.GetConfiguration()
 	target := resolveTarget(inputDir, config.GetString(flags.FlagRemoteRepoURL), logger)
 
+	allProjects := config.GetBool(flags.FlagAllProjects)
+
 	rawDepGraphs := make([]RawDepGraphWithMeta, 0)
+	var failedErrors []error
 	for result := range results {
+		if result.Error != nil && allProjects {
+			// With --all-projects, a single ecosystem failing to resolve
+			// (e.g. missing tooling for Python) should not abort the entire
+			// scan. Accumulate failures and only error if all projects fail,
+			// matching the legacy TS CLI behavior.
+			//
+			// Format the message to match legacy output:
+			//   <file>:
+			//     <error detail>
+			targetFile := ""
+			if result.ResolverMetadata != nil && result.ResolverMetadata.NormalisedTargetFile != "" {
+				targetFile = filepath.Join(inputDir, result.ResolverMetadata.NormalisedTargetFile)
+			}
+			errMsg := extractErrorDetail(result.Error)
+			if targetFile != "" {
+				failedErrors = append(failedErrors, fmt.Errorf("%s:\n  %s", targetFile, errMsg))
+			} else {
+				failedErrors = append(failedErrors, fmt.Errorf("%s", errMsg))
+			}
+			continue
+		}
+
 		dg, err := mapToRawDepGraphWithMeta(&result, target)
 		if err != nil {
 			return nil, err
 		}
 		rawDepGraphs = append(rawDepGraphs, *dg)
+	}
+
+	total := len(rawDepGraphs) + len(failedErrors)
+
+	if len(failedErrors) > 0 {
+		msgs := make([]string, 0, len(failedErrors))
+		for _, e := range failedErrors {
+			msgs = append(msgs, e.Error())
+		}
+		failureSummary := strings.Join(msgs, "\n\n")
+
+		if len(rawDepGraphs) == 0 {
+			// All projects failed.
+			return nil, fmt.Errorf("failed to get dependencies for all %d potential projects.\n\n%s",
+				total, failureSummary)
+		}
+
+		// Partial failure: some projects resolved, some did not.
+		// Use the UI layer so the message is always visible, matching the
+		// legacy TS CLI which prints these warnings unconditionally.
+		//nolint:errcheck // Best-effort warning output.
+		ictx.GetUserInterface().OutputError(
+			fmt.Errorf("\n%s\n✗ %d/%d potential projects failed to get dependencies",
+				failureSummary, len(failedErrors), total))
+	}
+
+	if len(rawDepGraphs) == 0 {
+		return nil, fmt.Errorf("no testable projects found")
 	}
 	return rawDepGraphs, nil
 }
@@ -203,6 +261,17 @@ func resolveTarget(inputDir, remoteRepoURL string, logger *zerolog.Logger) []byt
 		logger.Warn().Err(err).Msg("Failed to marshal SCM info, proceeding without SCM context")
 	}
 	return target
+}
+
+// extractErrorDetail returns the most user-readable message from an error.
+// For snyk_errors.Error the Detail field contains the full explanation;
+// Error() only returns the Title (e.g. "Unspecified Error").
+func extractErrorDetail(err error) string {
+	var snykErr snyk_errors.Error
+	if stderrors.As(err, &snykErr) && snykErr.Detail != "" {
+		return snykErr.Detail
+	}
+	return err.Error()
 }
 
 func mapToRawDepGraphWithMeta(result *ecosystems.SCAResult, target []byte) (*RawDepGraphWithMeta, error) {
