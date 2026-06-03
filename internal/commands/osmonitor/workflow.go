@@ -42,21 +42,14 @@ func RegisterWorkflows(e workflow.Engine) error {
 		return fmt.Errorf("error while registering test workflow: %w", err)
 	}
 
-	// Reachability FF.
-	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagReachabilityForCLI, "reachabilityForCli")
-
-	// Dragonfly rollout.
 	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
+		// Reachability FF.
+		constants.FeatureFlagReachabilityForCLI: "reachabilityForCli",
+		// Dragonfly rollout FF.
 		constants.FeatureFlagDlfyCLIRollout: "rollout-dfly-os-cli",
-	})
-
-	// Dragonfly SBOM monitor rollout.
-	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
+		// Dragonfly SBOM monitor rollout FF.
 		constants.FeatureFlagDflySbomMonitor: "rollout-dfly-sbom-monitor",
-	})
-
-	// SBOM support FF.
-	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
+		// SBOM support FFs.
 		constants.FeatureFlagShowMavenBuildScope: constants.ShowMavenBuildScope,
 		constants.FeatureFlagShowNpmScope:        constants.ShowNpmScope,
 	})
