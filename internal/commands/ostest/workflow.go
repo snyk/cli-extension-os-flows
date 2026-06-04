@@ -11,10 +11,12 @@ package ostest
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 
 	"github.com/google/uuid"
 	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
+
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
@@ -52,32 +54,25 @@ func RegisterWorkflows(e workflow.Engine) error {
 		return fmt.Errorf("error while registering test workflow: %w", err)
 	}
 
-	// Reachability FF.
-	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagReachabilityForCLI, "reachabilityForCli")
-
-	// Risk score FFs.
-	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagRiskScore, "useExperimentalRiskScore")
-	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagRiskScoreInCLI, "useExperimentalRiskScoreInCLI")
-
-	// Test shim FF for routing depgraph tests through the new test API.
-	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagUseTestShimForOSCliTest, "useTestShimForOSCliTest")
-
-	// Unified Test API FF and ecosystem FFs for resolving dep graphs via the ecosystem plugin registry.
-	config_utils.AddFeatureFlagsToConfig(e, orchestrator.GetAllFlags())
-
-	// uv support FF.
-	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagUvCLI, "enableUvCLI")
-
-	// Dragonfly rollout.
-	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
+	featureFlags := map[string]string{
+		// Reachability FF.
+		constants.FeatureFlagReachabilityForCLI: "reachabilityForCli",
+		// Risk Score FFs.
+		constants.FeatureFlagRiskScore:      "useExperimentalRiskScore",
+		constants.FeatureFlagRiskScoreInCLI: "useExperimentalRiskScoreInCLI",
+		// Test shim FF for routing depgraph tests through the new test API.
+		constants.FeatureFlagUseTestShimForOSCliTest: "useTestShimForOSCliTest",
+		// uv support FF.
+		constants.FeatureFlagUvCLI: "enableUvCLI",
+		// Dragonfly rollout FF.
 		constants.FeatureFlagDlfyCLIRollout: "rollout-dfly-os-cli",
-	})
-
-	// SBOM support FF.
-	config_utils.AddFeatureFlagsToConfig(e, map[string]string{
+		// SBOM support FF.
 		constants.FeatureFlagShowMavenBuildScope: constants.ShowMavenBuildScope,
 		constants.FeatureFlagShowNpmScope:        constants.ShowNpmScope,
-	})
+	}
+	// Unified Test API FF and ecosystem FFs for resolving dep graphs via the ecosystem plugin registry.
+	maps.Copy(featureFlags, orchestrator.GetAllFlags())
+	config_utils.AddFeatureFlagsToConfig(e, featureFlags)
 
 	return nil
 }
