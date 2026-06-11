@@ -15,7 +15,7 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
+	"github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems/orchestrator"
 
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"

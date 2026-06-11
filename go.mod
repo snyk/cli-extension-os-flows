@@ -14,7 +14,7 @@ require (
 	github.com/muesli/termenv v0.16.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/rs/zerolog v1.34.0
-	github.com/snyk/cli-extension-dep-graph v1.23.0
+	github.com/snyk/cli-extension-dep-graph/v2 v2.6.0
 	github.com/snyk/dep-graph/go v0.0.0-20260127160647-c836da762c62
 	github.com/snyk/error-catalog-golang-public v0.0.0-20260410094451-50af33399e90
 	github.com/snyk/go-application-framework v0.1.1-0.20260601153725-33af46ffdfa5
@@ -81,6 +81,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.20 // indirect
 	github.com/onsi/gomega v1.38.0 // indirect
+	github.com/package-url/packageurl-go v0.1.3 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/pjbgf/sha1cd v0.6.0 // indirect
@@ -120,4 +121,4 @@ require (
 )
 
 // replace github.com/snyk/go-application-framework => ../go-application-framework
-// replace github.com/snyk/cli-extension-dep-graph => ../cli-extension-dep-graph
+// replace github.com/snyk/cli-extension-dep-graph/v2 => ../cli-extension-dep-graph

@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
-	uvutils "github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/python/uv"
+	"github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems/orchestrator"
+	uvutils "github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems/python/uv"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"

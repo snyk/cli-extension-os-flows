@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems"
-	"github.com/snyk/cli-extension-dep-graph/pkg/identity"
+	"github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems"
+	"github.com/snyk/cli-extension-dep-graph/v2/pkg/identity"
 	"github.com/snyk/dep-graph/go/pkg/depgraph"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
