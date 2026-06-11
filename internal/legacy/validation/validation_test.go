@@ -17,10 +17,12 @@ import (
 // Expected catalog Title and ErrorCode for errors from cli.NewInvalidFlagOptionError and cli.NewEmptyFlagOptionError.
 // These must match github.com/snyk/error-catalog-golang-public/cli (see snyk_errors.Error struct: Title, ErrorCode, Detail).
 const (
-	catalogErrorCodeInvalidFlagOption = "SNYK-CLI-0004"
-	catalogErrorCodeEmptyFlagOption   = "SNYK-CLI-0003"
-	catalogTitleInvalidFlagOption     = "Invalid flag option"
-	catalogTitleEmptyFlagOption       = "Empty flag option"
+	catalogErrorCodeInvalidFlagOption       = "SNYK-CLI-0004"
+	catalogErrorCodeEmptyFlagOption         = "SNYK-CLI-0003"
+	catalogErrorCodeFeatureUnderDevelopment = "SNYK-CLI-0014"
+	catalogTitleInvalidFlagOption           = "Invalid flag option"
+	catalogTitleEmptyFlagOption             = "Empty flag option"
+	catalogTitleFeatureUnderDevelopment     = "Feature under development"
 )
 
 // assertCatalogError asserts that err is a catalog error with the expected ErrorCode, Title, and Detail.
@@ -338,4 +340,78 @@ func TestValidateFlagValues_ProjectTags_EmptyWhenSet(t *testing.T) {
 			"--project-tags must contain an '=' with a comma-separated list of pairs (also separated with an '=')."+
 				" To clear all existing values, pass no values i.e. --project-tags=")
 	})
+}
+
+func TestValidatePreviewFlags(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name              string
+		htmlSet           bool
+		htmlFileOutputSet bool
+		previewEnabled    bool
+		shouldErr         bool
+		expectedDetail    string
+	}{
+		{
+			name: "no error when no preview flags are in use",
+		},
+		{
+			name:           "no error when only preview is enabled",
+			previewEnabled: true,
+		},
+		{
+			name:           "error when html set without preview",
+			htmlSet:        true,
+			shouldErr:      true,
+			expectedDetail: "--html is a preview feature and is not available in this release.",
+		},
+		{
+			name:              "error when html-file-output set without preview",
+			htmlFileOutputSet: true,
+			shouldErr:         true,
+			expectedDetail:    "--html-file-output is a preview feature and is not available in this release.",
+		},
+		{
+			name:           "no error when html set with preview enabled",
+			htmlSet:        true,
+			previewEnabled: true,
+		},
+		{
+			name:              "no error when html-file-output set with preview enabled",
+			htmlFileOutputSet: true,
+			previewEnabled:    true,
+		},
+		{
+			name:              "no error when both set with preview enabled",
+			htmlSet:           true,
+			htmlFileOutputSet: true,
+			previewEnabled:    true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := configuration.New()
+			if tc.htmlSet {
+				cfg.Set(flags.FlagHTML, true)
+			}
+			if tc.htmlFileOutputSet {
+				cfg.Set(flags.FlagHTMLFileOutput, "/tmp/report.html")
+			}
+			if tc.previewEnabled {
+				cfg.Set(configuration.PREVIEW_FEATURES_ENABLED, true)
+			}
+
+			err := validation.ValidatePreviewFlags(cfg, flags.FlagHTML, flags.FlagHTMLFileOutput)
+
+			if !tc.shouldErr {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assertCatalogError(t, err, catalogErrorCodeFeatureUnderDevelopment, catalogTitleFeatureUnderDevelopment, tc.expectedDetail)
+		})
+	}
 }

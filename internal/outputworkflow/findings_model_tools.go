@@ -153,8 +153,8 @@ func getDefaultWriter(config configuration.Configuration, outputDestination Outp
 		renderEmptyData: true,
 	}
 
-	// disable default loca writer if sarif is enabled which basically delegates the sarif writing to the global renderer
-	if config.GetBool(output_workflow.OUTPUT_CONFIG_KEY_SARIF) {
+	// disable default local writer if sarif or html is enabled which basically delegates the writing to the global renderer
+	if config.GetBool(output_workflow.OUTPUT_CONFIG_KEY_SARIF) || config.GetBool(output_workflow.OUTPUT_CONFIG_KEY_HTML) {
 		return nil
 	}
 

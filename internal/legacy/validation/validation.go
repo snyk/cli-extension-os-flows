@@ -31,6 +31,35 @@ func isEmptyFlagValue(v string) bool {
 	return v == "" || v == flags.InvalidFlagValue
 }
 
+// ValidatePreviewFlags returns an error if any of the named flags are in use
+// while configuration.PREVIEW_FEATURES_ENABLED is not set.
+func ValidatePreviewFlags(cfg configuration.Configuration, previewFlagNames ...string) error {
+	if cfg.GetBool(configuration.PREVIEW_FEATURES_ENABLED) {
+		return nil
+	}
+	for _, name := range previewFlagNames {
+		if flagInUse(cfg, name) {
+			return snyk_cli_errors.NewFeatureUnderDevelopmentError("--" + name + " is a preview feature and is not available in this release.")
+		}
+	}
+	return nil
+}
+
+// flagInUse reports whether a flag is actively in use.
+func flagInUse(cfg configuration.Configuration, name string) bool {
+	if !cfg.IsSet(name) {
+		return false
+	}
+	switch v := cfg.Get(name).(type) {
+	case bool:
+		return v
+	case string:
+		return v != ""
+	default:
+		return true
+	}
+}
+
 // ValidateFlagValues applies legacy-compat business rules for test and monitor flag values.
 // command is the workflow command name; only CommandTest allows --json-file-output and --sarif-file-output.
 // It returns an error if any rule is violated.
@@ -54,6 +83,9 @@ func ValidateFlagValues(cfg configuration.Configuration, command Command) error 
 		return err
 	}
 	if err := validateSarifFileOutput(cfg); err != nil {
+		return err
+	}
+	if err := validateHTMLFileOutput(cfg); err != nil {
 		return err
 	}
 	if err := validateProjectBusinessCriticality(cfg); err != nil {
@@ -152,6 +184,16 @@ func validateSarifFileOutput(cfg configuration.Configuration) error {
 	}
 	if isEmptyFlagValue(cfg.GetString(outputworkflow.OutputConfigKeySarifFileOutput)) {
 		return snyk_cli_errors.NewEmptyFlagOptionError("Empty --sarif-file-output argument. Did you mean --file=path/to/output-file.json ?")
+	}
+	return nil
+}
+
+func validateHTMLFileOutput(cfg configuration.Configuration) error {
+	if !cfg.IsSet(flags.FlagHTMLFileOutput) {
+		return nil
+	}
+	if isEmptyFlagValue(cfg.GetString(flags.FlagHTMLFileOutput)) {
+		return snyk_cli_errors.NewEmptyFlagOptionError("Empty --html-file-output argument. Did you mean --file=path/to/output-file.html ?")
 	}
 	return nil
 }

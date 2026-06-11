@@ -79,6 +79,10 @@ const (
 	// Output file flags (used by test and validation).
 	FlagJSONFileOutput  = "json-file-output"
 	FlagSarifFileOutput = "sarif-file-output"
+
+	// HTML output flags.
+	FlagHTML           = "html"
+	FlagHTMLFileOutput = "html-file-output"
 )
 
 // OSTestFlagSet returns a flag set for the Open Source Test workflow.
@@ -105,6 +109,11 @@ func OSTestFlagSet() *pflag.FlagSet {
 	}
 	flagSet.String(FlagSarifFileOutput, "", "Write SARIF output to a file.")
 	if f := flagSet.Lookup(FlagSarifFileOutput); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
+	flagSet.Bool(FlagHTML, false, "Print HTML output to console.")
+	flagSet.String(FlagHTMLFileOutput, "", "Write HTML output to a file.")
+	if f := flagSet.Lookup(FlagHTMLFileOutput); f != nil {
 		f.NoOptDefVal = InvalidFlagValue
 	}
 

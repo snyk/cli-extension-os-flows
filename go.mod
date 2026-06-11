@@ -17,7 +17,7 @@ require (
 	github.com/snyk/cli-extension-dep-graph v1.23.0
 	github.com/snyk/dep-graph/go v0.0.0-20260127160647-c836da762c62
 	github.com/snyk/error-catalog-golang-public v0.0.0-20260410094451-50af33399e90
-	github.com/snyk/go-application-framework v0.1.1-0.20260601153725-33af46ffdfa5
+	github.com/snyk/go-application-framework v0.5.0
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.55.0
