@@ -10,9 +10,9 @@ import (
 	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 
 	"github.com/rs/zerolog"
-	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems"
-	"github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/orchestrator"
-	uvutils "github.com/snyk/cli-extension-dep-graph/pkg/ecosystems/python/uv"
+	"github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems"
+	"github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems/orchestrator"
+	uvutils "github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems/python/uv"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
