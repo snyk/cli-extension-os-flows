@@ -64,6 +64,7 @@ func Test_RunSbomMonitorFlow_ProjectMetadataForwarded(t *testing.T) {
 
 	ctx, orgID, cfg := setupDflyTestFixture(t, ctrl)
 	cfg.Set(flags.FlagTargetReference, "main")
+	cfg.Set(flags.FlagTargetName, "my-target")
 	cfg.Set(flags.FlagProjectBusinessCriticality, "high")
 	cfg.Set(flags.FlagProjectEnvironment, "frontend,backend")
 	cfg.Set(flags.FlagProjectLifecycle, "production")
@@ -84,6 +85,8 @@ func Test_RunSbomMonitorFlow_ProjectMetadataForwarded(t *testing.T) {
 	require.NotNil(t, capturedConfig)
 	require.NotNil(t, capturedConfig.TargetReference)
 	assert.Equal(t, "main", *capturedConfig.TargetReference)
+	require.NotNil(t, capturedConfig.TargetName)
+	assert.Equal(t, "my-target", *capturedConfig.TargetName)
 	require.NotNil(t, capturedConfig.ProjectBusinessCriticality)
 	assert.Equal(t, "high", *capturedConfig.ProjectBusinessCriticality)
 	require.NotNil(t, capturedConfig.ProjectEnvironment)

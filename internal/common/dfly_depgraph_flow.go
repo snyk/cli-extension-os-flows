@@ -159,6 +159,9 @@ func BuildTestConfig(cfg configuration.Configuration, localPolicy *testapi.Local
 	if tr := cfg.GetString(flags.FlagTargetReference); tr != "" {
 		testConfig.TargetReference = &tr
 	}
+	if tn := cfg.GetString(flags.FlagTargetName); tn != "" {
+		testConfig.TargetName = &tn
+	}
 	if pbc := cfg.GetString(flags.FlagProjectBusinessCriticality); pbc != "" {
 		testConfig.ProjectBusinessCriticality = &pbc
 	}

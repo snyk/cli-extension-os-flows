@@ -33,6 +33,7 @@ const (
 	FlagExclude                      = "exclude"
 	FlagPruneRepeatedSubDependencies = "prune-repeated-subdependencies"
 	FlagTargetReference              = "target-reference"
+	FlagTargetName                   = "target-name"
 	FlagPolicyPath                   = "policy-path"
 	FlagMavenAggregateProject        = "maven-aggregate-project"
 	FlagScanUnmanaged                = "scan-unmanaged"
@@ -194,6 +195,7 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 	flagSet.Bool(FlagIgnorePolicy, false, "Ignore all set policies, the current policy in the .snyk file, Org level ignores, and the project policy on snyk.io.")
 	flagSet.Bool(FlagTrustPolicies, false, "Apply and use ignore rules from the Snyk policies in your dependencies.")
 	flagSet.String(FlagTargetReference, "", "Specify a reference that differentiates this project, for example, a branch name or version.")
+	flagSet.String(FlagTargetName, "", "Set or override the name of the monitored target (e.g. the repository or project) for this monitor run.")
 	flagSet.String(FlagPolicyPath, "", "Manually pass a path to a .snyk policy file.")
 	flagSet.String(FlagProjectEnvironment, "", "Set the project environment project attribute to one or more values (comma-separated).")
 	if f := flagSet.Lookup(FlagProjectEnvironment); f != nil {
