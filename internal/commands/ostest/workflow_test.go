@@ -15,6 +15,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	snyk_errors "github.com/snyk/error-catalog-golang-public/snyk_errors"
 	"github.com/snyk/go-application-framework/pkg/analytics"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
@@ -75,6 +76,84 @@ func TestOSWorkflow_LegacyFlow(t *testing.T) {
 
 	// Verify
 	assert.NoError(t, err)
+}
+
+// TestOSWorkflow_PreviewGate verifies that --html / --html-file-output are
+// rejected before any flow runs unless preview features are enabled.
+func TestOSWorkflow_PreviewGate(t *testing.T) {
+	tests := []struct {
+		name           string
+		setupConfig    func(config configuration.Configuration, htmlFilePath string)
+		previewEnabled bool
+		errorContains  string
+	}{
+		{
+			name: "html without preview is rejected",
+			setupConfig: func(config configuration.Configuration, _ string) {
+				config.Set(flags.FlagHTML, true)
+			},
+			errorContains: "--html is a preview feature and is not available in this release.",
+		},
+		{
+			name: "html-file-output without preview is rejected",
+			setupConfig: func(config configuration.Configuration, htmlFilePath string) {
+				config.Set(flags.FlagHTMLFileOutput, htmlFilePath)
+			},
+			errorContains: "--html-file-output is a preview feature and is not available in this release.",
+		},
+		{
+			name: "html with preview passes the gate",
+			setupConfig: func(config configuration.Configuration, _ string) {
+				config.Set(flags.FlagHTML, true)
+			},
+			previewEnabled: true,
+		},
+		{
+			name: "html-file-output with preview passes the gate",
+			setupConfig: func(config configuration.Configuration, htmlFilePath string) {
+				config.Set(flags.FlagHTMLFileOutput, htmlFilePath)
+			},
+			previewEnabled: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockEngine := mocks.NewMockEngine(ctrl)
+			mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, "")
+			config := mockInvocationCtx.GetConfiguration()
+
+			htmlFilePath := filepath.Join(t.TempDir(), "report.html")
+			tt.setupConfig(config, htmlFilePath)
+			config.Set(configuration.PREVIEW_FEATURES_ENABLED, tt.previewEnabled)
+
+			if tt.previewEnabled {
+				// The gate passes and the default config routes to the legacy flow.
+				mockEngine.EXPECT().
+					InvokeWithConfig(legacyWorkflowID, gomock.Any()).
+					Return([]workflow.Data{}, nil).
+					Times(1)
+			}
+			// For rejection cases, no engine invocation is expected;
+			// ctrl.Finish fails the test if any flow is invoked.
+
+			_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
+
+			if tt.errorContains != "" {
+				require.Error(t, err)
+				var catalogErr snyk_errors.Error
+				require.ErrorAs(t, err, &catalogErr)
+				assert.Equal(t, "SNYK-CLI-0014", catalogErr.ErrorCode)
+				assert.Contains(t, catalogErr.Detail, tt.errorContains)
+				assert.NoFileExists(t, htmlFilePath, "rejected run must not write an HTML file")
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestOSWorkflow_OrgIDHandling(t *testing.T) {

@@ -247,6 +247,9 @@ func legacyEntrypoint(ctx context.Context) ([]workflow.Data, error) {
 	return ictx.GetEngine().InvokeWithConfig(workflow.NewWorkflowIdentifier("legacycli"), legacyConfig)
 }
 
+// previewTestFlags lists the flags on `snyk test` that are gated behind GAF's PREVIEW_FEATURES_ENABLED flag.
+var previewTestFlags = []string{flags.FlagHTML, flags.FlagHTMLFileOutput}
+
 // OSWorkflow is the entry point for the Open Source Test workflow.
 func OSWorkflow(
 	ictx workflow.InvocationContext,
@@ -266,6 +269,11 @@ func OSWorkflow(
 
 	//nolint:wrapcheck // Validation errors are coming from the error catalog.
 	if err := validation.ValidateFlagValues(cfg, validation.CommandTest); err != nil {
+		return nil, err
+	}
+
+	//nolint:wrapcheck // Preview-gate errors are coming from the error catalog.
+	if err := validation.ValidatePreviewFlags(cfg, previewTestFlags...); err != nil {
 		return nil, err
 	}
 
