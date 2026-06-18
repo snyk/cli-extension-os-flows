@@ -99,6 +99,23 @@ func TestHTMLFlags(t *testing.T) {
 	})
 }
 
+func TestReportFlag(t *testing.T) {
+	t.Run("report flag is registered on OSTestFlagSet as bool with default false", func(t *testing.T) {
+		flagSet := flags.OSTestFlagSet()
+
+		f := flagSet.Lookup(flags.FlagReport)
+		require.NotNil(t, f, "--%s should be registered on OSTestFlagSet", flags.FlagReport)
+		assert.Equal(t, "bool", f.Value.Type(), "--%s should be a bool flag", flags.FlagReport)
+		assert.Equal(t, "false", f.DefValue, "--%s should default to false", flags.FlagReport)
+		assert.NotEmpty(t, f.Usage, "--%s should have a non-empty usage string", flags.FlagReport)
+	})
+
+	t.Run("report flag is not registered on OSMonitorFlagSet", func(t *testing.T) {
+		flagSet := flags.OSMonitorFlagSet()
+		assert.Nil(t, flagSet.Lookup(flags.FlagReport), "--%s must not be on OSMonitorFlagSet", flags.FlagReport)
+	})
+}
+
 func TestRemoteRepoURLFlag(t *testing.T) {
 	flagSets := []struct {
 		name     string

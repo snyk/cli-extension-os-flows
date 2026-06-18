@@ -19,6 +19,7 @@ const (
 	FlagRiskScoreThreshold = "risk-score-threshold"
 	FlagSeverityThreshold  = "severity-threshold"
 	FlagReachabilityFilter = "reachability-filter"
+	FlagReport             = "report"
 
 	// SBOM reachability.
 	FlagReachability = "reachability"
@@ -103,6 +104,7 @@ func OSTestFlagSet() *pflag.FlagSet {
 
 	flagSet.String(FlagSBOM, "", "Specify an SBOM file to be tested.")
 	flagSet.String(FlagSourceDir, "", "Path of the directory containing the source code.")
+	flagSet.Bool(FlagReport, false, "Persist the test result as a stateful report (snapshot) in Snyk.")
 	flagSet.String(FlagJSONFileOutput, "", "Write JSON output to a file.")
 	if f := flagSet.Lookup(FlagJSONFileOutput); f != nil {
 		f.NoOptDefVal = InvalidFlagValue
