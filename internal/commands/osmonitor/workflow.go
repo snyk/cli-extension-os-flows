@@ -47,8 +47,6 @@ func RegisterWorkflows(e workflow.Engine) error {
 		constants.FeatureFlagReachabilityForCLI: "reachabilityForCli",
 		// Dragonfly rollout FF.
 		constants.FeatureFlagDlfyCLIRollout: "rollout-dfly-os-cli",
-		// Dragonfly SBOM monitor rollout FF.
-		constants.FeatureFlagDflySbomMonitor: "rollout-dfly-sbom-monitor",
 		// SBOM support FFs.
 		constants.FeatureFlagShowMavenBuildScope: constants.ShowMavenBuildScope,
 		constants.FeatureFlagShowNpmScope:        constants.ShowNpmScope,
@@ -182,16 +180,13 @@ func OSWorkflow(
 	inst.RecordShowMavenBuildScopeFlag(cfg.GetBool(constants.FeatureFlagShowMavenBuildScope))
 	inst.RecordShowNpmScopeFlag(cfg.GetBool(constants.FeatureFlagShowNpmScope))
 
+	if cfg.GetString(flags.FlagSBOM) != "" {
+		//nolint:wrapcheck // No need to wrap error factory errors.
+		return nil, cmdctx.ErrorFactory(ctx).NewSbomMonitorRemovedError()
+	}
+
 	forceLegacy := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
 	if !forceLegacy {
-		if sbomPath := cfg.GetString(flags.FlagSBOM); sbomPath != "" {
-			errFactory := cmdctx.ErrorFactory(ctx)
-			if !cfg.GetBool(constants.FeatureFlagDflySbomMonitor) {
-				return nil, errFactory.NewFeatureNotPermittedError(constants.FeatureFlagDflySbomMonitor)
-			}
-			return runSbomMonitorEntrypoint(ctx, sbomPath)
-		}
-
 		if cfg.GetBool(constants.FeatureFlagDlfyCLIRollout) {
 			return runDflyMonitorEntrypoint(ctx)
 		}
@@ -221,15 +216,6 @@ func setupDflyMonitor(ctx context.Context) (uuid.UUID, common.FlowClients, error
 	}
 
 	return orgUUID, clients, nil
-}
-
-func runSbomMonitorEntrypoint(ctx context.Context, sbomPath string) ([]workflow.Data, error) {
-	orgUUID, clients, err := setupDflyMonitor(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return RunSbomMonitorFlow(ctx, clients, sbomPath, orgUUID)
 }
 
 func runDflyMonitorEntrypoint(ctx context.Context) ([]workflow.Data, error) {

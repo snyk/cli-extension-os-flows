@@ -82,6 +82,17 @@ func TestErrorFactory_NewMissingAssetNameError(t *testing.T) {
 	assert.ErrorContains(t, cause, "asset-name")
 }
 
+func TestErrorFactory_NewSbomMonitorRemovedError(t *testing.T) {
+	logger := zerolog.Nop()
+	errorFactory := errors.NewErrorFactory(&logger)
+
+	err := errorFactory.NewSbomMonitorRemovedError()
+	require.Error(t, err)
+
+	assert.ErrorContains(t, err, "snyk monitor --sbom")
+	assert.ErrorContains(t, err, "snyk sbom test --report")
+}
+
 func TestNewSourceDirIsNotADirectoryError(t *testing.T) {
 	logger := zerolog.Nop()
 	errorFactory := errors.NewErrorFactory(&logger)

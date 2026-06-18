@@ -85,6 +85,17 @@ func (ef *ErrorFactory) NewMissingAssetNameError() *OSFlowsExtensionError {
 	)
 }
 
+// NewSbomMonitorRemovedError creates an error indicating that the
+// `snyk monitor --sbom=...` entrypoint has been removed and that users should
+// use `snyk sbom test --report` instead.
+func (ef *ErrorFactory) NewSbomMonitorRemovedError() *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("snyk monitor --sbom is no longer supported"),
+		"`snyk monitor --sbom=<path>` is no longer supported. "+
+			"Use `snyk sbom test --report --file=<path> --asset-name=<name>` instead to persist a snapshot.",
+	)
+}
+
 // NewNotImplementedError creates a new OSFlowsExtensionError for a not implemented error.
 func (ef *ErrorFactory) NewNotImplementedError() *OSFlowsExtensionError {
 	// TODO : Remove this error after the transition is complete
