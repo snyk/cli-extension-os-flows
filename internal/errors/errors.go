@@ -77,6 +77,14 @@ func (ef *ErrorFactory) NewMissingFilenameFlagError() *OSFlowsExtensionError {
 	)
 }
 
+// NewMissingAssetNameError creates an error for when --asset-name is required but missing.
+func (ef *ErrorFactory) NewMissingAssetNameError() *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("asset-name flag not set"),
+		"Flag `--asset-name` is required when running `snyk sbom test --report`.",
+	)
+}
+
 // NewNotImplementedError creates a new OSFlowsExtensionError for a not implemented error.
 func (ef *ErrorFactory) NewNotImplementedError() *OSFlowsExtensionError {
 	// TODO : Remove this error after the transition is complete

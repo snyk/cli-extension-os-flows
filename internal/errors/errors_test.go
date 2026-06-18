@@ -67,6 +67,21 @@ func TestNewInvalidSourceDirError(t *testing.T) {
 	assert.Equal(t, "SNYK-CLI-0004", catalogErr.ErrorCode)
 }
 
+func TestErrorFactory_NewMissingAssetNameError(t *testing.T) {
+	logger := zerolog.Nop()
+	errorFactory := errors.NewErrorFactory(&logger)
+
+	err := errorFactory.NewMissingAssetNameError()
+	require.Error(t, err)
+
+	assert.ErrorContains(t, err, "--asset-name")
+	assert.ErrorContains(t, err, "sbom test --report")
+
+	cause := err.Unwrap()
+	require.NotNil(t, cause, "wrapped internal cause should be present")
+	assert.ErrorContains(t, cause, "asset-name")
+}
+
 func TestNewSourceDirIsNotADirectoryError(t *testing.T) {
 	logger := zerolog.Nop()
 	errorFactory := errors.NewErrorFactory(&logger)
