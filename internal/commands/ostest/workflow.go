@@ -66,6 +66,8 @@ func RegisterWorkflows(e workflow.Engine) error {
 		constants.FeatureFlagUvCLI: "enableUvCLI",
 		// Dragonfly rollout FF.
 		constants.FeatureFlagDlfyCLIRollout: "rollout-dfly-os-cli",
+		// Dragonfly SBOM monitor rollout FF (gates `snyk sbom test --report` routing).
+		constants.FeatureFlagDflySbomMonitor: "rollout-dfly-sbom-monitor",
 		// SBOM support FF.
 		constants.FeatureFlagShowMavenBuildScope: constants.ShowMavenBuildScope,
 		constants.FeatureFlagShowNpmScope:        constants.ShowNpmScope,

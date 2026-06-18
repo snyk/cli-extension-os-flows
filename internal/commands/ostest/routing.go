@@ -120,6 +120,7 @@ func validateReachability(
 // FlowConfig holds parsed configuration for flow routing decisions.
 type FlowConfig struct {
 	FFDflyRollout                   bool
+	FFDflySbomMonitor               bool
 	FFRiskScore                     bool
 	FFRiskScoreInCLI                bool
 	FFUseTestShimForOSCliTest       bool
@@ -128,6 +129,7 @@ type FlowConfig struct {
 	RiskScoreThreshold              int
 	RiskScoreTest                   bool
 	Reachability                    bool
+	Report                          bool
 	SBOM                            string
 	SBOMReachabilityTest            bool
 	ReachabilityFilter              string
@@ -137,6 +139,7 @@ type FlowConfig struct {
 	TargetPackage                   string
 	AllProjects                     bool
 	FileFlag                        string
+	AssetName                       string
 }
 
 func doesPathExist(path string) (bool, error) {
@@ -161,14 +164,17 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	riskScoreThreshold := cfg.GetInt(flags.FlagRiskScoreThreshold)
 	riskScoreTest := riskScoreFFsEnabled || riskScoreThreshold != -1
 	ffDflyRollout := cfg.GetBool(constants.FeatureFlagDlfyCLIRollout)
+	ffDflySbomMonitor := cfg.GetBool(constants.FeatureFlagDflySbomMonitor)
 
 	reachability := cfg.GetBool(flags.FlagReachability)
+	report := cfg.GetBool(flags.FlagReport)
 	sbom := cfg.GetString(flags.FlagSBOM)
 	sbomReachabilityTest := reachability && sbom != ""
 	reachabilityFilter := cfg.GetString(flags.FlagReachabilityFilter)
 	unmanaged := cfg.GetBool(flags.FlagUnmanaged)
 	allProjects := cfg.GetBool(flags.FlagAllProjects)
 	fileFlag := cfg.GetString(flags.FlagFile)
+	assetName := cfg.GetString(flags.FlagAssetName)
 
 	forceLegacyTest := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
 	requiresLegacy := cfg.GetBool(flags.FlagPrintGraph) ||
@@ -197,6 +203,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 
 	return &FlowConfig{
 		FFDflyRollout:                   ffDflyRollout,
+		FFDflySbomMonitor:               ffDflySbomMonitor,
 		FFRiskScore:                     ffRiskScore,
 		FFRiskScoreInCLI:                ffRiskScoreInCLI,
 		FFUseTestShimForOSCliTest:       ffUseTestShimForOSCliTest,
@@ -205,6 +212,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 		RiskScoreThreshold:              riskScoreThreshold,
 		RiskScoreTest:                   riskScoreTest,
 		Reachability:                    reachability,
+		Report:                          report,
 		SBOM:                            sbom,
 		SBOMReachabilityTest:            sbomReachabilityTest,
 		ReachabilityFilter:              reachabilityFilter,
@@ -214,6 +222,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 		TargetPackage:                   targetPackage,
 		AllProjects:                     allProjects,
 		FileFlag:                        fileFlag,
+		AssetName:                       assetName,
 	}, nil
 }
 
@@ -265,10 +274,31 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 	return useLegacy, nil
 }
 
+// validateSbomReport enforces the mandatory flags for the `sbom test --report` path.
+// It is a no-op unless --sbom and --report are set and the SBOM monitor FF is enabled.
+func validateSbomReport(fc *FlowConfig, errFactory *internalErrors.ErrorFactory) error {
+	if fc.SBOM == "" || !fc.Report || !fc.FFDflySbomMonitor {
+		return nil
+	}
+	if fc.FileFlag == "" {
+		//nolint:wrapcheck // No need to wrap error factory errors.
+		return errFactory.NewMissingFilenameFlagError()
+	}
+	if fc.AssetName == "" {
+		//nolint:wrapcheck // No need to wrap error factory errors.
+		return errFactory.NewMissingAssetNameError()
+	}
+	return nil
+}
+
 // RouteToFlow determines which new flow to use.
 func RouteToFlow(ctx context.Context, fc *FlowConfig, orgUUID uuid.UUID, sc settings.Client) (Flow, error) {
 	cfg := cmdctx.Config(ctx)
 	errFactory := cmdctx.ErrorFactory(ctx)
+
+	if err := validateSbomReport(fc, errFactory); err != nil {
+		return "", err
+	}
 
 	err := validateRiskScore(fc.RiskScoreThreshold, fc.RiskScoreFFsEnabled, fc.FFRiskScore, errFactory)
 	if err != nil {

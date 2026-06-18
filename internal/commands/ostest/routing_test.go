@@ -655,6 +655,101 @@ func Test_RouteToFlow_DlfyRllout(t *testing.T) {
 	}
 }
 
+func Test_RouteToFlow_SbomReport_FFOff_FallsThrough(t *testing.T) {
+	t.Parallel()
+
+	cfg := configuration.New()
+	cfg.Set(flags.FlagRiskScoreThreshold, -1)
+	cfg.Set(flags.FlagSBOM, "sbom.json")
+	cfg.Set(flags.FlagReport, true)
+
+	ctx := t.Context()
+	ctx = cmdctx.WithConfig(ctx, cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+	flowCfg, err := ostest.ParseFlowConfig(cfg)
+	require.NoError(t, err)
+
+	flow, err := ostest.RouteToFlow(ctx, flowCfg, orgID, setupSettingsClient(t))
+
+	require.NoError(t, err, "validation must be a no-op when FF is off")
+	assert.Equal(t, ostest.SbomFlow, flow)
+}
+
+func Test_RouteToFlow_SbomReport_FFOn_NoFile_Errors(t *testing.T) {
+	t.Parallel()
+
+	cfg := configuration.New()
+	cfg.Set(flags.FlagRiskScoreThreshold, -1)
+	cfg.Set(flags.FlagSBOM, "sbom.json")
+	cfg.Set(flags.FlagReport, true)
+	cfg.Set(constants.FeatureFlagDflySbomMonitor, true)
+
+	ctx := t.Context()
+	ctx = cmdctx.WithConfig(ctx, cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+	flowCfg, err := ostest.ParseFlowConfig(cfg)
+	require.NoError(t, err)
+
+	_, err = ostest.RouteToFlow(ctx, flowCfg, orgID, setupSettingsClient(t))
+
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "--file")
+}
+
+func Test_RouteToFlow_SbomReport_FFOn_NoAssetName_Errors(t *testing.T) {
+	t.Parallel()
+
+	cfg := configuration.New()
+	cfg.Set(flags.FlagRiskScoreThreshold, -1)
+	cfg.Set(flags.FlagSBOM, "sbom.json")
+	cfg.Set(flags.FlagReport, true)
+	cfg.Set(flags.FlagFile, "bom.json")
+	cfg.Set(constants.FeatureFlagDflySbomMonitor, true)
+
+	ctx := t.Context()
+	ctx = cmdctx.WithConfig(ctx, cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+	flowCfg, err := ostest.ParseFlowConfig(cfg)
+	require.NoError(t, err)
+
+	_, err = ostest.RouteToFlow(ctx, flowCfg, orgID, setupSettingsClient(t))
+
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "--asset-name")
+	assert.ErrorContains(t, err, "sbom test --report")
+}
+
+func Test_RouteToFlow_SbomReport_FFOn_BothPresent_ReturnsSbomFlow(t *testing.T) {
+	t.Parallel()
+
+	cfg := configuration.New()
+	cfg.Set(flags.FlagRiskScoreThreshold, -1)
+	cfg.Set(flags.FlagSBOM, "sbom.json")
+	cfg.Set(flags.FlagReport, true)
+	cfg.Set(flags.FlagFile, "bom.json")
+	cfg.Set(flags.FlagAssetName, "my-app")
+	cfg.Set(constants.FeatureFlagDflySbomMonitor, true)
+
+	ctx := t.Context()
+	ctx = cmdctx.WithConfig(ctx, cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+	flowCfg, err := ostest.ParseFlowConfig(cfg)
+	require.NoError(t, err)
+
+	flow, err := ostest.RouteToFlow(ctx, flowCfg, orgID, setupSettingsClient(t))
+
+	require.NoError(t, err)
+	assert.Equal(t, ostest.SbomFlow, flow)
+}
+
 func Test_RouteToFlow_UnifiedTestAPIForOSCliTest(t *testing.T) {
 	t.Parallel()
 
