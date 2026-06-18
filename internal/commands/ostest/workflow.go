@@ -33,6 +33,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/validation"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
@@ -113,6 +114,8 @@ func initializeWorkflowContext(ictx workflow.InvocationContext) context.Context 
 }
 
 // executeFlow runs the appropriate test flow based on the routing decision.
+// publishReport, when non-nil, is forwarded to flows that support persisting test
+// results as a stateful report (e.g. SBOM flow for `sbom test --report`).
 func executeFlow(
 	ctx context.Context,
 	flow Flow,
@@ -123,6 +126,7 @@ func executeFlow(
 	sbom string,
 	localPolicy *testapi.LocalPolicy,
 	reachability bool,
+	publishReport *bool,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	var reachOpts *common.ReachabilityOpts
 	if reachability {
@@ -131,7 +135,7 @@ func executeFlow(
 
 	switch flow {
 	case SbomFlow:
-		findings, data, err := common.RunSbomFlow(ctx, sbom, clients, orgUUID, localPolicy, reachOpts, nil, RunTestWithResources)
+		findings, data, err := common.RunSbomFlow(ctx, sbom, clients, orgUUID, localPolicy, reachOpts, publishReport, RunTestWithResources)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to run sbom flow: %w", err)
 		}
@@ -159,6 +163,7 @@ func processInputDirectory(
 	flow Flow,
 	reachability bool,
 	sbom string,
+	publishReport *bool,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	cfg := cmdctx.Config(ctx)
 	errFactory := cmdctx.ErrorFactory(ctx)
@@ -176,7 +181,7 @@ func processInputDirectory(
 		return nil, nil, fmt.Errorf("failed to create local policy: %w", err)
 	}
 
-	return executeFlow(ctx, flow, clients, orgUUID, inputDir, sourceDir, sbom, localPolicy, reachability)
+	return executeFlow(ctx, flow, clients, orgUUID, inputDir, sourceDir, sbom, localPolicy, reachability, publishReport)
 }
 
 // processAllInputDirectories iterates over all input directories and collects results.
@@ -188,12 +193,13 @@ func processAllInputDirectories(
 	flow Flow,
 	reachability bool,
 	sbom string,
+	publishReport *bool,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	allLegacyFindings := []definitions.LegacyVulnerabilityResponse{}
 	allOutputData := []workflow.Data{}
 
 	for _, inputDir := range inputDirs {
-		legacyFindings, outputData, err := processInputDirectory(ctx, clients, inputDir, orgUUID, flow, reachability, sbom)
+		legacyFindings, outputData, err := processInputDirectory(ctx, clients, inputDir, orgUUID, flow, reachability, sbom, publishReport)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -320,6 +326,11 @@ func OSWorkflow(
 	reachabilityClient := clientsetup.SetupReachabilityClient(ctx)
 	deeproxyClient := clientsetup.SetupDeeproxyClient(ctx)
 
+	var publishReport *bool
+	if flowCfg.Report && flowCfg.FFDflySbomMonitor {
+		publishReport = util.Ptr(true)
+	}
+
 	allLegacyFindings, allOutputData, err := processAllInputDirectories(
 		ctx,
 		common.FlowClients{
@@ -333,6 +344,7 @@ func OSWorkflow(
 		flow,
 		flowCfg.Reachability,
 		flowCfg.SBOM,
+		publishReport,
 	)
 	if err != nil {
 		return nil, err
