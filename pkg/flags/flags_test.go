@@ -116,6 +116,18 @@ func TestReportFlag(t *testing.T) {
 	})
 }
 
+func TestAssetNameFlag(t *testing.T) {
+	t.Run("asset-name flag is registered on OSTestFlagSet as string with empty default", func(t *testing.T) {
+		flagSet := flags.OSTestFlagSet()
+
+		f := flagSet.Lookup(flags.FlagAssetName)
+		require.NotNil(t, f, "--%s should be registered on OSTestFlagSet", flags.FlagAssetName)
+		assert.Equal(t, "string", f.Value.Type(), "--%s should be a string flag", flags.FlagAssetName)
+		assert.Equal(t, "", f.DefValue, "--%s should default to empty string", flags.FlagAssetName)
+		assert.NotEmpty(t, f.Usage, "--%s should have a non-empty usage string", flags.FlagAssetName)
+	})
+}
+
 func TestRemoteRepoURLFlag(t *testing.T) {
 	flagSets := []struct {
 		name     string
