@@ -159,6 +159,12 @@ func BuildTestConfig(cfg configuration.Configuration, localPolicy *testapi.Local
 	if tr := cfg.GetString(flags.FlagTargetReference); tr != "" {
 		testConfig.TargetReference = &tr
 	}
+	// TODO(OSF-427): Switch to TestConfiguration.AssetName once it lands in
+	// go-application-framework. Until then, route --asset-name into TargetName
+	// as a temporary alias agreed with the platform team.
+	if an := cfg.GetString(flags.FlagAssetName); an != "" {
+		testConfig.TargetName = &an
+	}
 	if pbc := cfg.GetString(flags.FlagProjectBusinessCriticality); pbc != "" {
 		testConfig.ProjectBusinessCriticality = &pbc
 	}

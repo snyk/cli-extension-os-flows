@@ -413,6 +413,28 @@ func Test_RunDflyDepgraphFlow_PublishReportForwarded(t *testing.T) {
 	assert.True(t, *capturedConfig.PublishReport)
 }
 
+func Test_BuildTestConfig_AssetNameForwarded(t *testing.T) {
+	t.Parallel()
+
+	cfg := configuration.New()
+	cfg.Set(flags.FlagAssetName, "my-asset")
+
+	tc := common.BuildTestConfig(cfg, nil, nil)
+
+	require.NotNil(t, tc.TargetName, "TargetName must be set when --asset-name is provided")
+	assert.Equal(t, "my-asset", *tc.TargetName)
+}
+
+func Test_BuildTestConfig_AssetNameUnset_NotForwarded(t *testing.T) {
+	t.Parallel()
+
+	cfg := configuration.New()
+
+	tc := common.BuildTestConfig(cfg, nil, nil)
+
+	assert.Nil(t, tc.TargetName, "TargetName must remain nil when --asset-name is unset")
+}
+
 func Test_RunDflyDepgraphFlow_TagsFallbackToProjectTags(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
