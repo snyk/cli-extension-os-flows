@@ -248,6 +248,7 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 		logger.Debug().Msg("uv.lock not found, skipping uv feature flag check")
 	}
 
+	sbomReport := fc.Report && fc.FFDflySbomMonitor && fc.SBOM != ""
 	hasNewFeatures := fc.FFDflyRollout ||
 		fc.RiskScoreTest ||
 		fc.Reachability ||
@@ -255,12 +256,14 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 		fc.ReachabilityFilter != "" ||
 		uvSupportWithLockFile ||
 		fc.FFUseTestShimForOSCliTest ||
-		fc.FFUseUnifiedTestAPIForOSCliTest
+		fc.FFUseUnifiedTestAPIForOSCliTest ||
+		sbomReport
 	useLegacy := fc.ForceLegacyTest || fc.RequiresLegacy || !hasNewFeatures
 
 	logger.Debug().Msgf(
 		"Using legacy flow: %t. Legacy CLI Env var: %t. SBOM Reachability Test: %t."+
-			"Risk Score Test: %t. Experimental uv Support: %t. Test Shim FF: %t. Dfly Rollout: %t. Unified Test API FF: %t.",
+			"Risk Score Test: %t. Experimental uv Support: %t. Test Shim FF: %t. Dfly Rollout: %t. "+
+			"Unified Test API FF: %t. SBOM Monitor FF: %t. SBOM Report: %t.",
 		useLegacy,
 		fc.ForceLegacyTest,
 		fc.SBOMReachabilityTest,
@@ -269,6 +272,8 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 		fc.FFUseTestShimForOSCliTest,
 		fc.FFDflyRollout,
 		fc.FFUseUnifiedTestAPIForOSCliTest,
+		fc.FFDflySbomMonitor,
+		sbomReport,
 	)
 
 	return useLegacy, nil

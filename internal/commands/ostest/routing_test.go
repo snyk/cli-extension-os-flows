@@ -655,6 +655,28 @@ func Test_RouteToFlow_DlfyRllout(t *testing.T) {
 	}
 }
 
+func Test_ShouldUseLegacyFlow_SbomReport_FFOn_NotLegacy(t *testing.T) {
+	t.Parallel()
+
+	cfg := configuration.New()
+	cfg.Set(flags.FlagRiskScoreThreshold, -1)
+	cfg.Set(flags.FlagSBOM, "sbom.json")
+	cfg.Set(flags.FlagReport, true)
+	cfg.Set(constants.FeatureFlagDflySbomMonitor, true)
+
+	ctx := t.Context()
+	ctx = cmdctx.WithConfig(ctx, cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+	flowCfg, err := ostest.ParseFlowConfig(cfg)
+	require.NoError(t, err)
+
+	useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+	require.NoError(t, err)
+	assert.False(t, useLegacy, "sbom test --report with FF must NOT route to legacy")
+}
+
 func Test_RouteToFlow_SbomReport_FFOff_FallsThrough(t *testing.T) {
 	t.Parallel()
 
