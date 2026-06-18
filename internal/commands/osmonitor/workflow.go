@@ -181,7 +181,6 @@ func OSWorkflow(
 	inst.RecordShowNpmScopeFlag(cfg.GetBool(constants.FeatureFlagShowNpmScope))
 
 	if cfg.GetString(flags.FlagSBOM) != "" {
-		//nolint:wrapcheck // No need to wrap error factory errors.
 		return nil, cmdctx.ErrorFactory(ctx).NewSbomMonitorRemovedError()
 	}
 

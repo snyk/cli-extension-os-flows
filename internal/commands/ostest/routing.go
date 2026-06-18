@@ -286,11 +286,9 @@ func validateSbomReport(fc *FlowConfig, errFactory *internalErrors.ErrorFactory)
 		return nil
 	}
 	if fc.FileFlag == "" {
-		//nolint:wrapcheck // No need to wrap error factory errors.
 		return errFactory.NewMissingFilenameFlagError()
 	}
 	if fc.AssetName == "" {
-		//nolint:wrapcheck // No need to wrap error factory errors.
 		return errFactory.NewMissingAssetNameError()
 	}
 	return nil

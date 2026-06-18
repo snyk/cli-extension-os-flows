@@ -1,3 +1,4 @@
+//nolint:testpackage // Uses unexported executeFlow and validateSbomReport; keeping in-package keeps the test scope minimal.
 package ostest
 
 import (

@@ -1,3 +1,4 @@
+//nolint:testpackage // Uses unexported executeFlow and helpers; keeping in-package keeps the test scope minimal.
 package ostest
 
 import (
@@ -28,12 +29,12 @@ import (
 // progressBarStub is a minimal progress bar implementation for in-package tests.
 type progressBarStub struct{}
 
-func (*progressBarStub) SetTitle(_ string)                                  {}
-func (*progressBarStub) UpdateProgress(_ float64) error                     { return nil }
-func (*progressBarStub) Clear() error                                       { return nil }
-func (*progressBarStub) SetCompletionMessage(_ string)                      {}
-func (*progressBarStub) SetCompletionMessageWithStyle(_, _ string)          {}
-func (*progressBarStub) SetCompletionMessageWithTitle(_, _ string)          {}
+func (*progressBarStub) SetTitle(_ string)                                    {}
+func (*progressBarStub) UpdateProgress(_ float64) error                       { return nil }
+func (*progressBarStub) Clear() error                                         { return nil }
+func (*progressBarStub) SetCompletionMessage(_ string)                        {}
+func (*progressBarStub) SetCompletionMessageWithStyle(_, _ string)            {}
+func (*progressBarStub) SetCompletionMessageWithTitle(_, _ string)            {}
 func (*progressBarStub) SetCompletionMessageWithTitleAndStyle(_, _, _ string) {}
 
 func setupExecuteFlowCtx(t *testing.T, ctrl *gomock.Controller) (context.Context, configuration.Configuration) {
@@ -66,8 +67,8 @@ func setupExecuteFlowCtx(t *testing.T, ctrl *gomock.Controller) (context.Context
 }
 
 func setupExecuteFlowCapturingTestClient(ctrl *gomock.Controller) (
-	*gafclientmocks.MockTestClient,
-	func() *testapi.TestConfiguration,
+	client *gafclientmocks.MockTestClient,
+	getConfig func() *testapi.TestConfiguration,
 ) {
 	mockTestResult := gafclientmocks.NewMockTestResult(ctrl)
 	mockTestResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
