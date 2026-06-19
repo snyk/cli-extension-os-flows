@@ -33,6 +33,11 @@ const (
 	FlagExclude                      = "exclude"
 	FlagPruneRepeatedSubDependencies = "prune-repeated-subdependencies"
 	FlagTargetReference              = "target-reference"
+	// FlagAssetName is the config key used to set the asset (a.k.a. target)
+	// name on the test API payload. It is not registered as a user-facing
+	// CLI flag in this extension; the canonical user-facing spelling is
+	// `snyk sbom test --asset-name`, declared in cli-extension-sbom.
+	FlagAssetName                    = "asset-name"
 	FlagPolicyPath                   = "policy-path"
 	FlagMavenAggregateProject        = "maven-aggregate-project"
 	FlagScanUnmanaged                = "scan-unmanaged"
@@ -76,6 +81,10 @@ const (
 
 	FlagReachabilityID = "reachability-id"
 
+	// FlagReport persists the test result as a monitored project. Used with SBOM input
+	// (`snyk sbom test --report --file=<sbom>`) to replace `snyk sbom monitor`.
+	FlagReport = "report"
+
 	// Output file flags (used by test and validation).
 	FlagJSONFileOutput  = "json-file-output"
 	FlagSarifFileOutput = "sarif-file-output"
@@ -103,6 +112,28 @@ func OSTestFlagSet() *pflag.FlagSet {
 
 	flagSet.String(FlagSBOM, "", "Specify an SBOM file to be tested.")
 	flagSet.String(FlagSourceDir, "", "Path of the directory containing the source code.")
+
+	// --report (and accompanying project-attribute flags) persists the test as a monitored
+	// project. This is the supported replacement for the removed `snyk sbom monitor` command.
+	flagSet.Bool(FlagReport, false, "Share results with the Snyk Web UI, persisting them as a monitored project.")
+	flagSet.String(FlagProjectEnvironment, "", "Set the project environment project attribute to one or more values (comma-separated).")
+	if f := flagSet.Lookup(FlagProjectEnvironment); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
+	flagSet.String(FlagProjectLifecycle, "", "Set the project lifecycle project attribute to one or more values (comma-separated).")
+	if f := flagSet.Lookup(FlagProjectLifecycle); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
+	flagSet.String(FlagProjectBusinessCriticality, "", "Set the project business criticality project attribute to one or more values (comma-separated).")
+	if f := flagSet.Lookup(FlagProjectBusinessCriticality); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
+	flagSet.String(FlagProjectTags, "", `Set the project tags to one or more values (comma-separated key value pairs with an "=" separator).`)
+	if f := flagSet.Lookup(FlagProjectTags); f != nil {
+		f.NoOptDefVal = InvalidFlagValue
+	}
+	flagSet.String(FlagTags, "", "This is an alias for --project-tags")
+
 	flagSet.String(FlagJSONFileOutput, "", "Write JSON output to a file.")
 	if f := flagSet.Lookup(FlagJSONFileOutput); f != nil {
 		f.NoOptDefVal = InvalidFlagValue
@@ -175,9 +206,6 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 	flagSet.Bool(FlagReachability, false, "Run reachability analysis on source code. "+
 		"Use --reachability=true to enable, or --reachability=false to disable.")
 	flagSet.String(FlagSourceDir, "", "Path of the directory containing the source code.")
-
-	// SBOM monitor
-	flagSet.String(FlagSBOM, "", "Specify an SBOM file to be monitored.")
 
 	// Open Source
 	flagSet.String(FlagFile, "", "Specify a package file.")
