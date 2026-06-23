@@ -284,35 +284,41 @@ func logStartTestParams(logger *zerolog.Logger, startParams testapi.StartTestPar
 	dbg = dbg.Bool("has_subject", startParams.Subject() != nil)
 
 	if cfg := startParams.TestConfig(); cfg != nil {
-		if cfg.AssetName != nil {
-			dbg = dbg.Str("asset_name", *cfg.AssetName)
-		}
-		if cfg.TargetReference != nil {
-			dbg = dbg.Str("target_reference", *cfg.TargetReference)
-		}
-		if cfg.ProjectBusinessCriticality != nil {
-			dbg = dbg.Str("project_business_criticality", *cfg.ProjectBusinessCriticality)
-		}
-		if cfg.ProjectEnvironment != nil {
-			dbg = dbg.Strs("project_environment", *cfg.ProjectEnvironment)
-		}
-		if cfg.ProjectLifecycle != nil {
-			dbg = dbg.Strs("project_lifecycle", *cfg.ProjectLifecycle)
-		}
-		if cfg.ProjectTags != nil {
-			dbg = dbg.Strs("project_tags", *cfg.ProjectTags)
-		}
-		if cfg.PublishReport != nil {
-			dbg = dbg.Bool("publish_report", *cfg.PublishReport)
-		}
-		if cfgJSON, err := json.Marshal(cfg); err == nil {
-			dbg = dbg.RawJSON("test_config", cfgJSON)
-		} else {
-			dbg = dbg.AnErr("test_config_marshal_err", err)
-		}
+		dbg = appendTestConfig(dbg, cfg)
 	}
 
 	dbg.Msg("Sending StartTest request to test-api shim")
+}
+
+// appendTestConfig adds the non-nil fields of cfg to the debug log event.
+func appendTestConfig(dbg *zerolog.Event, cfg *testapi.TestConfiguration) *zerolog.Event {
+	if cfg.AssetName != nil {
+		dbg = dbg.Str("asset_name", *cfg.AssetName)
+	}
+	if cfg.TargetReference != nil {
+		dbg = dbg.Str("target_reference", *cfg.TargetReference)
+	}
+	if cfg.ProjectBusinessCriticality != nil {
+		dbg = dbg.Str("project_business_criticality", *cfg.ProjectBusinessCriticality)
+	}
+	if cfg.ProjectEnvironment != nil {
+		dbg = dbg.Strs("project_environment", *cfg.ProjectEnvironment)
+	}
+	if cfg.ProjectLifecycle != nil {
+		dbg = dbg.Strs("project_lifecycle", *cfg.ProjectLifecycle)
+	}
+	if cfg.ProjectTags != nil {
+		dbg = dbg.Strs("project_tags", *cfg.ProjectTags)
+	}
+	if cfg.PublishReport != nil {
+		dbg = dbg.Bool("publish_report", *cfg.PublishReport)
+	}
+	if cfgJSON, err := json.Marshal(cfg); err == nil {
+		dbg = dbg.RawJSON("test_config", cfgJSON)
+	} else {
+		dbg = dbg.AnErr("test_config_marshal_err", err)
+	}
+	return dbg
 }
 
 // prepareOutput prepares raw test result findings into data for the output workflow.

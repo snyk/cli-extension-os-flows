@@ -9,8 +9,8 @@
 // ignorePolicy, projectNameOverride, targetReference, target and targetFile.
 //
 // The struct layout, JSON tags, AdditionalProperties handling, and Get/Set
-// helpers are intentionally identical in behaviour to the previously generated
-// code, so this is a behaviour-preserving drop-in for the deleted types.
+// helpers are intentionally identical in behavior to the previously generated
+// code, so this is a behavior-preserving drop-in for the deleted types.
 package depgraphpayload
 
 import (
@@ -80,7 +80,7 @@ func (a DepGraph) Get(fieldName string) (value interface{}, found bool) {
 	if a.AdditionalProperties != nil {
 		value, found = a.AdditionalProperties[fieldName]
 	}
-	return
+	return value, found
 }
 
 // Set stores an additional top-level property.
@@ -158,7 +158,7 @@ func (a Graph) Get(fieldName string) (value interface{}, found bool) {
 	if a.AdditionalProperties != nil {
 		value, found = a.AdditionalProperties[fieldName]
 	}
-	return
+	return value, found
 }
 
 // Set stores an additional top-level property on the inner graph.
@@ -169,7 +169,7 @@ func (a *Graph) Set(fieldName string, value interface{}) {
 	a.AdditionalProperties[fieldName] = value
 }
 
-// UnmarshalJSON mirrors the previous code generator's behaviour.
+// UnmarshalJSON mirrors the previous code generator's behavior.
 func (a *Graph) UnmarshalJSON(b []byte) error {
 	object := make(map[string]json.RawMessage)
 	if err := json.Unmarshal(b, &object); err != nil {
@@ -190,7 +190,7 @@ func (a *Graph) UnmarshalJSON(b []byte) error {
 	return collectExtras(object, &a.AdditionalProperties)
 }
 
-// MarshalJSON mirrors the previous code generator's behaviour.
+// MarshalJSON mirrors the previous code generator's behavior.
 func (a Graph) MarshalJSON() ([]byte, error) {
 	object := make(map[string]json.RawMessage)
 	var err error
@@ -213,7 +213,7 @@ func (a Node) Get(fieldName string) (value interface{}, found bool) {
 	if a.AdditionalProperties != nil {
 		value, found = a.AdditionalProperties[fieldName]
 	}
-	return
+	return value, found
 }
 
 // Set stores an additional property on the node.
@@ -224,7 +224,7 @@ func (a *Node) Set(fieldName string, value interface{}) {
 	a.AdditionalProperties[fieldName] = value
 }
 
-// UnmarshalJSON mirrors the previous code generator's behaviour.
+// UnmarshalJSON mirrors the previous code generator's behavior.
 func (a *Node) UnmarshalJSON(b []byte) error {
 	object := make(map[string]json.RawMessage)
 	if err := json.Unmarshal(b, &object); err != nil {
@@ -251,7 +251,7 @@ func (a *Node) UnmarshalJSON(b []byte) error {
 	return collectExtras(object, &a.AdditionalProperties)
 }
 
-// MarshalJSON mirrors the previous code generator's behaviour.
+// MarshalJSON mirrors the previous code generator's behavior.
 func (a Node) MarshalJSON() ([]byte, error) {
 	object := make(map[string]json.RawMessage)
 	var err error
@@ -277,7 +277,7 @@ func (a NodeRef) Get(fieldName string) (value interface{}, found bool) {
 	if a.AdditionalProperties != nil {
 		value, found = a.AdditionalProperties[fieldName]
 	}
-	return
+	return value, found
 }
 
 // Set stores an additional property on the node reference.
@@ -288,7 +288,7 @@ func (a *NodeRef) Set(fieldName string, value interface{}) {
 	a.AdditionalProperties[fieldName] = value
 }
 
-// UnmarshalJSON mirrors the previous code generator's behaviour.
+// UnmarshalJSON mirrors the previous code generator's behavior.
 func (a *NodeRef) UnmarshalJSON(b []byte) error {
 	object := make(map[string]json.RawMessage)
 	if err := json.Unmarshal(b, &object); err != nil {
@@ -303,7 +303,7 @@ func (a *NodeRef) UnmarshalJSON(b []byte) error {
 	return collectExtras(object, &a.AdditionalProperties)
 }
 
-// MarshalJSON mirrors the previous code generator's behaviour.
+// MarshalJSON mirrors the previous code generator's behavior.
 func (a NodeRef) MarshalJSON() ([]byte, error) {
 	object := make(map[string]json.RawMessage)
 	var err error
@@ -323,7 +323,7 @@ func (a Package) Get(fieldName string) (value interface{}, found bool) {
 	if a.AdditionalProperties != nil {
 		value, found = a.AdditionalProperties[fieldName]
 	}
-	return
+	return value, found
 }
 
 // Set stores an additional property on the package entry.
@@ -334,7 +334,7 @@ func (a *Package) Set(fieldName string, value interface{}) {
 	a.AdditionalProperties[fieldName] = value
 }
 
-// UnmarshalJSON mirrors the previous code generator's behaviour.
+// UnmarshalJSON mirrors the previous code generator's behavior.
 func (a *Package) UnmarshalJSON(b []byte) error {
 	object := make(map[string]json.RawMessage)
 	if err := json.Unmarshal(b, &object); err != nil {
@@ -355,7 +355,7 @@ func (a *Package) UnmarshalJSON(b []byte) error {
 	return collectExtras(object, &a.AdditionalProperties)
 }
 
-// MarshalJSON mirrors the previous code generator's behaviour.
+// MarshalJSON mirrors the previous code generator's behavior.
 func (a Package) MarshalJSON() ([]byte, error) {
 	object := make(map[string]json.RawMessage)
 	var err error
@@ -378,7 +378,7 @@ func (a PackageInfo) Get(fieldName string) (value interface{}, found bool) {
 	if a.AdditionalProperties != nil {
 		value, found = a.AdditionalProperties[fieldName]
 	}
-	return
+	return value, found
 }
 
 // Set stores an additional property on the package info.
@@ -389,7 +389,7 @@ func (a *PackageInfo) Set(fieldName string, value interface{}) {
 	a.AdditionalProperties[fieldName] = value
 }
 
-// UnmarshalJSON mirrors the previous code generator's behaviour.
+// UnmarshalJSON mirrors the previous code generator's behavior.
 func (a *PackageInfo) UnmarshalJSON(b []byte) error {
 	object := make(map[string]json.RawMessage)
 	if err := json.Unmarshal(b, &object); err != nil {
@@ -410,7 +410,7 @@ func (a *PackageInfo) UnmarshalJSON(b []byte) error {
 	return collectExtras(object, &a.AdditionalProperties)
 }
 
-// MarshalJSON mirrors the previous code generator's behaviour.
+// MarshalJSON mirrors the previous code generator's behavior.
 func (a PackageInfo) MarshalJSON() ([]byte, error) {
 	object := make(map[string]json.RawMessage)
 	var err error
@@ -433,7 +433,7 @@ func (a PackageManager) Get(fieldName string) (value interface{}, found bool) {
 	if a.AdditionalProperties != nil {
 		value, found = a.AdditionalProperties[fieldName]
 	}
-	return
+	return value, found
 }
 
 // Set stores an additional property on the package manager descriptor.
@@ -444,7 +444,7 @@ func (a *PackageManager) Set(fieldName string, value interface{}) {
 	a.AdditionalProperties[fieldName] = value
 }
 
-// UnmarshalJSON mirrors the previous code generator's behaviour.
+// UnmarshalJSON mirrors the previous code generator's behavior.
 func (a *PackageManager) UnmarshalJSON(b []byte) error {
 	object := make(map[string]json.RawMessage)
 	if err := json.Unmarshal(b, &object); err != nil {
@@ -459,7 +459,7 @@ func (a *PackageManager) UnmarshalJSON(b []byte) error {
 	return collectExtras(object, &a.AdditionalProperties)
 }
 
-// MarshalJSON mirrors the previous code generator's behaviour.
+// MarshalJSON mirrors the previous code generator's behavior.
 func (a PackageManager) MarshalJSON() ([]byte, error) {
 	object := make(map[string]json.RawMessage)
 	var err error
