@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
@@ -211,6 +212,7 @@ func executeTest(
 	progressbar := cmdctx.ProgressBar(ctx)
 
 	progressbar.SetTitle("Starting test...")
+	logStartTestParams(logger, startParams)
 	handle, err := testClient.StartTest(ctx, startParams)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to start test: %w", err)
@@ -256,6 +258,67 @@ func executeTest(
 		return finalResult, findingsData, errFactory.NewTestExecutionError("test completed but findings could not be retrieved")
 	}
 	return finalResult, findingsData, nil
+}
+
+// logStartTestParams emits a debug log describing the request that is about to be sent
+// to the test-api shim: org ID, resource count, presence of a subject, and the most
+// useful CLI-supplied metadata (asset_name, target_reference, project_business_criticality,
+// project_environment, project_lifecycle, project_tags, publish_report). The full
+// TestConfiguration is also emitted as JSON via RawJSON for completeness, but the
+// individual fields are surfaced as top-level zerolog fields so they are immediately
+// greppable and not subject to any JSON-targeted scrubbing rules.
+func logStartTestParams(logger *zerolog.Logger, startParams testapi.StartTestParams) {
+	dbg := logger.Debug()
+	if !dbg.Enabled() {
+		return
+	}
+
+	dbg = dbg.Str("org_id", startParams.OrgID())
+
+	if resources := startParams.Resources(); resources != nil {
+		dbg = dbg.Int("resource_count", len(*resources))
+	} else {
+		dbg = dbg.Int("resource_count", 0)
+	}
+
+	dbg = dbg.Bool("has_subject", startParams.Subject() != nil)
+
+	if cfg := startParams.TestConfig(); cfg != nil {
+		dbg = appendTestConfig(dbg, cfg)
+	}
+
+	dbg.Msg("Sending StartTest request to test-api shim")
+}
+
+// appendTestConfig adds the non-nil fields of cfg to the debug log event.
+func appendTestConfig(dbg *zerolog.Event, cfg *testapi.TestConfiguration) *zerolog.Event {
+	if cfg.AssetName != nil {
+		dbg = dbg.Str("asset_name", *cfg.AssetName)
+	}
+	if cfg.TargetReference != nil {
+		dbg = dbg.Str("target_reference", *cfg.TargetReference)
+	}
+	if cfg.ProjectBusinessCriticality != nil {
+		dbg = dbg.Str("project_business_criticality", *cfg.ProjectBusinessCriticality)
+	}
+	if cfg.ProjectEnvironment != nil {
+		dbg = dbg.Strs("project_environment", *cfg.ProjectEnvironment)
+	}
+	if cfg.ProjectLifecycle != nil {
+		dbg = dbg.Strs("project_lifecycle", *cfg.ProjectLifecycle)
+	}
+	if cfg.ProjectTags != nil {
+		dbg = dbg.Strs("project_tags", *cfg.ProjectTags)
+	}
+	if cfg.PublishReport != nil {
+		dbg = dbg.Bool("publish_report", *cfg.PublishReport)
+	}
+	if cfgJSON, err := json.Marshal(cfg); err == nil {
+		dbg = dbg.RawJSON("test_config", cfgJSON)
+	} else {
+		dbg = dbg.AnErr("test_config_marshal_err", err)
+	}
+	return dbg
 }
 
 // prepareOutput prepares raw test result findings into data for the output workflow.

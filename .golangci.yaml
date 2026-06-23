@@ -143,6 +143,16 @@ linters:
           - tagliatelle
           - wrapcheck
         path: internal/legacy/definitions/oapi\.gen\.go
+      # depgraph.go is a hand-maintained, behavior-preserving mirror of the
+      # model previously generated in go-application-framework's testapi
+      # package. Its field names, value receivers (required by json.Marshaler)
+      # and raw json error returns intentionally match the generated code, so
+      # the style/design linters that target generated output are excluded.
+      - linters:
+          - gocritic
+          - revive
+          - wrapcheck
+        path: internal/depgraphpayload/depgraph\.go
       - linters:
           - bodyclose
           - dupl

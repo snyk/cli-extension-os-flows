@@ -18,6 +18,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
+	"github.com/snyk/cli-extension-os-flows/internal/depgraphpayload"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
@@ -251,9 +252,17 @@ func testAllDepGraphs(
 }
 
 func createTestSubject(depGraph DepGraphWithMeta) (testapi.TestSubjectCreate, error) {
+	// testapi.DepGraphSubjectCreate.DepGraph is now testapi.DepGraphRef (an
+	// alias for json.RawMessage). Marshal the typed payload back into bytes so
+	// the dep graph plus any AdditionalProperties enrichments (scanId, target,
+	// etc.) are preserved on the wire.
+	depGraphBytes, err := json.Marshal(depGraph.Payload)
+	if err != nil {
+		return testapi.TestSubjectCreate{}, fmt.Errorf("failed to marshal dep graph payload: %w", err)
+	}
 	depGraphSubject := testapi.DepGraphSubjectCreate{
 		Type:     testapi.DepGraph,
-		DepGraph: *depGraph.Payload,
+		DepGraph: depGraphBytes,
 		Locator: testapi.LocalPathLocator{
 			Paths: []string{depGraph.DisplayTargetFile},
 			Type:  testapi.LocalPath,
@@ -261,8 +270,7 @@ func createTestSubject(depGraph DepGraphWithMeta) (testapi.TestSubjectCreate, er
 	}
 
 	var subject testapi.TestSubjectCreate
-	err := subject.FromDepGraphSubjectCreate(depGraphSubject)
-	if err != nil {
+	if err := subject.FromDepGraphSubjectCreate(depGraphSubject); err != nil {
 		return subject, fmt.Errorf("failed to create test subject: %w", err)
 	}
 	return subject, nil
@@ -367,7 +375,7 @@ func createDepGraphs(ictx workflow.InvocationContext, inputDir string) ([]DepGra
 // ParseDepGraph parses a raw depgraph into a DepGraphWithMeta.
 func ParseDepGraph(rawDepGraph common.RawDepGraphWithMeta) (DepGraphWithMeta, error) {
 	var targetFile string
-	var payload testapi.IoSnykApiV1testdepgraphRequestDepGraph
+	var payload depgraphpayload.DepGraph
 	err := json.Unmarshal(rawDepGraph.Payload, &payload)
 	if err != nil {
 		return DepGraphWithMeta{}, fmt.Errorf("unmarshaling depGraph from args failed: %w", err)
@@ -393,7 +401,7 @@ func ParseDepGraph(rawDepGraph common.RawDepGraphWithMeta) (DepGraphWithMeta, er
 
 // DepGraphWithMeta encapsulates a dependency graph and its metadata.
 type DepGraphWithMeta struct {
-	Payload              *testapi.IoSnykApiV1testdepgraphRequestDepGraph
+	Payload              *depgraphpayload.DepGraph
 	DisplayTargetFile    string
 	TargetFileFromPlugin string
 }

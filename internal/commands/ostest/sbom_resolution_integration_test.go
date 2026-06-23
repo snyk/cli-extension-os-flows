@@ -26,6 +26,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
+	"github.com/snyk/cli-extension-os-flows/internal/depgraphpayload"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
@@ -72,7 +73,7 @@ func setupSBOMResolutionIntegrationTest(
 ) (
 	workflow.InvocationContext,
 	testapi.TestClient,
-	*testapi.IoSnykApiV1testdepgraphRequestDepGraph,
+	*depgraphpayload.DepGraph,
 	uuid.UUID,
 	configuration.Configuration,
 	*zerolog.Logger,
@@ -99,7 +100,7 @@ func setupSBOMResolutionIntegrationTest(
 	depGraphBytes, err := os.ReadFile("testdata/uv_depgraph.json")
 	require.NoError(t, err)
 
-	var mockDepGraph testapi.IoSnykApiV1testdepgraphRequestDepGraph
+	var mockDepGraph depgraphpayload.DepGraph
 	require.NoError(t, json.Unmarshal(depGraphBytes, &mockDepGraph))
 
 	depGraphData := workflow.NewData(
@@ -126,7 +127,13 @@ func setupSBOMResolutionIntegrationTest(
 			depGraphSubject, subjectErr := params.Subject().AsDepGraphSubjectCreate()
 			require.NoError(t, subjectErr)
 
-			assert.Equal(t, mockDepGraph, depGraphSubject.DepGraph)
+			// testapi.DepGraphSubjectCreate.DepGraph is now testapi.DepGraphRef
+			// (an alias for json.RawMessage); compare the on-the-wire JSON
+			// content rather than the typed structs to remain agnostic of any
+			// key ordering or whitespace differences from the round-trip.
+			expectedDepGraphBytes, marshalErr := json.Marshal(mockDepGraph)
+			require.NoError(t, marshalErr)
+			assert.JSONEq(t, string(expectedDepGraphBytes), string(depGraphSubject.DepGraph))
 
 			handle := gafclientmocks.NewMockTestHandle(ctrl)
 			handle.EXPECT().Wait(gomock.Any()).Return(nil).Times(1)

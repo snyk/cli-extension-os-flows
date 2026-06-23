@@ -29,6 +29,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
+	"github.com/snyk/cli-extension-os-flows/internal/depgraphpayload"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/mocks"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
@@ -107,13 +108,13 @@ func (h *flowTestHarness) registerDepGraphs(n int) {
 
 func newMockDepGraphData(t *testing.T, ctrl *gomock.Controller) workflow.Data {
 	t.Helper()
-	dg := testapi.IoSnykApiV1testdepgraphRequestDepGraph{
+	dg := depgraphpayload.DepGraph{
 		SchemaVersion: "1.2.0",
-		PkgManager:    testapi.IoSnykApiV1testdepgraphRequestPackageManager{Name: "npm"},
-		Pkgs: []testapi.IoSnykApiV1testdepgraphRequestPackage{
-			{Id: "proj@1.0.0", Info: testapi.IoSnykApiV1testdepgraphRequestPackageInfo{Name: "proj", Version: "1.0.0"}},
+		PkgManager:    depgraphpayload.PackageManager{Name: "npm"},
+		Pkgs: []depgraphpayload.Package{
+			{Id: "proj@1.0.0", Info: depgraphpayload.PackageInfo{Name: "proj", Version: "1.0.0"}},
 		},
-		Graph: testapi.IoSnykApiV1testdepgraphRequestGraph{RootNodeId: "root"},
+		Graph: depgraphpayload.Graph{RootNodeId: "root"},
 	}
 	b, err := json.Marshal(dg)
 	require.NoError(t, err)
@@ -326,7 +327,14 @@ func Test_RunUnifiedTestFlow_DepGraphEnrichment(t *testing.T) {
 				depGraphSubject, err := params.Subject().AsDepGraphSubjectCreate()
 				require.NoError(t, err)
 
-				value, exists := depGraphSubject.DepGraph.Get(tt.dgField)
+				// testapi.DepGraphSubjectCreate.DepGraph is now testapi.DepGraphRef
+				// (an alias for json.RawMessage). Decode it into the local typed
+				// payload so we can read additional top-level enrichment fields
+				// (scanId, ignorePolicy, projectNameOverride, targetReference).
+				var dg depgraphpayload.DepGraph
+				require.NoError(t, json.Unmarshal(depGraphSubject.DepGraph, &dg))
+
+				value, exists := dg.Get(tt.dgField)
 				require.True(t, exists, "depgraph should have %s field set", tt.dgField)
 				require.Equal(t, tt.expected, value)
 			})
@@ -393,7 +401,10 @@ func Test_RunUnifiedTestFlow_ReachabilityFailureFallback(t *testing.T) {
 		depGraphSubject, err := params.Subject().AsDepGraphSubjectCreate()
 		require.NoError(t, err)
 
-		_, hasScanID := depGraphSubject.DepGraph.Get("reachabilityScanId")
+		var dg depgraphpayload.DepGraph
+		require.NoError(t, json.Unmarshal(depGraphSubject.DepGraph, &dg))
+
+		_, hasScanID := dg.Get("reachabilityScanId")
 		assert.False(t, hasScanID, "depgraph should NOT have reachabilityScanId when reachability failed")
 	})
 
@@ -444,7 +455,10 @@ func Test_RunUnifiedTestFlow_SkipsReachabilityWhenNoSupportedSources(t *testing.
 		depGraphSubject, err := params.Subject().AsDepGraphSubjectCreate()
 		require.NoError(t, err)
 
-		_, hasScanID := depGraphSubject.DepGraph.Get("reachabilityScanId")
+		var dg depgraphpayload.DepGraph
+		require.NoError(t, json.Unmarshal(depGraphSubject.DepGraph, &dg))
+
+		_, hasScanID := dg.Get("reachabilityScanId")
 		assert.False(t, hasScanID, "depgraph must not be enriched when reachability is skipped")
 	})
 
