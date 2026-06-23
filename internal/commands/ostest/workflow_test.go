@@ -32,6 +32,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
+	"github.com/snyk/cli-extension-os-flows/internal/depgraphpayload"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
@@ -784,30 +785,30 @@ func TestOSWorkflow_MultipleProjects_UnifiedFlow(t *testing.T) {
 	defer mockAPI.Close()
 
 	// Mock depgraph workflow to return two depgraphs
-	depGraph1Bytes, err := json.Marshal(testapi.IoSnykApiV1testdepgraphRequestDepGraph{
+	depGraph1Bytes, err := json.Marshal(depgraphpayload.DepGraph{
 		SchemaVersion: "1.2.0",
-		PkgManager:    testapi.IoSnykApiV1testdepgraphRequestPackageManager{Name: "npm"},
-		Pkgs: []testapi.IoSnykApiV1testdepgraphRequestPackage{
-			{Id: "proj1@1.0.0", Info: testapi.IoSnykApiV1testdepgraphRequestPackageInfo{Name: "proj1", Version: "1.0.0"}},
+		PkgManager:    depgraphpayload.PackageManager{Name: "npm"},
+		Pkgs: []depgraphpayload.Package{
+			{Id: "proj1@1.0.0", Info: depgraphpayload.PackageInfo{Name: "proj1", Version: "1.0.0"}},
 		},
-		Graph: testapi.IoSnykApiV1testdepgraphRequestGraph{
+		Graph: depgraphpayload.Graph{
 			RootNodeId: "root",
-			Nodes: []testapi.IoSnykApiV1testdepgraphRequestNode{
-				{NodeId: "root", PkgId: "proj1@1.0.0", Deps: []testapi.IoSnykApiV1testdepgraphRequestNodeRef{}},
+			Nodes: []depgraphpayload.Node{
+				{NodeId: "root", PkgId: "proj1@1.0.0", Deps: []depgraphpayload.NodeRef{}},
 			},
 		},
 	})
 	require.NoError(t, err)
-	depGraph2Bytes, err := json.Marshal(testapi.IoSnykApiV1testdepgraphRequestDepGraph{
+	depGraph2Bytes, err := json.Marshal(depgraphpayload.DepGraph{
 		SchemaVersion: "1.2.0",
-		PkgManager:    testapi.IoSnykApiV1testdepgraphRequestPackageManager{Name: "maven"},
-		Pkgs: []testapi.IoSnykApiV1testdepgraphRequestPackage{
-			{Id: "proj2@2.0.0", Info: testapi.IoSnykApiV1testdepgraphRequestPackageInfo{Name: "proj2", Version: "2.0.0"}},
+		PkgManager:    depgraphpayload.PackageManager{Name: "maven"},
+		Pkgs: []depgraphpayload.Package{
+			{Id: "proj2@2.0.0", Info: depgraphpayload.PackageInfo{Name: "proj2", Version: "2.0.0"}},
 		},
-		Graph: testapi.IoSnykApiV1testdepgraphRequestGraph{
+		Graph: depgraphpayload.Graph{
 			RootNodeId: "root",
-			Nodes: []testapi.IoSnykApiV1testdepgraphRequestNode{
-				{NodeId: "root", PkgId: "proj2@2.0.0", Deps: []testapi.IoSnykApiV1testdepgraphRequestNodeRef{}},
+			Nodes: []depgraphpayload.Node{
+				{NodeId: "root", PkgId: "proj2@2.0.0", Deps: []depgraphpayload.NodeRef{}},
 			},
 		},
 	})

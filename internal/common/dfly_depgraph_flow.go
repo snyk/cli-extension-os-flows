@@ -160,7 +160,7 @@ func BuildTestConfig(cfg configuration.Configuration, localPolicy *testapi.Local
 		testConfig.TargetReference = &tr
 	}
 	if tn := cfg.GetString(flags.FlagAssetName); tn != "" {
-		testConfig.TargetName = &tn
+		testConfig.AssetName = &tn
 	}
 	if pbc := cfg.GetString(flags.FlagProjectBusinessCriticality); pbc != "" {
 		testConfig.ProjectBusinessCriticality = &pbc
