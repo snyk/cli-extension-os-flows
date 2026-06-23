@@ -1,6 +1,6 @@
 module github.com/snyk/cli-extension-os-flows
 
-go 1.26.3
+go 1.26.4
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -113,7 +113,7 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
