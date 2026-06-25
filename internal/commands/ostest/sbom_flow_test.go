@@ -13,6 +13,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
@@ -30,6 +31,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
+	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
@@ -234,6 +236,43 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 	require.Equal(t, 1, ffc.GetUploadCount(), "Expected 1 upload (SBOM only)")
 }
 
+func Test_RunSbomFlow_HumanReadable_PropagatesAssetLink(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	const assetURL = "app.snyk.io/inventory/b6b8bbf8-5cbf-40a2-8991-784fe2a6c8a1"
+
+	ef := errors.NewErrorFactory(&nopLogger)
+	mockIctx, mockTestClient, ffc, fdc, orgID, sbomPath, _ := setupTestWithAssetLink(t, ctrl, false, assetURL)
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+
+	_, outputData, err := common.RunSbomFlow(
+		ctx,
+		sbomPath,
+		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
+		orgID,
+		nil,
+		nil,
+		util.Ptr(true), ostest.RunTestWithResources,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, outputData)
+	require.Len(t, outputData, 4)
+
+	require.Contains(t, "application/json; schema=local-unified-summary", outputData[3].GetContentType())
+	localSummary, ok := outputData[3].GetPayload().([]byte)
+	require.True(t, ok)
+
+	var payload presenters.SummaryPayload
+	require.NoError(t, json.Unmarshal(localSummary, &payload))
+	assert.Equal(t, assetURL, payload.AssetLink)
+}
+
 func Test_RunSbomFlow_SkipsSourceUploadWhenNoSupportedSources(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -266,10 +305,48 @@ func Test_RunSbomFlow_SkipsSourceUploadWhenNoSupportedSources(t *testing.T) {
 }
 
 //nolint:gocritic // Not important for tests.
+func setupTestWithAssetLink(
+	t *testing.T,
+	ctrl *gomock.Controller,
+	jsonOutput bool,
+	assetURL string,
+) (
+	*gafmocks.MockInvocationContext,
+	testapi.TestClient,
+	*fileupload.FakeClient,
+	deeproxy.Client,
+	uuid.UUID,
+	string,
+	string,
+) {
+	t.Helper()
+	return setupTestInternal(t, ctrl, jsonOutput, assetURL)
+}
+
+//nolint:gocritic // Not important for tests.
 func setupTest(
 	t *testing.T,
 	ctrl *gomock.Controller,
 	jsonOutput bool,
+) (
+	*gafmocks.MockInvocationContext,
+	testapi.TestClient,
+	*fileupload.FakeClient,
+	deeproxy.Client,
+	uuid.UUID,
+	string,
+	string,
+) {
+	t.Helper()
+	return setupTestInternal(t, ctrl, jsonOutput, "")
+}
+
+//nolint:gocritic // Not important for tests.
+func setupTestInternal(
+	t *testing.T,
+	ctrl *gomock.Controller,
+	jsonOutput bool,
+	assetURL string,
 ) (
 	*gafmocks.MockInvocationContext,
 	testapi.TestClient,
@@ -491,7 +568,14 @@ func setupTest(
 	mockTestResult.EXPECT().GetPassFail().Return(&passFail).AnyTimes()
 	mockTestResult.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
 	mockTestResult.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
-	mockTestResult.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
+	metadataMap := map[string]interface{}{}
+	if assetURL != "" {
+		metadataMap["asset"] = assetURL
+	}
+	mockTestResult.EXPECT().GetMetadata().Return(metadataMap).AnyTimes()
+	mockTestResult.EXPECT().GetMetadataValue(gomock.Any()).DoAndReturn(func(key string) interface{} {
+		return metadataMap[key]
+	}).AnyTimes()
 	mockTestResult.EXPECT().GetTestFacts().Return(nil).AnyTimes()
 	mockTestResult.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
 

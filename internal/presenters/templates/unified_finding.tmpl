@@ -255,6 +255,10 @@
         {{- "\n" }}
     {{- end }}
 
+    {{- if $result.AssetLink }}
+        {{- printf "\nView your asset(s) at: %s\n" $result.AssetLink }}
+    {{- end }}
+
 {{- end }}
 
 {{- if shouldShowAggregateSummary .Results }}

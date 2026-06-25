@@ -1387,6 +1387,68 @@ func TestUnifiedFindingPresenter_SingleProject_NoAggregateSummary(t *testing.T) 
 	assert.Equal(t, 1, strings.Count(output, "Test Summary"))
 }
 
+func TestUnifiedFindingPresenter_AssetLink(t *testing.T) {
+	t.Run("renders asset link when present", func(t *testing.T) {
+		config := configuration.New()
+		buffer := &bytes.Buffer{}
+		lipgloss.SetColorProfile(termenv.Ascii)
+
+		projectResult := &presenters.UnifiedProjectResult{
+			Findings:          []testapi.FindingData{},
+			DisplayTargetFile: "bom.cdx.json",
+			TargetDirectory:   "/home/me",
+			Summary: &json_schemas.TestSummary{
+				Type:             "open-source",
+				Path:             "/home/me",
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+				Results:          []json_schemas.TestSummaryResult{},
+			},
+			AssetLink: "app.snyk.io/inventory/b6b8bbf8-5cbf-40a2-8991-784fe2a6c8a1",
+		}
+
+		presenter := presenters.NewUnifiedFindingsRenderer(
+			[]*presenters.UnifiedProjectResult{projectResult},
+			config,
+			buffer,
+		)
+
+		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		require.NoError(t, err)
+
+		assert.Contains(t, buffer.String(),
+			"View your asset(s) at: app.snyk.io/inventory/b6b8bbf8-5cbf-40a2-8991-784fe2a6c8a1")
+	})
+
+	t.Run("omits asset link line when empty (default sbom test)", func(t *testing.T) {
+		config := configuration.New()
+		buffer := &bytes.Buffer{}
+		lipgloss.SetColorProfile(termenv.Ascii)
+
+		projectResult := &presenters.UnifiedProjectResult{
+			Findings:          []testapi.FindingData{},
+			DisplayTargetFile: "bom.cdx.json",
+			TargetDirectory:   "/home/me",
+			Summary: &json_schemas.TestSummary{
+				Type:             "open-source",
+				Path:             "/home/me",
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+				Results:          []json_schemas.TestSummaryResult{},
+			},
+		}
+
+		presenter := presenters.NewUnifiedFindingsRenderer(
+			[]*presenters.UnifiedProjectResult{projectResult},
+			config,
+			buffer,
+		)
+
+		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		require.NoError(t, err)
+
+		assert.NotContains(t, buffer.String(), "View your asset(s) at:")
+	})
+}
+
 func TestUnifiedFindingPresenter_MultiplePaths_ShouldShowAggregateSummary(t *testing.T) {
 	config := configuration.New()
 	buffer := &bytes.Buffer{}

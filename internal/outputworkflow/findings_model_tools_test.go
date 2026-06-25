@@ -3,16 +3,19 @@ package outputworkflow
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
 	pkgMocks "github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 )
@@ -46,6 +49,34 @@ func Test_getTotalNumberOfUnifiedFindings(t *testing.T) {
 		actualCount := getTotalNumberOfUnifiedFindings(projectResults)
 		assert.Equal(t, 8, actualCount)
 	})
+}
+
+func Test_getUnifiedProjectResults_AssetLinkPropagates(t *testing.T) {
+	logger := zerolog.Nop()
+
+	mkData := func(t *testing.T, contentType string, v any) workflow.Data {
+		t.Helper()
+		b, err := json.Marshal(v)
+		require.NoError(t, err)
+		return workflow.NewData(workflow.NewTypeIdentifier(workflow.NewWorkflowIdentifier("test"), "x"), contentType, b)
+	}
+
+	findings := []testapi.FindingData{{Attributes: &testapi.FindingAttributes{Title: "x"}}}
+	const assetURL = "app.snyk.io/inventory/b6b8bbf8-5cbf-40a2-8991-784fe2a6c8a1"
+	summary := presenters.SummaryPayload{
+		Summary:   &json_schemas.TestSummary{Type: "open-source"},
+		AssetLink: assetURL,
+	}
+
+	input := []workflow.Data{
+		mkData(t, LocalUnifiedFindingModel, findings),
+		mkData(t, LocalUnifiedSummaryModel, summary),
+	}
+
+	results, remaining := getUnifiedProjectResults(input, &logger)
+	require.Len(t, results, 1)
+	assert.Empty(t, remaining)
+	assert.Equal(t, assetURL, results[0].AssetLink)
 }
 
 func Test_getWritersToUse(t *testing.T) {
