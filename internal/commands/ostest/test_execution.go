@@ -111,6 +111,14 @@ func runTestInternal(
 		return nil, nil, fmt.Errorf("failed to consolidate findings: %w", err)
 	}
 
+	// Findings for the human-readable output are consolidated per component so a vulnerability
+	// shared across multiple SBOM components is reported under each one. For a single component
+	// (or findings without a component key) this is identical to the global consolidation above.
+	humanReadableFindings, err := ConsolidateFindingsByComponent(ctx, allFindingsData)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to consolidate findings by component: %w", err)
+	}
+
 	// The summary is always needed for the exit code calculation.
 	standardSummary, summaryData, summaryErr := NewSummaryDataFromFindings(consolidatedFindings, targetDir)
 	if summaryErr != nil {
@@ -155,7 +163,7 @@ func runTestInternal(
 		Logger:             logger,
 	}
 
-	return prepareOutput(ctx, consolidatedFindings, standardSummary, summaryData, legacyParams, vulnerablePathsCount)
+	return prepareOutput(ctx, humanReadableFindings, standardSummary, summaryData, legacyParams, vulnerablePathsCount)
 }
 
 func getTestProjectID(result testapi.TestResult) (*string, error) {
@@ -537,6 +545,26 @@ func ConsolidateFindings(ctx context.Context, findings []testapi.FindingData) ([
 	return result, nil
 }
 
+// ConsolidateFindingsByComponent groups findings by their component
+// (testapi.FindingData.Attributes.ComponentKey) and consolidates within each group,
+// concatenating the results in component order. This keeps the component association
+// intact so a finding shared across multiple components is reported under each one.
+// When fewer than two distinct components are present, this is equivalent to
+// ConsolidateFindings over the whole set.
+func ConsolidateFindingsByComponent(ctx context.Context, findings []testapi.FindingData) ([]testapi.FindingData, error) {
+	groups := presenters.GroupFindingsByComponent(findings)
+
+	result := make([]testapi.FindingData, 0, len(findings))
+	for _, group := range groups {
+		consolidated, err := ConsolidateFindings(ctx, group.Findings)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, consolidated...)
+	}
+	return result, nil
+}
+
 func consolidateFindingFix(existing, additional testapi.FindingData, pkgManager string) (*testapi.FindingData, error) {
 	if additional.Relationships == nil || additional.Relationships.Fix == nil {
 		return &existing, nil
@@ -705,6 +733,7 @@ func consolidateFindingAttributes(existing, additional testapi.FindingData, seve
 	} else if result.Attributes != nil {
 		result.Attributes = &testapi.FindingAttributes{
 			CauseOfFailure: result.Attributes.CauseOfFailure,
+			ComponentKey:   result.Attributes.ComponentKey,
 			Description:    result.Attributes.Description,
 			Evidence:       make([]testapi.Evidence, len(result.Attributes.Evidence)),
 			FindingType:    result.Attributes.FindingType,
