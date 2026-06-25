@@ -49,6 +49,7 @@ type UnifiedProjectResult struct {
 	DisplayTargetFile    string
 	TargetDirectory      string
 	VulnerablePathsCount int
+	AssetLink            string
 }
 
 // SummaryPayload is a wrapper for the test summary and additional metadata needed for the unified output.
@@ -60,6 +61,7 @@ type SummaryPayload struct {
 	DisplayTargetFile    string                    `json:"displayTargetFile"`
 	VulnerablePathsCount int                       `json:"vulnerablePathsCount"`
 	TargetDirectory      string                    `json:"-"`
+	AssetLink            string                    `json:"assetLink,omitempty"`
 }
 
 // UnifiedFindingPresenter is responsible for rendering unified findings data.

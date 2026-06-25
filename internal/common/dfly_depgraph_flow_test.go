@@ -492,6 +492,7 @@ func setupDflyMockTestResultEmpty(ctrl *gomock.Controller) *gafclientmocks.MockT
 	mockTestResult.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
 	mockTestResult.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockTestResult.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
+	mockTestResult.EXPECT().GetMetadataValue(gomock.Any()).Return(nil).AnyTimes()
 	mockTestResult.EXPECT().GetTestFacts().Return(nil).AnyTimes()
 	mockTestResult.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
 
@@ -565,6 +566,7 @@ func setupDflyTestClient(t *testing.T, ctrl *gomock.Controller) *gafclientmocks.
 	mockTestResult.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
 	mockTestResult.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockTestResult.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
+	mockTestResult.EXPECT().GetMetadataValue(gomock.Any()).Return(nil).AnyTimes()
 	mockTestResult.EXPECT().GetTestFacts().Return(nil).AnyTimes()
 	mockTestResult.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
 

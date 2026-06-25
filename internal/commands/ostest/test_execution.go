@@ -184,6 +184,20 @@ func getTestProjectID(result testapi.TestResult) (*string, error) {
 	return nil, nil
 }
 
+func assetLinkFromTestResult(result testapi.TestResult) string {
+	if result == nil {
+		return ""
+	}
+	v := result.GetMetadataValue("asset")
+	if v == nil {
+		return ""
+	}
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
+}
+
 // GetDependencyCountFromTestFacts extracts the total dependency count from test facts.
 // Returns 0 if no dependency count fact is found.
 func GetDependencyCountFromTestFacts(result testapi.TestResult) int {
@@ -391,6 +405,7 @@ func prepareOutput(
 				DisplayTargetFile:    params.DisplayTargetFile,
 				TargetDirectory:      params.TargetDir,
 				VulnerablePathsCount: vulnerablePathsCount,
+				AssetLink:            assetLinkFromTestResult(params.TestResult),
 			}
 
 			extendedPayloadBytes, marshalErr := json.Marshal(extendedPayload)
