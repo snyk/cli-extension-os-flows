@@ -99,6 +99,13 @@ func TestHTMLFlags(t *testing.T) {
 	})
 }
 
+func TestOSTestFlagSet_HasMonitorFlag(t *testing.T) {
+	fs := flags.OSTestFlagSet()
+	f := fs.Lookup(flags.FlagMonitor)
+	require.NotNil(t, f, "expected --monitor to be registered on the OS test flag set")
+	assert.Equal(t, "false", f.DefValue, "--monitor should default to false")
+}
+
 func TestRemoteRepoURLFlag(t *testing.T) {
 	flagSets := []struct {
 		name     string
