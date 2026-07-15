@@ -15,6 +15,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
@@ -161,6 +162,11 @@ func BuildTestConfig(cfg configuration.Configuration, localPolicy *testapi.Local
 	}
 	if tn := cfg.GetString(flags.FlagAssetName); tn != "" {
 		testConfig.AssetName = &tn
+	}
+	// --monitor persists the result as a monitored project with recurring retests.
+	// Independent of --report (PublishReport); other callers never set this key.
+	if cfg.GetBool(flags.FlagMonitor) {
+		testConfig.Monitor = util.Ptr(true)
 	}
 	if pbc := cfg.GetString(flags.FlagProjectBusinessCriticality); pbc != "" {
 		testConfig.ProjectBusinessCriticality = &pbc

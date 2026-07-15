@@ -760,3 +760,20 @@ func dflyAFinding(t *testing.T) testapi.FindingData {
 		},
 	}
 }
+
+func Test_BuildTestConfig_MonitorFlagSetsMonitor(t *testing.T) {
+	cfg := configuration.New()
+	cfg.Set(flags.FlagMonitor, true)
+
+	tc := common.BuildTestConfig(cfg, nil, nil) // publishReport nil => report unaffected
+
+	require.NotNil(t, tc.Monitor)
+	assert.True(t, *tc.Monitor)
+	assert.Nil(t, tc.PublishReport, "--monitor must not imply --report (DD1)")
+}
+
+func Test_BuildTestConfig_NoMonitorFlagLeavesMonitorNil(t *testing.T) {
+	cfg := configuration.New()
+	tc := common.BuildTestConfig(cfg, nil, nil)
+	assert.Nil(t, tc.Monitor)
+}
