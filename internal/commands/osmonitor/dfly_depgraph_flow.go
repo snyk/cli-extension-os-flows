@@ -10,12 +10,12 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
-	"github.com/snyk/cli-extension-os-flows/internal/util"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 // RunDflyMonitorFlow runs the dragonfly depgraph flow for `snyk monitor`.
 // It iterates over all input directories, resolves dep graphs, uploads them,
-// runs a test with publish_report=true, and returns the aggregated workflow output.
+// runs a test with monitor=true, and returns the aggregated workflow output.
 func RunDflyMonitorFlow(
 	ctx context.Context,
 	inputDirs []string,
@@ -23,6 +23,7 @@ func RunDflyMonitorFlow(
 	clients common.FlowClients,
 ) ([]workflow.Data, error) {
 	cfg := cmdctx.Config(ctx)
+	cfg.Set(flags.FlagMonitor, true)
 	dgResolver := common.NewDepgraphResolver()
 	var allWfData []workflow.Data
 
@@ -38,7 +39,7 @@ func RunDflyMonitorFlow(
 		}
 
 		_, wfData, err := common.RunDflyDepgraphFlow(
-			ctx, inputDir, dgResolver, clients, orgUUID, localPolicy, reachOpts, util.Ptr(true), ostest.RunTestWithResources,
+			ctx, inputDir, dgResolver, clients, orgUUID, localPolicy, reachOpts, ostest.RunTestWithResources,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to run depgraph flow: %w", err)

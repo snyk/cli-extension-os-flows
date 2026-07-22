@@ -85,6 +85,10 @@ const (
 	// (`snyk sbom test --report --file=<sbom>`) to replace `snyk sbom monitor`.
 	FlagReport = "report"
 
+	// FlagMonitor persists the test result as a monitored project with recurring
+	// (daily) retests. Independent of --report; sets TestConfiguration.monitor.
+	FlagMonitor = "monitor"
+
 	// Output file flags (used by test and validation).
 	FlagJSONFileOutput  = "json-file-output"
 	FlagSarifFileOutput = "sarif-file-output"
@@ -116,6 +120,7 @@ func OSTestFlagSet() *pflag.FlagSet {
 	// --report (and accompanying project-attribute flags) persists the test as a monitored
 	// project. This is the supported replacement for the removed `snyk sbom monitor` command.
 	flagSet.Bool(FlagReport, false, "Share results with the Snyk Web UI, persisting them as a monitored project.")
+	flagSet.Bool(FlagMonitor, false, "Monitor this project with recurring tests (daily retest frequency).")
 	flagSet.String(FlagProjectEnvironment, "", "Set the project environment project attribute to one or more values (comma-separated).")
 	if f := flagSet.Lookup(FlagProjectEnvironment); f != nil {
 		f.NoOptDefVal = InvalidFlagValue

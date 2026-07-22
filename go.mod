@@ -17,7 +17,7 @@ require (
 	github.com/snyk/cli-extension-dep-graph/v2 v2.6.0
 	github.com/snyk/dep-graph/go v0.0.0-20260127160647-c836da762c62
 	github.com/snyk/error-catalog-golang-public v0.0.0-20260410094451-50af33399e90
-	github.com/snyk/go-application-framework v0.6.1
+	github.com/snyk/go-application-framework v0.7.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.55.0
@@ -117,6 +117,7 @@ require (
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/term v0.44.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 

@@ -15,7 +15,6 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
-	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
@@ -23,7 +22,8 @@ func Test_RunDflyMonitorFlow_JSON(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	ctx, orgID, _ := setupDflyTestFixture(t, ctrl)
+	ctx, orgID, cfg := setupDflyTestFixture(t, ctrl)
+	cfg.Set(flags.FlagMonitor, true)
 	mockTestClient := setupMockTestClient(t, ctrl)
 	ffc := fileupload.NewFakeClient()
 	fdr := newSinglePkgDepgraphResolver()
@@ -31,7 +31,7 @@ func Test_RunDflyMonitorFlow_JSON(t *testing.T) {
 	_, wfData, err := common.RunDflyDepgraphFlow(
 		ctx, ".", fdr,
 		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
-		orgID, nil, nil, util.Ptr(true),
+		orgID, nil, nil,
 		ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
@@ -40,11 +40,12 @@ func Test_RunDflyMonitorFlow_JSON(t *testing.T) {
 	require.NotEmpty(t, wfData)
 }
 
-func Test_RunDflyMonitorFlow_PublishReportIsSet(t *testing.T) {
+func Test_RunDflyMonitorFlow_MonitorIsSet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	ctx, orgID, _ := setupDflyTestFixture(t, ctrl)
+	ctx, orgID, cfg := setupDflyTestFixture(t, ctrl)
+	cfg.Set(flags.FlagMonitor, true)
 	mockTestClient, getCapturedConfig := setupCapturingTestClient(ctrl)
 	ffc := fileupload.NewFakeClient()
 	fdr := newSinglePkgDepgraphResolver()
@@ -52,15 +53,16 @@ func Test_RunDflyMonitorFlow_PublishReportIsSet(t *testing.T) {
 	_, _, err := common.RunDflyDepgraphFlow(
 		ctx, ".", fdr,
 		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
-		orgID, nil, nil, util.Ptr(true),
+		orgID, nil, nil,
 		ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
 
 	capturedConfig := getCapturedConfig()
 	require.NotNil(t, capturedConfig)
-	require.NotNil(t, capturedConfig.PublishReport)
-	assert.True(t, *capturedConfig.PublishReport)
+	require.NotNil(t, capturedConfig.Monitor)
+	assert.True(t, *capturedConfig.Monitor)
+	assert.Nil(t, capturedConfig.PublishReport, "the monitor command sets --monitor, not --report")
 }
 
 func Test_RunDflyMonitorFlow_ProjectMetadataForwarded(t *testing.T) {
@@ -68,6 +70,7 @@ func Test_RunDflyMonitorFlow_ProjectMetadataForwarded(t *testing.T) {
 	defer ctrl.Finish()
 
 	ctx, orgID, cfg := setupDflyTestFixture(t, ctrl)
+	cfg.Set(flags.FlagMonitor, true)
 	cfg.Set(flags.FlagTargetReference, "main")
 	cfg.Set(flags.FlagAssetName, "my-target")
 	cfg.Set(flags.FlagProjectBusinessCriticality, "high")
@@ -82,7 +85,7 @@ func Test_RunDflyMonitorFlow_ProjectMetadataForwarded(t *testing.T) {
 	_, _, err := common.RunDflyDepgraphFlow(
 		ctx, ".", fdr,
 		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
-		orgID, nil, nil, util.Ptr(true),
+		orgID, nil, nil,
 		ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
@@ -107,7 +110,8 @@ func Test_RunDflyMonitorFlow_UploadFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	ctx, orgID, _ := setupDflyTestFixture(t, ctrl)
+	ctx, orgID, cfg := setupDflyTestFixture(t, ctrl)
+	cfg.Set(flags.FlagMonitor, true)
 	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
 	ffc := fileupload.NewFakeClient()
 	ffc.WithError(assert.AnError)
@@ -116,7 +120,7 @@ func Test_RunDflyMonitorFlow_UploadFailure(t *testing.T) {
 	_, _, err := common.RunDflyDepgraphFlow(
 		ctx, ".", fdr,
 		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
-		orgID, nil, nil, util.Ptr(true),
+		orgID, nil, nil,
 		ostest.RunTestWithResources,
 	)
 	assert.ErrorContains(t, err, "failed to upload dependency graphs")
