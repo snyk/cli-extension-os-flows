@@ -48,8 +48,6 @@ func createDepgraphTmpFiles(depGraphs []DepgraphWithIdentity) (rootTmpDir string
 }
 
 // RunDflyDepgraphFlow handles the depGraph flow, fully through dragonfly.
-// publishReport controls whether the test result is persisted as a monitored project;
-// pass util.Ptr(true) for monitor, nil for test.
 // runTest is the function used to execute the actual test against the test API.
 func RunDflyDepgraphFlow(
 	ctx context.Context,
@@ -59,7 +57,6 @@ func RunDflyDepgraphFlow(
 	orgUUID uuid.UUID,
 	localPolicy *testapi.LocalPolicy,
 	reachabilityOpts *ReachabilityOpts,
-	publishReport *bool,
 	runTest RunTestWithResourcesFunc,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	ictx := cmdctx.Ictx(ctx)
@@ -126,7 +123,7 @@ func RunDflyDepgraphFlow(
 		}
 	}
 
-	testConfig := BuildTestConfig(cfg, localPolicy, publishReport)
+	testConfig := BuildTestConfig(cfg, localPolicy)
 
 	projectName := depGraphs[0].Identity.Name
 	targetFile := depGraphs[0].Identity.TargetFile
@@ -148,14 +145,13 @@ func RunDflyDepgraphFlow(
 	return legacyVulnRes, wfData, err
 }
 
-// BuildTestConfig creates a TestConfiguration from CLI flags, a local policy, and an optional publish report flag.
-func BuildTestConfig(cfg configuration.Configuration, localPolicy *testapi.LocalPolicy, publishReport *bool) *testapi.TestConfiguration {
+// BuildTestConfig creates a TestConfiguration from CLI flags and a local policy.
+func BuildTestConfig(cfg configuration.Configuration, localPolicy *testapi.LocalPolicy) *testapi.TestConfiguration {
 	testConfig := &testapi.TestConfiguration{
 		LocalPolicy: localPolicy,
 		ScanConfig: &testapi.ScanConfiguration{
 			Sca: &testapi.ScaScanConfiguration{},
 		},
-		PublishReport: publishReport,
 	}
 	if tr := cfg.GetString(flags.FlagTargetReference); tr != "" {
 		testConfig.TargetReference = &tr
@@ -163,8 +159,9 @@ func BuildTestConfig(cfg configuration.Configuration, localPolicy *testapi.Local
 	if tn := cfg.GetString(flags.FlagAssetName); tn != "" {
 		testConfig.AssetName = &tn
 	}
-	// --monitor persists the result as a monitored project with recurring retests.
-	// Independent of --report (PublishReport); other callers never set this key.
+	if cfg.GetBool(flags.FlagReport) {
+		testConfig.PublishReport = util.Ptr(true)
+	}
 	if cfg.GetBool(flags.FlagMonitor) {
 		testConfig.Monitor = util.Ptr(true)
 	}

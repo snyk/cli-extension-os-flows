@@ -33,6 +33,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 // idRgxp is used for replacing the "id" in the output for snapshot consistency.
@@ -60,8 +61,7 @@ func Test_RunSbomFlow_Reachability_JSON(t *testing.T) {
 		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
-		&common.ReachabilityOpts{SourceDir: sourceCodePath},
-		nil, ostest.RunTestWithResources,
+		&common.ReachabilityOpts{SourceDir: sourceCodePath}, ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
 
@@ -106,8 +106,7 @@ func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
-		&common.ReachabilityOpts{SourceDir: sourceCodePath},
-		nil, ostest.RunTestWithResources,
+		&common.ReachabilityOpts{SourceDir: sourceCodePath}, ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
 
@@ -158,7 +157,6 @@ func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
 		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
-		nil,
 		nil, ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
@@ -204,7 +202,6 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
-		nil,
 		nil, ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
@@ -244,6 +241,7 @@ func Test_RunSbomFlow_HumanReadable_PropagatesAssetLink(t *testing.T) {
 
 	ef := errors.NewErrorFactory(&nopLogger)
 	mockIctx, mockTestClient, ffc, fdc, orgID, sbomPath, _ := setupTestWithAssetLink(t, ctrl, false, assetURL)
+	mockIctx.GetConfiguration().Set(flags.FlagReport, true)
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
@@ -258,7 +256,7 @@ func Test_RunSbomFlow_HumanReadable_PropagatesAssetLink(t *testing.T) {
 		orgID,
 		nil,
 		nil,
-		util.Ptr(true), ostest.RunTestWithResources,
+		ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
 	require.NotNil(t, outputData)
@@ -296,8 +294,7 @@ func Test_RunSbomFlow_SkipsSourceUploadWhenNoSupportedSources(t *testing.T) {
 		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
-		&common.ReachabilityOpts{SourceDir: sourceDir},
-		nil, ostest.RunTestWithResources,
+		&common.ReachabilityOpts{SourceDir: sourceDir}, ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
 

@@ -79,7 +79,6 @@ func Test_RunDflyDepgraphFlow_JSON(t *testing.T) {
 		orgID,
 		nil,
 		nil,
-		nil,
 		ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
@@ -144,7 +143,6 @@ func Test_RunDflyDepgraphFlow_HumanReadable(t *testing.T) {
 		fdr,
 		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
 		orgID,
-		nil,
 		nil,
 		nil,
 		ostest.RunTestWithResources,
@@ -215,7 +213,7 @@ func Test_RunDflyDepgraphFlow_UploadingDepgraphsFail(t *testing.T) {
 	_, _, err := common.RunDflyDepgraphFlow(
 		ctx, ".", fdr,
 		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
-		orgID, nil, nil, nil, ostest.RunTestWithResources,
+		orgID, nil, nil, ostest.RunTestWithResources,
 	)
 	assert.ErrorContains(t, err, "failed to upload dependency graphs")
 }
@@ -239,7 +237,7 @@ func Test_RunDflyDepgraphFlow_DepgraphResolverFails(t *testing.T) {
 	_, _, err := common.RunDflyDepgraphFlow(
 		ctx, ".", fdr,
 		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
-		orgID, nil, nil, nil, ostest.RunTestWithResources,
+		orgID, nil, nil, ostest.RunTestWithResources,
 	)
 	assert.ErrorContains(t, err, "failed to extract dependency graphs")
 }
@@ -279,7 +277,7 @@ func Test_RunDflyDepgraphFlow_SkipsSourceUploadWhenNoSupportedSources(t *testing
 	_, _, err := common.RunDflyDepgraphFlow(
 		ctx, ".", fdr,
 		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
-		orgID, nil, &common.ReachabilityOpts{SourceDir: sourceDir}, nil,
+		orgID, nil, &common.ReachabilityOpts{SourceDir: sourceDir},
 		ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
@@ -340,7 +338,7 @@ func Test_RunDflyDepgraphFlow_ConfigMetadataForwarded(t *testing.T) {
 	_, _, err := common.RunDflyDepgraphFlow(
 		ctx, ".", fdr,
 		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
-		orgID, nil, nil, nil,
+		orgID, nil, nil,
 		ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
@@ -397,16 +395,19 @@ func Test_RunDflyDepgraphFlow_PublishReportForwarded(t *testing.T) {
 		},
 	}, nil)
 
+	cfg := mockIctx.GetConfiguration()
+	cfg.Set(flags.FlagReport, true)
+
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
 	ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
 	ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
-	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+	ctx = cmdctx.WithConfig(ctx, cfg)
 
 	_, _, err := common.RunDflyDepgraphFlow(
 		ctx, ".", fdr,
 		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
-		orgID, nil, nil, util.Ptr(true),
+		orgID, nil, nil,
 		ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
@@ -463,7 +464,7 @@ func Test_RunDflyDepgraphFlow_TagsFallbackToProjectTags(t *testing.T) {
 	_, _, err := common.RunDflyDepgraphFlow(
 		ctx, ".", fdr,
 		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
-		orgID, nil, nil, nil,
+		orgID, nil, nil,
 		ostest.RunTestWithResources,
 	)
 	require.NoError(t, err)
@@ -765,15 +766,32 @@ func Test_BuildTestConfig_MonitorFlagSetsMonitor(t *testing.T) {
 	cfg := configuration.New()
 	cfg.Set(flags.FlagMonitor, true)
 
-	tc := common.BuildTestConfig(cfg, nil, nil) // publishReport nil => report unaffected
+	tc := common.BuildTestConfig(cfg, nil)
 
 	require.NotNil(t, tc.Monitor)
 	assert.True(t, *tc.Monitor)
-	assert.Nil(t, tc.PublishReport, "--monitor must not imply --report (DD1)")
+	assert.Nil(t, tc.PublishReport, "--monitor must not imply --report")
 }
 
 func Test_BuildTestConfig_NoMonitorFlagLeavesMonitorNil(t *testing.T) {
 	cfg := configuration.New()
-	tc := common.BuildTestConfig(cfg, nil, nil)
+	tc := common.BuildTestConfig(cfg, nil)
 	assert.Nil(t, tc.Monitor)
+}
+
+func Test_BuildTestConfig_ReportFlagSetsPublishReport(t *testing.T) {
+	cfg := configuration.New()
+	cfg.Set(flags.FlagReport, true)
+
+	tc := common.BuildTestConfig(cfg, nil)
+
+	require.NotNil(t, tc.PublishReport)
+	assert.True(t, *tc.PublishReport)
+	assert.Nil(t, tc.Monitor, "--report must not imply --monitor")
+}
+
+func Test_BuildTestConfig_NoReportFlagLeavesPublishReportNil(t *testing.T) {
+	cfg := configuration.New()
+	tc := common.BuildTestConfig(cfg, nil)
+	assert.Nil(t, tc.PublishReport)
 }

@@ -33,7 +33,6 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/validation"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
-	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
@@ -125,30 +124,21 @@ func executeFlow(
 	localPolicy *testapi.LocalPolicy,
 	reachability bool,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	cfg := cmdctx.Config(ctx)
-
 	var reachOpts *common.ReachabilityOpts
 	if reachability {
 		reachOpts = &common.ReachabilityOpts{SourceDir: sourceDir}
 	}
 
-	// `--report` instructs the test API to persist the result as a monitored
-	// project. This is the supported successor to the removed `sbom monitor`.
-	var publishReport *bool
-	if cfg.GetBool(flags.FlagReport) {
-		publishReport = util.Ptr(true)
-	}
-
 	switch flow {
 	case SbomFlow:
-		findings, data, err := common.RunSbomFlow(ctx, sbom, clients, orgUUID, localPolicy, reachOpts, publishReport, RunTestWithResources)
+		findings, data, err := common.RunSbomFlow(ctx, sbom, clients, orgUUID, localPolicy, reachOpts, RunTestWithResources)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to run sbom flow: %w", err)
 		}
 		return findings, data, nil
 	case DflyDepgraphFlow:
 		dgResolver := common.NewDepgraphResolver()
-		findings, data, err := common.RunDflyDepgraphFlow(ctx, inputDir, dgResolver, clients, orgUUID, localPolicy, reachOpts, nil, RunTestWithResources)
+		findings, data, err := common.RunDflyDepgraphFlow(ctx, inputDir, dgResolver, clients, orgUUID, localPolicy, reachOpts, RunTestWithResources)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to run depgraph flow: %w", err)
 		}

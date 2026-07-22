@@ -17,8 +17,6 @@ import (
 
 // RunSbomFlow uploads an SBOM document, resolves SCM context, optionally uploads
 // source code for reachability, and runs a test via the test API.
-// publishReport controls whether the test result is persisted as a monitored project;
-// pass util.Ptr(true) for monitor, nil for test.
 // runTest is the function used to execute the actual test against the test API.
 func RunSbomFlow(
 	ctx context.Context,
@@ -27,7 +25,6 @@ func RunSbomFlow(
 	orgUUID uuid.UUID,
 	localPolicy *testapi.LocalPolicy,
 	reachabilityOpts *ReachabilityOpts,
-	publishReport *bool,
 	runTest RunTestWithResourcesFunc,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	cfg := cmdctx.Config(ctx)
@@ -71,7 +68,7 @@ func RunSbomFlow(
 		}
 	}
 
-	testConfig := BuildTestConfig(cfg, localPolicy, publishReport)
+	testConfig := BuildTestConfig(cfg, localPolicy)
 
 	osAnalysisStart := time.Now()
 	legacyVuln, wfData, err := runTest(
