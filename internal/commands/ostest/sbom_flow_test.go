@@ -22,6 +22,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	gafmocks "github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
+	"github.com/snyk/go-application-framework/pkg/utils"
 	"github.com/snyk/go-application-framework/pkg/utils/ufm"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
@@ -621,6 +622,10 @@ func setupTestInternal(
 	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
 	mockIctx.EXPECT().GetWorkflowIdentifier().Return(workflow.NewWorkflowIdentifier("test")).AnyTimes()
 	mockIctx.EXPECT().GetUserInterface().Return(mockUI).AnyTimes()
+	mockIctx.EXPECT().GetFileFilter(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(path string, options ...utils.FileFilterOption) *utils.FileFilter {
+			return utils.NewFileFilter(path, &nopLogger, append([]utils.FileFilterOption{utils.WithConfig(mockConfig)}, options...)...)
+		}).AnyTimes()
 
 	return mockIctx, mockTestClient, ffc, fdc, orgID, sbomPath, sourceCodePath
 }

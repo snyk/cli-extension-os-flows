@@ -40,7 +40,7 @@ func applyReachability(ctx context.Context, orgUUID uuid.UUID, clients common.Fl
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
 
-	if !common.ShouldRunReachability(opts.SourceDir, logger) {
+	if !common.ShouldRunReachability(ictx, opts.SourceDir) {
 		//nolint:errcheck // Best-effort warning output.
 		ictx.GetUserInterface().OutputError(reachability.NewWarning(errors.New("no reachability-supported source files were found; skipping reachability analysis")))
 		return

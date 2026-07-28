@@ -71,6 +71,9 @@ func RegisterWorkflows(e workflow.Engine) error {
 		// SBOM support FF.
 		constants.FeatureFlagShowMavenBuildScope: constants.ShowMavenBuildScope,
 		constants.FeatureFlagShowNpmScope:        constants.ShowNpmScope,
+		// FF_FILE_FILTER_METACHARACTER_FIX, FF_GITIGNORE_RESPECT_TRACKED_FILES, and
+		// FF_FILE_FILTER_RESPECT_PARENT_EXCLUSION_FIX are registered centrally by GAF's
+		// initConfiguration, not here.
 	}
 	// Unified Test API FF and ecosystem FFs for resolving dep graphs via the ecosystem plugin registry.
 	maps.Copy(featureFlags, orchestrator.GetAllFlags())

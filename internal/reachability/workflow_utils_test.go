@@ -8,6 +8,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
+	"github.com/snyk/go-application-framework/pkg/configuration"
+	gafmocks "github.com/snyk/go-application-framework/pkg/mocks"
+	"github.com/snyk/go-application-framework/pkg/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -26,8 +29,17 @@ func Test_GetReachabilityID(t *testing.T) {
 	mi := mocks.NewMockInstrumentation(ctrl)
 	mi.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
 	mi.EXPECT().RecordCodeAnalysisTime(gomock.Any()).Times(1)
+	config := configuration.New()
+	ictx := gafmocks.NewMockInvocationContext(ctrl)
+	ictx.EXPECT().GetFileFilter(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(path string, options ...utils.FileFilterOption) *utils.FileFilter {
+			return utils.NewFileFilter(path, &nopLogger, append([]utils.FileFilterOption{utils.WithConfig(config)}, options...)...)
+		}).AnyTimes()
+
 	ctx := cmdctx.WithInstrumentation(t.Context(), mi)
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithConfig(ctx, config)
+	ctx = cmdctx.WithIctx(ctx, ictx)
 
 	orgID := uuid.New()
 	sourceDir := util.CreateTmpFiles(t, []util.LoadedFile{
@@ -80,8 +92,17 @@ func Test_GetReachabilityID_FailedUploadingSourceCode(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mi := mocks.NewMockInstrumentation(ctrl)
+	config := configuration.New()
+	ictx := gafmocks.NewMockInvocationContext(ctrl)
+	ictx.EXPECT().GetFileFilter(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(path string, options ...utils.FileFilterOption) *utils.FileFilter {
+			return utils.NewFileFilter(path, &nopLogger, append([]utils.FileFilterOption{utils.WithConfig(config)}, options...)...)
+		}).AnyTimes()
+
 	ctx := cmdctx.WithInstrumentation(t.Context(), mi)
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithConfig(ctx, config)
+	ctx = cmdctx.WithIctx(ctx, ictx)
 
 	orgID := uuid.New()
 	sourceDir := util.CreateTmpFiles(t, []util.LoadedFile{
@@ -125,8 +146,17 @@ func Test_GetReachabilityID_FailedToStartReachabilityAnalysis(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mi := mocks.NewMockInstrumentation(ctrl)
+	config := configuration.New()
+	ictx := gafmocks.NewMockInvocationContext(ctrl)
+	ictx.EXPECT().GetFileFilter(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(path string, options ...utils.FileFilterOption) *utils.FileFilter {
+			return utils.NewFileFilter(path, &nopLogger, append([]utils.FileFilterOption{utils.WithConfig(config)}, options...)...)
+		}).AnyTimes()
+
 	ctx := cmdctx.WithInstrumentation(t.Context(), mi)
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithConfig(ctx, config)
+	ctx = cmdctx.WithIctx(ctx, ictx)
 	mi.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
 
 	orgID := uuid.New()
@@ -150,8 +180,17 @@ func Test_GetReachabilityID_FailedToAwaitReachabilityAnalysis(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mi := mocks.NewMockInstrumentation(ctrl)
+	config := configuration.New()
+	ictx := gafmocks.NewMockInvocationContext(ctrl)
+	ictx.EXPECT().GetFileFilter(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(path string, options ...utils.FileFilterOption) *utils.FileFilter {
+			return utils.NewFileFilter(path, &nopLogger, append([]utils.FileFilterOption{utils.WithConfig(config)}, options...)...)
+		}).AnyTimes()
+
 	ctx := cmdctx.WithInstrumentation(t.Context(), mi)
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithConfig(ctx, config)
+	ctx = cmdctx.WithIctx(ctx, ictx)
 	mi.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
 
 	orgID := uuid.New()
