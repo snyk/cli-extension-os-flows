@@ -70,7 +70,7 @@ workflows:
       - security-scans:
           name: Security Scans
           context:
-            - analysis_unify
+            - codesec_os-flows
       - unit-test:
           name: Unit Test
       - integration-test:
