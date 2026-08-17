@@ -62,7 +62,7 @@ func Test_RunSbomFlow_Reachability_JSON(t *testing.T) {
 		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
-		&common.ReachabilityOpts{SourceDir: sourceCodePath}, ostest.RunTestWithResources,
+		&common.ReachabilityOpts{SourceDir: sourceCodePath}, ostest.RunTestWithResourcesByComponent,
 	)
 	require.NoError(t, err)
 
@@ -107,13 +107,15 @@ func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
-		&common.ReachabilityOpts{SourceDir: sourceCodePath}, ostest.RunTestWithResources,
+		&common.ReachabilityOpts{SourceDir: sourceCodePath}, ostest.RunTestWithResourcesByComponent,
 	)
 	require.NoError(t, err)
 
 	require.Nil(t, legacyJSON)
 	require.NotNil(t, outputData)
-	// Output data should contain standard summary, unified model test result, local unified findings and local unified summary
+	// Output data should contain standard summary, local unified findings, local unified summary
+	// and the unified model test result. The test result comes last because it describes the
+	// whole test run rather than any one component.
 	require.Len(t, outputData, 4)
 
 	require.Contains(t, "application/json; schema=test-summary", outputData[0].GetContentType())
@@ -121,18 +123,18 @@ func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 	require.True(t, ok)
 	snaps.MatchJSON(t, summary)
 
-	testResult := ufm.GetTestResultsFromWorkflowData(outputData[1])
-	require.Len(t, testResult, 1)
-
-	require.Contains(t, "application/json; schema=local-unified-finding", outputData[2].GetContentType())
-	localFindings, ok := outputData[2].GetPayload().([]byte)
+	require.Contains(t, "application/json; schema=local-unified-finding", outputData[1].GetContentType())
+	localFindings, ok := outputData[1].GetPayload().([]byte)
 	require.True(t, ok)
 	snaps.MatchJSON(t, idRgxp.ReplaceAll(localFindings, nil))
 
-	require.Contains(t, "application/json; schema=local-unified-summary", outputData[3].GetContentType())
-	localSummary, ok := outputData[3].GetPayload().([]byte)
+	require.Contains(t, "application/json; schema=local-unified-summary", outputData[2].GetContentType())
+	localSummary, ok := outputData[2].GetPayload().([]byte)
 	require.True(t, ok)
 	snaps.MatchJSON(t, localSummary)
+
+	testResult := ufm.GetTestResultsFromWorkflowData(outputData[3])
+	require.Len(t, testResult, 1)
 
 	// Verify file upload client was called for both SBOM and source code
 	require.Equal(t, 2, ffc.GetUploadCount(), "Expected 2 uploads (SBOM + source code)")
@@ -158,7 +160,7 @@ func Test_RunSbomFlow_NoReachability_JSON(t *testing.T) {
 		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
-		nil, ostest.RunTestWithResources,
+		nil, ostest.RunTestWithResourcesByComponent,
 	)
 	require.NoError(t, err)
 
@@ -203,13 +205,15 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
-		nil, ostest.RunTestWithResources,
+		nil, ostest.RunTestWithResourcesByComponent,
 	)
 	require.NoError(t, err)
 
 	require.Nil(t, legacyJSON)
 	require.NotNil(t, outputData)
-	// Output data should contain standard summary, unified model test result, local unified findings and local unified summary
+	// Output data should contain standard summary, local unified findings, local unified summary
+	// and the unified model test result. The test result comes last because it describes the
+	// whole test run rather than any one component.
 	require.Len(t, outputData, 4)
 
 	require.Contains(t, "application/json; schema=test-summary", outputData[0].GetContentType())
@@ -217,18 +221,18 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 	require.True(t, ok)
 	snaps.MatchJSON(t, summary)
 
-	testResult := ufm.GetTestResultsFromWorkflowData(outputData[1])
-	require.Len(t, testResult, 1)
-
-	require.Contains(t, "application/json; schema=local-unified-finding", outputData[2].GetContentType())
-	localFindings, ok := outputData[2].GetPayload().([]byte)
+	require.Contains(t, "application/json; schema=local-unified-finding", outputData[1].GetContentType())
+	localFindings, ok := outputData[1].GetPayload().([]byte)
 	require.True(t, ok)
 	snaps.MatchJSON(t, idRgxp.ReplaceAll(localFindings, nil))
 
-	require.Contains(t, "application/json; schema=local-unified-summary", outputData[3].GetContentType())
-	localSummary, ok := outputData[3].GetPayload().([]byte)
+	require.Contains(t, "application/json; schema=local-unified-summary", outputData[2].GetContentType())
+	localSummary, ok := outputData[2].GetPayload().([]byte)
 	require.True(t, ok)
 	snaps.MatchJSON(t, localSummary)
+
+	testResult := ufm.GetTestResultsFromWorkflowData(outputData[3])
+	require.Len(t, testResult, 1)
 
 	// Verify file upload client was called only for SBOM
 	require.Equal(t, 1, ffc.GetUploadCount(), "Expected 1 upload (SBOM only)")
@@ -257,14 +261,14 @@ func Test_RunSbomFlow_HumanReadable_PropagatesAssetLink(t *testing.T) {
 		orgID,
 		nil,
 		nil,
-		ostest.RunTestWithResources,
+		ostest.RunTestWithResourcesByComponent,
 	)
 	require.NoError(t, err)
 	require.NotNil(t, outputData)
 	require.Len(t, outputData, 4)
 
-	require.Contains(t, "application/json; schema=local-unified-summary", outputData[3].GetContentType())
-	localSummary, ok := outputData[3].GetPayload().([]byte)
+	require.Contains(t, "application/json; schema=local-unified-summary", outputData[2].GetContentType())
+	localSummary, ok := outputData[2].GetPayload().([]byte)
 	require.True(t, ok)
 
 	var payload presenters.SummaryPayload
@@ -295,7 +299,7 @@ func Test_RunSbomFlow_SkipsSourceUploadWhenNoSupportedSources(t *testing.T) {
 		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc, DeeproxyClient: fdc},
 		orgID,
 		nil,
-		&common.ReachabilityOpts{SourceDir: sourceDir}, ostest.RunTestWithResources,
+		&common.ReachabilityOpts{SourceDir: sourceDir}, ostest.RunTestWithResourcesByComponent,
 	)
 	require.NoError(t, err)
 
