@@ -69,7 +69,7 @@ func Test_SplitFindingsByComponent_GroupsByComponentKey(t *testing.T) {
 	assert.Equal(t, "pkg:npm/app-a@1.0.0", split[0].Key)
 	assert.Equal(t, []string{"a1", "a2"}, titlesOf(split[0].Findings))
 	require.NotNil(t, split[0].ProjectID)
-	assert.Equal(t, projectID.String(), *split[0].ProjectID)
+	assert.Equal(t, projectID, *split[0].ProjectID)
 
 	assert.Equal(t, "pkg:npm/app-b@2.0.0", split[1].Key)
 	assert.Equal(t, []string{"b1"}, titlesOf(split[1].Findings))

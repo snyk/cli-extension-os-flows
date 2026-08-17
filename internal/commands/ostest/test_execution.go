@@ -183,8 +183,14 @@ func runTestInternal(
 	}
 
 	targets := []testTarget{*base}
+	var split []ComponentFindings
 	if splitByComponent {
-		if split := SplitFindingsByComponent(finalResult, findingsData); len(split) > 0 {
+		split = SplitFindingsByComponent(finalResult, findingsData)
+		logger.Debug().
+			Int("component_count", len(split)).
+			Strs("component_keys", componentKeys(split)).
+			Msg("Splitting test results by component")
+		if len(split) > 0 {
 			targets = componentTargets(split, base)
 		}
 	}
@@ -202,10 +208,9 @@ func runTestInternal(
 		outputData = append(outputData, targetOutput...)
 	}
 
-	// The test result describes the whole run, so it is emitted once no matter how many
-	// components the findings were split across. It goes last so that the findings and
-	// summary of each target stay adjacent, which is what the output workflow pairs on.
-	if testResultData := prepareTestResultData(ctx, finalResult, base, targetDir); testResultData != nil {
+	// Test results go last so that the findings and summary of each target stay adjacent,
+	// which is what the output workflow pairs on.
+	if testResultData := prepareTestResultData(ctx, finalResult, base, targetDir, split, targets); testResultData != nil {
 		outputData = append(outputData, testResultData)
 	}
 
@@ -229,7 +234,7 @@ func componentTargets(split []ComponentFindings, base *testTarget) []testTarget 
 		}
 
 		if component.ProjectID != nil {
-			target.projectID = component.ProjectID
+			target.projectID = util.Ptr(component.ProjectID.String())
 		} else if len(split) > 1 {
 			// The test-wide project is not any single component's project, so pointing
 			// every component at it would be wrong.
@@ -478,10 +483,20 @@ func appendTestConfig(dbg *zerolog.Event, cfg *testapi.TestConfiguration) *zerol
 	return dbg
 }
 
-// prepareTestResultData sets the test-level metadata on the result and wraps it as workflow
-// data. The metadata describes the test as a whole, so it is taken from the flow's own values
-// rather than from any one component the findings may have been split across.
-func prepareTestResultData(ctx context.Context, result testapi.TestResult, base *testTarget, targetDir string) workflow.Data {
+// prepareTestResultData sets the test-level metadata on the result and wraps the results as
+// workflow data.
+//
+// The unified findings presenter renders one section per test result, so when the findings
+// were split by component each component is presented as its own test result. Otherwise the
+// single underlying result is emitted as-is.
+func prepareTestResultData(
+	ctx context.Context,
+	result testapi.TestResult,
+	base *testTarget,
+	targetDir string,
+	split []ComponentFindings,
+	targets []testTarget,
+) workflow.Data {
 	ictx := cmdctx.Ictx(ctx)
 
 	result.SetMetadata("package-manager", base.packageManager)
@@ -490,7 +505,12 @@ func prepareTestResultData(ctx context.Context, result testapi.TestResult, base 
 	result.SetMetadata("target-directory", targetDir)
 	result.SetMetadata("dependency-count", base.depCount)
 
-	return ufm.CreateWorkflowDataFromTestResults(ictx.GetWorkflowIdentifier(), []testapi.TestResult{result})
+	results := []testapi.TestResult{result}
+	if len(split) > 0 {
+		results = componentTestResults(result, split, targets, targetDir)
+	}
+
+	return ufm.CreateWorkflowDataFromTestResults(ictx.GetWorkflowIdentifier(), results)
 }
 
 // prepareOutput prepares raw test result findings into data for the output workflow.

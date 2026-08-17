@@ -94,15 +94,23 @@ func setupMultiComponentSbomTest(
 	result.EXPECT().GetOutcomeReason().Return(util.Ptr(testapi.TestOutcomeReasonOther)).AnyTimes()
 	result.EXPECT().GetEffectiveSummary().Return(summary).AnyTimes()
 	result.EXPECT().GetRawSummary().Return(summary).AnyTimes()
-	result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
-	result.EXPECT().GetMetadata().Return(map[string]interface{}{}).AnyTimes()
-	result.EXPECT().GetMetadataValue(gomock.Any()).Return(nil).AnyTimes()
+	// Mirror the real test result, which stores metadata set on it.
+	metadata := map[string]interface{}{}
+	result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).DoAndReturn(func(key string, value interface{}) {
+		metadata[key] = value
+	}).AnyTimes()
+	result.EXPECT().GetMetadata().Return(metadata).AnyTimes()
+	result.EXPECT().GetMetadataValue(gomock.Any()).DoAndReturn(func(key string) interface{} {
+		return metadata[key]
+	}).AnyTimes()
 	result.EXPECT().Get(testapi.TestResultTestSubject).Return(nil).AnyTimes()
 	result.EXPECT().Get(testapi.TestResultSubjectLocators).Return(nil).AnyTimes()
 	result.EXPECT().Get(testapi.TestResultBreachedPolicies).Return(&testapi.PolicyRefSet{}).AnyTimes()
 	result.EXPECT().Get(testapi.TestResultRawSummary).Return(summary).AnyTimes()
 	result.EXPECT().Get(testapi.TestResultTestFacts).Return(nil).AnyTimes()
-	result.EXPECT().Get(testapi.TestResultMetadata).Return(map[string]interface{}{}).AnyTimes()
+	result.EXPECT().Get(testapi.TestResultMetadata).DoAndReturn(func(testapi.TestResultKeys) interface{} {
+		return metadata
+	}).AnyTimes()
 	result.EXPECT().Get(testapi.TestResultComponents).Return(&components).AnyTimes()
 
 	handle := gafclientmocks.NewMockTestHandle(ctrl)
@@ -200,9 +208,29 @@ func Test_RunSbomFlow_SplitsHumanReadableResultsByComponent(t *testing.T) {
 	assert.Equal(t, []string{"b1"}, titlesOf(findingsByComponent[1]))
 	assert.Empty(t, findingsByComponent[2], "a component without findings still gets its own result")
 
-	// The test result describes the whole run and is emitted exactly once, last.
+	// The unified findings presenter renders one section per test result, so each component
+	// is presented as its own test result carrying its own metadata.
 	testResults := ufm.GetTestResultsFromWorkflowData(outputData[len(outputData)-1])
-	require.Len(t, testResults, 1)
+	require.Len(t, testResults, 3)
+
+	for i, key := range []string{appA, appB, clean} {
+		metadata, ok := testResults[i].Get(testapi.TestResultMetadata).(map[string]interface{})
+		require.True(t, ok)
+		assert.Equal(t, key, metadata["display-target-file"])
+		assert.Equal(t, "testdata", metadata["target-directory"], "the SBOM's directory is shared by every component")
+		// Per-component dependency counts are not available from the test API.
+		assert.EqualValues(t, 0, metadata["dependency-count"])
+	}
+
+	perComponentFindings := make([][]testapi.FindingData, 0, len(testResults))
+	for _, result := range testResults {
+		f, _, findingsErr := result.Findings(t.Context())
+		require.NoError(t, findingsErr)
+		perComponentFindings = append(perComponentFindings, f)
+	}
+	assert.Equal(t, []string{"a1", "a2"}, titlesOf(perComponentFindings[0]))
+	assert.Equal(t, []string{"b1"}, titlesOf(perComponentFindings[1]))
+	assert.Empty(t, perComponentFindings[2])
 }
 
 func Test_RunSbomFlow_SplitsLegacyJSONByComponent(t *testing.T) {
@@ -267,7 +295,7 @@ func Test_RunSbomFlow_SingleResultWhenNoComponentsReported(t *testing.T) {
 		[]testapi.FindingData{finding},
 	)
 
-	legacyJSON, _, err := common.RunSbomFlow(
+	legacyJSON, outputData, err := common.RunSbomFlow(
 		sbomTestContext(t, ictx),
 		multiComponentSbomPath,
 		common.FlowClients{TestClient: testClient, FileUploadClient: ffc, DeeproxyClient: fdc},
@@ -282,6 +310,12 @@ func Test_RunSbomFlow_SingleResultWhenNoComponentsReported(t *testing.T) {
 	require.Len(t, legacyJSON, 1)
 	assert.Equal(t, multiComponentSbomPath, legacyJSON[0].DisplayTargetFile)
 	assert.Nil(t, legacyJSON[0].ProjectName)
+
+	testResults := ufm.GetTestResultsFromWorkflowData(outputData[len(outputData)-1])
+	require.Len(t, testResults, 1)
+	metadata, ok := testResults[0].Get(testapi.TestResultMetadata).(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, multiComponentSbomPath, metadata["display-target-file"])
 }
 
 func unifiedSummariesFrom(t *testing.T, data []workflow.Data) []presenters.SummaryPayload {
