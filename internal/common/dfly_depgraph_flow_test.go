@@ -163,18 +163,19 @@ func Test_RunDflyDepgraphFlow_HumanReadable(t *testing.T) {
 	require.True(t, ok)
 	snaps.MatchJSON(t, summary)
 
-	testResult := ufm.GetTestResultsFromWorkflowData(outputData[1])
-	require.Len(t, testResult, 1)
-
-	require.Contains(t, "application/json; schema=local-unified-finding", outputData[2].GetContentType())
-	localFindings, ok := outputData[2].GetPayload().([]byte)
+	require.Contains(t, "application/json; schema=local-unified-finding", outputData[1].GetContentType())
+	localFindings, ok := outputData[1].GetPayload().([]byte)
 	require.True(t, ok)
 	snaps.MatchJSON(t, dflyIDRgxp.ReplaceAll(localFindings, nil))
 
-	require.Contains(t, "application/json; schema=local-unified-summary", outputData[3].GetContentType())
-	localSummary, ok := outputData[3].GetPayload().([]byte)
+	require.Contains(t, "application/json; schema=local-unified-summary", outputData[2].GetContentType())
+	localSummary, ok := outputData[2].GetPayload().([]byte)
 	require.True(t, ok)
 	snaps.MatchJSON(t, localSummary)
+
+	// The test result is emitted last, after every project's findings and summary.
+	testResult := ufm.GetTestResultsFromWorkflowData(outputData[3])
+	require.Len(t, testResult, 1)
 }
 
 func Test_RunDflyDepgraphFlow_UploadingDepgraphsFail(t *testing.T) {

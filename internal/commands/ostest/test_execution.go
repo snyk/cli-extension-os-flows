@@ -54,7 +54,7 @@ func RunTestWithSubject(
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	testConfig := testapi.TestConfiguration{LocalPolicy: localPolicy}
 	startParams := testapi.NewStartTestParamsFromSubject(orgID, &subject, &testConfig)
-	return runTestInternal(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
+	return runSingleTest(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
 }
 
 // RunTestWithResources executes the test flow with the provided test resources (for SBOM flows).
@@ -73,11 +73,53 @@ func RunTestWithResources(
 	testConfig *testapi.TestConfiguration,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	startParams := testapi.NewStartTestParamsFromResources(orgID, &resources, testConfig)
-	return runTestInternal(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
+	return runSingleTest(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
 }
 
-// runTestInternal is the shared implementation for RunTest and RunTestWithResources.
-func runTestInternal(
+// RunTestWithResourcesByComponent executes the test flow with the provided test resources and
+// reports one result per component covered by the test.
+//
+// A test run against an SBOM covers every component in that document but is reported by the
+// test API as a single test, so the findings are split back out per component. This gives the
+// same one-result-per-project reporting as `snyk test --all-projects`, where each dep graph is
+// its own test. It falls back to a single result when the test API reports no components.
+func RunTestWithResourcesByComponent(
+	ctx context.Context,
+	targetDir string,
+	testClient testapi.TestClient,
+	resources []testapi.TestResourceCreateItem,
+	projectName string,
+	packageManager string,
+	depCount int,
+	targetFile string,
+	displayTargetFile string,
+	orgID string,
+	testConfig *testapi.TestConfiguration,
+) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	startParams := testapi.NewStartTestParamsFromResources(orgID, &resources, testConfig)
+	return runTestInternal(ctx, targetDir, testClient, startParams, &testTarget{
+		projectName:       projectName,
+		packageManager:    packageManager,
+		depCount:          depCount,
+		targetFile:        targetFile,
+		displayTargetFile: displayTargetFile,
+	}, true)
+}
+
+// testTarget describes what a set of findings is reported against: one project for a dep
+// graph test, or one component when an SBOM test's results are split by component.
+type testTarget struct {
+	findings          []testapi.FindingData
+	projectID         *string
+	projectName       string
+	packageManager    string
+	depCount          int
+	targetFile        string
+	displayTargetFile string
+}
+
+// runSingleTest runs a test and reports its findings as a single result.
+func runSingleTest(
 	ctx context.Context,
 	targetDir string,
 	testClient testapi.TestClient,
@@ -88,9 +130,34 @@ func runTestInternal(
 	targetFile string,
 	displayTargetFile string,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	legacyResponses, outputData, err := runTestInternal(ctx, targetDir, testClient, startParams, &testTarget{
+		projectName:       projectName,
+		packageManager:    packageManager,
+		depCount:          depCount,
+		targetFile:        targetFile,
+		displayTargetFile: displayTargetFile,
+	}, false)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(legacyResponses) == 0 {
+		return nil, outputData, nil
+	}
+	return &legacyResponses[0], outputData, nil
+}
+
+// runTestInternal is the shared implementation for RunTest, RunTestWithResources and
+// RunTestWithResourcesByComponent.
+func runTestInternal(
+	ctx context.Context,
+	targetDir string,
+	testClient testapi.TestClient,
+	startParams testapi.StartTestParams,
+	base *testTarget,
+	splitByComponent bool,
+) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	cfg := cmdctx.Config(ctx)
 	logger := cmdctx.Logger(ctx)
-	errFactory := cmdctx.ErrorFactory(ctx)
 
 	finalResult, findingsData, err := executeTest(ctx, testClient, startParams)
 	if err != nil {
@@ -103,10 +170,97 @@ func runTestInternal(
 		orgSlugOrID = startParams.OrgID()
 	}
 
-	allFindingsData := findingsData
-	vulnerablePathsCount := calculateVulnerablePathsCount(allFindingsData)
+	base.findings = findingsData
 
-	consolidatedFindings, err := ConsolidateFindings(ctx, allFindingsData)
+	base.projectID, err = getTestProjectID(finalResult)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to extract project ID: %w", err)
+	}
+
+	// Use dependency count from test facts if available, otherwise fall back to the provided depCount.
+	if factDepCount := GetDependencyCountFromTestFacts(finalResult); factDepCount > 0 {
+		base.depCount = factDepCount
+	}
+
+	targets := []testTarget{*base}
+	if splitByComponent {
+		if split := SplitFindingsByComponent(finalResult, findingsData); len(split) > 0 {
+			targets = componentTargets(split, base)
+		}
+	}
+
+	var legacyResponses []definitions.LegacyVulnerabilityResponse
+	var outputData []workflow.Data
+	for i := range targets {
+		legacyResponse, targetOutput, targetErr := prepareTargetOutput(ctx, finalResult, &targets[i], targetDir, orgSlugOrID)
+		if targetErr != nil {
+			return nil, nil, targetErr
+		}
+		if legacyResponse != nil {
+			legacyResponses = append(legacyResponses, *legacyResponse)
+		}
+		outputData = append(outputData, targetOutput...)
+	}
+
+	// The test result describes the whole run, so it is emitted once no matter how many
+	// components the findings were split across. It goes last so that the findings and
+	// summary of each target stay adjacent, which is what the output workflow pairs on.
+	if testResultData := prepareTestResultData(ctx, finalResult, base, targetDir); testResultData != nil {
+		outputData = append(outputData, testResultData)
+	}
+
+	return legacyResponses, outputData, nil
+}
+
+// componentTargets turns per-component findings into reportable targets.
+//
+// The flow's own target file is kept, and the component key becomes the display target file
+// so that each result is headed by the component it covers. This mirrors `--all-projects`,
+// where every project shares the input directory and is distinguished by its target file.
+func componentTargets(split []ComponentFindings, base *testTarget) []testTarget {
+	targets := make([]testTarget, 0, len(split))
+	for _, component := range split {
+		target := *base
+		target.findings = component.Findings
+
+		if component.Key != "" {
+			target.projectName = component.Key
+			target.displayTargetFile = component.Key
+		}
+
+		if component.ProjectID != nil {
+			target.projectID = component.ProjectID
+		} else if len(split) > 1 {
+			// The test-wide project is not any single component's project, so pointing
+			// every component at it would be wrong.
+			target.projectID = nil
+		}
+
+		// The test API only reports a dependency count for the test as a whole, so it is
+		// only meaningful when that test covers a single component.
+		if len(split) > 1 {
+			target.depCount = 0
+		}
+
+		targets = append(targets, target)
+	}
+	return targets
+}
+
+// prepareTargetOutput builds the legacy JSON response and workflow data for a single target.
+func prepareTargetOutput(
+	ctx context.Context,
+	result testapi.TestResult,
+	target *testTarget,
+	targetDir string,
+	orgSlugOrID string,
+) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	logger := cmdctx.Logger(ctx)
+	errFactory := cmdctx.ErrorFactory(ctx)
+
+	vulnerablePathsCount := calculateVulnerablePathsCount(target.findings)
+
+	consolidatedFindings, err := ConsolidateFindings(ctx, target.findings)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to consolidate findings: %w", err)
 	}
@@ -118,7 +272,7 @@ func runTestInternal(
 		logger.Warn().Err(summaryErr).Msg("Failed to create test summary for exit code handling")
 	}
 
-	remFindings, err := remediation.ShimFindingsToRemediationFindings(allFindingsData)
+	remFindings, err := remediation.ShimFindingsToRemediationFindings(target.findings)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to convert to remediation findings: %w", err)
 	}
@@ -128,29 +282,18 @@ func runTestInternal(
 		return nil, nil, fmt.Errorf("failed to compute remediation summary: %w", err)
 	}
 
-	projectID, err := getTestProjectID(finalResult)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to extract project ID: %w", err)
-	}
-
-	// Use dependency count from test facts if available, otherwise fall back to the provided depCount.
-	effectiveDepCount := depCount
-	if factDepCount := GetDependencyCountFromTestFacts(finalResult); factDepCount > 0 {
-		effectiveDepCount = factDepCount
-	}
-
 	legacyParams := &transform.SnykSchemaToLegacyParams{
-		Findings:           allFindingsData,
-		ProjectID:          projectID,
+		Findings:           target.findings,
+		ProjectID:          target.projectID,
 		RemediationSummary: remSummary,
-		TestResult:         finalResult,
+		TestResult:         result,
 		OrgSlugOrID:        orgSlugOrID,
-		ProjectName:        projectName,
-		PackageManager:     packageManager,
+		ProjectName:        target.projectName,
+		PackageManager:     target.packageManager,
 		TargetDir:          targetDir,
-		DepCount:           effectiveDepCount,
-		TargetFile:         targetFile,
-		DisplayTargetFile:  displayTargetFile,
+		DepCount:           target.depCount,
+		TargetFile:         target.targetFile,
+		DisplayTargetFile:  target.displayTargetFile,
 		ErrFactory:         errFactory,
 		Logger:             logger,
 	}
@@ -335,6 +478,21 @@ func appendTestConfig(dbg *zerolog.Event, cfg *testapi.TestConfiguration) *zerol
 	return dbg
 }
 
+// prepareTestResultData sets the test-level metadata on the result and wraps it as workflow
+// data. The metadata describes the test as a whole, so it is taken from the flow's own values
+// rather than from any one component the findings may have been split across.
+func prepareTestResultData(ctx context.Context, result testapi.TestResult, base *testTarget, targetDir string) workflow.Data {
+	ictx := cmdctx.Ictx(ctx)
+
+	result.SetMetadata("package-manager", base.packageManager)
+	result.SetMetadata("project-name", base.projectName)
+	result.SetMetadata("display-target-file", base.displayTargetFile)
+	result.SetMetadata("target-directory", targetDir)
+	result.SetMetadata("dependency-count", base.depCount)
+
+	return ufm.CreateWorkflowDataFromTestResults(ictx.GetWorkflowIdentifier(), []testapi.TestResult{result})
+}
+
 // prepareOutput prepares raw test result findings into data for the output workflow.
 // If JSON is requested (either to file or stdout), it generates legacy JSON findings.
 // If JSON-stdout is not requested, then human-readable findings are added to the output workflow.
@@ -347,25 +505,11 @@ func prepareOutput(
 	params *transform.SnykSchemaToLegacyParams,
 	vulnerablePathsCount int,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	ictx := cmdctx.Ictx(ctx)
 	cfg := cmdctx.Config(ctx)
 
 	var outputData []workflow.Data
 	if summaryData != nil {
 		outputData = append(outputData, summaryData)
-	}
-
-	// set metadata on the test result
-	params.TestResult.SetMetadata("package-manager", params.PackageManager)
-	params.TestResult.SetMetadata("project-name", params.ProjectName)
-	params.TestResult.SetMetadata("display-target-file", params.DisplayTargetFile)
-	params.TestResult.SetMetadata("target-directory", params.TargetDir)
-	params.TestResult.SetMetadata("dependency-count", params.DepCount)
-
-	// always output the test result
-	testResultData := ufm.CreateWorkflowDataFromTestResults(ictx.GetWorkflowIdentifier(), []testapi.TestResult{params.TestResult})
-	if testResultData != nil {
-		outputData = append(outputData, testResultData)
 	}
 
 	if cfg.GetBool(outputworkflow.OutputConfigKeyNoOutput) {
