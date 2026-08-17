@@ -39,6 +39,9 @@ const FeatureFlagDlfyCLIRollout = "internal_snyk_cli_rollout_dfly_os_cli"
 // FeatureFlagDflySbomMonitor is used to rollout the SBOM monitor flow to the dragonfly stack.
 const FeatureFlagDflySbomMonitor = "internal_snyk_cli_rollout_dfly_sbom_monitor"
 
+// FeatureFlagEnableSbomMonitor is used to opt in to the registry-based SBOM monitor flow.
+const FeatureFlagEnableSbomMonitor = "internal_snyk_cli_enable_sbom_monitor"
+
 // UploadingSourceCodeMessage is the message that's being rendered in the UI spinner while
 // the source code is being uploaded.
 const UploadingSourceCodeMessage = "Uploading source code..."
