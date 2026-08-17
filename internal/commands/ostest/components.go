@@ -1,9 +1,8 @@
 package ostest
 
 import (
+	"github.com/google/uuid"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
-
-	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 // ComponentFindings holds the findings belonging to a single component of a test.
@@ -17,7 +16,7 @@ type ComponentFindings struct {
 	// did not attribute to any component.
 	Key string
 	// ProjectID is the Snyk project associated with the component, if any.
-	ProjectID *string
+	ProjectID *uuid.UUID
 	// Findings are the findings that originated in the component.
 	Findings []testapi.FindingData
 }
@@ -58,7 +57,7 @@ func SplitFindingsByComponent(result testapi.TestResult, findings []testapi.Find
 		seen[component.Key] = true
 		split = append(split, ComponentFindings{
 			Key:       component.Key,
-			ProjectID: componentProjectID(component),
+			ProjectID: component.ProjectId,
 			Findings:  byKey[component.Key],
 		})
 	}
@@ -110,9 +109,11 @@ func testResultComponents(result testapi.TestResult) []testapi.TestComponent {
 	return *components
 }
 
-func componentProjectID(component testapi.TestComponent) *string {
-	if component.ProjectId == nil {
-		return nil
+// componentKeys lists the keys of the split components, for logging.
+func componentKeys(split []ComponentFindings) []string {
+	keys := make([]string, 0, len(split))
+	for _, component := range split {
+		keys = append(keys, component.Key)
 	}
-	return util.Ptr(component.ProjectId.String())
+	return keys
 }
