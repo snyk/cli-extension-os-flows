@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	listsources "github.com/snyk/cli-extension-os-flows/internal/files"
 )
@@ -42,16 +42,17 @@ var supportedExtensions = func() map[string]struct{} {
 // analysis. Callers must independently verify reachability is enabled for
 // the org / feature flags before invoking this function — it only inspects
 // the file tree.
-func HasSupportedSources(path string, logger *zerolog.Logger) (bool, error) {
+func HasSupportedSources(ictx workflow.InvocationContext, path string) (bool, error) {
 	if _, err := os.Stat(path); err != nil {
 		return false, fmt.Errorf("failed to stat %s: %w", path, err)
 	}
 
-	files, err := listsources.ForPath(path, logger, runtime.NumCPU())
+	files, err := listsources.ForPath(ictx, path, runtime.NumCPU())
 	if err != nil {
 		return false, fmt.Errorf("failed to list files in %s: %w", path, err)
 	}
 
+	logger := ictx.GetEnhancedLogger()
 	for f := range files {
 		if _, ok := supportedExtensions[filepath.Ext(f)]; ok {
 			logger.Info().Str("extension", filepath.Ext(f)).Msg("supported extension found")

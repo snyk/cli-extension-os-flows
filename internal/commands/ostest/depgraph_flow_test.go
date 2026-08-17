@@ -68,6 +68,11 @@ func newFlowTestHarness(t *testing.T) *flowTestHarness {
 	ictx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
 	ictx.EXPECT().GetWorkflowIdentifier().Return(common.DepGraphWorkflowID).AnyTimes()
 	ictx.EXPECT().GetEngine().Return(engine).AnyTimes()
+	ictx.EXPECT().GetFileFilter(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(path string, options ...utils.FileFilterOption) *utils.FileFilter {
+			return utils.NewFileFilter(path, &logger, append([]utils.FileFilterOption{utils.WithConfig(cfg)}, options...)...)
+		},
+	).AnyTimes()
 
 	return &flowTestHarness{
 		t:      t,

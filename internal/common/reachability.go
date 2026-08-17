@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
+	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/clientsetup"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
@@ -21,8 +21,9 @@ import (
 // in a reachability-supported language. On error inspecting the directory we
 // fall through (return true) so a transient IO issue never costs the user a
 // scan they asked for — the existing upload path will surface the real error.
-func ShouldRunReachability(sourceDir string, logger *zerolog.Logger) bool {
-	hasSources, err := sources.HasSupportedSources(sourceDir, logger)
+func ShouldRunReachability(ictx workflow.InvocationContext, sourceDir string) bool {
+	logger := ictx.GetEnhancedLogger()
+	hasSources, err := sources.HasSupportedSources(ictx, sourceDir)
 	if err != nil {
 		logger.Warn().Err(err).Str("sourceDir", sourceDir).Msg("Failed to inspect source directory for reachability; proceeding with upload")
 		return true
@@ -45,7 +46,7 @@ func uploadReachabilitySourcesIfAny(ctx context.Context, orgUUID uuid.UUID, clie
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
 
-	if !ShouldRunReachability(opts.SourceDir, logger) {
+	if !ShouldRunReachability(ictx, opts.SourceDir) {
 		//nolint:errcheck // Best-effort warning output.
 		ictx.GetUserInterface().OutputError(reachability.NewWarning(fmt.Errorf("no reachability-supported source files were found; skipping reachability analysis")))
 		return nil

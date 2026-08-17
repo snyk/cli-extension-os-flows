@@ -124,6 +124,7 @@ func UploadSourceCode(
 	sourceDir string,
 ) (*fileupload.UploadResult, error) {
 	instrumentation := cmdctx.Instrumentation(ctx)
+	ictx := cmdctx.Ictx(ctx)
 	logger := cmdctx.Logger(ctx)
 	codeUploadStart := time.Now()
 
@@ -132,7 +133,7 @@ func UploadSourceCode(
 		return nil, fmt.Errorf("failed to load deeproxy filter: %w", err)
 	}
 
-	inputFiles, err := listsources.ForPath(sourceDir, logger, runtime.NumCPU())
+	inputFiles, err := listsources.ForPath(ictx, sourceDir, runtime.NumCPU())
 	if err != nil {
 		return nil, fmt.Errorf("failed to list files in directory %s: %w", sourceDir, err)
 	}
