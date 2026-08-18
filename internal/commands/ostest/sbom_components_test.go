@@ -325,7 +325,7 @@ func Test_RunSbomFlow_SingleResultWhenNoComponentsReported(t *testing.T) {
 	assert.Equal(t, multiComponentSbomPath, metadata["display-target-file"])
 }
 
-func Test_RunSbomFlow_ReportsTestWideLinksOnce(t *testing.T) {
+func Test_RunSbomFlow_ReportsTestWideMetadataOnTheTest(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -357,26 +357,28 @@ func Test_RunSbomFlow_ReportsTestWideLinksOnce(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	// The asset covers the test as a whole, so every component reports the same link and
-	// the presenter renders it once, below the overall test summary.
+	// The asset and the report cover the test as a whole, so they are reported on the test
+	// rather than copied onto each of its components.
+	test := ufm.GetTestFromWorkflowData(outputData[len(outputData)-1])
+	require.NotNil(t, test)
+	assert.Equal(t, assetLink, test.AssetLink())
+	assert.Equal(t, reportURL, test.Metadata["report-url"])
+
+	require.Len(t, test.Results, 2, "one result per component")
+	for i, result := range test.Results {
+		metadata, ok := result.Get(testapi.TestResultMetadata).(map[string]interface{})
+		require.True(t, ok)
+		assert.NotContains(t, metadata, "asset", "component %d", i)
+		assert.NotContains(t, metadata, "report-url", "component %d", i)
+		// Metadata that genuinely describes the component stays on it.
+		assert.NotEmpty(t, metadata["display-target-file"], "component %d", i)
+	}
+
+	// The legacy presenter reads the asset from each project's summary, and renders it once.
 	summaries := unifiedSummariesFrom(t, outputData)
 	require.Len(t, summaries, 2)
 	assert.Equal(t, assetLink, summaries[0].AssetLink)
 	assert.Equal(t, assetLink, summaries[1].AssetLink)
-
-	// The test-wide links are reported once in the test result metadata.
-	testResults := ufm.GetTestResultsFromWorkflowData(outputData[len(outputData)-1])
-	require.Len(t, testResults, 2)
-
-	first, ok := testResults[0].Get(testapi.TestResultMetadata).(map[string]interface{})
-	require.True(t, ok)
-	assert.NotContains(t, first, "asset")
-	assert.NotContains(t, first, "report-url")
-
-	last, ok := testResults[1].Get(testapi.TestResultMetadata).(map[string]interface{})
-	require.True(t, ok)
-	assert.Equal(t, assetLink, last["asset"])
-	assert.Equal(t, reportURL, last["report-url"])
 }
 
 func unifiedSummariesFrom(t *testing.T, data []workflow.Data) []presenters.SummaryPayload {

@@ -483,12 +483,16 @@ func appendTestConfig(dbg *zerolog.Event, cfg *testapi.TestConfiguration) *zerol
 	return dbg
 }
 
-// prepareTestResultData sets the test-level metadata on the result and wraps the results as
-// workflow data.
+// prepareTestResultData sets the metadata on the result and wraps the test and its results
+// as workflow data.
 //
 // The unified findings presenter renders one section per test result, so when the findings
 // were split by component each component is presented as its own test result. Otherwise the
 // single underlying result is emitted as-is.
+//
+// Facts that describe the test as a whole, such as the asset it covers, are reported on the
+// test rather than on its results. A component is not the thing the asset belongs to, and
+// copying the same value onto each of them only has to be undone again when rendering.
 func prepareTestResultData(
 	ctx context.Context,
 	result testapi.TestResult,
@@ -505,12 +509,14 @@ func prepareTestResultData(
 	result.SetMetadata("target-directory", targetDir)
 	result.SetMetadata("dependency-count", base.depCount)
 
+	testMetadata := splitTestWideMetadata(resultMetadata(result))
+
 	results := []testapi.TestResult{result}
 	if len(split) > 0 {
 		results = componentTestResults(result, split, targets, targetDir)
 	}
 
-	return ufm.CreateWorkflowDataFromTestResults(ictx.GetWorkflowIdentifier(), results)
+	return ufm.CreateWorkflowDataFromTest(ictx.GetWorkflowIdentifier(), testMetadata, results)
 }
 
 // prepareOutput prepares raw test result findings into data for the output workflow.
