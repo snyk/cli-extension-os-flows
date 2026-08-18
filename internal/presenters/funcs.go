@@ -448,7 +448,7 @@ func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
 	fnMap["isIgnoredFinding"] = isIgnoredFinding
 	fnMap["hasSuppression"] = hasSuppression
 	fnMap["collectAllFindings"] = collectAllFindings
-	fnMap["collectAssetLinks"] = collectAssetLinks
+	fnMap["firstAssetLink"] = firstAssetLink
 	fnMap["summaryData"] = summaryData
 	fnMap["shouldShowAggregateSummary"] = shouldShowAggregateSummary
 	return fnMap
@@ -482,25 +482,19 @@ func collectAllFindings(results []*UnifiedProjectResult) []testapi.FindingData {
 	return allFindings
 }
 
-// collectAssetLinks lists the distinct asset links of the given results, in the order they
-// first appear.
+// firstAssetLink returns the asset link of the first result that carries one, or an empty
+// string if none do.
 //
-// An SBOM test reports one result per component but covers a single asset, so the same link
-// arrives on every component and is rendered once. Flows that test several projects
-// separately can report a different asset for each, so those are all kept.
-func collectAssetLinks(results []*UnifiedProjectResult) []string {
-	var links []string
-	seen := make(map[string]bool, len(results))
-
+// A run has a single asset, and an SBOM test reports one result per component, each
+// carrying a copy of the same link, so it is rendered once rather than under every project.
+func firstAssetLink(results []*UnifiedProjectResult) string {
 	for _, result := range results {
-		if result.AssetLink == "" || seen[result.AssetLink] {
-			continue
+		if result.AssetLink != "" {
+			return result.AssetLink
 		}
-		seen[result.AssetLink] = true
-		links = append(links, result.AssetLink)
 	}
 
-	return links
+	return ""
 }
 
 // shouldShowAggregateSummary determines if an aggregate summary should be shown
