@@ -8,8 +8,11 @@ import (
 )
 
 // Metadata keys that describe the test run as a whole rather than any one component. They
-// are rendered once, on the last component, so that splitting a test's results does not
-// repeat the same link under every component.
+// are reported once, on the last component, so that splitting a test's results does not
+// report the same link under every component.
+//
+// This is about the reported metadata only. Where the CLI prints the asset link is decided
+// by the presenter, which renders it once below the overall test summary.
 var testWideMetadataKeys = []string{"asset", "report-url"}
 
 // componentTestResult presents a single component of a test as a test result in its own right.
@@ -113,7 +116,7 @@ func componentTestResults(
 			metadata = map[string]interface{}{}
 		}
 
-		// Only the last component keeps the test-wide links, so they render once.
+		// Only the last component keeps the test-wide links, so they are reported once.
 		if i < len(split)-1 {
 			for _, key := range testWideMetadataKeys {
 				delete(metadata, key)

@@ -255,16 +255,23 @@
         {{- "\n" }}
     {{- end }}
 
-    {{- if $result.AssetLink }}
-        {{- printf "\nView your asset(s) at: %s\n" $result.AssetLink }}
-    {{- end }}
-
 {{- end }}
 
 {{- if shouldShowAggregateSummary .Results }}
 {{- divider }}
 
 {{- box (renderToString "aggregateSummary" .Results) }}
+{{- end }}
+
+{{- /* The asset link describes the run as a whole, so it is rendered once at the end,
+       below the overall test summary, rather than under an individual project. */ -}}
+{{- $assetLinks := collectAssetLinks .Results }}
+{{- if $assetLinks }}
+    {{- /* Separate the links from the overall test summary box above them. */ -}}
+    {{- if shouldShowAggregateSummary .Results }}{{- "\n" }}{{- end }}
+    {{- range $link := $assetLinks }}
+        {{- printf "\nView your asset(s) at: %s\n" $link }}
+    {{- end }}
 {{- end }}
 
 {{- end }} {{/* end main */}}

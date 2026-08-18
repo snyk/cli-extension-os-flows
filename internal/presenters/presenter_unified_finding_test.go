@@ -1419,6 +1419,85 @@ func TestUnifiedFindingPresenter_AssetLink(t *testing.T) {
 			"View your asset(s) at: app.snyk.io/inventory/b6b8bbf8-5cbf-40a2-8991-784fe2a6c8a1")
 	})
 
+	t.Run("renders the shared asset link once, below the overall test summary", func(t *testing.T) {
+		config := configuration.New()
+		buffer := &bytes.Buffer{}
+		lipgloss.SetColorProfile(termenv.Ascii)
+
+		assetLink := "app.snyk.io/inventory/b6b8bbf8-5cbf-40a2-8991-784fe2a6c8a1"
+		newResult := func(target string) *presenters.UnifiedProjectResult {
+			return &presenters.UnifiedProjectResult{
+				Findings:          []testapi.FindingData{},
+				DisplayTargetFile: target,
+				TargetDirectory:   "/home/me",
+				Summary: &json_schemas.TestSummary{
+					Type:             "open-source",
+					Path:             "/home/me",
+					SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+					Results:          []json_schemas.TestSummaryResult{},
+				},
+				AssetLink: assetLink,
+			}
+		}
+
+		// An SBOM test reports one result per component, all covering the same asset.
+		presenter := presenters.NewUnifiedFindingsRenderer(
+			[]*presenters.UnifiedProjectResult{
+				newResult("pkg:npm/app-a@1.0.0"),
+				newResult("pkg:npm/app-b@2.0.0"),
+				newResult("pkg:npm/app-c@3.0.0"),
+			},
+			config,
+			buffer,
+		)
+
+		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		require.NoError(t, err)
+
+		output := buffer.String()
+		assert.Equal(t, 1, strings.Count(output, "View your asset(s) at:"),
+			"the asset covers the whole run, so it is not repeated under every component")
+		assert.Greater(t, strings.Index(output, "View your asset(s) at:"), strings.Index(output, "Overall Test Summary"),
+			"the asset link belongs to the run as a whole, so it comes after the overall test summary")
+	})
+
+	t.Run("keeps distinct asset links when projects are tested separately", func(t *testing.T) {
+		config := configuration.New()
+		buffer := &bytes.Buffer{}
+		lipgloss.SetColorProfile(termenv.Ascii)
+
+		newResult := func(target, assetLink string) *presenters.UnifiedProjectResult {
+			return &presenters.UnifiedProjectResult{
+				Findings:          []testapi.FindingData{},
+				DisplayTargetFile: target,
+				TargetDirectory:   "/home/me",
+				Summary: &json_schemas.TestSummary{
+					Type:             "open-source",
+					Path:             "/home/me",
+					SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+					Results:          []json_schemas.TestSummaryResult{},
+				},
+				AssetLink: assetLink,
+			}
+		}
+
+		presenter := presenters.NewUnifiedFindingsRenderer(
+			[]*presenters.UnifiedProjectResult{
+				newResult("a/package.json", "app.snyk.io/inventory/asset-a"),
+				newResult("b/package.json", "app.snyk.io/inventory/asset-b"),
+			},
+			config,
+			buffer,
+		)
+
+		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+		require.NoError(t, err)
+
+		output := buffer.String()
+		assert.Contains(t, output, "View your asset(s) at: app.snyk.io/inventory/asset-a")
+		assert.Contains(t, output, "View your asset(s) at: app.snyk.io/inventory/asset-b")
+	})
+
 	t.Run("omits asset link line when empty (default sbom test)", func(t *testing.T) {
 		config := configuration.New()
 		buffer := &bytes.Buffer{}
