@@ -76,6 +76,8 @@ func RegisterWorkflows(e workflow.Engine) error {
 	maps.Copy(featureFlags, orchestrator.GetAllFlags())
 	config_utils.AddFeatureFlagsToConfig(e, featureFlags)
 
+	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagEnableSbomMonitor, "enableSbomMonitor")
+
 	return nil
 }
 
