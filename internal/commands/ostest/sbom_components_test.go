@@ -70,13 +70,15 @@ func componentFinding(t *testing.T, title, componentKey string) testapi.FindingD
 }
 
 // setupMultiComponentSbomTest wires up an SBOM test whose single test result reports the
-// given components and findings.
+// given components and findings. Any metadata is set on the test result as the test API
+// would report it, before the flow adds its own.
 func setupMultiComponentSbomTest(
 	t *testing.T,
 	ctrl *gomock.Controller,
 	jsonOutput bool,
 	components []testapi.TestComponent,
 	findings []testapi.FindingData,
+	metadata map[string]interface{},
 ) (*gafmocks.MockInvocationContext, testapi.TestClient, *fileupload.FakeClient, deeproxy.Client, uuid.UUID) {
 	t.Helper()
 
@@ -95,7 +97,9 @@ func setupMultiComponentSbomTest(
 	result.EXPECT().GetEffectiveSummary().Return(summary).AnyTimes()
 	result.EXPECT().GetRawSummary().Return(summary).AnyTimes()
 	// Mirror the real test result, which stores metadata set on it.
-	metadata := map[string]interface{}{}
+	if metadata == nil {
+		metadata = map[string]interface{}{}
+	}
 	result.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).DoAndReturn(func(key string, value interface{}) {
 		metadata[key] = value
 	}).AnyTimes()
@@ -168,6 +172,7 @@ func Test_RunSbomFlow_SplitsHumanReadableResultsByComponent(t *testing.T) {
 			componentFinding(t, "b1", appB),
 			componentFinding(t, "a2", appA),
 		},
+		nil,
 	)
 
 	_, outputData, err := common.RunSbomFlow(
@@ -250,6 +255,7 @@ func Test_RunSbomFlow_SplitsLegacyJSONByComponent(t *testing.T) {
 			componentFinding(t, "a1", appA),
 			componentFinding(t, "b1", appB),
 		},
+		nil,
 	)
 
 	legacyJSON, _, err := common.RunSbomFlow(
@@ -293,6 +299,7 @@ func Test_RunSbomFlow_SingleResultWhenNoComponentsReported(t *testing.T) {
 	ictx, testClient, ffc, fdc, orgID := setupMultiComponentSbomTest(t, ctrl, true,
 		[]testapi.TestComponent{},
 		[]testapi.FindingData{finding},
+		nil,
 	)
 
 	legacyJSON, outputData, err := common.RunSbomFlow(
@@ -316,6 +323,60 @@ func Test_RunSbomFlow_SingleResultWhenNoComponentsReported(t *testing.T) {
 	metadata, ok := testResults[0].Get(testapi.TestResultMetadata).(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, multiComponentSbomPath, metadata["display-target-file"])
+}
+
+func Test_RunSbomFlow_ReportsTestWideLinksOnce(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	appA := "pkg:npm/app-a@1.0.0"
+	appB := "pkg:npm/app-b@2.0.0"
+	assetLink := "https://app.snyk.io/asset/1234"
+	reportURL := "https://app.snyk.io/report/5678"
+
+	ictx, testClient, ffc, fdc, orgID := setupMultiComponentSbomTest(t, ctrl, false,
+		[]testapi.TestComponent{
+			{Key: appA, ScanType: testapi.FindingTypeSca},
+			{Key: appB, ScanType: testapi.FindingTypeSca},
+		},
+		[]testapi.FindingData{
+			componentFinding(t, "a1", appA),
+			componentFinding(t, "b1", appB),
+		},
+		map[string]interface{}{"asset": assetLink, "report-url": reportURL},
+	)
+
+	_, outputData, err := common.RunSbomFlow(
+		sbomTestContext(t, ictx),
+		multiComponentSbomPath,
+		common.FlowClients{TestClient: testClient, FileUploadClient: ffc, DeeproxyClient: fdc},
+		orgID,
+		nil,
+		nil,
+		ostest.RunTestWithResourcesByComponent,
+	)
+	require.NoError(t, err)
+
+	// The asset covers the test as a whole, so every component reports the same link and
+	// the presenter renders it once, below the overall test summary.
+	summaries := unifiedSummariesFrom(t, outputData)
+	require.Len(t, summaries, 2)
+	assert.Equal(t, assetLink, summaries[0].AssetLink)
+	assert.Equal(t, assetLink, summaries[1].AssetLink)
+
+	// The test-wide links are reported once in the test result metadata.
+	testResults := ufm.GetTestResultsFromWorkflowData(outputData[len(outputData)-1])
+	require.Len(t, testResults, 2)
+
+	first, ok := testResults[0].Get(testapi.TestResultMetadata).(map[string]interface{})
+	require.True(t, ok)
+	assert.NotContains(t, first, "asset")
+	assert.NotContains(t, first, "report-url")
+
+	last, ok := testResults[1].Get(testapi.TestResultMetadata).(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, assetLink, last["asset"])
+	assert.Equal(t, reportURL, last["report-url"])
 }
 
 func unifiedSummariesFrom(t *testing.T, data []workflow.Data) []presenters.SummaryPayload {
