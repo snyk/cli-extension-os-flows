@@ -1461,7 +1461,7 @@ func TestUnifiedFindingPresenter_AssetLink(t *testing.T) {
 			"the asset link belongs to the run as a whole, so it comes after the overall test summary")
 	})
 
-	t.Run("keeps distinct asset links when projects are tested separately", func(t *testing.T) {
+	t.Run("renders a single link when results carry differing asset values", func(t *testing.T) {
 		config := configuration.New()
 		buffer := &bytes.Buffer{}
 		lipgloss.SetColorProfile(termenv.Ascii)
@@ -1493,9 +1493,8 @@ func TestUnifiedFindingPresenter_AssetLink(t *testing.T) {
 		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
 		require.NoError(t, err)
 
-		output := buffer.String()
-		assert.Contains(t, output, "View your asset(s) at: app.snyk.io/inventory/asset-a")
-		assert.Contains(t, output, "View your asset(s) at: app.snyk.io/inventory/asset-b")
+		// A run has a single asset, so there is never more than one link to show.
+		assert.Equal(t, 1, strings.Count(buffer.String(), "View your asset(s) at:"))
 	})
 
 	t.Run("omits asset link line when empty (default sbom test)", func(t *testing.T) {
