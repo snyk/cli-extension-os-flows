@@ -448,6 +448,7 @@ func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
 	fnMap["isIgnoredFinding"] = isIgnoredFinding
 	fnMap["hasSuppression"] = hasSuppression
 	fnMap["collectAllFindings"] = collectAllFindings
+	fnMap["firstAssetLink"] = firstAssetLink
 	fnMap["summaryData"] = summaryData
 	fnMap["shouldShowAggregateSummary"] = shouldShowAggregateSummary
 	return fnMap
@@ -479,6 +480,16 @@ func collectAllFindings(results []*UnifiedProjectResult) []testapi.FindingData {
 	}
 
 	return allFindings
+}
+
+func firstAssetLink(results []*UnifiedProjectResult) string {
+	for _, result := range results {
+		if result.AssetLink != "" {
+			return result.AssetLink
+		}
+	}
+
+	return ""
 }
 
 // shouldShowAggregateSummary determines if an aggregate summary should be shown

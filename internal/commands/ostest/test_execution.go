@@ -54,7 +54,7 @@ func RunTestWithSubject(
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	testConfig := testapi.TestConfiguration{LocalPolicy: localPolicy}
 	startParams := testapi.NewStartTestParamsFromSubject(orgID, &subject, &testConfig)
-	return runTestInternal(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
+	return runSingleTest(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
 }
 
 // RunTestWithResources executes the test flow with the provided test resources (for SBOM flows).
@@ -73,11 +73,45 @@ func RunTestWithResources(
 	testConfig *testapi.TestConfiguration,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	startParams := testapi.NewStartTestParamsFromResources(orgID, &resources, testConfig)
-	return runTestInternal(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
+	return runSingleTest(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
 }
 
-// runTestInternal is the shared implementation for RunTest and RunTestWithResources.
-func runTestInternal(
+// RunTestWithResourcesByComponent executes the test flow with the provided test resources and
+// reports one result per component covered by the test.
+func RunTestWithResourcesByComponent(
+	ctx context.Context,
+	targetDir string,
+	testClient testapi.TestClient,
+	resources []testapi.TestResourceCreateItem,
+	projectName string,
+	packageManager string,
+	depCount int,
+	targetFile string,
+	displayTargetFile string,
+	orgID string,
+	testConfig *testapi.TestConfiguration,
+) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	startParams := testapi.NewStartTestParamsFromResources(orgID, &resources, testConfig)
+	return runTestInternal(ctx, targetDir, testClient, startParams, &testTarget{
+		projectName:       projectName,
+		packageManager:    packageManager,
+		depCount:          depCount,
+		targetFile:        targetFile,
+		displayTargetFile: displayTargetFile,
+	}, true)
+}
+
+type testTarget struct {
+	findings          []testapi.FindingData
+	projectID         *string
+	projectName       string
+	packageManager    string
+	depCount          int
+	targetFile        string
+	displayTargetFile string
+}
+
+func runSingleTest(
 	ctx context.Context,
 	targetDir string,
 	testClient testapi.TestClient,
@@ -88,9 +122,32 @@ func runTestInternal(
 	targetFile string,
 	displayTargetFile string,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	legacyResponses, outputData, err := runTestInternal(ctx, targetDir, testClient, startParams, &testTarget{
+		projectName:       projectName,
+		packageManager:    packageManager,
+		depCount:          depCount,
+		targetFile:        targetFile,
+		displayTargetFile: displayTargetFile,
+	}, false)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(legacyResponses) == 0 {
+		return nil, outputData, nil
+	}
+	return &legacyResponses[0], outputData, nil
+}
+
+func runTestInternal(
+	ctx context.Context,
+	targetDir string,
+	testClient testapi.TestClient,
+	startParams testapi.StartTestParams,
+	base *testTarget,
+	splitByComponent bool,
+) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	cfg := cmdctx.Config(ctx)
 	logger := cmdctx.Logger(ctx)
-	errFactory := cmdctx.ErrorFactory(ctx)
 
 	finalResult, findingsData, err := executeTest(ctx, testClient, startParams)
 	if err != nil {
@@ -103,10 +160,89 @@ func runTestInternal(
 		orgSlugOrID = startParams.OrgID()
 	}
 
-	allFindingsData := findingsData
-	vulnerablePathsCount := calculateVulnerablePathsCount(allFindingsData)
+	base.findings = findingsData
 
-	consolidatedFindings, err := ConsolidateFindings(ctx, allFindingsData)
+	base.projectID, err = getTestProjectID(finalResult)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to extract project ID: %w", err)
+	}
+
+	if factDepCount := GetDependencyCountFromTestFacts(finalResult); factDepCount > 0 {
+		base.depCount = factDepCount
+	}
+
+	targets := []testTarget{*base}
+	var split []ComponentFindings
+	if splitByComponent {
+		split = SplitFindingsByComponent(finalResult, findingsData)
+		logger.Debug().
+			Int("component_count", len(split)).
+			Strs("component_keys", componentKeys(split)).
+			Msg("Splitting test results by component")
+		if len(split) > 0 {
+			targets = componentTargets(split, base)
+		}
+	}
+
+	var legacyResponses []definitions.LegacyVulnerabilityResponse
+	var outputData []workflow.Data
+	for i := range targets {
+		legacyResponse, targetOutput, targetErr := prepareTargetOutput(ctx, finalResult, &targets[i], targetDir, orgSlugOrID)
+		if targetErr != nil {
+			return nil, nil, targetErr
+		}
+		if legacyResponse != nil {
+			legacyResponses = append(legacyResponses, *legacyResponse)
+		}
+		outputData = append(outputData, targetOutput...)
+	}
+
+	if testResultData := prepareTestResultData(ctx, finalResult, base, targetDir, split, targets); testResultData != nil {
+		outputData = append(outputData, testResultData)
+	}
+
+	return legacyResponses, outputData, nil
+}
+
+func componentTargets(split []ComponentFindings, base *testTarget) []testTarget {
+	targets := make([]testTarget, 0, len(split))
+	for _, component := range split {
+		target := *base
+		target.findings = component.Findings
+
+		if component.Key != "" {
+			target.projectName = component.Key
+			target.displayTargetFile = component.Key
+		}
+
+		if component.ProjectID != nil {
+			target.projectID = util.Ptr(component.ProjectID.String())
+		} else if len(split) > 1 {
+			target.projectID = nil
+		}
+
+		if len(split) > 1 {
+			target.depCount = 0
+		}
+
+		targets = append(targets, target)
+	}
+	return targets
+}
+
+func prepareTargetOutput(
+	ctx context.Context,
+	result testapi.TestResult,
+	target *testTarget,
+	targetDir string,
+	orgSlugOrID string,
+) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
+	logger := cmdctx.Logger(ctx)
+	errFactory := cmdctx.ErrorFactory(ctx)
+
+	vulnerablePathsCount := calculateVulnerablePathsCount(target.findings)
+
+	consolidatedFindings, err := ConsolidateFindings(ctx, target.findings)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to consolidate findings: %w", err)
 	}
@@ -118,7 +254,7 @@ func runTestInternal(
 		logger.Warn().Err(summaryErr).Msg("Failed to create test summary for exit code handling")
 	}
 
-	remFindings, err := remediation.ShimFindingsToRemediationFindings(allFindingsData)
+	remFindings, err := remediation.ShimFindingsToRemediationFindings(target.findings)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to convert to remediation findings: %w", err)
 	}
@@ -128,29 +264,18 @@ func runTestInternal(
 		return nil, nil, fmt.Errorf("failed to compute remediation summary: %w", err)
 	}
 
-	projectID, err := getTestProjectID(finalResult)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to extract project ID: %w", err)
-	}
-
-	// Use dependency count from test facts if available, otherwise fall back to the provided depCount.
-	effectiveDepCount := depCount
-	if factDepCount := GetDependencyCountFromTestFacts(finalResult); factDepCount > 0 {
-		effectiveDepCount = factDepCount
-	}
-
 	legacyParams := &transform.SnykSchemaToLegacyParams{
-		Findings:           allFindingsData,
-		ProjectID:          projectID,
+		Findings:           target.findings,
+		ProjectID:          target.projectID,
 		RemediationSummary: remSummary,
-		TestResult:         finalResult,
+		TestResult:         result,
 		OrgSlugOrID:        orgSlugOrID,
-		ProjectName:        projectName,
-		PackageManager:     packageManager,
+		ProjectName:        target.projectName,
+		PackageManager:     target.packageManager,
 		TargetDir:          targetDir,
-		DepCount:           effectiveDepCount,
-		TargetFile:         targetFile,
-		DisplayTargetFile:  displayTargetFile,
+		DepCount:           target.depCount,
+		TargetFile:         target.targetFile,
+		DisplayTargetFile:  target.displayTargetFile,
 		ErrFactory:         errFactory,
 		Logger:             logger,
 	}
@@ -335,6 +460,30 @@ func appendTestConfig(dbg *zerolog.Event, cfg *testapi.TestConfiguration) *zerol
 	return dbg
 }
 
+func prepareTestResultData(
+	ctx context.Context,
+	result testapi.TestResult,
+	base *testTarget,
+	targetDir string,
+	split []ComponentFindings,
+	targets []testTarget,
+) workflow.Data {
+	ictx := cmdctx.Ictx(ctx)
+
+	result.SetMetadata("package-manager", base.packageManager)
+	result.SetMetadata("project-name", base.projectName)
+	result.SetMetadata("display-target-file", base.displayTargetFile)
+	result.SetMetadata("target-directory", targetDir)
+	result.SetMetadata("dependency-count", base.depCount)
+
+	results := []testapi.TestResult{result}
+	if len(split) > 0 {
+		results = componentTestResults(result, split, targets, targetDir)
+	}
+
+	return ufm.CreateWorkflowDataFromTestResults(ictx.GetWorkflowIdentifier(), results)
+}
+
 // prepareOutput prepares raw test result findings into data for the output workflow.
 // If JSON is requested (either to file or stdout), it generates legacy JSON findings.
 // If JSON-stdout is not requested, then human-readable findings are added to the output workflow.
@@ -347,25 +496,11 @@ func prepareOutput(
 	params *transform.SnykSchemaToLegacyParams,
 	vulnerablePathsCount int,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	ictx := cmdctx.Ictx(ctx)
 	cfg := cmdctx.Config(ctx)
 
 	var outputData []workflow.Data
 	if summaryData != nil {
 		outputData = append(outputData, summaryData)
-	}
-
-	// set metadata on the test result
-	params.TestResult.SetMetadata("package-manager", params.PackageManager)
-	params.TestResult.SetMetadata("project-name", params.ProjectName)
-	params.TestResult.SetMetadata("display-target-file", params.DisplayTargetFile)
-	params.TestResult.SetMetadata("target-directory", params.TargetDir)
-	params.TestResult.SetMetadata("dependency-count", params.DepCount)
-
-	// always output the test result
-	testResultData := ufm.CreateWorkflowDataFromTestResults(ictx.GetWorkflowIdentifier(), []testapi.TestResult{params.TestResult})
-	if testResultData != nil {
-		outputData = append(outputData, testResultData)
 	}
 
 	if cfg.GetBool(outputworkflow.OutputConfigKeyNoOutput) {

@@ -133,7 +133,7 @@ func executeFlow(
 
 	switch flow {
 	case SbomFlow:
-		findings, data, err := common.RunSbomFlow(ctx, sbom, clients, orgUUID, localPolicy, reachOpts, RunTestWithResources)
+		findings, data, err := common.RunSbomFlow(ctx, sbom, clients, orgUUID, localPolicy, reachOpts, RunTestWithResourcesByComponent)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to run sbom flow: %w", err)
 		}

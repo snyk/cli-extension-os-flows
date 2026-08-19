@@ -25,7 +25,7 @@ func RunSbomFlow(
 	orgUUID uuid.UUID,
 	localPolicy *testapi.LocalPolicy,
 	reachabilityOpts *ReachabilityOpts,
-	runTest RunTestWithResourcesFunc,
+	runTest RunTestWithResourcesByComponentFunc,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	cfg := cmdctx.Config(ctx)
 	logger := cmdctx.Logger(ctx)
@@ -71,17 +71,12 @@ func RunSbomFlow(
 	testConfig := BuildTestConfig(cfg, localPolicy)
 
 	osAnalysisStart := time.Now()
-	legacyVuln, wfData, err := runTest(
+	legacyVulnRes, wfData, err := runTest(
 		ctx, targetDir, clients.TestClient, resources,
 		"", "", 0, sbomPath, sbomPath, orgUUID.String(), testConfig,
 	)
 	if inst != nil {
 		inst.RecordOSAnalysisTime(time.Since(osAnalysisStart).Milliseconds())
-	}
-
-	var legacyVulnRes []definitions.LegacyVulnerabilityResponse
-	if legacyVuln != nil {
-		legacyVulnRes = []definitions.LegacyVulnerabilityResponse{*legacyVuln}
 	}
 
 	return legacyVulnRes, wfData, err
