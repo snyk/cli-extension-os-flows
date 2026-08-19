@@ -20,6 +20,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	gafmocks "github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
+	"github.com/snyk/go-application-framework/pkg/utils"
 	"github.com/snyk/go-application-framework/pkg/utils/ufm"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/assert"
@@ -525,6 +526,11 @@ func setupDflyInvocationContext(t *testing.T, ctrl *gomock.Controller, jsonOutpu
 	mockIctx.EXPECT().GetRuntimeInfo().Return(runtimeinfo.New()).AnyTimes()
 	mockIctx.EXPECT().GetWorkflowIdentifier().Return(workflow.NewWorkflowIdentifier("test")).AnyTimes()
 	mockIctx.EXPECT().GetUserInterface().Return(mockUI).AnyTimes()
+	mockIctx.EXPECT().GetFileFilter(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(path string, options ...utils.FileFilterOption) *utils.FileFilter {
+			return utils.NewFileFilter(path, &dflyNopLogger, append([]utils.FileFilterOption{utils.WithConfig(fakeConfig)}, options...)...)
+		},
+	).AnyTimes()
 
 	return mockIctx
 }

@@ -8,6 +8,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
+	"github.com/snyk/go-application-framework/pkg/configuration"
+	gafmocks "github.com/snyk/go-application-framework/pkg/mocks"
+	"github.com/snyk/go-application-framework/pkg/utils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
@@ -32,8 +35,16 @@ func TestReachabilityScanIntegration(t *testing.T) {
 	logger := zerolog.Nop()
 	mi := mocks.NewMockInstrumentation(ctrl)
 	mi.EXPECT().RecordCodeUploadTime(gomock.Any()).Times(1)
+	config := configuration.New()
+	ictx := gafmocks.NewMockInvocationContext(ctrl)
+	ictx.EXPECT().GetFileFilter(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(path string, options ...utils.FileFilterOption) *utils.FileFilter {
+			return utils.NewFileFilter(path, &logger, append([]utils.FileFilterOption{utils.WithConfig(config)}, options...)...)
+		},
+	).AnyTimes()
 	ctx := cmdctx.WithLogger(t.Context(), &logger)
 	ctx = cmdctx.WithInstrumentation(ctx, mi)
+	ctx = cmdctx.WithIctx(ctx, ictx)
 
 	res, err := reachability.UploadSourceCode(ctx, setup.Config.OrgID, ffc, dc, dir.Name())
 	require.NoError(t, err)
