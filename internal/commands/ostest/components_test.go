@@ -14,8 +14,6 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
-// findingInComponent builds a finding attributed to the given component key. An empty key
-// produces a finding the test API did not attribute to any component.
 func findingInComponent(title, componentKey string) testapi.FindingData {
 	attrs := &testapi.FindingAttributes{Title: title}
 	if componentKey != "" {
@@ -24,7 +22,6 @@ func findingInComponent(title, componentKey string) testapi.FindingData {
 	return testapi.FindingData{Attributes: attrs}
 }
 
-// resultWithComponents builds a test result reporting the given components.
 func resultWithComponents(t *testing.T, components ...testapi.TestComponent) testapi.TestResult {
 	t.Helper()
 
@@ -91,7 +88,6 @@ func Test_SplitFindingsByComponent_KeepsComponentsWithoutFindings(t *testing.T) 
 }
 
 func Test_SplitFindingsByComponent_OrdersByReportedComponents(t *testing.T) {
-	// The findings arrive in the opposite order to the reported components.
 	result := resultWithComponents(t,
 		scaComponent("first", nil),
 		scaComponent("second", nil),
@@ -139,7 +135,6 @@ func Test_SplitFindingsByComponent_ReportsUnattributedFindingsLast(t *testing.T)
 }
 
 func Test_SplitFindingsByComponent_DeduplicatesRepeatedComponentKeys(t *testing.T) {
-	// The same component can be reported once per scan type.
 	result := resultWithComponents(t,
 		scaComponent("shared", nil),
 		testapi.TestComponent{Key: "shared", ScanType: testapi.FindingType("sast")},
@@ -169,7 +164,6 @@ func Test_SplitFindingsByComponent_NoComponentInformation(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			// nil signals the caller to report a single, unsplit result.
 			assert.Nil(t, ostest.SplitFindingsByComponent(tc.result, tc.findings))
 		})
 	}
@@ -184,7 +178,6 @@ func Test_SplitFindingsByComponent_NilComponentsOnResult(t *testing.T) {
 
 	split := ostest.SplitFindingsByComponent(result, findings)
 
-	// The component key on the finding is enough to split on.
 	require.Len(t, split, 1)
 	assert.Equal(t, "pkg:npm/app@1.0.0", split[0].Key)
 }

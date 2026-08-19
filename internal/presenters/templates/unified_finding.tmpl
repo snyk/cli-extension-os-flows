@@ -263,10 +263,7 @@
 {{- box (renderToString "aggregateSummary" .Results) }}
 {{- end }}
 
-{{- /* A run has a single asset, so the link is rendered once at the end, below the overall
-       test summary, rather than under an individual project. */ -}}
 {{- with firstAssetLink .Results }}
-    {{- /* Separate the link from the overall test summary box above it. */ -}}
     {{- if shouldShowAggregateSummary $.Results }}{{- "\n" }}{{- end }}
     {{- printf "\nView your asset(s) at: %s\n" . }}
 {{- end }}

@@ -47,9 +47,8 @@ type RunTestWithResourcesFunc func(
 	testConfig *testapi.TestConfiguration,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error)
 
-// RunTestWithResourcesByComponentFunc is the function signature for executing a test
-// against the test API using uploaded resources, reporting one result per component
-// covered by the test rather than one result for the test as a whole.
+// RunTestWithResourcesByComponentFunc executes a test using uploaded resources and
+// reports one result per component.
 type RunTestWithResourcesByComponentFunc func(
 	ctx context.Context,
 	targetDir string,

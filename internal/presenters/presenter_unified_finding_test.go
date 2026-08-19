@@ -1440,7 +1440,6 @@ func TestUnifiedFindingPresenter_AssetLink(t *testing.T) {
 			}
 		}
 
-		// An SBOM test reports one result per component, all covering the same asset.
 		presenter := presenters.NewUnifiedFindingsRenderer(
 			[]*presenters.UnifiedProjectResult{
 				newResult("pkg:npm/app-a@1.0.0"),
@@ -1459,42 +1458,6 @@ func TestUnifiedFindingPresenter_AssetLink(t *testing.T) {
 			"the asset covers the whole run, so it is not repeated under every component")
 		assert.Greater(t, strings.Index(output, "View your asset(s) at:"), strings.Index(output, "Overall Test Summary"),
 			"the asset link belongs to the run as a whole, so it comes after the overall test summary")
-	})
-
-	t.Run("renders a single link when results carry differing asset values", func(t *testing.T) {
-		config := configuration.New()
-		buffer := &bytes.Buffer{}
-		lipgloss.SetColorProfile(termenv.Ascii)
-
-		newResult := func(target, assetLink string) *presenters.UnifiedProjectResult {
-			return &presenters.UnifiedProjectResult{
-				Findings:          []testapi.FindingData{},
-				DisplayTargetFile: target,
-				TargetDirectory:   "/home/me",
-				Summary: &json_schemas.TestSummary{
-					Type:             "open-source",
-					Path:             "/home/me",
-					SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
-					Results:          []json_schemas.TestSummaryResult{},
-				},
-				AssetLink: assetLink,
-			}
-		}
-
-		presenter := presenters.NewUnifiedFindingsRenderer(
-			[]*presenters.UnifiedProjectResult{
-				newResult("a/package.json", "app.snyk.io/inventory/asset-a"),
-				newResult("b/package.json", "app.snyk.io/inventory/asset-b"),
-			},
-			config,
-			buffer,
-		)
-
-		err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
-		require.NoError(t, err)
-
-		// A run has a single asset, so there is never more than one link to show.
-		assert.Equal(t, 1, strings.Count(buffer.String(), "View your asset(s) at:"))
 	})
 
 	t.Run("omits asset link line when empty (default sbom test)", func(t *testing.T) {

@@ -174,7 +174,6 @@ func Test_RunDflyDepgraphFlow_HumanReadable(t *testing.T) {
 	require.True(t, ok)
 	snaps.MatchJSON(t, localSummary)
 
-	// The test result is emitted last, after every project's findings and summary.
 	testResult := ufm.GetTestResultsFromWorkflowData(outputData[3])
 	require.Len(t, testResult, 1)
 }

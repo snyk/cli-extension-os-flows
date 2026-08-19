@@ -32,7 +32,6 @@ import (
 
 const multiComponentSbomPath = "./testdata/bom.json"
 
-// componentFinding builds a minimal SCA finding attributed to a component.
 func componentFinding(t *testing.T, title, componentKey string) testapi.FindingData {
 	t.Helper()
 
@@ -69,9 +68,6 @@ func componentFinding(t *testing.T, title, componentKey string) testapi.FindingD
 	}
 }
 
-// setupMultiComponentSbomTest wires up an SBOM test whose single test result reports the
-// given components and findings. Any metadata is set on the test result as the test API
-// would report it, before the flow adds its own.
 func setupMultiComponentSbomTest(
 	t *testing.T,
 	ctrl *gomock.Controller,
@@ -96,7 +92,6 @@ func setupMultiComponentSbomTest(
 	result.EXPECT().GetOutcomeReason().Return(util.Ptr(testapi.TestOutcomeReasonOther)).AnyTimes()
 	result.EXPECT().GetEffectiveSummary().Return(summary).AnyTimes()
 	result.EXPECT().GetRawSummary().Return(summary).AnyTimes()
-	// Mirror the real test result, which stores metadata set on it.
 	if metadata == nil {
 		metadata = map[string]interface{}{}
 	}
@@ -186,14 +181,11 @@ func Test_RunSbomFlow_SplitsHumanReadableResultsByComponent(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	// Three components, each contributing a test summary, findings and unified summary,
-	// plus a single test result for the run as a whole.
 	require.Len(t, outputData, 10)
 
 	summaries := unifiedSummariesFrom(t, outputData)
 	require.Len(t, summaries, 3)
 
-	// Each component is reported under its own key, in the order the test result lists them.
 	assert.Equal(t, []string{appA, appB, clean}, []string{
 		summaries[0].DisplayTargetFile, summaries[1].DisplayTargetFile, summaries[2].DisplayTargetFile,
 	})
@@ -201,8 +193,6 @@ func Test_RunSbomFlow_SplitsHumanReadableResultsByComponent(t *testing.T) {
 		summaries[0].ProjectName, summaries[1].ProjectName, summaries[2].ProjectName,
 	})
 
-	// The test API only reports a test-wide dependency count, so it is left off the
-	// individual components.
 	for _, summary := range summaries {
 		assert.Zero(t, summary.DependencyCount)
 	}
@@ -213,8 +203,6 @@ func Test_RunSbomFlow_SplitsHumanReadableResultsByComponent(t *testing.T) {
 	assert.Equal(t, []string{"b1"}, titlesOf(findingsByComponent[1]))
 	assert.Empty(t, findingsByComponent[2], "a component without findings still gets its own result")
 
-	// The unified findings presenter renders one section per test result, so each component
-	// is presented as its own test result carrying its own metadata.
 	testResults := ufm.GetTestResultsFromWorkflowData(outputData[len(outputData)-1])
 	require.Len(t, testResults, 3)
 
@@ -223,7 +211,6 @@ func Test_RunSbomFlow_SplitsHumanReadableResultsByComponent(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, key, metadata["display-target-file"])
 		assert.Equal(t, "testdata", metadata["target-directory"], "the SBOM's directory is shared by every component")
-		// Per-component dependency counts are not available from the test API.
 		assert.EqualValues(t, 0, metadata["dependency-count"])
 	}
 
@@ -274,7 +261,6 @@ func Test_RunSbomFlow_SplitsLegacyJSONByComponent(t *testing.T) {
 	require.NotNil(t, legacyJSON[0].ProjectName)
 	assert.Equal(t, appA, *legacyJSON[0].ProjectName)
 	assert.Equal(t, appA, legacyJSON[0].DisplayTargetFile)
-	// The SBOM document itself stays the target file for every component.
 	require.NotNil(t, legacyJSON[0].TargetFile)
 	assert.Equal(t, multiComponentSbomPath, *legacyJSON[0].TargetFile)
 	require.NotNil(t, legacyJSON[0].ProjectId)
@@ -283,8 +269,6 @@ func Test_RunSbomFlow_SplitsLegacyJSONByComponent(t *testing.T) {
 
 	require.NotNil(t, legacyJSON[1].ProjectName)
 	assert.Equal(t, appB, *legacyJSON[1].ProjectName)
-	// The component has no project of its own, and the test-wide project belongs to no
-	// single component.
 	assert.Nil(t, legacyJSON[1].ProjectId)
 	assert.Len(t, legacyJSON[1].Vulnerabilities, 1)
 }
@@ -313,7 +297,6 @@ func Test_RunSbomFlow_SingleResultWhenNoComponentsReported(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	// Without component information the results are reported as one, as before.
 	require.Len(t, legacyJSON, 1)
 	assert.Equal(t, multiComponentSbomPath, legacyJSON[0].DisplayTargetFile)
 	assert.Nil(t, legacyJSON[0].ProjectName)
@@ -325,7 +308,7 @@ func Test_RunSbomFlow_SingleResultWhenNoComponentsReported(t *testing.T) {
 	assert.Equal(t, multiComponentSbomPath, metadata["display-target-file"])
 }
 
-func Test_RunSbomFlow_ReportsTestWideLinksOnce(t *testing.T) {
+func Test_RunSbomFlow_ReportsTheAssetOnEveryComponent(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -357,26 +340,20 @@ func Test_RunSbomFlow_ReportsTestWideLinksOnce(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	// The asset covers the test as a whole, so every component reports the same link and
-	// the presenter renders it once, below the overall test summary.
+	testResults := ufm.GetTestResultsFromWorkflowData(outputData[len(outputData)-1])
+	require.Len(t, testResults, 2)
+
+	for i := range testResults {
+		metadata, ok := testResults[i].Get(testapi.TestResultMetadata).(map[string]interface{})
+		require.True(t, ok)
+		assert.Equal(t, assetLink, metadata["asset"], "component %d", i)
+		assert.Equal(t, reportURL, metadata["report-url"], "component %d", i)
+	}
+
 	summaries := unifiedSummariesFrom(t, outputData)
 	require.Len(t, summaries, 2)
 	assert.Equal(t, assetLink, summaries[0].AssetLink)
 	assert.Equal(t, assetLink, summaries[1].AssetLink)
-
-	// The test-wide links are reported once in the test result metadata.
-	testResults := ufm.GetTestResultsFromWorkflowData(outputData[len(outputData)-1])
-	require.Len(t, testResults, 2)
-
-	first, ok := testResults[0].Get(testapi.TestResultMetadata).(map[string]interface{})
-	require.True(t, ok)
-	assert.NotContains(t, first, "asset")
-	assert.NotContains(t, first, "report-url")
-
-	last, ok := testResults[1].Get(testapi.TestResultMetadata).(map[string]interface{})
-	require.True(t, ok)
-	assert.Equal(t, assetLink, last["asset"])
-	assert.Equal(t, reportURL, last["report-url"])
 }
 
 func unifiedSummariesFrom(t *testing.T, data []workflow.Data) []presenters.SummaryPayload {

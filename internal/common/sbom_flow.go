@@ -71,9 +71,6 @@ func RunSbomFlow(
 	testConfig := BuildTestConfig(cfg, localPolicy)
 
 	osAnalysisStart := time.Now()
-	// The SBOM is tested as a single test, but it may cover several components. The results
-	// are reported one per component, matching how `snyk test --all-projects` reports one
-	// result per project.
 	legacyVulnRes, wfData, err := runTest(
 		ctx, targetDir, clients.TestClient, resources,
 		"", "", 0, sbomPath, sbomPath, orgUUID.String(), testConfig,

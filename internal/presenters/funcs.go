@@ -482,11 +482,6 @@ func collectAllFindings(results []*UnifiedProjectResult) []testapi.FindingData {
 	return allFindings
 }
 
-// firstAssetLink returns the asset link of the first result that carries one, or an empty
-// string if none do.
-//
-// A run has a single asset, and an SBOM test reports one result per component, each
-// carrying a copy of the same link, so it is rendered once rather than under every project.
 func firstAssetLink(results []*UnifiedProjectResult) string {
 	for _, result := range results {
 		if result.AssetLink != "" {

@@ -78,11 +78,6 @@ func RunTestWithResources(
 
 // RunTestWithResourcesByComponent executes the test flow with the provided test resources and
 // reports one result per component covered by the test.
-//
-// A test run against an SBOM covers every component in that document but is reported by the
-// test API as a single test, so the findings are split back out per component. This gives the
-// same one-result-per-project reporting as `snyk test --all-projects`, where each dep graph is
-// its own test. It falls back to a single result when the test API reports no components.
 func RunTestWithResourcesByComponent(
 	ctx context.Context,
 	targetDir string,
@@ -106,8 +101,6 @@ func RunTestWithResourcesByComponent(
 	}, true)
 }
 
-// testTarget describes what a set of findings is reported against: one project for a dep
-// graph test, or one component when an SBOM test's results are split by component.
 type testTarget struct {
 	findings          []testapi.FindingData
 	projectID         *string
@@ -118,7 +111,6 @@ type testTarget struct {
 	displayTargetFile string
 }
 
-// runSingleTest runs a test and reports its findings as a single result.
 func runSingleTest(
 	ctx context.Context,
 	targetDir string,
@@ -146,8 +138,6 @@ func runSingleTest(
 	return &legacyResponses[0], outputData, nil
 }
 
-// runTestInternal is the shared implementation for RunTest, RunTestWithResources and
-// RunTestWithResourcesByComponent.
 func runTestInternal(
 	ctx context.Context,
 	targetDir string,
@@ -177,7 +167,6 @@ func runTestInternal(
 		return nil, nil, fmt.Errorf("failed to extract project ID: %w", err)
 	}
 
-	// Use dependency count from test facts if available, otherwise fall back to the provided depCount.
 	if factDepCount := GetDependencyCountFromTestFacts(finalResult); factDepCount > 0 {
 		base.depCount = factDepCount
 	}
@@ -208,8 +197,6 @@ func runTestInternal(
 		outputData = append(outputData, targetOutput...)
 	}
 
-	// Test results go last so that the findings and summary of each target stay adjacent,
-	// which is what the output workflow pairs on.
 	if testResultData := prepareTestResultData(ctx, finalResult, base, targetDir, split, targets); testResultData != nil {
 		outputData = append(outputData, testResultData)
 	}
@@ -217,11 +204,6 @@ func runTestInternal(
 	return legacyResponses, outputData, nil
 }
 
-// componentTargets turns per-component findings into reportable targets.
-//
-// The flow's own target file is kept, and the component key becomes the display target file
-// so that each result is headed by the component it covers. This mirrors `--all-projects`,
-// where every project shares the input directory and is distinguished by its target file.
 func componentTargets(split []ComponentFindings, base *testTarget) []testTarget {
 	targets := make([]testTarget, 0, len(split))
 	for _, component := range split {
@@ -236,13 +218,9 @@ func componentTargets(split []ComponentFindings, base *testTarget) []testTarget 
 		if component.ProjectID != nil {
 			target.projectID = util.Ptr(component.ProjectID.String())
 		} else if len(split) > 1 {
-			// The test-wide project is not any single component's project, so pointing
-			// every component at it would be wrong.
 			target.projectID = nil
 		}
 
-		// The test API only reports a dependency count for the test as a whole, so it is
-		// only meaningful when that test covers a single component.
 		if len(split) > 1 {
 			target.depCount = 0
 		}
@@ -252,7 +230,6 @@ func componentTargets(split []ComponentFindings, base *testTarget) []testTarget 
 	return targets
 }
 
-// prepareTargetOutput builds the legacy JSON response and workflow data for a single target.
 func prepareTargetOutput(
 	ctx context.Context,
 	result testapi.TestResult,
@@ -483,12 +460,6 @@ func appendTestConfig(dbg *zerolog.Event, cfg *testapi.TestConfiguration) *zerol
 	return dbg
 }
 
-// prepareTestResultData sets the test-level metadata on the result and wraps the results as
-// workflow data.
-//
-// The unified findings presenter renders one section per test result, so when the findings
-// were split by component each component is presented as its own test result. Otherwise the
-// single underlying result is emitted as-is.
 func prepareTestResultData(
 	ctx context.Context,
 	result testapi.TestResult,

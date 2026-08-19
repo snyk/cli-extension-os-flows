@@ -113,9 +113,6 @@ func Test_RunSbomFlow_Reachability_HumanReadable(t *testing.T) {
 
 	require.Nil(t, legacyJSON)
 	require.NotNil(t, outputData)
-	// Output data should contain standard summary, local unified findings, local unified summary
-	// and the unified model test result. The test result comes last because it describes the
-	// whole test run rather than any one component.
 	require.Len(t, outputData, 4)
 
 	require.Contains(t, "application/json; schema=test-summary", outputData[0].GetContentType())
@@ -211,9 +208,6 @@ func Test_RunSbomFlow_NoReachability_HumanReadable(t *testing.T) {
 
 	require.Nil(t, legacyJSON)
 	require.NotNil(t, outputData)
-	// Output data should contain standard summary, local unified findings, local unified summary
-	// and the unified model test result. The test result comes last because it describes the
-	// whole test run rather than any one component.
 	require.Len(t, outputData, 4)
 
 	require.Contains(t, "application/json; schema=test-summary", outputData[0].GetContentType())
