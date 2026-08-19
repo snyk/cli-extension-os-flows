@@ -7,7 +7,7 @@ require (
 	github.com/dop251/goja v0.0.0-20251008123653-cf18d89f3cf6
 	github.com/dop251/goja_nodejs v0.0.0-20250409162600-f7acab6894b0
 	github.com/gkampitakis/go-snaps v0.5.14
-	github.com/go-git/go-git/v5 v5.19.0
+	github.com/go-git/go-git/v5 v5.19.1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/puddle/v2 v2.2.2
@@ -16,13 +16,13 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/snyk/cli-extension-dep-graph/v2 v2.6.0
 	github.com/snyk/dep-graph/go v0.0.0-20260127160647-c836da762c62
-	github.com/snyk/error-catalog-golang-public v0.0.0-20260410094451-50af33399e90
-	github.com/snyk/go-application-framework v0.7.2
+	github.com/snyk/error-catalog-golang-public v0.0.0-20260806122555-28dc45bbbde6
+	github.com/snyk/go-application-framework v0.16.1-0.20260819090224-be6b2b91f137
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/net v0.55.0
-	golang.org/x/sync v0.21.0
-	golang.org/x/text v0.38.0
+	golang.org/x/net v0.57.0
+	golang.org/x/sync v0.22.0
+	golang.org/x/text v0.40.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -94,8 +94,8 @@ require (
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
-	github.com/snyk/code-client-go v1.24.5 // indirect
-	github.com/snyk/go-httpauth v0.0.0-20231117135515-eb445fea7530 // indirect
+	github.com/snyk/code-client-go v1.31.1 // indirect
+	github.com/snyk/go-httpauth v0.0.0-20260810142636-0f6182aaccbc // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
@@ -113,11 +113,11 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.53.0 // indirect
-	golang.org/x/mod v0.36.0 // indirect
+	golang.org/x/crypto v0.54.0 // indirect
+	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/term v0.44.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/term v0.45.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
