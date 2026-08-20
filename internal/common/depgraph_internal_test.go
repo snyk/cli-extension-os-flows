@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -90,4 +91,42 @@ func TestMapToRawDepGraphWithMeta_ResultError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to resolve depgraph for pom.xml")
 	assert.ErrorContains(t, err, "resolution failed")
+}
+
+func TestAggregateResults_TimeoutDuringResolutionSurfacesDeadlineExceeded(t *testing.T) {
+	results := make(chan ecosystems.SCAResult, 1)
+	results <- ecosystems.SCAResult{Error: context.DeadlineExceeded}
+	close(results)
+
+	_, err := aggregateResults(nil, results, "/test/dir", nil, true)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Contains(t, err.Error(), "failed to get dependency graph")
+}
+
+func TestAggregateResults_TimeoutTakesPrecedenceOverPartialSuccess(t *testing.T) {
+	results := make(chan ecosystems.SCAResult, 2)
+	results <- ecosystems.SCAResult{
+		ResolverMetadata: &ecosystems.ResolverMetadata{NormalisedTargetFile: "package.json"},
+	}
+	results <- ecosystems.SCAResult{Error: context.DeadlineExceeded}
+	close(results)
+
+	_, err := aggregateResults(nil, results, "/test/dir", nil, true)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func TestAggregateResults_NonTimeoutFailureKeepsGenericAllProjectsFailedMessage(t *testing.T) {
+	results := make(chan ecosystems.SCAResult, 1)
+	results <- ecosystems.SCAResult{Error: errors.New("boom")}
+	close(results)
+
+	_, err := aggregateResults(nil, results, "/test/dir", nil, true)
+
+	require.Error(t, err)
+	assert.False(t, errors.Is(err, context.DeadlineExceeded))
+	assert.Contains(t, err.Error(), "failed to get dependencies for all 1 potential projects")
 }

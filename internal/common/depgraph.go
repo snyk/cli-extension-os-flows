@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"encoding/json"
 	stderrors "errors"
 	"fmt"
@@ -189,28 +190,30 @@ func getDepgraphsFromOrchestrator(ictx workflow.InvocationContext, inputDir stri
 
 	allProjects := config.GetBool(flags.FlagAllProjects)
 
+	return aggregateResults(ictx, results, inputDir, target, allProjects)
+}
+
+func aggregateResults(
+	ictx workflow.InvocationContext,
+	results <-chan ecosystems.SCAResult,
+	inputDir string,
+	target []byte,
+	allProjects bool,
+) ([]RawDepGraphWithMeta, error) {
 	rawDepGraphs := make([]RawDepGraphWithMeta, 0)
 	var failedErrors []error
+	var deadlineErr error
 	for result := range results {
+		if deadlineErr == nil && isTimeoutError(result.Error) {
+			deadlineErr = result.Error
+		}
+
 		if result.Error != nil && allProjects {
 			// With --all-projects, a single ecosystem failing to resolve
 			// (e.g. missing tooling for Python) should not abort the entire
 			// scan. Accumulate failures and only error if all projects fail,
 			// matching the legacy TS CLI behavior.
-			//
-			// Format the message to match legacy output:
-			//   <file>:
-			//     <error detail>
-			targetFile := ""
-			if result.ResolverMetadata != nil && result.ResolverMetadata.NormalisedTargetFile != "" {
-				targetFile = filepath.Join(inputDir, result.ResolverMetadata.NormalisedTargetFile)
-			}
-			errMsg := extractErrorDetail(result.Error)
-			if targetFile != "" {
-				failedErrors = append(failedErrors, fmt.Errorf("%s:\n  %s", targetFile, errMsg))
-			} else {
-				failedErrors = append(failedErrors, fmt.Errorf("%s", errMsg))
-			}
+			failedErrors = append(failedErrors, formatFailedProjectError(inputDir, &result))
 			continue
 		}
 
@@ -219,6 +222,10 @@ func getDepgraphsFromOrchestrator(ictx workflow.InvocationContext, inputDir stri
 			return nil, err
 		}
 		rawDepGraphs = append(rawDepGraphs, *dg)
+	}
+
+	if deadlineErr != nil {
+		return nil, fmt.Errorf("failed to get dependency graph: %w", deadlineErr)
 	}
 
 	total := len(rawDepGraphs) + len(failedErrors)
@@ -249,6 +256,22 @@ func getDepgraphsFromOrchestrator(ictx workflow.InvocationContext, inputDir stri
 		return nil, fmt.Errorf("no testable projects found")
 	}
 	return rawDepGraphs, nil
+}
+
+func isTimeoutError(err error) bool {
+	return err != nil && (stderrors.Is(err, context.DeadlineExceeded) || stderrors.Is(err, context.Canceled))
+}
+
+func formatFailedProjectError(inputDir string, result *ecosystems.SCAResult) error {
+	targetFile := ""
+	if result.ResolverMetadata != nil && result.ResolverMetadata.NormalisedTargetFile != "" {
+		targetFile = filepath.Join(inputDir, result.ResolverMetadata.NormalisedTargetFile)
+	}
+	errMsg := extractErrorDetail(result.Error)
+	if targetFile == "" {
+		return fmt.Errorf("%s", errMsg)
+	}
+	return fmt.Errorf("%s:\n  %s", targetFile, errMsg)
 }
 
 func resolveTarget(inputDir, remoteRepoURL string, logger *zerolog.Logger) []byte {
