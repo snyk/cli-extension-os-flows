@@ -9,6 +9,8 @@ import (
 	"github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems"
 	"github.com/snyk/cli-extension-dep-graph/v2/pkg/identity"
 	"github.com/snyk/dep-graph/go/pkg/depgraph"
+	snyk_cli_errors "github.com/snyk/error-catalog-golang-public/cli"
+	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -102,7 +104,10 @@ func TestAggregateResults_TimeoutDuringResolutionSurfacesDeadlineExceeded(t *tes
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
-	assert.Contains(t, err.Error(), "failed to get dependency graph")
+
+	var snykErr snyk_errors.Error
+	require.ErrorAs(t, err, &snykErr)
+	assert.Equal(t, snyk_cli_errors.NewCommandTimeoutError("").ErrorCode, snykErr.ErrorCode)
 }
 
 func TestAggregateResults_TimeoutTakesPrecedenceOverPartialSuccess(t *testing.T) {
@@ -117,6 +122,10 @@ func TestAggregateResults_TimeoutTakesPrecedenceOverPartialSuccess(t *testing.T)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
+
+	var snykErr snyk_errors.Error
+	require.ErrorAs(t, err, &snykErr)
+	assert.Equal(t, snyk_cli_errors.NewCommandTimeoutError("").ErrorCode, snykErr.ErrorCode)
 }
 
 func TestAggregateResults_NonTimeoutFailureKeepsGenericAllProjectsFailedMessage(t *testing.T) {
