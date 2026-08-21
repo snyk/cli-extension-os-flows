@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	snyk_cli_errors "github.com/snyk/error-catalog-golang-public/cli"
 	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 
 	"github.com/rs/zerolog"
@@ -225,7 +226,7 @@ func aggregateResults(
 	}
 
 	if deadlineErr != nil {
-		return nil, fmt.Errorf("failed to get dependency graph: %w", deadlineErr)
+		return nil, snyk_cli_errors.NewCommandTimeoutError("", snyk_errors.WithCause(deadlineErr))
 	}
 
 	total := len(rawDepGraphs) + len(failedErrors)
@@ -259,7 +260,7 @@ func aggregateResults(
 }
 
 func isTimeoutError(err error) bool {
-	return err != nil && (stderrors.Is(err, context.DeadlineExceeded) || stderrors.Is(err, context.Canceled))
+	return stderrors.Is(err, context.DeadlineExceeded)
 }
 
 func formatFailedProjectError(inputDir string, result *ecosystems.SCAResult) error {
