@@ -152,6 +152,36 @@ func TestValidateFlagValues_FileAndProjectName_SlnNotSupportedWithProjectName(t 
 		assertCatalogError(t, err, catalogErrorCodeInvalidFlagOption, catalogTitleInvalidFlagOption,
 			"The following option combination is not currently supported: file=*.sln + project-name")
 	})
+
+	t.Run("no error when file is .slnx but project-name not set", func(t *testing.T) {
+		t.Parallel()
+		cfg := configuration.New()
+		cfg.Set(flags.FlagFile, "solution.slnx")
+		err := validation.ValidateFlagValues(cfg, validation.CommandTest)
+		require.NoError(t, err)
+	})
+
+	t.Run("error when file ends with .slnx and project-name set", func(t *testing.T) {
+		t.Parallel()
+		cfg := configuration.New()
+		cfg.Set(flags.FlagFile, "solution.slnx")
+		cfg.Set(flags.FlagProjectName, "my-project")
+		err := validation.ValidateFlagValues(cfg, validation.CommandTest)
+		require.Error(t, err)
+		assertCatalogError(t, err, catalogErrorCodeInvalidFlagOption, catalogTitleInvalidFlagOption,
+			"The following option combination is not currently supported: file=*.slnx + project-name")
+	})
+
+	t.Run("an uppercase extension is matched, and named in lower case", func(t *testing.T) {
+		t.Parallel()
+		cfg := configuration.New()
+		cfg.Set(flags.FlagFile, "Solution.SLNX")
+		cfg.Set(flags.FlagProjectName, "my-project")
+		err := validation.ValidateFlagValues(cfg, validation.CommandTest)
+		require.Error(t, err)
+		assertCatalogError(t, err, catalogErrorCodeInvalidFlagOption, catalogTitleInvalidFlagOption,
+			"The following option combination is not currently supported: file=*.slnx + project-name")
+	})
 }
 
 func TestValidateFlagValues_DetectionDepth_PositiveIntegerWhenSet(t *testing.T) {
