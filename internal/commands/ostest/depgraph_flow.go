@@ -308,13 +308,17 @@ func handleOutput(
 		finalOutput = append(finalOutput, remainingData...)
 	}
 
-	if !wantsJSONFile && !wantsJSONStdOut || len(allLegacyFindings) == 0 {
+	if !wantsJSONFile && !wantsJSONStdOut {
 		return finalOutput, nil
 	}
 
 	jsonBytes, err := prepareJSONOutput(ctx, allLegacyFindings)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(jsonBytes) == 0 {
+		return finalOutput, nil
 	}
 
 	if wantsJSONFile {
