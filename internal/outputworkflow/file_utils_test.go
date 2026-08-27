@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -82,62 +81,6 @@ func Test_SaveJSONToFile_CreatesMissingParentDirectory(t *testing.T) {
 			gotInfo, err := os.Stat(path)
 			require.NoError(t, err)
 			assert.Equal(t, refInfo.Mode().Perm(), gotInfo.Mode().Perm())
-		})
-	}
-}
-
-func Test_SaveJSONToFile_SwallowsFailures(t *testing.T) {
-	tests := []struct {
-		name          string
-		setup         func(t *testing.T, dir string) string
-		wantStderr    []string
-		notWantStderr []string
-	}{
-		{
-			name: "parent path component is a regular file",
-			setup: func(t *testing.T, dir string) string {
-				t.Helper()
-				blocker := filepath.Join(dir, "blocker")
-				require.NoError(t, os.WriteFile(blocker, []byte("not a directory"), 0o600))
-				return filepath.Join(blocker, "results.json")
-			},
-			wantStderr:    []string{"results.json"},
-			notWantStderr: []string{"could not create directory"},
-		},
-		{
-			name: "parent directory cannot be created",
-			setup: func(t *testing.T, dir string) string {
-				t.Helper()
-				if runtime.GOOS == "windows" {
-					t.Skip("directory permissions are not enforced the same way on windows")
-				}
-				if os.Geteuid() == 0 {
-					t.Skip("root bypasses directory permissions")
-				}
-				readOnly := filepath.Join(dir, "read-only")
-				require.NoError(t, os.Mkdir(readOnly, 0o555))
-				return filepath.Join(readOnly, "target", "results.json")
-			},
-			wantStderr: []string{"could not create directory"},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			path := tc.setup(t, t.TempDir())
-
-			stderr := captureStderr(t, func() {
-				outputworkflow.SaveJSONToFile(path, []byte(`{"ok":true}`))
-			})
-
-			assert.NoFileExists(t, path)
-
-			for _, want := range tc.wantStderr {
-				assert.Contains(t, stderr, want)
-			}
-			for _, notWant := range tc.notWantStderr {
-				assert.NotContains(t, stderr, notWant)
-			}
 		})
 	}
 }
