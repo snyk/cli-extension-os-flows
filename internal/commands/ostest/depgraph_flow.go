@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -309,7 +308,7 @@ func handleOutput(
 		finalOutput = append(finalOutput, remainingData...)
 	}
 
-	if !wantsJSONFile && !wantsJSONStdOut || len(allLegacyFindings) == 0 {
+	if !wantsJSONFile && !wantsJSONStdOut {
 		return finalOutput, nil
 	}
 
@@ -318,10 +317,12 @@ func handleOutput(
 		return nil, err
 	}
 
+	if len(jsonBytes) == 0 {
+		return finalOutput, nil
+	}
+
 	if wantsJSONFile {
-		if err := os.WriteFile(jsonFileOutput, jsonBytes, 0o600); err != nil {
-			return nil, fmt.Errorf("failed to write JSON output to file: %w", err)
-		}
+		outputworkflow.SaveJSONToFile(jsonFileOutput, jsonBytes)
 	}
 
 	if wantsJSONStdOut {
