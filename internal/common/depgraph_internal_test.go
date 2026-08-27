@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems"
@@ -138,4 +139,48 @@ func TestAggregateResults_NonTimeoutFailureKeepsGenericAllProjectsFailedMessage(
 	require.Error(t, err)
 	assert.False(t, errors.Is(err, context.DeadlineExceeded))
 	assert.Contains(t, err.Error(), "failed to get dependencies for all 1 potential projects")
+}
+
+func TestAggregateResults_AllProjectsFailedPreservesErrorCatalogCode(t *testing.T) {
+	inputDir := t.TempDir()
+
+	results := make(chan ecosystems.SCAResult, 2)
+	results <- ecosystems.SCAResult{
+		Error: snyk_errors.Error{
+			ID:        "id-1",
+			Title:     "Pip install failed",
+			ErrorCode: "SNYK-OS-PIP-0001",
+			Detail:    "pip could not resolve the requirements",
+		},
+		ResolverMetadata: &ecosystems.ResolverMetadata{
+			NormalisedTargetFile: filepath.Join("project1", "requirements.txt"),
+		},
+	}
+	results <- ecosystems.SCAResult{
+		Error: snyk_errors.Error{
+			ID:        "id-2",
+			Title:     "Unsupported manifest",
+			ErrorCode: "SNYK-CLI-0005",
+			Detail:    "manifest could not be parsed",
+		},
+		ResolverMetadata: &ecosystems.ResolverMetadata{
+			NormalisedTargetFile: filepath.Join("project2", "package.json"),
+		},
+	}
+	close(results)
+
+	_, err := aggregateResults(nil, results, inputDir, nil, true)
+
+	require.Error(t, err)
+	msg := err.Error()
+
+	assert.Contains(t, msg, "failed to get dependencies for all 2 potential projects")
+
+	assert.Contains(t, msg, filepath.Join(inputDir, "project1", "requirements.txt"))
+	assert.Contains(t, msg, "SNYK-OS-PIP-0001", "per-project reason must include the catalog code")
+	assert.Contains(t, msg, "pip could not resolve the requirements", "per-project reason must include the detail")
+
+	assert.Contains(t, msg, filepath.Join(inputDir, "project2", "package.json"))
+	assert.Contains(t, msg, "SNYK-CLI-0005", "per-project reason must include the catalog code")
+	assert.Contains(t, msg, "manifest could not be parsed", "per-project reason must include the detail")
 }

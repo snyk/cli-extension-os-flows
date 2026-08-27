@@ -268,7 +268,7 @@ func formatFailedProjectError(inputDir string, result *ecosystems.SCAResult) err
 	if result.ResolverMetadata != nil && result.ResolverMetadata.NormalisedTargetFile != "" {
 		targetFile = filepath.Join(inputDir, result.ResolverMetadata.NormalisedTargetFile)
 	}
-	errMsg := extractErrorDetail(result.Error)
+	errMsg := formatProjectErrorMessage(result.Error)
 	if targetFile == "" {
 		return fmt.Errorf("%s", errMsg)
 	}
@@ -287,13 +287,22 @@ func resolveTarget(inputDir, remoteRepoURL string, logger *zerolog.Logger) []byt
 	return target
 }
 
-// extractErrorDetail returns the most user-readable message from an error.
-// For snyk_errors.Error the Detail field contains the full explanation;
-// Error() only returns the Title (e.g. "Unspecified Error").
-func extractErrorDetail(err error) string {
+func formatProjectErrorMessage(err error) string {
 	var snykErr snyk_errors.Error
-	if stderrors.As(err, &snykErr) && snykErr.Detail != "" {
-		return snykErr.Detail
+	if stderrors.As(err, &snykErr) {
+		detail := snykErr.Detail
+		if detail == "" {
+			detail = snykErr.Title
+		}
+		if snykErr.ErrorCode != "" && detail != "" {
+			return fmt.Sprintf("%s: %s", snykErr.ErrorCode, detail)
+		}
+		if snykErr.ErrorCode != "" {
+			return snykErr.ErrorCode
+		}
+		if detail != "" {
+			return detail
+		}
 	}
 	return err.Error()
 }
