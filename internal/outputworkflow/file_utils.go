@@ -25,3 +25,19 @@ func CreateFilePath(path string) error {
 	}
 	return nil
 }
+
+// SaveJSONToFile writes contents to path as the --json-file-output file,
+// creating the parent directory when missing and terminating the file with a
+// newline. Failures are reported on stderr and swallowed rather than returned,
+// matching the legacy CLI's saveJsonToFileCreatingDirectoryIfRequired.
+func SaveJSONToFile(path string, contents []byte) {
+	if err := CreateFilePath(path); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "could not create directory %s\n", filepath.Dir(path))
+		return
+	}
+
+	if err := os.WriteFile(path, append(contents, '\n'), fileperm666); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+}

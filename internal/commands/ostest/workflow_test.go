@@ -928,6 +928,67 @@ ignore: {}
 	}
 }
 
+func TestOSWorkflow_JSONFileOutput(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAPI := newMockAPIState(t)
+	defer mockAPI.Close()
+
+	depGraphBytes, err := json.Marshal(depgraphpayload.DepGraph{
+		SchemaVersion: "1.2.0",
+		PkgManager:    depgraphpayload.PackageManager{Name: "npm"},
+		Pkgs: []depgraphpayload.Package{
+			{Id: "proj1@1.0.0", Info: depgraphpayload.PackageInfo{Name: "proj1", Version: "1.0.0"}},
+		},
+		Graph: depgraphpayload.Graph{
+			RootNodeId: "root",
+			Nodes: []depgraphpayload.Node{
+				{NodeId: "root", PkgId: "proj1@1.0.0", Deps: []depgraphpayload.NodeRef{}},
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	mockData := mocks.NewMockData(ctrl)
+	mockData.EXPECT().GetPayload().Return(depGraphBytes).AnyTimes()
+	mockData.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj1/package.json", nil).AnyTimes()
+	mockData.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("package.json", nil).AnyTimes()
+	mockData.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
+
+	mockEngine := mocks.NewMockEngine(ctrl)
+	mockInvocationCtx := createMockInvocationCtxWithURL(t, ctrl, mockEngine, mockAPI.URL())
+
+	jsonFileOutput := filepath.Join(t.TempDir(), "target", "site", "results.json")
+
+	config := mockInvocationCtx.GetConfiguration()
+	config.Set(constants.FeatureFlagRiskScore, true)
+	config.Set(constants.FeatureFlagRiskScoreInCLI, true)
+	config.Set(outputworkflow.OutputConfigKeyJSON, true)
+	config.Set(outputworkflow.OutputConfigKeyJSONFile, jsonFileOutput)
+
+	mockEngine.EXPECT().
+		InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).
+		Return([]workflow.Data{mockData}, nil).
+		Times(1)
+
+	originalPollInterval := common.PollInterval
+	common.PollInterval = testapi.MinPollInterval
+	t.Cleanup(func() { common.PollInterval = originalPollInterval })
+
+	results, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
+
+	require.NoError(t, err)
+	require.NotEmpty(t, results)
+
+	written, err := os.ReadFile(jsonFileOutput)
+	require.NoError(t, err)
+
+	var legacyResult definitions.LegacyVulnerabilityResponse
+	require.NoError(t, json.Unmarshal(written, &legacyResult))
+	assert.Equal(t, "package.json", *legacyResult.TargetFile)
+}
+
 func TestOSWorkflow_ReachabilityFilterValidation(t *testing.T) {
 	tests := []struct {
 		name          string

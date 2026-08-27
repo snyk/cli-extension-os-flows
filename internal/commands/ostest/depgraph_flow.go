@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -319,9 +318,7 @@ func handleOutput(
 	}
 
 	if wantsJSONFile {
-		if err := os.WriteFile(jsonFileOutput, jsonBytes, 0o600); err != nil {
-			return nil, fmt.Errorf("failed to write JSON output to file: %w", err)
-		}
+		outputworkflow.SaveJSONToFile(jsonFileOutput, jsonBytes)
 	}
 
 	if wantsJSONStdOut {
