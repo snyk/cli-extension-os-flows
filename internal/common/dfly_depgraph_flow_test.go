@@ -14,6 +14,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/snyk/dep-graph/go/pkg/depgraph"
+	snyk_cli_errors "github.com/snyk/error-catalog-golang-public/cli"
+	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
@@ -241,6 +243,36 @@ func Test_RunDflyDepgraphFlow_DepgraphResolverFails(t *testing.T) {
 		orgID, nil, nil, ostest.RunTestWithResources,
 	)
 	assert.ErrorContains(t, err, "failed to extract dependency graphs")
+}
+
+func Test_RunDflyDepgraphFlow_NoProjectsDetectedReturnsNoSupportedFilesFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	orgID := uuid.New()
+	mockIctx := setupDflyInvocationContext(t, ctrl, true)
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	ffc := fileupload.NewFakeClient()
+	fdr := common.NewFakeDepgraphResolver(nil, nil)
+
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
+	ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+
+	_, _, err := common.RunDflyDepgraphFlow(
+		ctx, "/test/dir", fdr,
+		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
+		orgID, nil, nil, ostest.RunTestWithResources,
+	)
+
+	require.Error(t, err)
+
+	var snykErr snyk_errors.Error
+	require.ErrorAs(t, err, &snykErr)
+	assert.Equal(t, snyk_cli_errors.NewNoSupportedFilesFoundError("").ErrorCode, snykErr.ErrorCode)
+	assert.Contains(t, snykErr.Detail, "/test/dir")
 }
 
 func Test_RunDflyDepgraphFlow_SkipsSourceUploadWhenNoSupportedSources(t *testing.T) {

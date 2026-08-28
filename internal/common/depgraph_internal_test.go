@@ -139,3 +139,17 @@ func TestAggregateResults_NonTimeoutFailureKeepsGenericAllProjectsFailedMessage(
 	assert.False(t, errors.Is(err, context.DeadlineExceeded))
 	assert.Contains(t, err.Error(), "failed to get dependencies for all 1 potential projects")
 }
+
+func TestAggregateResults_NoProjectsDetectedReturnsNoSupportedFilesFound(t *testing.T) {
+	results := make(chan ecosystems.SCAResult)
+	close(results)
+
+	_, err := aggregateResults(nil, results, "/test/dir", nil, false)
+
+	require.Error(t, err)
+
+	var snykErr snyk_errors.Error
+	require.ErrorAs(t, err, &snykErr)
+	assert.Equal(t, snyk_cli_errors.NewNoSupportedFilesFoundError("").ErrorCode, snykErr.ErrorCode)
+	assert.Contains(t, snykErr.Detail, "/test/dir")
+}
