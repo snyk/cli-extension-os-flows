@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,6 +38,154 @@ func TestPolicy_Unmarshal(t *testing.T) {
 	ruleSet, ok := p.Ignore["npm:is-my-json-valid:20160118"]
 	require.True(t, ok)
 	require.Len(t, ruleSet, 1)
+}
+
+func TestPolicy_Unmarshal_EmptyCollections(t *testing.T) {
+	testCases := map[string]string{
+		"empty sequence": `version: v1.25.0
+ignore: []
+patch: []
+`,
+		"empty mapping": `version: v1.25.0
+ignore: {}
+patch: {}
+`,
+		"legacy TS default (ignore seq, patch map)": `# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.0
+# ignores vulnerabilities until expiry date; change duration by modifying expiry date
+ignore: []
+patch: {}
+`,
+		"null values": `version: v1.25.0
+ignore:
+patch:
+`,
+	}
+
+	for name, content := range testCases {
+		t.Run(name, func(t *testing.T) {
+			var p localpolicy.Policy
+			err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+			require.NoError(t, err)
+
+			assert.Equal(t, "v1.25.0", p.Version)
+			assert.Empty(t, p.Ignore)
+			assert.Empty(t, p.Patch)
+		})
+	}
+}
+
+func TestPolicy_Unmarshal_Populated(t *testing.T) {
+	content := `# Snyk (https://snyk.io) policy file
+version: v1.25.0
+ignore:
+  'SNYK-JS-LODASH-567746':
+    - '*':
+        reason: not exploitable in our usage
+        reasonType: not-vulnerable
+        expires: '2116-03-01T14:30:04.136Z'
+        created: '2024-01-15T09:00:00Z'
+        source: cli
+        ignoredBy:
+          id: 00000000-0000-0000-0000-000000000001
+          name: Alice
+          email: alice@example.com
+    - app > lodash:
+        reason: pinned via override
+        expires: '2030-06-01T00:00:00Z'
+        disregardIfFixable: true
+  'SNYK-JS-AXIOS-123':
+    - '*':
+        reason: none given
+        disregardIfFixable: false
+patch: {}
+`
+
+	var p localpolicy.Policy
+	err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+	require.NoError(t, err)
+
+	assert.Equal(t, "v1.25.0", p.Version)
+	assert.Empty(t, p.Patch)
+	require.Len(t, p.Ignore, 2)
+
+	lodashEntries, ok := p.Ignore["SNYK-JS-LODASH-567746"]
+	require.True(t, ok)
+	require.Len(t, lodashEntries, 2)
+
+	wildcardRule, ok := lodashEntries[0]["*"]
+	require.True(t, ok, "expected wildcard path in first lodash entry")
+	require.NotNil(t, wildcardRule)
+	assert.Equal(t, util.Ptr("not exploitable in our usage"), wildcardRule.Reason)
+	assert.Equal(t, util.Ptr(localpolicy.ReasonType("not-vulnerable")), wildcardRule.ReasonType)
+	assert.Equal(t, util.Ptr("cli"), wildcardRule.Source)
+	require.NotNil(t, wildcardRule.Expires)
+	assert.Equal(t, time.Date(2116, 3, 1, 14, 30, 4, 136_000_000, time.UTC), wildcardRule.Expires.UTC())
+	require.NotNil(t, wildcardRule.Created)
+	assert.Equal(t, time.Date(2024, 1, 15, 9, 0, 0, 0, time.UTC), wildcardRule.Created.UTC())
+	require.NotNil(t, wildcardRule.IgnoredBy)
+	assert.Equal(t, util.Ptr("Alice"), wildcardRule.IgnoredBy.Name)
+	assert.Equal(t, util.Ptr("alice@example.com"), wildcardRule.IgnoredBy.Email)
+	assert.Equal(t, util.Ptr("00000000-0000-0000-0000-000000000001"), wildcardRule.IgnoredBy.ID)
+
+	pathRule, ok := lodashEntries[1]["app > lodash"]
+	require.True(t, ok, "expected explicit path in second lodash entry")
+	require.NotNil(t, pathRule)
+	assert.Equal(t, util.Ptr("pinned via override"), pathRule.Reason)
+	assert.Equal(t, util.Ptr(true), pathRule.DisregardIfFixable)
+	require.NotNil(t, pathRule.Expires)
+	assert.Equal(t, time.Date(2030, 6, 1, 0, 0, 0, 0, time.UTC), pathRule.Expires.UTC())
+
+	axiosEntries, ok := p.Ignore["SNYK-JS-AXIOS-123"]
+	require.True(t, ok)
+	require.Len(t, axiosEntries, 1)
+	axiosRule, ok := axiosEntries[0]["*"]
+	require.True(t, ok)
+	require.NotNil(t, axiosRule)
+	assert.Equal(t, util.Ptr("none given"), axiosRule.Reason)
+	assert.Equal(t, util.Ptr(false), axiosRule.DisregardIfFixable)
+	assert.Nil(t, axiosRule.Expires, "axios rule has no expiry")
+}
+
+func TestPolicy_Unmarshal_QuotedDateOnlyExpires(t *testing.T) {
+	content := `version: v1.25.0
+# ignores vulnerabilities until expiry date; change duration by modifying expiry date
+ignore:
+  SNYK-JS-LODASH-450202:
+    - '*':
+        reason: None Given
+        expires: "2027-08-31"
+        created: 2026-08-31T00:00:00.000Z
+patch: {}
+`
+
+	var p localpolicy.Policy
+	err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+	require.NoError(t, err)
+
+	entries, ok := p.Ignore["SNYK-JS-LODASH-450202"]
+	require.True(t, ok)
+	require.Len(t, entries, 1)
+	rule, ok := entries[0]["*"]
+	require.True(t, ok)
+	require.NotNil(t, rule)
+
+	require.NotNil(t, rule.Expires)
+	assert.Equal(t, time.Date(2027, 8, 31, 0, 0, 0, 0, time.UTC), rule.Expires.UTC())
+	require.NotNil(t, rule.Created)
+	assert.Equal(t, time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC), rule.Created.UTC())
+}
+
+func TestPolicy_Unmarshal_RejectsNonEmptySequence(t *testing.T) {
+	content := `version: v1.25.0
+ignore:
+  - SNYK-JS-FOO-1
+patch: {}
+`
+	var p localpolicy.Policy
+	err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "non-empty sequence")
 }
 
 func TestPolicy_Marshal(t *testing.T) {

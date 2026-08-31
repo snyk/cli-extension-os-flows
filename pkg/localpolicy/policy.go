@@ -77,6 +77,33 @@ type VulnID string
 // RuleSet models rules grouped by vulnerability identifiers.
 type RuleSet map[VulnID][]RuleEntry
 
+// UnmarshalYAML accepts an empty sequence, empty mapping, or null as an empty RuleSet.
+func (r *RuleSet) UnmarshalYAML(node *yaml.Node) error {
+	switch node.Kind {
+	case yaml.MappingNode:
+		var m map[VulnID][]RuleEntry
+		if err := node.Decode(&m); err != nil {
+			return fmt.Errorf("failed to decode rule set: %w", err)
+		}
+		*r = m
+		return nil
+	case yaml.SequenceNode:
+		if len(node.Content) == 0 {
+			*r = RuleSet{}
+			return nil
+		}
+		return fmt.Errorf("line %d: rule set must be a mapping, got a non-empty sequence", node.Line)
+	case yaml.ScalarNode:
+		if node.Tag == "!!null" || node.Value == "" {
+			*r = RuleSet{}
+			return nil
+		}
+		return fmt.Errorf("line %d: rule set must be a mapping, got scalar %q", node.Line, node.Value)
+	default:
+		return fmt.Errorf("line %d: rule set has unsupported YAML kind %d", node.Line, node.Kind)
+	}
+}
+
 // RuleEntry models rules grouped by the dependency path.
 type RuleEntry map[string]*Rule
 
@@ -91,6 +118,62 @@ type Rule struct {
 	Source             *string     `yaml:"source,omitempty"`
 	From               *string     `yaml:"from,omitempty"`
 	DisregardIfFixable *bool       `yaml:"disregardIfFixable,omitempty"`
+}
+
+var lenientTimeFormats = []string{
+	time.RFC3339Nano,
+	time.RFC3339,
+	"2006-01-02T15:04:05.999999999",
+	"2006-01-02 15:04:05.999999999",
+	"2006-01-02",
+}
+
+type lenientTime struct {
+	t *time.Time
+}
+
+func (lt *lenientTime) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.ScalarNode {
+		return fmt.Errorf("line %d: timestamp must be a scalar", node.Line)
+	}
+	if node.Tag == "!!null" || node.Value == "" {
+		return nil
+	}
+	for _, layout := range lenientTimeFormats {
+		if parsed, err := time.Parse(layout, node.Value); err == nil {
+			lt.t = &parsed
+			return nil
+		}
+	}
+	return fmt.Errorf("line %d: timestamp %q does not match any supported format", node.Line, node.Value)
+}
+
+// UnmarshalYAML decodes a Rule with lenient parsing for timestamp fields.
+func (r *Rule) UnmarshalYAML(node *yaml.Node) error {
+	var shadow struct {
+		Created            lenientTime `yaml:"created,omitempty"`
+		Expires            lenientTime `yaml:"expires,omitempty"`
+		Patched            lenientTime `yaml:"patched,omitempty"`
+		IgnoredBy          *IgnoredBy  `yaml:"ignoredBy,omitempty"`
+		Reason             *string     `yaml:"reason,omitempty"`
+		ReasonType         *ReasonType `yaml:"reasonType,omitempty"`
+		Source             *string     `yaml:"source,omitempty"`
+		From               *string     `yaml:"from,omitempty"`
+		DisregardIfFixable *bool       `yaml:"disregardIfFixable,omitempty"`
+	}
+	if err := node.Decode(&shadow); err != nil {
+		return fmt.Errorf("failed to decode rule: %w", err)
+	}
+	r.Created = shadow.Created.t
+	r.Expires = shadow.Expires.t
+	r.Patched = shadow.Patched.t
+	r.IgnoredBy = shadow.IgnoredBy
+	r.Reason = shadow.Reason
+	r.ReasonType = shadow.ReasonType
+	r.Source = shadow.Source
+	r.From = shadow.From
+	r.DisregardIfFixable = shadow.DisregardIfFixable
+	return nil
 }
 
 // IgnoredBy models the user who applied a project-level ignore.
