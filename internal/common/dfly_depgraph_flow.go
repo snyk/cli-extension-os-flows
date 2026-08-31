@@ -75,7 +75,7 @@ func RunDflyDepgraphFlow(
 	}
 
 	if len(depGraphs) == 0 {
-		return nil, nil, fmt.Errorf("no testable projects found")
+		return nil, nil, newNoSupportedFilesFoundError(inputDir)
 	}
 
 	tmpRootDir, paths, err := createDepgraphTmpFiles(depGraphs)

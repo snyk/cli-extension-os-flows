@@ -254,9 +254,18 @@ func aggregateResults(
 	}
 
 	if len(rawDepGraphs) == 0 {
-		return nil, fmt.Errorf("no testable projects found")
+		return nil, newNoSupportedFilesFoundError(inputDir)
 	}
 	return rawDepGraphs, nil
+}
+
+func newNoSupportedFilesFoundError(inputDir string) error {
+	return snyk_cli_errors.NewNoSupportedFilesFoundError(fmt.Sprintf(
+		"Could not detect supported target files in %s.\n"+
+			"Please see our documentation for supported languages and target files: "+
+			"https://snyk.co/udVgQ and make sure you are in the right directory.",
+		inputDir,
+	))
 }
 
 func isTimeoutError(err error) bool {
