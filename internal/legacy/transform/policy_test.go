@@ -88,6 +88,23 @@ func TestLegacyPolicyToLocalIgnores_NoIgnores(t *testing.T) {
 	assert.Nil(t, lp)
 }
 
+func TestLegacyPolicyToLocalIgnores_NilRule(t *testing.T) {
+	p := &localpolicy.Policy{
+		Version: "v1.0.0",
+		Ignore: localpolicy.RuleSet{
+			"SNYK-JS-CXCT-535487": []localpolicy.RuleEntry{{"*": nil}},
+		},
+	}
+
+	result := transform.LocalPolicyToSchema(p)
+
+	require.NotNil(t, result)
+	require.Len(t, *result, 1)
+	assert.Equal(t, "SNYK-JS-CXCT-535487", (*result)[0].VulnId)
+	assert.Nil(t, (*result)[0].Reason)
+	assert.Nil(t, (*result)[0].ExpiresAt)
+}
+
 func TestExtendLocalPolicyFromFindings_ManagedPolicy(t *testing.T) {
 	ctx := cmdctx.WithLogger(t.Context(), &nopLogger)
 	fixedPolicy := `version: v1.2.0

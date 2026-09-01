@@ -9,7 +9,6 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 
@@ -89,7 +88,10 @@ func TestResolvePolicyFile_NoPolicyFile(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestGetLocalPolicy_BrokenPolicy(t *testing.T) {
+// A policy file that parses as YAML but is not a mapping carries no rules.
+// Legacy proceeds with no policy rather than failing the scan, so this must not
+// return an error.
+func TestGetLocalPolicy_NonMappingPolicy(t *testing.T) {
 	dir, err := os.MkdirTemp("", "snyk-policy")
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(dir) })
@@ -107,9 +109,31 @@ func TestGetLocalPolicy_BrokenPolicy(t *testing.T) {
 
 	policy, err := util.GetLocalPolicy(ctx, dir)
 
+	require.NoError(t, err)
+	require.NotNil(t, policy)
+	assert.Empty(t, policy.Ignore)
+}
+
+func TestGetLocalPolicy_MalformedPolicy(t *testing.T) {
+	dir, err := os.MkdirTemp("", "snyk-policy")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(dir) })
+
+	tmpPolicy, err := os.Create(filepath.Join(dir, ".snyk"))
+	require.NoError(t, err)
+	defer tmpPolicy.Close()
+
+	_, err = tmpPolicy.WriteString("version: v1.25.0\nignore: [unclosed\n")
+	require.NoError(t, err)
+
+	cfg := configuration.New()
+	ctx := cmdctx.WithConfig(t.Context(), cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+
+	policy, err := util.GetLocalPolicy(ctx, dir)
+
 	require.Nil(t, policy)
-	var terr *yaml.TypeError
-	assert.ErrorAs(t, err, &terr)
+	require.Error(t, err, "unparseable YAML stays fatal")
 }
 
 func TestGetLocalPolicy_WhenDotSnykIsADir(t *testing.T) {

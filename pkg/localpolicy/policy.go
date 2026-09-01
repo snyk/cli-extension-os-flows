@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -22,11 +23,50 @@ func New() *Policy {
 }
 
 // Unmarshal reads a policy from r into target.
+//
+// A file with nothing to parse - empty, whitespace, or comments only - leaves
+// target untouched and reports no error, matching the legacy CLI, which treats
+// such a file as an absent policy rather than a failure.
 func Unmarshal(r io.Reader, target *Policy) error {
-	if err := yaml.NewDecoder(r).Decode(target); err != nil {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return fmt.Errorf("failed to read snyk policy: %w", err)
+	}
+
+	if err := yaml.Unmarshal(data, target); err != nil {
+		// The legacy YAML reader accepts a tab as indentation where the spec
+		// does not. Retry once with leading tabs expanded so a tab-indented
+		// file still loads, while genuinely malformed YAML stays fatal.
+		if expanded, ok := expandLeadingTabs(data); ok {
+			if retryErr := yaml.Unmarshal(expanded, target); retryErr == nil {
+				return nil
+			}
+		}
 		return fmt.Errorf("failed to decode snyk policy: %w", err)
 	}
 	return nil
+}
+
+// expandLeadingTabs replaces tabs in each line's indentation with spaces. The
+// second return value reports whether any line was actually indented with a
+// tab; when it is false the caller has nothing to retry.
+func expandLeadingTabs(data []byte) ([]byte, bool) {
+	lines := strings.Split(string(data), "\n")
+	found := false
+
+	for i, line := range lines {
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+		if !strings.ContainsRune(line[:indent], '\t') {
+			continue
+		}
+		found = true
+		lines[i] = strings.ReplaceAll(line[:indent], "\t", "  ") + line[indent:]
+	}
+
+	if !found {
+		return nil, false
+	}
+	return []byte(strings.Join(lines, "\n")), true
 }
 
 // Marshal writes a serialized policy to w.
@@ -58,6 +98,25 @@ type Policy struct {
 	Ignore        RuleSet         `yaml:"ignore"`
 	Patch         RuleSet         `yaml:"patch"`
 	Exclude       *map[string]any `yaml:"exclude,omitempty"`
+}
+
+// UnmarshalYAML decodes a Policy, tolerating a document that is not a mapping.
+// Legacy accepts a bare scalar or a sequence in .snyk and carries on with no
+// policy, so a junk document must not fail the whole test.
+func (p *Policy) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return nil
+	}
+
+	// A distinct type breaks the recursion back into this method.
+	type policyShadow Policy
+	var shadow policyShadow
+	if err := node.Decode(&shadow); err != nil {
+		return fmt.Errorf("failed to decode policy: %w", err)
+	}
+
+	*p = Policy(shadow)
+	return nil
 }
 
 // Severity models an issues severity level.
@@ -107,6 +166,26 @@ func (r *RuleSet) UnmarshalYAML(node *yaml.Node) error {
 // RuleEntry models rules grouped by the dependency path.
 type RuleEntry map[string]*Rule
 
+// UnmarshalYAML decodes a RuleEntry, substituting an empty rule for a null rule
+// body. `- '*':` with nothing under it is an ignore with no reason and no
+// expiry in legacy; leaving the pointer nil would hand a nil rule to every
+// consumer of the policy.
+func (re *RuleEntry) UnmarshalYAML(node *yaml.Node) error {
+	var rules map[string]*Rule
+	if err := node.Decode(&rules); err != nil {
+		return fmt.Errorf("failed to decode rule entry: %w", err)
+	}
+
+	for path, rule := range rules {
+		if rule == nil {
+			rules[path] = &Rule{}
+		}
+	}
+
+	*re = rules
+	return nil
+}
+
 // Rule models an actual policy rule.
 type Rule struct {
 	Created            *time.Time  `yaml:"created,omitempty"`
@@ -132,11 +211,12 @@ type lenientTime struct {
 	t *time.Time
 }
 
+// UnmarshalYAML parses a timestamp in any of the supported layouts. A value it
+// cannot parse is left unset rather than rejected: legacy applies such a rule
+// with no expiry instead of failing the file, and an ignore that silently loses
+// its expiry is a smaller surprise than a scan that refuses to run.
 func (lt *lenientTime) UnmarshalYAML(node *yaml.Node) error {
-	if node.Kind != yaml.ScalarNode {
-		return fmt.Errorf("line %d: timestamp must be a scalar", node.Line)
-	}
-	if node.Tag == "!!null" || node.Value == "" {
+	if node.Kind != yaml.ScalarNode || node.Tag == "!!null" || node.Value == "" {
 		return nil
 	}
 	for _, layout := range lenientTimeFormats {
@@ -145,7 +225,7 @@ func (lt *lenientTime) UnmarshalYAML(node *yaml.Node) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("line %d: timestamp %q does not match any supported format", node.Line, node.Value)
+	return nil
 }
 
 // UnmarshalYAML decodes a Rule with lenient parsing for timestamp fields.

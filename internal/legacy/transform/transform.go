@@ -65,7 +65,9 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 		UniqueCount:       UniqueCount(vulnReport.Vulnerabilities),
 		DependencyCount:   int64(params.DepCount),
 		Vulnerabilities:   vulnReport.Vulnerabilities,
-		Ok:                len(params.Findings) == 0,
+		// Ignored findings do not count against `ok` - legacy reports a test
+		// whose every finding was ignored as passing.
+		Ok: len(vulnReport.Vulnerabilities) == 0,
 		Filtered: definitions.Filtered{
 			Ignore: vulnReport.Ignored,
 			Patch:  make([]string, 0),

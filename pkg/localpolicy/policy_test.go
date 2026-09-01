@@ -188,6 +188,104 @@ patch: {}
 	assert.Contains(t, err.Error(), "non-empty sequence")
 }
 
+func TestPolicy_Unmarshal_NothingToParse(t *testing.T) {
+	testCases := map[string]string{
+		"empty file":    ``,
+		"whitespace":    "   \n\t\n  \n",
+		"comments only": "# nothing to see here\n# really\n",
+	}
+
+	for name, content := range testCases {
+		t.Run(name, func(t *testing.T) {
+			var p localpolicy.Policy
+			err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+			require.NoError(t, err, "a file with nothing to parse is an absent policy, not a failure")
+
+			assert.Empty(t, p.Version)
+			assert.Empty(t, p.Ignore)
+			assert.Empty(t, p.Patch)
+		})
+	}
+}
+
+func TestPolicy_Unmarshal_ToleratesNonMappingDocument(t *testing.T) {
+	testCases := map[string]string{
+		"top-level scalar":   "just a string\n",
+		"top-level sequence": "- a\n- b\n",
+		"explicit null":      "~\n",
+	}
+
+	for name, content := range testCases {
+		t.Run(name, func(t *testing.T) {
+			var p localpolicy.Policy
+			err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+			require.NoError(t, err)
+
+			assert.Empty(t, p.Ignore)
+		})
+	}
+}
+
+func TestPolicy_Unmarshal_TabIndentation(t *testing.T) {
+	content := "version: v1.25.0\nignore:\n\tSNYK-JS-FOO-1: []\npatch: {}\n"
+
+	var p localpolicy.Policy
+	err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+	require.NoError(t, err, "legacy accepts a tab-indented policy file")
+
+	assert.Equal(t, "v1.25.0", p.Version)
+	_, ok := p.Ignore["SNYK-JS-FOO-1"]
+	assert.True(t, ok)
+}
+
+func TestPolicy_Unmarshal_MalformedYAMLStillFails(t *testing.T) {
+	var p localpolicy.Policy
+	err := localpolicy.Unmarshal(bytes.NewBufferString("version: v1.25.0\nignore: [unclosed\n"), &p)
+	require.Error(t, err, "tab tolerance must not swallow genuinely malformed YAML")
+	assert.Contains(t, err.Error(), "failed to decode snyk policy")
+}
+
+func TestPolicy_Unmarshal_NullRuleBody(t *testing.T) {
+	content := `version: v1.25.0
+ignore:
+  SNYK-JS-CXCT-535487:
+    - '*':
+patch: {}
+`
+
+	var p localpolicy.Policy
+	err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+	require.NoError(t, err)
+
+	entries := p.Ignore["SNYK-JS-CXCT-535487"]
+	require.Len(t, entries, 1)
+	rule, ok := entries[0]["*"]
+	require.True(t, ok)
+	require.NotNil(t, rule, "a null rule body must decode to an empty rule, not a nil pointer")
+	assert.Nil(t, rule.Reason)
+	assert.Nil(t, rule.Expires)
+}
+
+func TestPolicy_Unmarshal_UnparseableTimestamp(t *testing.T) {
+	content := `version: v1.25.0
+ignore:
+  SNYK-JS-FOO-1:
+    - '*':
+        reason: bad ts
+        expires: not-a-date
+patch: {}
+`
+
+	var p localpolicy.Policy
+	err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+	require.NoError(t, err, "legacy applies the rule with no expiry rather than failing the file")
+
+	rule := p.Ignore["SNYK-JS-FOO-1"][0]["*"]
+	require.NotNil(t, rule)
+	assert.Equal(t, util.Ptr("bad ts"), rule.Reason)
+	assert.Nil(t, rule.Expires)
+}
+
 func TestPolicy_Marshal(t *testing.T) {
 	var buf bytes.Buffer
 	p := localpolicy.New()
