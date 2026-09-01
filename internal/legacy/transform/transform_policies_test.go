@@ -333,7 +333,6 @@ func TestIgnoredBy_TypeField_InFinalJSON(t *testing.T) {
 func TestConvertSnykSchemaFindingsToLegacy_OkWhenAllFindingsIgnored(t *testing.T) {
 	all := loadFindings(t, "testdata/dotSnykIgnore-findings.json")
 
-	// Keep only the suppressed findings, so every finding in the test is ignored.
 	var findings []testapi.FindingData
 	for _, f := range all {
 		if f.Attributes.Suppression != nil {

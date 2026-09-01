@@ -30,6 +30,10 @@ func LocalPolicyToSchema(lp *localpolicy.Policy) *[]testapi.LocalIgnore {
 		}
 	}
 
+	if len(ignores) == 0 {
+		return nil
+	}
+
 	return &ignores
 }
 
@@ -158,7 +162,6 @@ func processLegacyRule(vulnID, path string, rule *localpolicy.Rule) testapi.Loca
 		splitPath = util.Ptr(strings.Split(path, " > "))
 	}
 
-	// A policy built by hand rather than parsed can still carry a nil rule.
 	if rule == nil {
 		rule = &localpolicy.Rule{}
 	}

@@ -2,6 +2,7 @@ package osmonitor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -11,6 +12,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
+	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
 )
 
 // RunDflyMonitorFlow runs the dragonfly depgraph flow for `snyk monitor`.
@@ -30,6 +32,10 @@ func RunDflyMonitorFlow(
 	for _, inputDir := range inputDirs {
 		localPolicy, err := common.CreateLocalPolicy(ctx, inputDir)
 		if err != nil {
+			var pe *localpolicy.PolicyError
+			if errors.As(err, &pe) {
+				return nil, pe
+			}
 			return nil, fmt.Errorf("failed to create local policy: %w", err)
 		}
 

@@ -3,6 +3,7 @@ package localpolicy_test
 import (
 	"bytes"
 	_ "embed"
+	"strings"
 	"testing"
 	"time"
 
@@ -227,22 +228,75 @@ func TestPolicy_Unmarshal_ToleratesNonMappingDocument(t *testing.T) {
 }
 
 func TestPolicy_Unmarshal_TabIndentation(t *testing.T) {
-	content := "version: v1.25.0\nignore:\n\tSNYK-JS-FOO-1: []\npatch: {}\n"
+	testCases := map[string]string{
+		"flat rule":   "version: v1.25.0\nignore:\n\tSNYK-JS-FOO-1: []\npatch: {}\n",
+		"nested rule": "version: v1.25.0\nignore:\n\tSNYK-JS-FOO-1:\n\t\t- '*':\n\t\t\treason: r\n",
+	}
 
-	var p localpolicy.Policy
-	err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
-	require.NoError(t, err, "legacy accepts a tab-indented policy file")
+	for name, content := range testCases {
+		t.Run(name, func(t *testing.T) {
+			var p localpolicy.Policy
+			err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+			require.NoError(t, err, "legacy accepts a tab-indented policy file")
 
-	assert.Equal(t, "v1.25.0", p.Version)
-	_, ok := p.Ignore["SNYK-JS-FOO-1"]
-	assert.True(t, ok)
+			assert.Equal(t, "v1.25.0", p.Version)
+			assert.Empty(t, p.Ignore, "legacy drops a tab-indented ignore rather than applying it")
+		})
+	}
 }
 
 func TestPolicy_Unmarshal_MalformedYAMLStillFails(t *testing.T) {
 	var p localpolicy.Policy
 	err := localpolicy.Unmarshal(bytes.NewBufferString("version: v1.25.0\nignore: [unclosed\n"), &p)
 	require.Error(t, err, "tab tolerance must not swallow genuinely malformed YAML")
-	assert.Contains(t, err.Error(), "failed to decode snyk policy")
+	assert.Contains(t, err.Error(), "invalid .snyk policy")
+}
+
+func TestPolicy_Unmarshal_ErrorIsASingleSentence(t *testing.T) {
+	testCases := map[string]string{
+		"malformed YAML":    "version: v1.25.0\nignore: [unclosed\n",
+		"scalar rule set":   "version: v1.25.0\nignore: nonsense\n",
+		"sequence rule set": "version: v1.25.0\nignore:\n  - SNYK-JS-FOO-1\n",
+	}
+
+	for name, content := range testCases {
+		t.Run(name, func(t *testing.T) {
+			var p localpolicy.Policy
+			err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+			require.Error(t, err)
+
+			assert.True(t, strings.HasPrefix(err.Error(), "invalid .snyk policy: "), err.Error())
+			assert.NotContains(t, err.Error(), "failed to", "no wrapper layers may leak to the user")
+		})
+	}
+}
+
+func TestPolicy_Unmarshal_OldFormat(t *testing.T) {
+	testCases := map[string]string{
+		"empty rule body": "version: v1.25.0\nignore:\n  SNYK-JS-FOO-1: {}\n",
+		"rule body":       "version: v1.25.0\nignore:\n  SNYK-JS-FOO-1:\n    reason: r\n",
+	}
+
+	for name, content := range testCases {
+		t.Run(name, func(t *testing.T) {
+			var p localpolicy.Policy
+			err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+			require.Error(t, err)
+
+			assert.ErrorIs(t, err, localpolicy.ErrOldFormat)
+			assert.Equal(t, "old, unsupported .snyk format detected", err.Error())
+		})
+	}
+}
+
+func TestPolicy_Unmarshal_VulnWithNoPaths(t *testing.T) {
+	var p localpolicy.Policy
+	err := localpolicy.Unmarshal(bytes.NewBufferString("version: v1.25.0\nignore:\n  SNYK-JS-FOO-1: []\n"), &p)
+	require.NoError(t, err)
+
+	entries, ok := p.Ignore["SNYK-JS-FOO-1"]
+	require.True(t, ok)
+	assert.Empty(t, entries)
 }
 
 func TestPolicy_Unmarshal_NullRuleBody(t *testing.T) {

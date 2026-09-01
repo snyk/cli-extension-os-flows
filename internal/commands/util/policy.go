@@ -94,6 +94,10 @@ func GetLocalPolicy(ctx context.Context, inputDir string) (*localpolicy.Policy, 
 
 	var p localpolicy.Policy
 	if err := localpolicy.Unmarshal(fd, &p); err != nil {
+		var pe *localpolicy.PolicyError
+		if errors.As(err, &pe) {
+			return nil, pe
+		}
 		return nil, fmt.Errorf("failed to read local policy: %w", err)
 	}
 	return &p, nil

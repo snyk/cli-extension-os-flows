@@ -88,9 +88,6 @@ func TestResolvePolicyFile_NoPolicyFile(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// A policy file that parses as YAML but is not a mapping carries no rules.
-// Legacy proceeds with no policy rather than failing the scan, so this must not
-// return an error.
 func TestGetLocalPolicy_NonMappingPolicy(t *testing.T) {
 	dir, err := os.MkdirTemp("", "snyk-policy")
 	require.NoError(t, err)

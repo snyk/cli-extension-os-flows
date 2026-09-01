@@ -88,6 +88,22 @@ func TestLegacyPolicyToLocalIgnores_NoIgnores(t *testing.T) {
 	assert.Nil(t, lp)
 }
 
+func TestLegacyPolicyToLocalIgnores_VulnWithNoPaths(t *testing.T) {
+	testCases := map[string]localpolicy.RuleSet{
+		"no entries":    {"SNYK-JS-CXCT-535487": []localpolicy.RuleEntry{}},
+		"empty entry":   {"SNYK-JS-CXCT-535487": []localpolicy.RuleEntry{{}}},
+		"nil entry set": {"SNYK-JS-CXCT-535487": nil},
+	}
+
+	for name, ignore := range testCases {
+		t.Run(name, func(t *testing.T) {
+			lp := transform.LocalPolicyToSchema(&localpolicy.Policy{Version: "v1.0.0", Ignore: ignore})
+
+			assert.Nil(t, lp)
+		})
+	}
+}
+
 func TestLegacyPolicyToLocalIgnores_NilRule(t *testing.T) {
 	p := &localpolicy.Policy{
 		Version: "v1.0.0",

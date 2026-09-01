@@ -1,6 +1,7 @@
 package localpolicy
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +12,28 @@ import (
 )
 
 const specVersion = "v1.25.1"
+
+// PolicyError is a user-facing error about the contents of a .snyk file.
+type PolicyError struct {
+	msg string
+	err error
+}
+
+func (e *PolicyError) Error() string { return e.msg }
+
+func (e *PolicyError) Unwrap() error { return e.err }
+
+// ErrOldFormat reports a .snyk that maps a vulnerability ID straight to a rule
+// body instead of to a list of dependency paths.
+var ErrOldFormat = &PolicyError{msg: "old, unsupported .snyk format detected"}
+
+func asPolicyError(err error) error {
+	var pe *PolicyError
+	if errors.As(err, &pe) {
+		return pe
+	}
+	return &PolicyError{msg: "invalid .snyk policy: " + err.Error(), err: err}
+}
 
 // New returns a pointer to a Policy, which will be prepopulated with a version
 // and non-nil maps. This is the preferred way to create a new policy from scratch.
@@ -23,10 +46,6 @@ func New() *Policy {
 }
 
 // Unmarshal reads a policy from r into target.
-//
-// A file with nothing to parse - empty, whitespace, or comments only - leaves
-// target untouched and reports no error, matching the legacy CLI, which treats
-// such a file as an absent policy rather than a failure.
 func Unmarshal(r io.Reader, target *Policy) error {
 	data, err := io.ReadAll(r)
 	if err != nil {
@@ -34,23 +53,17 @@ func Unmarshal(r io.Reader, target *Policy) error {
 	}
 
 	if err := yaml.Unmarshal(data, target); err != nil {
-		// The legacy YAML reader accepts a tab as indentation where the spec
-		// does not. Retry once with leading tabs expanded so a tab-indented
-		// file still loads, while genuinely malformed YAML stays fatal.
-		if expanded, ok := expandLeadingTabs(data); ok {
-			if retryErr := yaml.Unmarshal(expanded, target); retryErr == nil {
+		if stripped, ok := stripIndentTabs(data); ok {
+			if retryErr := yaml.Unmarshal(stripped, target); retryErr == nil {
 				return nil
 			}
 		}
-		return fmt.Errorf("failed to decode snyk policy: %w", err)
+		return asPolicyError(err)
 	}
 	return nil
 }
 
-// expandLeadingTabs replaces tabs in each line's indentation with spaces. The
-// second return value reports whether any line was actually indented with a
-// tab; when it is false the caller has nothing to retry.
-func expandLeadingTabs(data []byte) ([]byte, bool) {
+func stripIndentTabs(data []byte) ([]byte, bool) {
 	lines := strings.Split(string(data), "\n")
 	found := false
 
@@ -60,7 +73,7 @@ func expandLeadingTabs(data []byte) ([]byte, bool) {
 			continue
 		}
 		found = true
-		lines[i] = strings.ReplaceAll(line[:indent], "\t", "  ") + line[indent:]
+		lines[i] = strings.ReplaceAll(line[:indent], "\t", "") + line[indent:]
 	}
 
 	if !found {
@@ -86,7 +99,7 @@ func Load(path string) (*Policy, error) {
 	defer fd.Close()
 	var p Policy
 	if err := Unmarshal(fd, &p); err != nil {
-		return nil, fmt.Errorf("failed to load policy: %w", err)
+		return nil, err
 	}
 	return &p, nil
 }
@@ -101,18 +114,15 @@ type Policy struct {
 }
 
 // UnmarshalYAML decodes a Policy, tolerating a document that is not a mapping.
-// Legacy accepts a bare scalar or a sequence in .snyk and carries on with no
-// policy, so a junk document must not fail the whole test.
 func (p *Policy) UnmarshalYAML(node *yaml.Node) error {
 	if node.Kind != yaml.MappingNode {
 		return nil
 	}
 
-	// A distinct type breaks the recursion back into this method.
 	type policyShadow Policy
 	var shadow policyShadow
 	if err := node.Decode(&shadow); err != nil {
-		return fmt.Errorf("failed to decode policy: %w", err)
+		return err //nolint:wrapcheck // Unmarshal adds the user-facing prefix.
 	}
 
 	*p = Policy(shadow)
@@ -140,9 +150,14 @@ type RuleSet map[VulnID][]RuleEntry
 func (r *RuleSet) UnmarshalYAML(node *yaml.Node) error {
 	switch node.Kind {
 	case yaml.MappingNode:
+		for i := 1; i < len(node.Content); i += 2 {
+			if node.Content[i].Kind == yaml.MappingNode {
+				return ErrOldFormat
+			}
+		}
 		var m map[VulnID][]RuleEntry
 		if err := node.Decode(&m); err != nil {
-			return fmt.Errorf("failed to decode rule set: %w", err)
+			return fmt.Errorf("line %d: %w", node.Line, err)
 		}
 		*r = m
 		return nil
@@ -166,14 +181,11 @@ func (r *RuleSet) UnmarshalYAML(node *yaml.Node) error {
 // RuleEntry models rules grouped by the dependency path.
 type RuleEntry map[string]*Rule
 
-// UnmarshalYAML decodes a RuleEntry, substituting an empty rule for a null rule
-// body. `- '*':` with nothing under it is an ignore with no reason and no
-// expiry in legacy; leaving the pointer nil would hand a nil rule to every
-// consumer of the policy.
+// UnmarshalYAML decodes a RuleEntry, substituting an empty rule for a null rule body.
 func (re *RuleEntry) UnmarshalYAML(node *yaml.Node) error {
 	var rules map[string]*Rule
 	if err := node.Decode(&rules); err != nil {
-		return fmt.Errorf("failed to decode rule entry: %w", err)
+		return err //nolint:wrapcheck // Unmarshal adds the user-facing prefix.
 	}
 
 	for path, rule := range rules {
@@ -211,10 +223,6 @@ type lenientTime struct {
 	t *time.Time
 }
 
-// UnmarshalYAML parses a timestamp in any of the supported layouts. A value it
-// cannot parse is left unset rather than rejected: legacy applies such a rule
-// with no expiry instead of failing the file, and an ignore that silently loses
-// its expiry is a smaller surprise than a scan that refuses to run.
 func (lt *lenientTime) UnmarshalYAML(node *yaml.Node) error {
 	if node.Kind != yaml.ScalarNode || node.Tag == "!!null" || node.Value == "" {
 		return nil
@@ -242,7 +250,7 @@ func (r *Rule) UnmarshalYAML(node *yaml.Node) error {
 		DisregardIfFixable *bool       `yaml:"disregardIfFixable,omitempty"`
 	}
 	if err := node.Decode(&shadow); err != nil {
-		return fmt.Errorf("failed to decode rule: %w", err)
+		return err //nolint:wrapcheck // Unmarshal adds the user-facing prefix.
 	}
 	r.Created = shadow.Created.t
 	r.Expires = shadow.Expires.t
