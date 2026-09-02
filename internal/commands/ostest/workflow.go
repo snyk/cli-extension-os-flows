@@ -349,5 +349,28 @@ func OSWorkflow(
 	//nolint:errcheck // We don't need to fail the command due to UI errors.
 	progressBar.Clear()
 
-	return handleOutput(ctx, allLegacyFindings, allOutputData)
+	out, err := handleOutput(ctx, allLegacyFindings, allOutputData)
+	if err != nil {
+		return nil, err
+	}
+
+	// Auto-detect: when opted in via SNYK_AUTODETECT_OSS and the user didn't
+	// already pass --unmanaged, scan input dirs for C/C++ artefacts and run
+	// an extra unmanaged scan via the legacy CLI for the dirs that look
+	// unmanaged-eligible. Results are appended to the managed output.
+	if !flowCfg.Unmanaged && autoDetectEnabled() {
+		if cppDirs := detectCPPDirs(inputDirs); len(cppDirs) > 0 {
+			cmdctx.Logger(ctx).Debug().Strs("cpp_dirs", cppDirs).Msg("autodetect: invoking legacy --unmanaged")
+			unmanagedData, unmErr := invokeLegacyUnmanagedScan(ctx)
+			if unmErr != nil {
+				// Don't fail the whole scan; the managed results are still
+				// useful and the user can rerun with --unmanaged explicitly.
+				cmdctx.Logger(ctx).Warn().Err(unmErr).Msg("autodetect: unmanaged scan failed")
+			} else {
+				out = append(out, unmanagedData...)
+			}
+		}
+	}
+
+	return out, nil
 }
