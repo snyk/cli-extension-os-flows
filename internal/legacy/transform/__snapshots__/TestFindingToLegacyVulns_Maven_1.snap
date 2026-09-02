@@ -88,6 +88,19 @@
       "org.apache.logging.log4j:log4j-core@2.14.1"
     ],
     "functions": [],
+    "functions_new": [
+      {
+        "functionId": {
+          "className": "org.apache.logging.log4j.core.lookup.StrSubstitutor",
+          "functionName": "substitute"
+        },
+        "version": [
+          "[2.0-beta9,2.3.1)",
+          "[2.4,2.12.3)",
+          "[2.13.0,2.17.0)"
+        ]
+      }
+    ],
     "id": "SNYK-JAVA-ORGAPACHELOGGINGLOG4J-2321524",
     "identifiers": {
       "CVE": [
@@ -96,6 +109,9 @@
       "CWE": [
         "CWE-400"
       ]
+    },
+    "insights": {
+      "triageAdvice": "This vulnerability is only applicable on systems using a non-default Pattern Layout with a Context Lookup"
     },
     "isDisputed": false,
     "isPatchable": false,
@@ -107,6 +123,7 @@
       "groupId": "org.apache.logging.log4j"
     },
     "modificationTime": "2025-08-13T05:20:05.717545Z",
+    "moduleName": "org.apache.logging.log4j:log4j-core",
     "name": "org.apache.logging.log4j:log4j-core",
     "packageManager": "maven",
     "packageName": "org.apache.logging.log4j:log4j-core",

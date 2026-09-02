@@ -140,7 +140,11 @@
     "foo@0.0.0"
    ],
    "functions": [],
+   "functions_new": [],
    "id": "snyk-vuln-123",
+   "insights": {
+    "triageAdvice": null
+   },
    "isPatchable": false,
    "isUpgradable": true,
    "language": "js",

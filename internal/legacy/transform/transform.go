@@ -218,8 +218,40 @@ func processSnykVulnProblem(vuln *definitions.Vulnerability, prob *testapi.Probl
 	setVulnCvssInfo(vuln, &snykProblemVuln)
 	setVulnExploitDetails(vuln, &snykProblemVuln.ExploitDetails)
 	setVulnEpssDetails(vuln, snykProblemVuln.EpssDetails)
+	setVulnInsights(vuln, snykProblemVuln.Insights)
+	setVulnFunctionsNew(vuln, snykProblemVuln.VulnerableFunctionsList)
 	setMavenModuleName(vuln, &snykProblemVuln)
 	return nil
+}
+
+func setVulnInsights(vuln *definitions.Vulnerability, snykInsights *testapi.SnykvulndbVulnInsights) {
+	vuln.Insights = &definitions.Insights{}
+	if snykInsights != nil {
+		vuln.Insights.TriageAdvice = snykInsights.TriageAdvice
+	}
+}
+
+// setVulnFunctionsNew maps the vulnerable functions onto the legacy functions_new list. Legacy emits
+// the key on every vulnerability, as an empty array when the package has no known vulnerable functions.
+func setVulnFunctionsNew(vuln *definitions.Vulnerability, snykFunctions *[]testapi.SnykvulndbVulnerableFunction) {
+	fns := []definitions.NewFunctionInfo{}
+	if snykFunctions != nil {
+		for _, f := range *snykFunctions {
+			versions := f.Versions
+			if versions == nil {
+				versions = []string{}
+			}
+			fns = append(fns, definitions.NewFunctionInfo{
+				FunctionId: definitions.NewFunctionId{
+					FunctionName: f.FunctionId.FunctionName,
+					ClassName:    f.FunctionId.ClassName,
+					FilePath:     f.FunctionId.FilePath,
+				},
+				Version: versions,
+			})
+		}
+	}
+	vuln.FunctionsNew = &fns
 }
 
 func setMavenModuleName(vuln *definitions.Vulnerability, snykProblemVuln *testapi.SnykVulnProblem) {
@@ -233,6 +265,7 @@ func setMavenModuleName(vuln *definitions.Vulnerability, snykProblemVuln *testap
 
 func setBasicVulnInfo(vuln *definitions.Vulnerability, snykProblemVuln *testapi.SnykVulnProblem) {
 	vuln.Id = snykProblemVuln.Id
+	vuln.ModuleName = snykProblemVuln.ModuleName
 	vuln.SeverityBasedOn = snykProblemVuln.SeverityBasedOn
 	vuln.CreationTime = snykProblemVuln.CreatedAt.Format(legacyTimeFormat)
 	vuln.Version = snykProblemVuln.PackageVersion
