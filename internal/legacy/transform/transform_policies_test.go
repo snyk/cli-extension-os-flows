@@ -3,6 +3,8 @@ package transform_test
 import (
 	"testing"
 
+	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	"github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
@@ -11,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
+	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/utils"
 )
 
@@ -324,4 +328,32 @@ func TestIgnoredBy_TypeField_InFinalJSON(t *testing.T) {
 			assert.Equal(t, tt.expectedType, *ignored.IgnoredBy.Type)
 		})
 	}
+}
+
+func TestConvertSnykSchemaFindingsToLegacy_OkWhenAllFindingsIgnored(t *testing.T) {
+	all := loadFindings(t, "testdata/dotSnykIgnore-findings.json")
+
+	var findings []testapi.FindingData
+	for _, f := range all {
+		if f.Attributes.Suppression != nil {
+			findings = append(findings, f)
+		}
+	}
+	require.NotEmpty(t, findings)
+
+	logger := zerolog.Nop()
+	ctx := cmdctx.WithLogger(t.Context(), &logger)
+	ctx = cmdctx.WithConfig(ctx, configuration.NewWithOpts())
+
+	res, err := transform.ConvertSnykSchemaFindingsToLegacy(ctx, &transform.SnykSchemaToLegacyParams{
+		Findings:   findings,
+		TargetDir:  t.TempDir(),
+		ErrFactory: errors.NewErrorFactory(&logger),
+		Logger:     &logger,
+	})
+	require.NoError(t, err)
+
+	require.Empty(t, res.Vulnerabilities, "every finding in this test is ignored")
+	require.NotEmpty(t, res.Filtered.Ignore)
+	assert.True(t, res.Ok, "a test whose every finding is ignored passes, as it does in legacy")
 }

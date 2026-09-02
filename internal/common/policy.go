@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
+	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
 )
 
 // CreateLocalPolicy will create a local policy only if risk score or severity threshold or reachability filters are specified in the config.
@@ -128,6 +130,10 @@ func getFailOnPolicy(ctx context.Context) (supportedFailOnPolicy, error) {
 func getLocalIgnores(ctx context.Context, inputDir string) (*[]testapi.LocalIgnore, error) {
 	policy, err := cmdutil.GetLocalPolicy(ctx, inputDir)
 	if err != nil {
+		var pe *localpolicy.PolicyError
+		if errors.As(err, &pe) {
+			return nil, pe
+		}
 		return nil, fmt.Errorf("failed to get local ignores: %w", err)
 	}
 	if policy != nil {

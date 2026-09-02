@@ -30,6 +30,10 @@ func LocalPolicyToSchema(lp *localpolicy.Policy) *[]testapi.LocalIgnore {
 		}
 	}
 
+	if len(ignores) == 0 {
+		return nil
+	}
+
 	return &ignores
 }
 
@@ -156,6 +160,10 @@ func processLegacyRule(vulnID, path string, rule *localpolicy.Rule) testapi.Loca
 	var splitPath *[]string
 	if path != "*" {
 		splitPath = util.Ptr(strings.Split(path, " > "))
+	}
+
+	if rule == nil {
+		rule = &localpolicy.Rule{}
 	}
 
 	return testapi.LocalIgnore{
