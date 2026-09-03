@@ -235,8 +235,9 @@ type MavenModuleName struct {
 
 // NewFunctionId defines model for NewFunctionId.
 type NewFunctionId struct {
-	FilePath     string `json:"filePath"`
-	FunctionName string `json:"functionName"`
+	ClassName    *string `json:"className,omitempty"`
+	FilePath     *string `json:"filePath,omitempty"`
+	FunctionName string  `json:"functionName"`
 }
 
 // NewFunctionInfo defines model for NewFunctionInfo.

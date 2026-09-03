@@ -37,11 +37,13 @@ alias UpgradePath = string | boolean;
 
 model FunctionId {
   className: string | null;
-  ...NewFunctionId;
+  filePath: string;
+  functionName: string;
 }
 
 model NewFunctionId {
-  filePath: string;
+  className?: string;
+  filePath?: string;
   functionName: string;
 }
 

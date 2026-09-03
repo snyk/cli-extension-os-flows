@@ -47,7 +47,6 @@ func processSuppressionForVuln(vuln *definitions.Vulnerability, suppression test
 			vuln.Ignores = &[]definitions.VulnFilteredIgnored{legacyIgnore}
 		}
 		vuln.SecurityPolicyMetaData = buildSecurityPolicyMetaData(&legacyIgnore)
-		vuln.Insights = &definitions.Insights{}
 	} else {
 		vuln.Filtered = buildFiltered(&definitions.VulnFilteredIgnored{
 			Created: formatTimeOrBlank(suppression.CreatedAt, time.RFC3339Nano),

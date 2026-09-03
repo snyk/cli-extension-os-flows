@@ -101,12 +101,16 @@
         },
         "id": "SNYK-JAVA-ORGAPACHELOGGINGLOG4J-2321524",
         "initially_fixed_in_versions": ["2.3.1", "2.12.3", "2.17.0"],
+        "insights": {
+          "triage_advice": "This vulnerability is only applicable on systems using a non-default Pattern Layout with a Context Lookup"
+        },
         "is_disputed": false,
         "is_fixable": true,
         "is_malicious": false,
         "is_proprietary": false,
         "is_social_media_trending": false,
         "modified_at": "2025-08-13T05:20:05.717545Z",
+        "module_name": "org.apache.logging.log4j:log4j-core",
         "package_full_name": "org.apache.logging.log4j:log4j-core",
         "package_name": "log4j-core",
         "package_namespace": "org.apache.logging.log4j",
@@ -128,7 +132,16 @@
         ],
         "severity": "high",
         "severity_based_on": "CVSS",
-        "source": "snyk_vuln"
+        "source": "snyk_vuln",
+        "vulnerable_functions_list": [
+          {
+            "function_id": {
+              "class_name": "org.apache.logging.log4j.core.lookup.StrSubstitutor",
+              "function_name": "substitute"
+            },
+            "versions": ["[2.0-beta9,2.3.1)", "[2.4,2.12.3)", "[2.13.0,2.17.0)"]
+          }
+        ]
       },
       {
         "id": "CVE-2021-45105",
