@@ -11,6 +11,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/output_workflow"
 	pkgMocks "github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
 	"github.com/snyk/go-application-framework/pkg/workflow"
@@ -77,6 +78,35 @@ func Test_getUnifiedProjectResults_AssetLinkPropagates(t *testing.T) {
 	require.Len(t, results, 1)
 	assert.Empty(t, remaining)
 	assert.Equal(t, assetURL, results[0].AssetLink)
+}
+
+func Test_getDefaultWriter_toonDelegation(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	output := NewMockOutputDestination(mockCtl)
+	output.EXPECT().GetWriter().AnyTimes().Return(&bytes.Buffer{})
+
+	t.Run("toon stdout delegates", func(t *testing.T) {
+		config := configuration.NewWithOpts()
+		config.Set(output_workflow.OUTPUT_CONFIG_KEY_TOON, true)
+		assert.Nil(t, getDefaultWriter(config, output))
+	})
+
+	t.Run("toon file only keeps human stdout", func(t *testing.T) {
+		config := configuration.NewWithOpts()
+		config.Set(output_workflow.OUTPUT_CONFIG_KEY_TOON_FILE, t.TempDir()+"/out.toon")
+		assert.NotNil(t, getDefaultWriter(config, output))
+	})
+
+	t.Run("toon stdout with json file keeps file writer", func(t *testing.T) {
+		config := configuration.NewWithOpts()
+		config.Set(output_workflow.OUTPUT_CONFIG_KEY_TOON, true)
+		config.Set(OutputConfigKeyJSONFile, t.TempDir()+"/out.json")
+		config.Set(OutputConfigKeyFileWriters, []FileWriter{{OutputConfigKeyJSONFile, "application/json", nil, true}})
+
+		writerMap := getWritersToUse(config, output)
+		assert.Nil(t, writerMap[DefaultWriter])
+		assert.NotNil(t, writerMap[OutputConfigKeyJSONFile])
+	})
 }
 
 func Test_getWritersToUse(t *testing.T) {
