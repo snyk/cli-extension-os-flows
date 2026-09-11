@@ -216,7 +216,8 @@ func (re *RuleEntry) UnmarshalYAML(node *yaml.Node) error {
 // foldUnderIndentedRule reattaches rule fields that were indented level with their
 // dependency path instead of under it, so YAML made them siblings of the path
 // rather than its body. Each run of such fields folds into the body of the nearest
-// preceding path. A well-formed entry is returned unchanged.
+// preceding path, or becomes an inert path of its own when there is none, matching
+// what legacy does. A well-formed entry is returned unchanged.
 func foldUnderIndentedRule(node *yaml.Node) *yaml.Node {
 	folded := *node
 	folded.Content = nil
@@ -228,11 +229,18 @@ func foldUnderIndentedRule(node *yaml.Node) *yaml.Node {
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		key, value := node.Content[i], node.Content[i+1]
 
-		if body != nil && isStrayRuleField(key, value) {
-			body.Kind = yaml.MappingNode
-			body.Tag = "!!map"
-			body.Value = ""
-			body.Content = append(body.Content, key, value)
+		if isStrayRuleField(key, value) {
+			if body != nil {
+				body.Kind = yaml.MappingNode
+				body.Tag = "!!map"
+				body.Value = ""
+				body.Content = append(body.Content, key, value)
+			} else {
+				// Nothing to fold into. Legacy keeps the field as a path of its own,
+				// which can never match a dependency, so empty its body and let the
+				// rule be inert rather than failing the whole file.
+				folded.Content = append(folded.Content, key, &yaml.Node{Kind: yaml.ScalarNode, Tag: tagNull})
+			}
 			changed = true
 			continue
 		}

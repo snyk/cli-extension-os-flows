@@ -293,6 +293,36 @@ ignore:
 	assert.Equal(t, util.Ptr("r2"), entries[1]["c > d"].Reason)
 }
 
+func TestPolicy_Unmarshal_StrayRuleFieldsWithNoPath(t *testing.T) {
+	// There is no dependency path for the fields to fold into. Legacy
+	// (snyk-policy 4.1.6) loads this and treats each field as a path of its own,
+	// which can never match a dependency: the scan runs and the ignore is simply
+	// never applied. We match that outcome rather than failing the whole file.
+	content := `version: v1.25.0
+ignore:
+  SNYK-A:
+    - reason: r
+      expires: 2024-10-21T00:00:00.000Z
+patch: {}
+`
+
+	var p localpolicy.Policy
+	err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+	require.NoError(t, err, "a stray rule field with no path must not fail the file")
+
+	entries := p.Ignore["SNYK-A"]
+	require.Len(t, entries, 1)
+	require.Len(t, entries[0], 2)
+
+	for _, path := range []string{"reason", "expires"} {
+		rule, ok := entries[0][path]
+		require.True(t, ok, "expected inert path %q", path)
+		require.NotNil(t, rule, "an inert path must decode to an empty rule, not a nil pointer")
+		assert.Nil(t, rule.Reason)
+		assert.Nil(t, rule.Expires)
+	}
+}
+
 func TestPolicy_Unmarshal_RejectsNonEmptySequence(t *testing.T) {
 	content := `version: v1.25.0
 ignore:
