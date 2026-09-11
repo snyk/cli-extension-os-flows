@@ -181,8 +181,23 @@ func (r *RuleSet) UnmarshalYAML(node *yaml.Node) error {
 // RuleEntry models rules grouped by the dependency path.
 type RuleEntry map[string]*Rule
 
+// tagNull is the YAML resolved tag for an absent value.
+const tagNull = "!!null"
+
+// ruleFieldNames are the keys of a Rule, used to spot rule fields that were
+// under-indented and so parsed as siblings of their dependency path.
+var ruleFieldNames = map[string]bool{
+	"created": true, "expires": true, "patched": true, "ignoredBy": true,
+	"reason": true, "reasonType": true, "source": true, "from": true,
+	"disregardIfFixable": true,
+}
+
 // UnmarshalYAML decodes a RuleEntry, substituting an empty rule for a null rule body.
 func (re *RuleEntry) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.MappingNode {
+		node = foldUnderIndentedRule(node)
+	}
+
 	var rules map[string]*Rule
 	if err := node.Decode(&rules); err != nil {
 		return err //nolint:wrapcheck // Unmarshal adds the user-facing prefix.
@@ -196,6 +211,64 @@ func (re *RuleEntry) UnmarshalYAML(node *yaml.Node) error {
 
 	*re = rules
 	return nil
+}
+
+// foldUnderIndentedRule reattaches rule fields that were indented level with their
+// dependency path instead of under it, so YAML made them siblings of the path
+// rather than its body. Each run of such fields folds into the body of the nearest
+// preceding path. A well-formed entry is returned unchanged.
+func foldUnderIndentedRule(node *yaml.Node) *yaml.Node {
+	folded := *node
+	folded.Content = nil
+	changed := false
+
+	// Body of the most recent dependency path, which strays fold into.
+	var body *yaml.Node
+
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		key, value := node.Content[i], node.Content[i+1]
+
+		if body != nil && isStrayRuleField(key, value) {
+			body.Kind = yaml.MappingNode
+			body.Tag = "!!map"
+			body.Value = ""
+			body.Content = append(body.Content, key, value)
+			changed = true
+			continue
+		}
+
+		// Copy the body so folding into it cannot mutate the caller's node.
+		if isPathBody(value) {
+			body = new(yaml.Node)
+			*body = *value
+			body.Content = append([]*yaml.Node(nil), value.Content...)
+			value = body
+		} else {
+			body = nil
+		}
+		folded.Content = append(folded.Content, key, value)
+	}
+
+	if !changed {
+		return node
+	}
+	return &folded
+}
+
+// isStrayRuleField reports whether a mapping pair looks like a Rule field that
+// escaped its body rather than a dependency path. A real path always carries a
+// mapping or an empty body, never a scalar.
+func isStrayRuleField(key, value *yaml.Node) bool {
+	return value.Kind == yaml.ScalarNode && value.Tag != tagNull && ruleFieldNames[key.Value]
+}
+
+// isPathBody reports whether a value can hold rule fields: either an existing
+// rule body or an empty one.
+func isPathBody(value *yaml.Node) bool {
+	if value.Kind == yaml.MappingNode {
+		return true
+	}
+	return value.Kind == yaml.ScalarNode && (value.Tag == tagNull || value.Value == "")
 }
 
 // Rule models an actual policy rule.

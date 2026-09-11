@@ -177,6 +177,122 @@ patch: {}
 	assert.Equal(t, time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC), rule.Created.UTC())
 }
 
+func TestPolicy_Unmarshal_UnderIndentedRuleBody(t *testing.T) {
+	// The rule fields sit at the same indentation as the path key, so YAML makes
+	// them siblings of '*' rather than its body. Legacy (snyk-policy 4.1.6) loads
+	// this without error but drops the fields on the floor, so the ignore never
+	// expires. We deliberately diverge and fold the fields into the path they were
+	// clearly meant for, honoring the author's expiry date.
+	content := `# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.0
+# ignores vulnerabilities until expiry date; change duration by modifying expiry date
+ignore:
+  SNYK-JS-JSONPATHPLUS-7945884:
+    - '*':
+      reason: transitive dev dependency, waiting for direct dependencies to update major version
+      expires: 2024-10-21T00:00:00.000Z
+      created: 2024-10-11T15:20:00.000Z
+patch: {}
+`
+
+	var p localpolicy.Policy
+	err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+	require.NoError(t, err, "an under-indented rule body must not fail the file")
+
+	entries, ok := p.Ignore["SNYK-JS-JSONPATHPLUS-7945884"]
+	require.True(t, ok)
+	require.Len(t, entries, 1)
+	require.Len(t, entries[0], 1, "the rule fields must fold into the path, not become paths of their own")
+
+	rule, ok := entries[0]["*"]
+	require.True(t, ok, "the wildcard path must survive")
+	require.NotNil(t, rule)
+
+	assert.Equal(t, util.Ptr("transitive dev dependency, waiting for direct dependencies to update major version"), rule.Reason)
+	require.NotNil(t, rule.Expires)
+	assert.Equal(t, time.Date(2024, 10, 21, 0, 0, 0, 0, time.UTC), rule.Expires.UTC())
+	require.NotNil(t, rule.Created)
+	assert.Equal(t, time.Date(2024, 10, 11, 15, 20, 0, 0, time.UTC), rule.Created.UTC())
+}
+
+func TestPolicy_Unmarshal_UnderIndentedRuleBodyVariants(t *testing.T) {
+	testCases := map[string]struct {
+		content    string
+		wantPath   string
+		wantReason string
+		wantExpiry bool
+	}{
+		"stray field trails a path that already has a body": {
+			content: `version: v1.25.0
+ignore:
+  SNYK-A:
+    - 'a > b':
+        reason: r1
+      expires: 2024-10-21T00:00:00.000Z
+`,
+			wantPath: "a > b", wantReason: "r1", wantExpiry: true,
+		},
+		"a path may legitimately be named after a rule field": {
+			content: `version: v1.25.0
+ignore:
+  SNYK-A:
+    - reason:
+        reason: r1
+`,
+			wantPath: "reason", wantReason: "r1", wantExpiry: false,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			var p localpolicy.Policy
+			err := localpolicy.Unmarshal(bytes.NewBufferString(tc.content), &p)
+			require.NoError(t, err)
+
+			entries := p.Ignore["SNYK-A"]
+			require.Len(t, entries, 1)
+			require.Len(t, entries[0], 1)
+
+			rule, ok := entries[0][tc.wantPath]
+			require.True(t, ok, "expected path %q", tc.wantPath)
+			require.NotNil(t, rule)
+			assert.Equal(t, util.Ptr(tc.wantReason), rule.Reason)
+
+			if tc.wantExpiry {
+				require.NotNil(t, rule.Expires)
+				assert.Equal(t, time.Date(2024, 10, 21, 0, 0, 0, 0, time.UTC), rule.Expires.UTC())
+			} else {
+				assert.Nil(t, rule.Expires)
+			}
+		})
+	}
+}
+
+func TestPolicy_Unmarshal_UnderIndentedRuleBodyKeepsPathsSeparate(t *testing.T) {
+	// Only the first path is mis-indented; the second must keep its own rule.
+	content := `version: v1.25.0
+ignore:
+  SNYK-A:
+    - 'a > b':
+      reason: r1
+    - 'c > d':
+        reason: r2
+`
+
+	var p localpolicy.Policy
+	err := localpolicy.Unmarshal(bytes.NewBufferString(content), &p)
+	require.NoError(t, err)
+
+	entries := p.Ignore["SNYK-A"]
+	require.Len(t, entries, 2)
+
+	require.Len(t, entries[0], 1)
+	assert.Equal(t, util.Ptr("r1"), entries[0]["a > b"].Reason)
+
+	require.Len(t, entries[1], 1)
+	assert.Equal(t, util.Ptr("r2"), entries[1]["c > d"].Reason)
+}
+
 func TestPolicy_Unmarshal_RejectsNonEmptySequence(t *testing.T) {
 	content := `version: v1.25.0
 ignore:
