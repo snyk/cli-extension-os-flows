@@ -180,6 +180,35 @@ func TestCreateLocalPolicy_UnsupportedFailOnValue(t *testing.T) {
 	assert.Contains(t, catalogErr.Detail, "Supported values are: 'all', 'upgradable'")
 }
 
+func TestCreateLocalPolicy_MalformedPolicyFile(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	dir := t.TempDir()
+	policyPath := filepath.Join(dir, ".snyk")
+	require.NoError(t, os.WriteFile(policyPath, []byte("version: v1.25.0\nignore: [unclosed\n"), 0o600))
+
+	mockInvocationCtx := createMockInvocationCtx(t, ctrl)
+	mockConfig := mockInvocationCtx.GetConfiguration()
+
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockInvocationCtx)
+	ctx = cmdctx.WithConfig(ctx, mockConfig)
+	ctx = cmdctx.WithLogger(ctx, &policyTestLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, policyTestErrFactory)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar{})
+
+	localPolicy, err := common.CreateLocalPolicy(ctx, dir)
+	require.Error(t, err)
+	assert.Nil(t, localPolicy)
+
+	var catalogErr snyk_errors.Error
+	require.ErrorAs(t, err, &catalogErr, "the catalog entry must survive the trip out of CreateLocalPolicy")
+	assert.Equal(t, "SNYK-POLICY-0001", catalogErr.ErrorCode)
+	assert.Contains(t, catalogErr.Detail, policyPath)
+	assert.NotContains(t, err.Error(), "failed to get local ignores", "no wrapper layer may leak to the user")
+}
+
 func TestCreateLocalPolicy_NoValues(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

@@ -1,6 +1,7 @@
 package errors_test
 
 import (
+	goerrors "errors"
 	"testing"
 
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -44,6 +45,23 @@ func TestNewInvalidLegacyFlagError(t *testing.T) {
 		require.ErrorAs(t, err, &catalogErr)
 		assert.Equal(t, "An internal error occurred while validating command-line flags.", catalogErr.Detail)
 	})
+}
+
+func TestNewInvalidPolicyFileError(t *testing.T) {
+	logger := zerolog.Nop()
+	errorFactory := errors.NewErrorFactory(&logger)
+
+	cause := goerrors.New("invalid .snyk policy: line 5: yaml: unmarshal errors")
+	err := errorFactory.NewInvalidPolicyFileError("/repo/.snyk", cause)
+
+	var catalogErr snyk_errors.Error
+	require.ErrorAs(t, err, &catalogErr)
+
+	assert.Equal(t, "SNYK-POLICY-0001", catalogErr.ErrorCode)
+	assert.Equal(t, "error", catalogErr.Level)
+	assert.Contains(t, catalogErr.Detail, "/repo/.snyk")
+	assert.Contains(t, catalogErr.Detail, "line 5")
+	assert.ErrorIs(t, err, cause, "the parse failure must stay reachable as the cause")
 }
 
 func TestNewUnsupportedFailOnValueError(t *testing.T) {

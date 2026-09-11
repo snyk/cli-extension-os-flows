@@ -96,6 +96,12 @@ func GetLocalPolicy(ctx context.Context, inputDir string) (*localpolicy.Policy, 
 	if err := localpolicy.Unmarshal(fd, &p); err != nil {
 		var pe *localpolicy.PolicyError
 		if errors.As(err, &pe) {
+			// Report the bad policy against the error catalog rather than letting it
+			// surface as an unspecified error.
+			if errFactory := cmdctx.ErrorFactory(ctx); errFactory != nil {
+				//nolint:wrapcheck // No need to wrap error factory errors.
+				return nil, errFactory.NewInvalidPolicyFileError(policyPath, pe)
+			}
 			return nil, pe
 		}
 		return nil, fmt.Errorf("failed to read local policy: %w", err)

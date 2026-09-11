@@ -6,14 +6,17 @@ import (
 	"testing"
 
 	"github.com/rs/zerolog"
+	snyk_errors "github.com/snyk/error-catalog-golang-public/snyk_errors"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
+	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/util"
+	"github.com/snyk/cli-extension-os-flows/internal/errors"
 )
 
 var nopLogger = zerolog.Nop()
@@ -131,6 +134,52 @@ func TestGetLocalPolicy_MalformedPolicy(t *testing.T) {
 
 	require.Nil(t, policy)
 	require.Error(t, err, "unparseable YAML stays fatal")
+}
+
+func TestGetLocalPolicy_MalformedPolicyReturnsErrorCatalogEntry(t *testing.T) {
+	dir, err := os.MkdirTemp("", "snyk-policy")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(dir) })
+
+	policyPath := filepath.Join(dir, ".snyk")
+	require.NoError(t, os.WriteFile(policyPath, []byte("version: v1.25.0\nignore: [unclosed\n"), 0o600))
+
+	cfg := configuration.New()
+	ctx := cmdctx.WithConfig(t.Context(), cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, errors.NewErrorFactory(&nopLogger))
+
+	policy, err := util.GetLocalPolicy(ctx, dir)
+
+	require.Nil(t, policy)
+	require.Error(t, err)
+
+	var catalogErr snyk_errors.Error
+	require.ErrorAs(t, err, &catalogErr, "a bad .snyk must not surface as an unspecified error")
+	assert.Equal(t, "SNYK-POLICY-0001", catalogErr.ErrorCode)
+	assert.Contains(t, catalogErr.Detail, policyPath, "the detail must name the offending file")
+
+	var pe *localpolicy.PolicyError
+	assert.ErrorAs(t, err, &pe, "the underlying parse failure must stay reachable")
+}
+
+func TestGetLocalPolicy_MalformedPolicyWithoutErrorFactory(t *testing.T) {
+	dir, err := os.MkdirTemp("", "snyk-policy")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(dir) })
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".snyk"), []byte("version: v1.25.0\nignore: [unclosed\n"), 0o600))
+
+	// No error factory on the context: cmdctx getters return nil rather than panicking.
+	cfg := configuration.New()
+	ctx := cmdctx.WithConfig(t.Context(), cfg)
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+
+	policy, err := util.GetLocalPolicy(ctx, dir)
+
+	require.Nil(t, policy)
+	var pe *localpolicy.PolicyError
+	require.ErrorAs(t, err, &pe, "the policy error must still surface without an error factory")
 }
 
 func TestGetLocalPolicy_WhenDotSnykIsADir(t *testing.T) {

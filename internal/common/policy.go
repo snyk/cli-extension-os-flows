@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
@@ -130,9 +131,13 @@ func getFailOnPolicy(ctx context.Context) (supportedFailOnPolicy, error) {
 func getLocalIgnores(ctx context.Context, inputDir string) (*[]testapi.LocalIgnore, error) {
 	policy, err := cmdutil.GetLocalPolicy(ctx, inputDir)
 	if err != nil {
+		// A bad policy file is already user-facing, whether it arrives as a catalog
+		// entry or as a bare policy error. Pass it through so no wrapper layer leaks.
+		var catalogErr snyk_errors.Error
 		var pe *localpolicy.PolicyError
-		if errors.As(err, &pe) {
-			return nil, pe
+		if errors.As(err, &catalogErr) || errors.As(err, &pe) {
+			//nolint:wrapcheck // Wrapping would hide the user-facing policy error.
+			return nil, err
 		}
 		return nil, fmt.Errorf("failed to get local ignores: %w", err)
 	}

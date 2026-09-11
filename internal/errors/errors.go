@@ -7,6 +7,8 @@ import (
 	"github.com/rs/zerolog"
 	snyk_cli_errors "github.com/snyk/error-catalog-golang-public/cli"
 	"github.com/snyk/error-catalog-golang-public/opensource/ecosystems"
+	"github.com/snyk/error-catalog-golang-public/policies"
+	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 )
 
 // OSFlowsExtensionError represents something gone wrong during the
@@ -159,6 +161,17 @@ func (ef *ErrorFactory) NewInvalidLegacyFlagError(flags ...string) error {
 	}
 
 	return snyk_cli_errors.NewInvalidFlagOptionError(userMsg)
+}
+
+// NewInvalidPolicyFileError creates a new error for when a local .snyk policy
+// file cannot be parsed. The parse failure is kept as the cause so it stays
+// available for debugging without being the customer-facing message.
+func (ef *ErrorFactory) NewInvalidPolicyFileError(policyPath string, cause error) error {
+	return policies.NewInvalidPolicyApplyError(
+		fmt.Sprintf("The policy file '%s' could not be read: %s. "+
+			"Please correct the file, or run the command without it.", policyPath, cause),
+		snyk_errors.WithCause(cause),
+	)
 }
 
 // NewUnsupportedFailOnValueError creates a new error for when
