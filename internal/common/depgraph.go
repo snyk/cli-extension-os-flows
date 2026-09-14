@@ -63,7 +63,7 @@ func GetDepGraph(ictx workflow.InvocationContext, inputDir string) ([]RawDepGrap
 	uvLockExists := uvutils.HasUvLockFile(inputDir, fileFlag, allProjects, logger)
 	useUv := uvLockExists && config.GetBool(constants.FeatureFlagUvCLI)
 
-	if !useUv && config.GetBool(orchestrator.FlagUnifiedTestAPIOsCLI.Key) {
+	if !useUv && UseUnifiedTestAPI(config) {
 		logger.Info().Msgf("Using unifed scanners")
 		return resolveViaOrchestrator(ictx, inputDir, errFactory)
 	}
