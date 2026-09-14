@@ -151,7 +151,7 @@ func executeFlow(
 		}
 		return findings, data, nil
 	case DepgraphFlow:
-		return RunUnifiedTestFlow(ctx, inputDir, clients, orgUUID, localPolicy, reachOpts)
+		return RunUnifiedTestFlow(ctx, inputDir, clients, orgUUID, reachOpts)
 	default:
 		return nil, nil, fmt.Errorf("unknown test flow: %s", flow)
 	}
@@ -178,17 +178,30 @@ func processInputDirectory(
 		}
 	}
 
+	localPolicy, err := inputDirPolicy(ctx, flow, inputDir)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return executeFlow(ctx, flow, clients, orgUUID, inputDir, sourceDir, sbom, localPolicy, reachability)
+}
+
+func inputDirPolicy(ctx context.Context, flow Flow, inputDir string) (*testapi.LocalPolicy, error) {
+	if flow == DepgraphFlow {
+		//nolint:nilnil // No policy at this level is the intended result, not an error.
+		return nil, nil
+	}
+
 	localPolicy, err := common.CreateLocalPolicy(ctx, inputDir)
 	if err != nil {
 		var catalogErr snyk_errors.Error
 		if stderrors.As(err, &catalogErr) {
 			//nolint:wrapcheck // Wrapping would hide the user-facing policy error.
-			return nil, nil, err
+			return nil, err
 		}
-		return nil, nil, fmt.Errorf("failed to create local policy: %w", err)
+		return nil, fmt.Errorf("failed to create local policy: %w", err)
 	}
-
-	return executeFlow(ctx, flow, clients, orgUUID, inputDir, sourceDir, sbom, localPolicy, reachability)
+	return localPolicy, nil
 }
 
 // processAllInputDirectories iterates over all input directories and collects results.

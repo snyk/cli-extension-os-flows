@@ -52,6 +52,7 @@ jobs:
       - go/save-cache
       - prodsec/security_scans:
           mode: auto
+          open-source-additional-arguments: --exclude=testdata
           iac-scan: disabled
 
 workflows:

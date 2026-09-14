@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/snyk/go-application-framework/pkg/configuration"
 
@@ -22,6 +23,18 @@ func GetInputDirectories(cfg configuration.Configuration) ([]string, error) {
 		return nil, fmt.Errorf("failed to determine working directory: %w", err)
 	}
 	return []string{cwd}, nil
+}
+
+// ProjectPolicyDir returns the directory holding a project's target file,
+// which is where its .snyk is resolved from.
+func ProjectPolicyDir(inputDir, displayTargetFile string) string {
+	if displayTargetFile == "" {
+		return inputDir
+	}
+	if filepath.IsAbs(displayTargetFile) {
+		return filepath.Dir(displayTargetFile)
+	}
+	return filepath.Join(inputDir, filepath.Dir(displayTargetFile))
 }
 
 // GetSourceDir resolves the source directory from configuration, falling back

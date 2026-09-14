@@ -1,0 +1,4 @@
+ignore:
+  SNYK-JS-DOES-NOT-MATTER:
+    - '*':
+        reason: policy at the scan root

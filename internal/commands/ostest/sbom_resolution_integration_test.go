@@ -59,7 +59,6 @@ func TestSBOMResolutionIntegration_DepGraphsPassedToUnifiedTestAPI(t *testing.T)
 		common.FlowClients{TestClient: mockTestClient, FileUploadClient: ffc},
 		orgUUID,
 		nil,
-		nil,
 	)
 
 	require.NoError(t, err)
