@@ -1,6 +1,7 @@
 package localpolicy
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -23,15 +24,97 @@ func (e *PolicyError) Error() string { return e.msg }
 
 func (e *PolicyError) Unwrap() error { return e.err }
 
-// ErrOldFormat reports a .snyk that maps a vulnerability ID straight to a rule
-// body instead of to a list of dependency paths.
-var ErrOldFormat = &PolicyError{msg: "old, unsupported .snyk format detected"}
+// describeNode names what was found at a node, for error messages.
+func describeNode(node *yaml.Node) string {
+	switch node.Kind {
+	case yaml.SequenceNode:
+		return "a sequence"
+	case yaml.ScalarNode:
+		return fmt.Sprintf("scalar %q", node.Value)
+	default:
+		return fmt.Sprintf("YAML kind %d", node.Kind)
+	}
+}
+
+func notAPolicy(node *yaml.Node) error {
+	return &PolicyError{
+		msg: fmt.Sprintf("invalid .snyk policy: line %d: policy must be a mapping, got %s", node.Line, describeNode(node)),
+		err: &PolicyError{msg: "invalid .snyk policy: invalid yaml file"},
+	}
+}
+
+const tagNull = "!!null"
+
+func isNullNode(node *yaml.Node) bool {
+	return node.Kind == yaml.ScalarNode && (node.Tag == tagNull || node.Value == "")
+}
+
+// sanitizeTypeError drops the Go type that yaml.v3 appends to a decoding
+// failure, keeping plain types such as `bool`.
+func sanitizeTypeError(msg string) string {
+	idx := strings.Index(msg, " into ")
+	if idx == -1 {
+		return msg
+	}
+
+	target := msg[idx+len(" into "):]
+	if strings.Contains(target, "struct {") || strings.Contains(target, "localpolicy.") {
+		return msg[:idx]
+	}
+	return msg
+}
+
+// firstTabIndentedLine returns the 1-based number of the first line whose
+// indentation contains a tab.
+func firstTabIndentedLine(data []byte) (int, bool) {
+	for i, line := range bytes.Split(data, []byte("\n")) {
+		indent := line[:len(line)-len(bytes.TrimLeft(line, " \t"))]
+		if bytes.IndexByte(indent, '\t') >= 0 {
+			return i + 1, true
+		}
+	}
+	return 0, false
+}
+
+// isTabIndentError reports whether yaml.v3 failed in one of the two ways it
+// signals a tab used as indentation.
+func isTabIndentError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "found character that cannot start any token") ||
+		strings.Contains(msg, "found a tab character that violates indentation")
+}
+
+// asIndentationError describes a tab-indentation failure in our own words,
+// naming the first offending line. It returns nil for any other failure.
+func asIndentationError(data []byte, err error) error {
+	if !isTabIndentError(err) {
+		return nil
+	}
+	line, ok := firstTabIndentedLine(data)
+	if !ok {
+		return nil
+	}
+	return &PolicyError{
+		msg: fmt.Sprintf("invalid .snyk policy: line %d: invalid indentation", line),
+		err: err,
+	}
+}
 
 func asPolicyError(err error) error {
 	var pe *PolicyError
 	if errors.As(err, &pe) {
 		return pe
 	}
+
+	var typeErr *yaml.TypeError
+	if errors.As(err, &typeErr) {
+		msgs := make([]string, 0, len(typeErr.Errors))
+		for _, e := range typeErr.Errors {
+			msgs = append(msgs, sanitizeTypeError(e))
+		}
+		return &PolicyError{msg: "invalid .snyk policy: " + strings.Join(msgs, "; "), err: err}
+	}
+
 	return &PolicyError{msg: "invalid .snyk policy: " + err.Error(), err: err}
 }
 
@@ -52,34 +135,17 @@ func Unmarshal(r io.Reader, target *Policy) error {
 		return fmt.Errorf("failed to read snyk policy: %w", err)
 	}
 
+	if len(bytes.TrimSpace(data)) == 0 {
+		return nil
+	}
+
 	if err := yaml.Unmarshal(data, target); err != nil {
-		if stripped, ok := stripIndentTabs(data); ok {
-			if retryErr := yaml.Unmarshal(stripped, target); retryErr == nil {
-				return nil
-			}
+		if indentErr := asIndentationError(data, err); indentErr != nil {
+			return indentErr
 		}
 		return asPolicyError(err)
 	}
 	return nil
-}
-
-func stripIndentTabs(data []byte) ([]byte, bool) {
-	lines := strings.Split(string(data), "\n")
-	found := false
-
-	for i, line := range lines {
-		indent := len(line) - len(strings.TrimLeft(line, " \t"))
-		if !strings.ContainsRune(line[:indent], '\t') {
-			continue
-		}
-		found = true
-		lines[i] = strings.ReplaceAll(line[:indent], "\t", "") + line[indent:]
-	}
-
-	if !found {
-		return nil, false
-	}
-	return []byte(strings.Join(lines, "\n")), true
 }
 
 // Marshal writes a serialized policy to w.
@@ -113,10 +179,13 @@ type Policy struct {
 	Exclude       *map[string]any `yaml:"exclude,omitempty"`
 }
 
-// UnmarshalYAML decodes a Policy, tolerating a document that is not a mapping.
+// UnmarshalYAML decodes a Policy, rejecting a document that is not a mapping.
 func (p *Policy) UnmarshalYAML(node *yaml.Node) error {
 	if node.Kind != yaml.MappingNode {
-		return nil
+		if node.Kind == yaml.ScalarNode && (node.Tag == tagNull || node.Value == "") {
+			return nil
+		}
+		return notAPolicy(node)
 	}
 
 	type policyShadow Policy
@@ -152,7 +221,7 @@ func (r *RuleSet) UnmarshalYAML(node *yaml.Node) error {
 	case yaml.MappingNode:
 		for i := 1; i < len(node.Content); i += 2 {
 			if node.Content[i].Kind == yaml.MappingNode {
-				return ErrOldFormat
+				return &PolicyError{msg: "old, unsupported .snyk format detected"}
 			}
 		}
 		var m map[VulnID][]RuleEntry
@@ -168,7 +237,7 @@ func (r *RuleSet) UnmarshalYAML(node *yaml.Node) error {
 		}
 		return fmt.Errorf("line %d: rule set must be a mapping, got a non-empty sequence", node.Line)
 	case yaml.ScalarNode:
-		if node.Tag == "!!null" || node.Value == "" {
+		if node.Tag == tagNull || node.Value == "" {
 			*r = RuleSet{}
 			return nil
 		}
@@ -181,17 +250,44 @@ func (r *RuleSet) UnmarshalYAML(node *yaml.Node) error {
 // RuleEntry models rules grouped by the dependency path.
 type RuleEntry map[string]*Rule
 
-// UnmarshalYAML decodes a RuleEntry, substituting an empty rule for a null rule body.
+// UnmarshalYAML decodes a RuleEntry, substituting an empty rule for a null rule
+// body. A body that is not a mapping is reported against its dependency path.
 func (re *RuleEntry) UnmarshalYAML(node *yaml.Node) error {
-	var rules map[string]*Rule
-	if err := node.Decode(&rules); err != nil {
-		return err //nolint:wrapcheck // Unmarshal adds the user-facing prefix.
+	if isNullNode(node) {
+		*re = nil
+		return nil
+	}
+	if node.Kind != yaml.MappingNode {
+		return &PolicyError{msg: fmt.Sprintf(
+			"invalid .snyk policy: line %d: ignore entry must be a mapping of dependency paths, got %s",
+			node.Line, describeNode(node))}
 	}
 
-	for path, rule := range rules {
-		if rule == nil {
-			rules[path] = &Rule{}
+	rules := make(map[string]*Rule, len(node.Content)/2)
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		keyNode, valueNode := node.Content[i], node.Content[i+1]
+
+		var dependencyPath string
+		if err := keyNode.Decode(&dependencyPath); err != nil {
+			return err //nolint:wrapcheck // Unmarshal adds the user-facing prefix.
 		}
+
+		if isNullNode(valueNode) {
+			rules[dependencyPath] = &Rule{}
+			continue
+		}
+		if valueNode.Kind != yaml.MappingNode {
+			return &PolicyError{msg: fmt.Sprintf(
+				"invalid .snyk policy: line %d: dependency path '%s' must map to a set of ignore settings, "+
+					"but it is %s; check the indentation",
+				valueNode.Line, dependencyPath, describeNode(valueNode))}
+		}
+
+		var rule Rule
+		if err := valueNode.Decode(&rule); err != nil {
+			return err //nolint:wrapcheck // Unmarshal adds the user-facing prefix.
+		}
+		rules[dependencyPath] = &rule
 	}
 
 	*re = rules
@@ -224,7 +320,7 @@ type lenientTime struct {
 }
 
 func (lt *lenientTime) UnmarshalYAML(node *yaml.Node) error {
-	if node.Kind != yaml.ScalarNode || node.Tag == "!!null" || node.Value == "" {
+	if node.Kind != yaml.ScalarNode || node.Tag == tagNull || node.Value == "" {
 		return nil
 	}
 	for _, layout := range lenientTimeFormats {
@@ -233,7 +329,7 @@ func (lt *lenientTime) UnmarshalYAML(node *yaml.Node) error {
 			return nil
 		}
 	}
-	return nil
+	return &PolicyError{msg: fmt.Sprintf("invalid .snyk policy: '%s' is not a valid timestamp", node.Value)}
 }
 
 // UnmarshalYAML decodes a Rule with lenient parsing for timestamp fields.

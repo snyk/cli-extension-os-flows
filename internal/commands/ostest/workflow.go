@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems/orchestrator"
+	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
@@ -35,7 +36,6 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
-	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
 )
 
 // WorkflowID is the identifier for the Open Source Test workflow.
@@ -177,9 +177,10 @@ func processInputDirectory(
 
 	localPolicy, err := common.CreateLocalPolicy(ctx, inputDir)
 	if err != nil {
-		var pe *localpolicy.PolicyError
-		if stderrors.As(err, &pe) {
-			return nil, nil, pe
+		var catalogErr snyk_errors.Error
+		if stderrors.As(err, &catalogErr) {
+			//nolint:wrapcheck // Wrapping would hide the user-facing policy error.
+			return nil, nil, err
 		}
 		return nil, nil, fmt.Errorf("failed to create local policy: %w", err)
 	}

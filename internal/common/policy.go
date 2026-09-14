@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
@@ -13,7 +14,6 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
-	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
 )
 
 // CreateLocalPolicy will create a local policy only if risk score or severity threshold or reachability filters are specified in the config.
@@ -130,9 +130,10 @@ func getFailOnPolicy(ctx context.Context) (supportedFailOnPolicy, error) {
 func getLocalIgnores(ctx context.Context, inputDir string) (*[]testapi.LocalIgnore, error) {
 	policy, err := cmdutil.GetLocalPolicy(ctx, inputDir)
 	if err != nil {
-		var pe *localpolicy.PolicyError
-		if errors.As(err, &pe) {
-			return nil, pe
+		var catalogErr snyk_errors.Error
+		if errors.As(err, &catalogErr) {
+			//nolint:wrapcheck // Wrapping would hide the user-facing policy error.
+			return nil, err
 		}
 		return nil, fmt.Errorf("failed to get local ignores: %w", err)
 	}

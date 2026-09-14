@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	internalErrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
 )
@@ -96,7 +97,8 @@ func GetLocalPolicy(ctx context.Context, inputDir string) (*localpolicy.Policy, 
 	if err := localpolicy.Unmarshal(fd, &p); err != nil {
 		var pe *localpolicy.PolicyError
 		if errors.As(err, &pe) {
-			return nil, pe
+			//nolint:wrapcheck // No need to wrap error catalog errors.
+			return nil, internalErrors.NewInvalidPolicyFileError(policyPath, pe)
 		}
 		return nil, fmt.Errorf("failed to read local policy: %w", err)
 	}
