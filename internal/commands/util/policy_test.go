@@ -6,14 +6,17 @@ import (
 	"testing"
 
 	"github.com/rs/zerolog"
+	snyk_errors "github.com/snyk/error-catalog-golang-public/snyk_errors"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
+	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/util"
+	"github.com/snyk/cli-extension-os-flows/internal/errors"
 )
 
 var nopLogger = zerolog.Nop()
@@ -88,49 +91,31 @@ func TestResolvePolicyFile_NoPolicyFile(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestGetLocalPolicy_NonMappingPolicy(t *testing.T) {
+func TestGetLocalPolicy_MalformedPolicyReturnsErrorCatalogEntry(t *testing.T) {
 	dir, err := os.MkdirTemp("", "snyk-policy")
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(dir) })
 
-	tmpPolicy, err := os.Create(filepath.Join(dir, ".snyk"))
-	require.NoError(t, err)
-	defer tmpPolicy.Close()
-
-	_, err = tmpPolicy.WriteString(`¯\_(ツ)_/¯`)
-	require.NoError(t, err)
+	policyPath := filepath.Join(dir, ".snyk")
+	require.NoError(t, os.WriteFile(policyPath, []byte("version: v1.25.0\nignore: [unclosed\n"), 0o600))
 
 	cfg := configuration.New()
 	ctx := cmdctx.WithConfig(t.Context(), cfg)
 	ctx = cmdctx.WithLogger(ctx, &nopLogger)
-
-	policy, err := util.GetLocalPolicy(ctx, dir)
-
-	require.NoError(t, err)
-	require.NotNil(t, policy)
-	assert.Empty(t, policy.Ignore)
-}
-
-func TestGetLocalPolicy_MalformedPolicy(t *testing.T) {
-	dir, err := os.MkdirTemp("", "snyk-policy")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(dir) })
-
-	tmpPolicy, err := os.Create(filepath.Join(dir, ".snyk"))
-	require.NoError(t, err)
-	defer tmpPolicy.Close()
-
-	_, err = tmpPolicy.WriteString("version: v1.25.0\nignore: [unclosed\n")
-	require.NoError(t, err)
-
-	cfg := configuration.New()
-	ctx := cmdctx.WithConfig(t.Context(), cfg)
-	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, errors.NewErrorFactory(&nopLogger))
 
 	policy, err := util.GetLocalPolicy(ctx, dir)
 
 	require.Nil(t, policy)
-	require.Error(t, err, "unparseable YAML stays fatal")
+	require.Error(t, err)
+
+	var catalogErr snyk_errors.Error
+	require.ErrorAs(t, err, &catalogErr, "a bad .snyk must not surface as an unspecified error")
+	assert.Equal(t, "SNYK-POLICY-0002", catalogErr.ErrorCode)
+	assert.Contains(t, catalogErr.Detail, policyPath, "the detail must name the offending file")
+
+	var pe *localpolicy.PolicyError
+	assert.ErrorAs(t, err, &pe, "the underlying parse failure must stay reachable")
 }
 
 func TestGetLocalPolicy_WhenDotSnykIsADir(t *testing.T) {

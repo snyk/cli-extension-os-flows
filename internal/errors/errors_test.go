@@ -1,6 +1,7 @@
 package errors_test
 
 import (
+	goerrors "errors"
 	"testing"
 
 	"github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -44,6 +45,23 @@ func TestNewInvalidLegacyFlagError(t *testing.T) {
 		require.ErrorAs(t, err, &catalogErr)
 		assert.Equal(t, "An internal error occurred while validating command-line flags.", catalogErr.Detail)
 	})
+}
+
+func TestNewInvalidPolicyFileError(t *testing.T) {
+	cause := goerrors.New("invalid .snyk policy: yaml: line 3: found character that cannot start any token")
+	err := errors.NewInvalidPolicyFileError("/repo/.snyk", cause)
+
+	var catalogErr snyk_errors.Error
+	require.ErrorAs(t, err, &catalogErr)
+
+	assert.Equal(t, "SNYK-POLICY-0002", catalogErr.ErrorCode)
+	assert.Equal(t, "error", catalogErr.Level)
+	assert.Contains(t, catalogErr.Detail, "/repo/.snyk")
+	assert.Contains(t, catalogErr.Detail, "line 3")
+	assert.ErrorIs(t, err, cause, "the parse failure must stay reachable as the cause")
+
+	assert.NotContains(t, catalogErr.Detail, "correct the file")
+	assert.Contains(t, catalogErr.Description, "Correct the file and try again.")
 }
 
 func TestNewUnsupportedFailOnValueError(t *testing.T) {

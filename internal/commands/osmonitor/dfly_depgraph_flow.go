@@ -6,13 +6,13 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
-	"github.com/snyk/cli-extension-os-flows/pkg/localpolicy"
 )
 
 // RunDflyMonitorFlow runs the dragonfly depgraph flow for `snyk monitor`.
@@ -32,9 +32,10 @@ func RunDflyMonitorFlow(
 	for _, inputDir := range inputDirs {
 		localPolicy, err := common.CreateLocalPolicy(ctx, inputDir)
 		if err != nil {
-			var pe *localpolicy.PolicyError
-			if errors.As(err, &pe) {
-				return nil, pe
+			var catalogErr snyk_errors.Error
+			if errors.As(err, &catalogErr) {
+				//nolint:wrapcheck // Wrapping would hide the user-facing policy error.
+				return nil, err
 			}
 			return nil, fmt.Errorf("failed to create local policy: %w", err)
 		}
