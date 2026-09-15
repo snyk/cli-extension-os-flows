@@ -80,6 +80,9 @@ func RegisterWorkflows(e workflow.Engine) error {
 
 	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagEnableSbomMonitor, "enableSbomMonitor")
 
+	// Registry group/org opt-out from the unified test API rollout (OSF-483).
+	config_utils.AddFeatureFlagToConfig(e, constants.FeatureFlagOptOutUnifiedTestAPIRollout, "optOutUnifiedTestApiCliRollout")
+
 	return nil
 }
 

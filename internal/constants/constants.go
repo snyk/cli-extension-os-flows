@@ -42,6 +42,10 @@ const FeatureFlagDflySbomMonitor = "internal_snyk_cli_rollout_dfly_sbom_monitor"
 // FeatureFlagEnableSbomMonitor is used to opt in to the registry-based SBOM monitor flow.
 const FeatureFlagEnableSbomMonitor = "internal_snyk_cli_enable_sbom_monitor"
 
+// FeatureFlagOptOutUnifiedTestAPIRollout is a registry group/org flag that opts a customer
+// out of the `unified-test-api-os-cli` rollout, keeping them on the legacy `snyk test` path.
+const FeatureFlagOptOutUnifiedTestAPIRollout = "internal_snyk_cli_opt_out_unified_test_api_rollout"
+
 // UploadingSourceCodeMessage is the message that's being rendered in the UI spinner while
 // the source code is being uploaded.
 const UploadingSourceCodeMessage = "Uploading source code..."

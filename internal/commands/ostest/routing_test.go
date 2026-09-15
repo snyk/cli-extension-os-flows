@@ -675,3 +675,45 @@ func Test_RouteToFlow_UnifiedTestAPIForOSCliTest(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, ostest.DepgraphFlow, flow)
 }
+
+func Test_ShouldUseLegacyFlow_UnifiedTestAPIOptOut(t *testing.T) {
+	t.Parallel()
+
+	tcs := map[string]struct {
+		optOut          bool
+		expectUseLegacy bool
+	}{
+		"stays on the unified test API when the group has not opted out": {
+			optOut:          false,
+			expectUseLegacy: false,
+		},
+		"falls back to legacy when the group has opted out of the rollout": {
+			optOut:          true,
+			expectUseLegacy: true,
+		},
+	}
+
+	for tcName, tc := range tcs {
+		t.Run(tcName, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := configuration.New()
+			cfg.Set(flags.FlagRiskScoreThreshold, -1)
+			cfg.Set(orchestrator.FlagUnifiedTestAPIOsCLI.Key, true)
+			cfg.Set(constants.FeatureFlagOptOutUnifiedTestAPIRollout, tc.optOut)
+
+			ctx := t.Context()
+			ctx = cmdctx.WithConfig(ctx, cfg)
+			ctx = cmdctx.WithLogger(ctx, &nopLogger)
+			ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+			flowCfg, err := ostest.ParseFlowConfig(cfg)
+			require.NoError(t, err)
+
+			useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.expectUseLegacy, useLegacy)
+		})
+	}
+}

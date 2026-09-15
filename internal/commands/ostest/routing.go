@@ -7,11 +7,11 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-	"github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems/orchestrator"
 	uvutils "github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems/python/uv"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	internalErrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/settings"
@@ -156,7 +156,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	ffRiskScore := cfg.GetBool(constants.FeatureFlagRiskScore)
 	ffRiskScoreInCLI := cfg.GetBool(constants.FeatureFlagRiskScoreInCLI)
 	ffUseTestShimForOSCliTest := cfg.GetBool(constants.FeatureFlagUseTestShimForOSCliTest)
-	ffUseUnifiedTestAPIForOSCliTest := cfg.GetBool(orchestrator.FlagUnifiedTestAPIOsCLI.Key)
+	ffUseUnifiedTestAPIForOSCliTest := common.UseUnifiedTestAPI(cfg)
 	riskScoreFFsEnabled := ffRiskScore && ffRiskScoreInCLI
 	riskScoreThreshold := cfg.GetInt(flags.FlagRiskScoreThreshold)
 	riskScoreTest := riskScoreFFsEnabled || riskScoreThreshold != -1
