@@ -112,6 +112,16 @@ func (ef *ErrorFactory) NewTestExecutionError(details string) *OSFlowsExtensionE
 	)
 }
 
+// NewTestExecutionErrorFromCause creates a new error for failures in the test execution,
+// keeping cause wrapped (rather than flattened to a string) so a snyk_errors.Error inside it
+// - e.g. a quota denial reconstructed from a polled TestResult - stays recoverable via errors.As.
+func (ef *ErrorFactory) NewTestExecutionErrorFromCause(cause error) *OSFlowsExtensionError {
+	return ef.newErr(
+		fmt.Errorf("test execution failed: %w", cause),
+		fmt.Sprintf("Test execution failed: %s", cause.Error()),
+	)
+}
+
 // NewLegacyJSONTransformerError creates a new error for failures in the
 // transformation of snyk schema findings into the legacy json format.
 func (ef *ErrorFactory) NewLegacyJSONTransformerError(err error) *OSFlowsExtensionError {

@@ -19,6 +19,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	xerrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
@@ -376,15 +377,7 @@ func executeTest(
 	}
 
 	if finalResult.GetExecutionState() == testapi.TestExecutionStatesErrored {
-		apiErrors := finalResult.GetErrors()
-		if apiErrors != nil && len(*apiErrors) > 0 {
-			var errorMessages []string
-			for _, apiError := range *apiErrors {
-				errorMessages = append(errorMessages, apiError.Detail)
-			}
-			return nil, nil, errFactory.NewTestExecutionError(strings.Join(errorMessages, "; "))
-		}
-		return nil, nil, errFactory.NewTestExecutionError("an unknown error occurred")
+		return nil, nil, buildTestExecutionError(errFactory, finalResult)
 	}
 
 	// Get findings for the test
@@ -405,6 +398,30 @@ func executeTest(
 		return finalResult, findingsData, errFactory.NewTestExecutionError("test completed but findings could not be retrieved")
 	}
 	return finalResult, findingsData, nil
+}
+
+// buildTestExecutionError builds the error for a TestResult in state Errored. It prefers
+// testapi.ErrorsAsSnykErrors containing error-catalog codes, and falls back to the raw
+// GetErrors() detail strings if conversion fails.
+func buildTestExecutionError(errFactory *xerrors.ErrorFactory, finalResult testapi.TestResult) error {
+	snykErrs, snykErrsErr := testapi.ErrorsAsSnykErrors(finalResult.GetErrors())
+	if snykErrsErr == nil && len(snykErrs) > 0 {
+		causes := make([]error, len(snykErrs))
+		for i := range snykErrs {
+			causes[i] = snykErrs[i]
+		}
+		return errFactory.NewTestExecutionErrorFromCause(std_errors.Join(causes...))
+	}
+
+	apiErrors := finalResult.GetErrors()
+	if apiErrors != nil && len(*apiErrors) > 0 {
+		var errorMessages []string
+		for _, apiError := range *apiErrors {
+			errorMessages = append(errorMessages, apiError.Detail)
+		}
+		return errFactory.NewTestExecutionError(strings.Join(errorMessages, "; "))
+	}
+	return errFactory.NewTestExecutionError("an unknown error occurred")
 }
 
 // logStartTestParams emits a debug log describing the request that is about to be sent
