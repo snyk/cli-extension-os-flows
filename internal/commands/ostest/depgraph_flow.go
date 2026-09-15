@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
@@ -104,7 +105,6 @@ func RunUnifiedTestFlow(
 	inputDir string,
 	clients common.FlowClients,
 	orgUUID uuid.UUID,
-	localPolicy *testapi.LocalPolicy,
 	reachabilityOpts *common.ReachabilityOpts,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	ictx := cmdctx.Ictx(ctx)
@@ -134,7 +134,6 @@ func RunUnifiedTestFlow(
 		inputDir,
 		clients.TestClient,
 		orgUUID.String(),
-		localPolicy,
 		depGraphs,
 	)
 	if err != nil {
@@ -148,9 +147,8 @@ func RunUnifiedTestFlow(
 }
 
 type testProcessor struct {
-	testClient  testapi.TestClient
-	orgID       string
-	localPolicy *testapi.LocalPolicy
+	testClient testapi.TestClient
+	orgID      string
 }
 
 func (p *testProcessor) runDepGraphTest(
@@ -167,6 +165,17 @@ func (p *testProcessor) runDepGraphTest(
 	packageManager := depGraph.Payload.PkgManager.Name
 	depCount := max(0, len(depGraph.Payload.Pkgs)-1)
 
+	policyDir := common.ProjectPolicyDir(targetDir, depGraph.DisplayTargetFile)
+	localPolicy, err := common.CreateLocalPolicy(ctx, policyDir)
+	if err != nil {
+		var catalogErr snyk_errors.Error
+		if errors.As(err, &catalogErr) {
+			//nolint:wrapcheck // Wrapping would hide the user-facing policy error.
+			return nil, nil, err
+		}
+		return nil, nil, fmt.Errorf("failed to create local policy: %w", err)
+	}
+
 	return RunTestWithSubject(
 		ctx,
 		targetDir,
@@ -178,7 +187,8 @@ func (p *testProcessor) runDepGraphTest(
 		depGraph.TargetFileFromPlugin,
 		depGraph.DisplayTargetFile,
 		p.orgID,
-		p.localPolicy,
+		localPolicy,
+		policyDir,
 	)
 }
 
@@ -187,7 +197,6 @@ func testAllDepGraphs(
 	targetDir string,
 	testClient testapi.TestClient,
 	orgID string,
-	localPolicy *testapi.LocalPolicy,
 	depGraphs []DepGraphWithMeta,
 ) ([]definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	cfg := cmdctx.Config(ctx)
@@ -202,9 +211,8 @@ func testAllDepGraphs(
 	g.SetLimit(numThreads)
 
 	processor := &testProcessor{
-		testClient:  testClient,
-		orgID:       orgID,
-		localPolicy: localPolicy,
+		testClient: testClient,
+		orgID:      orgID,
 	}
 
 	findingsByIdx := make([]*definitions.LegacyVulnerabilityResponse, len(depGraphs))
@@ -235,6 +243,11 @@ func testAllDepGraphs(
 	}
 
 	if err := g.Wait(); err != nil {
+		var catalogErr snyk_errors.Error
+		if errors.As(err, &catalogErr) {
+			//nolint:wrapcheck // Wrapping would hide the user-facing policy error.
+			return nil, nil, err
+		}
 		return nil, nil, fmt.Errorf("testing depgraphs: %w", err)
 	}
 

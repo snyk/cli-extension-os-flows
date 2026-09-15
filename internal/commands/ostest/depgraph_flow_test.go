@@ -111,7 +111,21 @@ func (h *flowTestHarness) registerDepGraphs(n int) {
 	h.engine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return(datas, nil).Times(1)
 }
 
+func (h *flowTestHarness) registerDepGraphsFor(targetFiles ...string) {
+	h.t.Helper()
+	datas := make([]workflow.Data, 0, len(targetFiles))
+	for _, targetFile := range targetFiles {
+		datas = append(datas, newMockDepGraphDataFor(h.t, h.ctrl, targetFile))
+	}
+	h.engine.EXPECT().InvokeWithConfig(common.DepGraphWorkflowID, gomock.Any()).Return(datas, nil).Times(1)
+}
+
 func newMockDepGraphData(t *testing.T, ctrl *gomock.Controller) workflow.Data {
+	t.Helper()
+	return newMockDepGraphDataFor(t, ctrl, "proj/package.json")
+}
+
+func newMockDepGraphDataFor(t *testing.T, ctrl *gomock.Controller, targetFile string) workflow.Data {
 	t.Helper()
 	dg := depgraphpayload.DepGraph{
 		SchemaVersion: "1.2.0",
@@ -126,8 +140,8 @@ func newMockDepGraphData(t *testing.T, ctrl *gomock.Controller) workflow.Data {
 
 	d := gafmocks.NewMockData(ctrl)
 	d.EXPECT().GetPayload().Return(b).AnyTimes()
-	d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return("proj/package.json", nil).AnyTimes()
-	d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return("proj/package.json", nil).AnyTimes()
+	d.EXPECT().GetMetaData(common.NormalisedTargetFileKey).Return(targetFile, nil).AnyTimes()
+	d.EXPECT().GetMetaData(common.TargetFileFromPluginKey).Return(targetFile, nil).AnyTimes()
 	d.EXPECT().GetMetaData(common.TargetKey).Return("{}", nil).AnyTimes()
 	return d
 }
@@ -233,7 +247,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimit(t *testing.T) {
 	).Times(n)
 
 	ctx := h.buildContext()
-	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", h.defaultClients(mockTestClient), orgUUID, nil, nil)
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", h.defaultClients(mockTestClient), orgUUID, nil)
 	require.NoError(t, err)
 
 	const limit int32 = 5
@@ -279,7 +293,7 @@ func Test_RunUnifiedTestFlow_ConcurrencyLimitHonorsMaxThreads(t *testing.T) {
 	).Times(n)
 
 	ctx := h.buildContext()
-	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", h.defaultClients(mockTestClient), orgUUID, nil, nil)
+	_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", h.defaultClients(mockTestClient), orgUUID, nil)
 	require.NoError(t, err)
 
 	const limit int32 = 3
@@ -346,7 +360,7 @@ func Test_RunUnifiedTestFlow_DepGraphEnrichment(t *testing.T) {
 			})
 
 			ctx := h.buildContext()
-			_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", h.defaultClients(mockTestClient), orgUUID, nil, nil)
+			_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", h.defaultClients(mockTestClient), orgUUID, nil)
 			require.NoError(t, err)
 		})
 	}
@@ -387,7 +401,7 @@ func Test_RunUnifiedTestFlow_CancelsOnError(t *testing.T) {
 	runCtx, cancel := context.WithTimeout(h.buildContext(), 3*time.Second)
 	defer cancel()
 
-	_, _, err := ostest.RunUnifiedTestFlow(runCtx, ".", h.defaultClients(mockTestClient), orgUUID, nil, nil)
+	_, _, err := ostest.RunUnifiedTestFlow(runCtx, ".", h.defaultClients(mockTestClient), orgUUID, nil)
 	require.Error(t, err)
 	require.Positive(t, canceledCount.Load(), "expected at least one canceled sibling")
 }
@@ -432,7 +446,7 @@ func Test_RunUnifiedTestFlow_ReachabilityFailureFallback(t *testing.T) {
 		FileUploadClient:   fileupload.NewFakeClient(),
 		ReachabilityClient: fakeReachabilityClient,
 		DeeproxyClient:     deeproxy.NewFakeClient(deeproxy.AllowList{Extensions: []string{".js"}}, nil),
-	}, orgUUID, nil, &common.ReachabilityOpts{SourceDir: sourceDir})
+	}, orgUUID, &common.ReachabilityOpts{SourceDir: sourceDir})
 
 	require.NoError(t, err, "scan should succeed even when reachability fails")
 	require.NotNil(t, capturedErr, "OutputError should have been called with a warning")
@@ -478,7 +492,7 @@ func Test_RunUnifiedTestFlow_SkipsReachabilityWhenNoSupportedSources(t *testing.
 		FileUploadClient:   fileupload.NewFakeClient(),
 		ReachabilityClient: fakeReachabilityClient,
 		DeeproxyClient:     deeproxy.NewFakeClient(deeproxy.AllowList{}, nil),
-	}, orgUUID, nil, &common.ReachabilityOpts{SourceDir: sourceDir})
+	}, orgUUID, &common.ReachabilityOpts{SourceDir: sourceDir})
 
 	require.NoError(t, err)
 }

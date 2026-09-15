@@ -51,10 +51,18 @@ func RunTestWithSubject(
 	displayTargetFile string,
 	orgID string,
 	localPolicy *testapi.LocalPolicy,
+	policyDir string,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	testConfig := testapi.TestConfiguration{LocalPolicy: localPolicy}
 	startParams := testapi.NewStartTestParamsFromSubject(orgID, &subject, &testConfig)
-	return runSingleTest(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
+	return runSingleTest(ctx, targetDir, testClient, startParams, &testTarget{
+		projectName:       projectName,
+		packageManager:    packageManager,
+		depCount:          depCount,
+		targetFile:        targetFile,
+		displayTargetFile: displayTargetFile,
+		policyDir:         policyDir,
+	})
 }
 
 // RunTestWithResources executes the test flow with the provided test resources (for SBOM flows).
@@ -73,7 +81,14 @@ func RunTestWithResources(
 	testConfig *testapi.TestConfiguration,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
 	startParams := testapi.NewStartTestParamsFromResources(orgID, &resources, testConfig)
-	return runSingleTest(ctx, targetDir, testClient, startParams, projectName, packageManager, depCount, targetFile, displayTargetFile)
+	return runSingleTest(ctx, targetDir, testClient, startParams, &testTarget{
+		projectName:       projectName,
+		packageManager:    packageManager,
+		depCount:          depCount,
+		targetFile:        targetFile,
+		displayTargetFile: displayTargetFile,
+		policyDir:         targetDir,
+	})
 }
 
 // RunTestWithResourcesByComponent executes the test flow with the provided test resources and
@@ -98,6 +113,7 @@ func RunTestWithResourcesByComponent(
 		depCount:          depCount,
 		targetFile:        targetFile,
 		displayTargetFile: displayTargetFile,
+		policyDir:         targetDir,
 	}, true)
 }
 
@@ -109,6 +125,7 @@ type testTarget struct {
 	depCount          int
 	targetFile        string
 	displayTargetFile string
+	policyDir         string
 }
 
 func runSingleTest(
@@ -116,19 +133,9 @@ func runSingleTest(
 	targetDir string,
 	testClient testapi.TestClient,
 	startParams testapi.StartTestParams,
-	projectName string,
-	packageManager string,
-	depCount int,
-	targetFile string,
-	displayTargetFile string,
+	base *testTarget,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	legacyResponses, outputData, err := runTestInternal(ctx, targetDir, testClient, startParams, &testTarget{
-		projectName:       projectName,
-		packageManager:    packageManager,
-		depCount:          depCount,
-		targetFile:        targetFile,
-		displayTargetFile: displayTargetFile,
-	}, false)
+	legacyResponses, outputData, err := runTestInternal(ctx, targetDir, testClient, startParams, base, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -273,6 +280,7 @@ func prepareTargetOutput(
 		ProjectName:        target.projectName,
 		PackageManager:     target.packageManager,
 		TargetDir:          targetDir,
+		PolicyDir:          target.policyDir,
 		DepCount:           target.depCount,
 		TargetFile:         target.targetFile,
 		DisplayTargetFile:  target.displayTargetFile,

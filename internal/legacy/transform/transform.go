@@ -36,6 +36,7 @@ type SnykSchemaToLegacyParams struct {
 	ProjectName        string
 	PackageManager     string
 	TargetDir          string
+	PolicyDir          string
 	DepCount           int
 	TargetFile         string
 	DisplayTargetFile  string
@@ -87,7 +88,12 @@ func ConvertSnykSchemaFindingsToLegacy(ctx context.Context, params *SnykSchemaTo
 	}
 	res.Remediation = remSummary
 
-	policy, err := cmdutil.GetLocalPolicy(ctx, params.TargetDir)
+	policyDir := params.PolicyDir
+	if policyDir == "" {
+		policyDir = params.TargetDir
+	}
+
+	policy, err := cmdutil.GetLocalPolicy(ctx, policyDir)
 	if err != nil {
 		return nil, params.ErrFactory.NewLegacyJSONTransformerError(fmt.Errorf("failed to get local policy: %w", err))
 	}

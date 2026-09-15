@@ -1,0 +1,4 @@
+ignore:
+  SNYK-JS-DOES-NOT-MATTER:
+    - '*':
+        reason: policy in proj
