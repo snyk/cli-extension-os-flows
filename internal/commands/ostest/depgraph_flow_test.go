@@ -497,6 +497,48 @@ func Test_RunUnifiedTestFlow_SkipsReachabilityWhenNoSupportedSources(t *testing.
 	require.NoError(t, err)
 }
 
+func Test_RunUnifiedTestFlow_SubjectLocatorPaths(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		targetFile string
+		expected   []string
+	}{
+		{
+			name:       "target file is used when the plugin reports one",
+			targetFile: "proj/package.json",
+			expected:   []string{"proj/package.json"},
+		},
+		{
+			name:       "scan dir is used when the plugin reports no target file",
+			targetFile: "",
+			expected:   []string{"."},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			h := newFlowTestHarness(t)
+
+			h.instr.EXPECT().RecordOSAnalysisTime(gomock.Any()).Times(1)
+			h.registerDepGraphsFor(tt.targetFile)
+
+			mockTestClient := newAssertingTestClient(t, h.ctrl, func(t *testing.T, params testapi.StartTestParams) {
+				t.Helper()
+				depGraphSubject, err := params.Subject().AsDepGraphSubjectCreate()
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, depGraphSubject.Locator.Paths)
+			})
+
+			ctx := h.buildContext()
+			_, _, err := ostest.RunUnifiedTestFlow(ctx, ".", h.defaultClients(mockTestClient), orgUUID, nil)
+			require.NoError(t, err)
+		})
+	}
+}
+
 func tempDirWithJSFile(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
