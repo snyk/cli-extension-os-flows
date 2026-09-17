@@ -2,13 +2,16 @@ package ostest_test
 
 import (
 	"encoding/json"
+	std_errors "errors"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/snyk/error-catalog-golang-public/snyk_errors"
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/json_schemas"
+	"github.com/snyk/go-application-framework/pkg/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -288,6 +291,48 @@ func Test_RunTest_ErrorsWhenFindingsError(t *testing.T) {
 
 	_, _, err := ostest.RunTestWithSubject(ctx, ".", mockTestClient, subject, "", "", 0, "", "", "org", nil, "")
 	require.Error(t, err)
+}
+
+// Test_RunTest_PreservesErrorCatalogCodeWhenExecutionErrored verifies that a polled
+// TestResult reporting Errored surfaces its error-catalog code (e.g. SNYK-0006 for a
+// quota denial) through errors.As, rather than degrading to a plain string.
+func Test_RunTest_PreservesErrorCatalogCodeWhenExecutionErrored(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockHandle := gafclientmocks.NewMockTestHandle(ctrl)
+	mockResult := gafclientmocks.NewMockTestResult(ctrl)
+
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Return(mockHandle, nil)
+	mockHandle.EXPECT().Wait(gomock.Any()).Return(nil)
+	mockResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesErrored).AnyTimes()
+	mockResult.EXPECT().GetErrors().Return(&[]testapi.IoSnykApiCommonError{
+		{
+			Code:   utils.Ptr("SNYK-0006"),
+			Title:  utils.Ptr("Test limit reached"),
+			Detail: "Over the tests quota for this billing period (limit 200, used 9481)",
+			Status: "429",
+		},
+	})
+	mockHandle.EXPECT().Result().Return(mockResult)
+
+	ef := xerrors.NewErrorFactory(&logger)
+	ctx := t.Context()
+	ctx = cmdctx.WithLogger(ctx, &logger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+
+	var subject testapi.TestSubjectCreate
+	_ = subject.FromDepGraphSubjectCreate(testapi.DepGraphSubjectCreate{Type: testapi.DepGraph})
+
+	_, _, err := ostest.RunTestWithSubject(ctx, ".", mockTestClient, subject, "", "", 0, "", "", "org", nil, "")
+	require.Error(t, err)
+
+	var snykErr snyk_errors.Error
+	require.True(t, std_errors.As(err, &snykErr), "expected a snyk_errors.Error in the error chain")
+	assert.Equal(t, "SNYK-0006", snykErr.ErrorCode)
+	assert.Equal(t, "Test limit reached", snykErr.Title)
 }
 
 func Test_GetDependencyCountFromTestFacts(t *testing.T) {
