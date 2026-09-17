@@ -156,7 +156,7 @@ func (p *testProcessor) runDepGraphTest(
 	targetDir string,
 	depGraph DepGraphWithMeta,
 ) (*definitions.LegacyVulnerabilityResponse, []workflow.Data, error) {
-	subject, err := createTestSubject(depGraph)
+	subject, err := createTestSubject(depGraph, targetDir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -263,7 +263,7 @@ func testAllDepGraphs(
 	return allLegacyFindings, allOutputData, nil
 }
 
-func createTestSubject(depGraph DepGraphWithMeta) (testapi.TestSubjectCreate, error) {
+func createTestSubject(depGraph DepGraphWithMeta, targetDir string) (testapi.TestSubjectCreate, error) {
 	// testapi.DepGraphSubjectCreate.DepGraph is now testapi.DepGraphRef (an
 	// alias for json.RawMessage). Marshal the typed payload back into bytes so
 	// the dep graph plus any AdditionalProperties enrichments (scanId, target,
@@ -272,11 +272,16 @@ func createTestSubject(depGraph DepGraphWithMeta) (testapi.TestSubjectCreate, er
 	if err != nil {
 		return testapi.TestSubjectCreate{}, fmt.Errorf("failed to marshal dep graph payload: %w", err)
 	}
+	locatorPath := depGraph.DisplayTargetFile
+	if locatorPath == "" {
+		locatorPath = targetDir
+	}
+
 	depGraphSubject := testapi.DepGraphSubjectCreate{
 		Type:     testapi.DepGraph,
 		DepGraph: depGraphBytes,
 		Locator: testapi.LocalPathLocator{
-			Paths: []string{depGraph.DisplayTargetFile},
+			Paths: []string{locatorPath},
 			Type:  testapi.LocalPath,
 		},
 	}
