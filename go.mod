@@ -1,6 +1,6 @@
 module github.com/snyk/cli-extension-os-flows
 
-go 1.26.6
+go 1.26.8
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
