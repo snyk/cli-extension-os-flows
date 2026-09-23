@@ -676,6 +676,58 @@ func Test_RouteToFlow_UnifiedTestAPIForOSCliTest(t *testing.T) {
 	assert.Equal(t, ostest.DepgraphFlow, flow)
 }
 
+func Test_ShouldUseLegacyFlow_NonOpenSourceTestTypes(t *testing.T) {
+	t.Parallel()
+
+	testTypeFlags := []string{flags.FlagIAC, flags.FlagDocker, flags.FlagContainer, flags.FlagCode}
+
+	for _, testTypeFlag := range testTypeFlags {
+		t.Run(fmt.Sprintf("--%s routes to legacy when the unified test API rollout is on", testTypeFlag), func(t *testing.T) {
+			t.Parallel()
+
+			cfg := configuration.New()
+			cfg.Set(flags.FlagRiskScoreThreshold, -1)
+			cfg.Set(orchestrator.FlagUnifiedTestAPIOsCLI.Key, true)
+			cfg.Set(testTypeFlag, true)
+
+			ctx := t.Context()
+			ctx = cmdctx.WithConfig(ctx, cfg)
+			ctx = cmdctx.WithLogger(ctx, &nopLogger)
+			ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+			flowCfg, err := ostest.ParseFlowConfig(cfg)
+			require.NoError(t, err)
+
+			useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+			require.NoError(t, err)
+
+			assert.True(t, useLegacy)
+		})
+
+		t.Run(fmt.Sprintf("--%s routes to legacy when the dfly rollout is on", testTypeFlag), func(t *testing.T) {
+			t.Parallel()
+
+			cfg := configuration.New()
+			cfg.Set(flags.FlagRiskScoreThreshold, -1)
+			cfg.Set(constants.FeatureFlagDlfyCLIRollout, true)
+			cfg.Set(testTypeFlag, true)
+
+			ctx := t.Context()
+			ctx = cmdctx.WithConfig(ctx, cfg)
+			ctx = cmdctx.WithLogger(ctx, &nopLogger)
+			ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+			flowCfg, err := ostest.ParseFlowConfig(cfg)
+			require.NoError(t, err)
+
+			useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+			require.NoError(t, err)
+
+			assert.True(t, useLegacy)
+		})
+	}
+}
+
 func Test_ShouldUseLegacyFlow_UnifiedTestAPIOptOut(t *testing.T) {
 	t.Parallel()
 

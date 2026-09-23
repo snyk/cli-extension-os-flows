@@ -25,6 +25,11 @@ const (
 	FlagSBOM         = "sbom"
 	FlagSourceDir    = "source-dir"
 
+	FlagIAC       = "iac"
+	FlagDocker    = "docker"
+	FlagContainer = "container"
+	FlagCode      = "code"
+
 	// Passed through to legacy CLI.
 	FlagAllProjects                  = "all-projects"
 	FlagExperimental                 = "experimental"
@@ -152,6 +157,11 @@ func OSTestFlagSet() *pflag.FlagSet {
 	if f := flagSet.Lookup(FlagHTMLFileOutput); f != nil {
 		f.NoOptDefVal = InvalidFlagValue
 	}
+
+	flagSet.Bool(FlagIAC, false, "Test for known issues in infrastructure as code files.")
+	flagSet.Bool(FlagDocker, false, "Test for known vulnerabilities in a container image.")
+	flagSet.Bool(FlagContainer, false, "Test for known vulnerabilities in a container image.")
+	flagSet.Bool(FlagCode, false, "Test for known issues in source code.")
 
 	// Unused flags for passing to legacy CLI
 	flagSet.Bool(FlagAllProjects, false, "Auto-detect all projects in the working directory (including Yarn workspaces).")

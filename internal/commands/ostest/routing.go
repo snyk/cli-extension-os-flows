@@ -171,10 +171,15 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	fileFlag := cfg.GetString(flags.FlagFile)
 
 	forceLegacyTest := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
+	nonOSTestType := cfg.GetBool(flags.FlagIAC) ||
+		cfg.GetBool(flags.FlagDocker) ||
+		cfg.GetBool(flags.FlagContainer) ||
+		cfg.GetBool(flags.FlagCode)
 	requiresLegacy := cfg.GetBool(flags.FlagPrintGraph) ||
 		cfg.GetBool(flags.FlagPrintEffectiveGraph) ||
 		cfg.GetBool(flags.FlagPrintDeps) ||
 		cfg.GetBool(flags.FlagPrintDepPaths) ||
+		nonOSTestType ||
 		unmanaged
 	var targetPackage string
 

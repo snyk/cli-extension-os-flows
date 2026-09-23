@@ -1,6 +1,7 @@
 package flags_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/spf13/pflag"
@@ -97,6 +98,22 @@ func TestHTMLFlags(t *testing.T) {
 			assert.NotNil(t, flagSet.Lookup(name), "--%s should be registered on OSTestFlagSet", name)
 		}
 	})
+}
+
+func TestNonOpenSourceTestTypeFlags(t *testing.T) {
+	for _, name := range []string{flags.FlagIAC, flags.FlagDocker, flags.FlagContainer, flags.FlagCode} {
+		t.Run(fmt.Sprintf("--%s parses as a bool on OSTestFlagSet", name), func(t *testing.T) {
+			flagSet := flags.OSTestFlagSet()
+			require.NotNil(t, flagSet.Lookup(name), "--%s should be registered on OSTestFlagSet", name)
+
+			err := flagSet.Parse([]string{"--" + name})
+			require.NoError(t, err, "flag parsing should not fail")
+
+			value, err := flagSet.GetBool(name)
+			require.NoError(t, err, "getting flag value should not fail")
+			assert.True(t, value)
+		})
+	}
 }
 
 func TestOSTestFlagSet_HasMonitorFlag(t *testing.T) {
