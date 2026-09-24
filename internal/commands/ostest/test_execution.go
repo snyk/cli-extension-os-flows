@@ -399,8 +399,7 @@ func executeTest(
 	return finalResult, findingsData, nil
 }
 
-// buildTestExecutionError builds the error for a TestResult in state Errored, from
-// GetError so an error-catalog code (e.g. SNYK-0006) survives through errors.As.
+// buildTestExecutionError wraps finalResult.GetError so an error-catalog code (e.g. SNYK-0006) survives through errors.As.
 func buildTestExecutionError(errFactory *xerrors.ErrorFactory, finalResult testapi.TestResult) error {
 	if err := finalResult.GetError(); err != nil {
 		return errFactory.NewTestExecutionErrorFromCause(err)

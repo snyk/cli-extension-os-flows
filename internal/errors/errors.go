@@ -112,9 +112,7 @@ func (ef *ErrorFactory) NewTestExecutionError(details string) *OSFlowsExtensionE
 	)
 }
 
-// NewTestExecutionErrorFromCause creates a new error for failures in the test execution,
-// keeping cause wrapped (rather than flattened to a string) so a snyk_errors.Error inside it
-// - e.g. a quota denial reconstructed from a polled TestResult - stays recoverable via errors.As.
+// NewTestExecutionErrorFromCause creates a test execution error, keeping cause wrapped so errors.As can still recover it.
 func (ef *ErrorFactory) NewTestExecutionErrorFromCause(cause error) *OSFlowsExtensionError {
 	return ef.newErr(
 		fmt.Errorf("test execution failed: %w", cause),

@@ -292,9 +292,7 @@ func Test_RunTest_ErrorsWhenFindingsError(t *testing.T) {
 	require.Error(t, err)
 }
 
-// Test_RunTest_PreservesErrorCatalogCodeWhenExecutionErrored verifies that a polled
-// TestResult reporting Errored surfaces its error-catalog code (e.g. SNYK-0006 for a
-// quota denial) through errors.As, rather than degrading to a plain string.
+// An Errored TestResult should surface its error-catalog code (e.g. SNYK-0006) through errors.As, not degrade to a plain string.
 func Test_RunTest_PreservesErrorCatalogCodeWhenExecutionErrored(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -331,9 +329,7 @@ func Test_RunTest_PreservesErrorCatalogCodeWhenExecutionErrored(t *testing.T) {
 	assert.Equal(t, "Test limit reached", snykErr.Title)
 }
 
-// Test_RunTest_UnknownErrorWhenExecutionErroredWithoutError verifies that an Errored
-// TestResult reporting no error at all still surfaces a non-nil error, rather than
-// silently succeeding.
+// An Errored TestResult reporting no error at all must still surface a non-nil error, not silently succeed.
 func Test_RunTest_UnknownErrorWhenExecutionErroredWithoutError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
