@@ -7,7 +7,6 @@ import (
 	std_errors "errors"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -19,6 +18,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	xerrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
@@ -376,15 +376,7 @@ func executeTest(
 	}
 
 	if finalResult.GetExecutionState() == testapi.TestExecutionStatesErrored {
-		apiErrors := finalResult.GetErrors()
-		if apiErrors != nil && len(*apiErrors) > 0 {
-			var errorMessages []string
-			for _, apiError := range *apiErrors {
-				errorMessages = append(errorMessages, apiError.Detail)
-			}
-			return nil, nil, errFactory.NewTestExecutionError(strings.Join(errorMessages, "; "))
-		}
-		return nil, nil, errFactory.NewTestExecutionError("an unknown error occurred")
+		return nil, nil, buildTestExecutionError(errFactory, finalResult)
 	}
 
 	// Get findings for the test
@@ -405,6 +397,14 @@ func executeTest(
 		return finalResult, findingsData, errFactory.NewTestExecutionError("test completed but findings could not be retrieved")
 	}
 	return finalResult, findingsData, nil
+}
+
+// buildTestExecutionError wraps finalResult.GetError so an error-catalog code (e.g. SNYK-0006) survives through errors.As.
+func buildTestExecutionError(errFactory *xerrors.ErrorFactory, finalResult testapi.TestResult) error {
+	if err := finalResult.GetError(); err != nil {
+		return errFactory.NewTestExecutionErrorFromCause(err)
+	}
+	return errFactory.NewTestExecutionError("an unknown error occurred")
 }
 
 // logStartTestParams emits a debug log describing the request that is about to be sent
