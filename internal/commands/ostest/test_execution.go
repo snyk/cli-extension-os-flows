@@ -18,7 +18,6 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
-	xerrors "github.com/snyk/cli-extension-os-flows/internal/errors"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/transform"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
@@ -376,7 +375,10 @@ func executeTest(
 	}
 
 	if finalResult.GetExecutionState() == testapi.TestExecutionStatesErrored {
-		return nil, nil, buildTestExecutionError(errFactory, finalResult)
+		if testErr := finalResult.GetError(); testErr != nil {
+			return nil, nil, errFactory.NewTestExecutionErrorFromCause(testErr)
+		}
+		return nil, nil, errFactory.NewTestExecutionError("an unknown error occurred")
 	}
 
 	// Get findings for the test
@@ -397,14 +399,6 @@ func executeTest(
 		return finalResult, findingsData, errFactory.NewTestExecutionError("test completed but findings could not be retrieved")
 	}
 	return finalResult, findingsData, nil
-}
-
-// buildTestExecutionError wraps finalResult.GetError so an error-catalog code (e.g. SNYK-0006) survives through errors.As.
-func buildTestExecutionError(errFactory *xerrors.ErrorFactory, finalResult testapi.TestResult) error {
-	if err := finalResult.GetError(); err != nil {
-		return errFactory.NewTestExecutionErrorFromCause(err)
-	}
-	return errFactory.NewTestExecutionError("an unknown error occurred")
 }
 
 // logStartTestParams emits a debug log describing the request that is about to be sent
