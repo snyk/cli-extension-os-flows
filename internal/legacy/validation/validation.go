@@ -145,15 +145,34 @@ func validateFileNonEmptyWhenSet(cfg configuration.Configuration) error {
 	return nil
 }
 
+// solutionFileExtensions are the .NET solution formats --file accepts: the
+// original text format and the XML format that replaces it from Visual Studio
+// 17.14 / .NET 9 onwards. Both expand to the projects they hold, so neither can
+// be reconciled with a single --project-name.
+var solutionFileExtensions = []string{".sln", ".slnx"}
+
 func validateFileAndProjectName(cfg configuration.Configuration) error {
-	fileValue := cfg.GetString(flags.FlagFile)
-	if !strings.HasSuffix(fileValue, ".sln") {
+	ext := solutionFileExtension(cfg.GetString(flags.FlagFile))
+	if ext == "" {
 		return nil
 	}
 	if !cfg.IsSet(flags.FlagProjectName) {
 		return nil
 	}
-	return snyk_cli_errors.NewInvalidFlagOptionError("The following option combination is not currently supported: file=*.sln + project-name")
+	return snyk_cli_errors.NewInvalidFlagOptionError(
+		"The following option combination is not currently supported: file=*" + ext + " + project-name",
+	)
+}
+
+// solutionFileExtension returns the solution extension file ends with, matched
+// case-insensitively, or "" when it is not a solution file.
+func solutionFileExtension(file string) string {
+	for _, ext := range solutionFileExtensions {
+		if strings.HasSuffix(strings.ToLower(file), ext) {
+			return ext
+		}
+	}
+	return ""
 }
 
 func validateDetectionDepth(cfg configuration.Configuration) error {
