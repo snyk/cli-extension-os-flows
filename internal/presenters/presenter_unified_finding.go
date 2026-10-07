@@ -60,7 +60,7 @@ type SummaryPayload struct {
 	ProjectName          string                    `json:"projectName"`
 	DisplayTargetFile    string                    `json:"displayTargetFile"`
 	VulnerablePathsCount int                       `json:"vulnerablePathsCount"`
-	TargetDirectory      string                    `json:"-"`
+	TargetDirectory      string                    `json:"targetDirectory"`
 	AssetLink            string                    `json:"assetLink,omitempty"`
 }
 
