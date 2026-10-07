@@ -7,7 +7,6 @@ import (
 	std_errors "errors"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -376,13 +375,8 @@ func executeTest(
 	}
 
 	if finalResult.GetExecutionState() == testapi.TestExecutionStatesErrored {
-		apiErrors := finalResult.GetErrors()
-		if apiErrors != nil && len(*apiErrors) > 0 {
-			var errorMessages []string
-			for _, apiError := range *apiErrors {
-				errorMessages = append(errorMessages, apiError.Detail)
-			}
-			return nil, nil, errFactory.NewTestExecutionError(strings.Join(errorMessages, "; "))
+		if testErr := finalResult.GetError(); testErr != nil {
+			return nil, nil, errFactory.NewTestExecutionErrorFromCause(testErr)
 		}
 		return nil, nil, errFactory.NewTestExecutionError("an unknown error occurred")
 	}
