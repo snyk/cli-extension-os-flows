@@ -104,6 +104,9 @@
 
   Organization:      {{ getValueFromConfig "internal_org_slug" }}
   Test type:         {{ if eq .Summary.Type "sast" }}Static code analysis{{else}}{{ .Summary.Type }}{{ end}}
+  {{- if .ProjectName }}
+  Project name:      {{ .ProjectName }}
+  {{- end }}
   Project path:      {{ .Summary.Path }}
 
   {{- template "renderIssueCounts" (summaryData .Findings .Summary.SeverityOrderAsc) }}
