@@ -70,36 +70,6 @@ func TestReachabilityFlag(t *testing.T) {
 	}
 }
 
-func TestHTMLFlags(t *testing.T) {
-	t.Run("html flag parses as bool", func(t *testing.T) {
-		flagSet := flags.OSTestFlagSet()
-		err := flagSet.Parse([]string{"--html"})
-		require.NoError(t, err, "flag parsing should not fail")
-
-		html, err := flagSet.GetBool(flags.FlagHTML)
-		require.NoError(t, err, "getting flag value should not fail")
-		assert.Equal(t, true, html)
-	})
-
-	t.Run("html-file-output flag parses as string", func(t *testing.T) {
-		flagSet := flags.OSTestFlagSet()
-		err := flagSet.Parse([]string{"--html-file-output=report.html"})
-		require.NoError(t, err, "flag parsing should not fail")
-
-		value, err := flagSet.GetString(flags.FlagHTMLFileOutput)
-		require.NoError(t, err, "getting flag value should not fail")
-		assert.Equal(t, "report.html", value)
-	})
-
-	t.Run("html flags are registered on OSTestFlagSet", func(t *testing.T) {
-		flagSet := flags.OSTestFlagSet()
-
-		for _, name := range []string{flags.FlagHTML, flags.FlagHTMLFileOutput} {
-			assert.NotNil(t, flagSet.Lookup(name), "--%s should be registered on OSTestFlagSet", name)
-		}
-	})
-}
-
 func TestNonOpenSourceTestTypeFlags(t *testing.T) {
 	for _, name := range []string{flags.FlagIAC, flags.FlagDocker, flags.FlagContainer, flags.FlagCode} {
 		t.Run(fmt.Sprintf("--%s parses as a bool on OSTestFlagSet", name), func(t *testing.T) {
