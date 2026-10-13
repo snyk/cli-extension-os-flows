@@ -39,17 +39,13 @@
 
 {{end}}
 
-{{- define "details" -}}
-    {{- $sortedFindings := .Findings | sortFindingBy "Attributes.Rating.Severity" .Summary.SeverityOrderAsc }}
+{{- define "findingSections" -}}
+    {{- $sortedFindings := .Findings | sortFindingBy "Attributes.Rating.Severity" .SeverityOrder }}
     {{- $allOpenFindings := $sortedFindings | filterFinding (isOpenFinding) }}
     {{- $openFindings := $allOpenFindings | filterFinding (isNotLicenseFindingFilter) }}
     {{- $licenseFindings := $allOpenFindings | filterFinding (isLicenseFindingFilter) }}
-    {{- $pendingIgnoreFindings := $sortedFindings | filterFinding (isPendingFinding) }}
-    {{- $ignoredFindings := $sortedFindings | filterFinding (isIgnoredFinding) }}
     {{- $hasOpenFindings := gt (len $openFindings) 0 }}
     {{- $hasLicenseFindings := gt (len $licenseFindings) 0 }}
-    {{- $hasPendingIgnoreFindings := gt (len $pendingIgnoreFindings) 0 }}
-    {{- $hasIgnoredFindings := gt (len $ignoredFindings) 0 }}
 
     {{- if $hasOpenFindings }}{{ printf "Security issues: %d" (len $openFindings) | title }}
 		{{- range $finding := $openFindings }}
@@ -78,6 +74,22 @@
 			{{- template "finding_details" $finding -}}
 		{{- end }}
     {{- end }}
+{{- end }}{{/* end "findingSections" */}}
+
+{{- define "details" -}}
+    {{- $summary := .Summary -}}
+    {{- range $group := groupFindingsByComponent .Findings }}
+        {{- if $group.Component }}
+{{ printf "Component: %s" $group.Component | bold }}
+        {{- end }}
+        {{- template "findingSections" (summaryData $group.Findings $summary.SeverityOrderAsc) }}
+    {{- end }}
+
+    {{- $sortedFindings := .Findings | sortFindingBy "Attributes.Rating.Severity" .Summary.SeverityOrderAsc }}
+    {{- $openFindings := $sortedFindings | filterFinding (isOpenFinding) | filterFinding (isNotLicenseFindingFilter) }}
+    {{- $ignoredFindings := $sortedFindings | filterFinding (isIgnoredFinding) }}
+    {{- $hasOpenFindings := gt (len $openFindings) 0 }}
+    {{- $hasIgnoredFindings := gt (len $ignoredFindings) 0 }}
     {{- if or (and $hasOpenFindings $hasIgnoredFindings) (eq (getValueFromConfig "include-ignores") "true") }}
 		{{- divider }}
     {{- end}}

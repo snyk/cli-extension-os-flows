@@ -451,6 +451,7 @@ func getCliTemplateFuncMap(tmpl *template.Template) template.FuncMap {
 	fnMap["firstAssetLink"] = firstAssetLink
 	fnMap["summaryData"] = summaryData
 	fnMap["shouldShowAggregateSummary"] = shouldShowAggregateSummary
+	fnMap["groupFindingsByComponent"] = GroupFindingsByComponent
 	return fnMap
 }
 
@@ -496,6 +497,52 @@ func firstAssetLink(results []*UnifiedProjectResult) string {
 // based on the number of results.
 func shouldShowAggregateSummary(results []*UnifiedProjectResult) bool {
 	return len(results) > 1
+}
+
+// ComponentGroup groups findings by the component they originate from.
+type ComponentGroup struct {
+	// Component is the component key the findings belong to. It is empty when the
+	// findings should be rendered as a single flat list without a component header.
+	Component string
+	Findings  []testapi.FindingData
+}
+
+// GroupFindingsByComponent groups findings by their component key
+// (testapi.FindingData.Attributes.ComponentKey), preserving first-seen order.
+//
+// When there are fewer than two distinct non-empty component keys, a single group
+// with an empty Component is returned so callers render the findings as a flat list,
+// preserving the pre-existing single-component behaviour. Findings without a component
+// key are kept in their own (empty-key) group, rendered without a header.
+func GroupFindingsByComponent(findings []testapi.FindingData) []ComponentGroup {
+	var order []string
+	grouped := map[string][]testapi.FindingData{}
+	for _, f := range findings {
+		key := ""
+		if f.Attributes != nil && f.Attributes.ComponentKey != nil {
+			key = *f.Attributes.ComponentKey
+		}
+		if _, ok := grouped[key]; !ok {
+			order = append(order, key)
+		}
+		grouped[key] = append(grouped[key], f)
+	}
+
+	distinct := 0
+	for _, k := range order {
+		if k != "" {
+			distinct++
+		}
+	}
+	if distinct < 2 {
+		return []ComponentGroup{{Component: "", Findings: findings}}
+	}
+
+	groups := make([]ComponentGroup, 0, len(order))
+	for _, k := range order {
+		groups = append(groups, ComponentGroup{Component: k, Findings: grouped[k]})
+	}
+	return groups
 }
 
 // getDefaultTemplateFuncMap returns the default template function map.

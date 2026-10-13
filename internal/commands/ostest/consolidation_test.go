@@ -1,6 +1,7 @@
 package ostest_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -11,6 +12,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/presenters"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/internal/util/testfactories"
 )
 
@@ -313,6 +315,77 @@ func Test_formatPathsCount(t *testing.T) {
 	t.Run("returns plural for multiple paths", func(t *testing.T) {
 		result := presenters.FormatPathsCount([]string{"path1", "path2", "path3"})
 		assert.Contains(t, result, "2 other paths")
+	})
+}
+
+func Test_consolidateFindingsByComponent(t *testing.T) {
+	logger := zerolog.Nop()
+	newCtx := func() context.Context {
+		ctx := t.Context()
+		ctx = cmdctx.WithLogger(ctx, &logger)
+		ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+		return ctx
+	}
+
+	const (
+		compA = "pkg:npm/app-a@1.0.0"
+		compB = "pkg:npm/app-b@2.0.0"
+	)
+
+	findingFor := func(component, snykID string, sev testapi.Severity) testapi.FindingData {
+		return testapi.FindingData{
+			Attributes: &testapi.FindingAttributes{
+				Rating:       testapi.Rating{Severity: sev},
+				ComponentKey: util.Ptr(component),
+				Problems:     []testapi.Problem{createSnykVulnProblem(snykID)},
+			},
+		}
+	}
+
+	t.Run("reports a shared vulnerability under each component", func(t *testing.T) {
+		findings := []testapi.FindingData{
+			findingFor(compA, "SNYK-TEST-001", testapi.SeverityHigh),
+			findingFor(compB, "SNYK-TEST-001", testapi.SeverityHigh),
+		}
+
+		consolidated, err := ostest.ConsolidateFindingsByComponent(newCtx(), findings)
+		require.NoError(t, err)
+		require.Len(t, consolidated, 2)
+		require.NotNil(t, consolidated[0].Attributes.ComponentKey)
+		require.NotNil(t, consolidated[1].Attributes.ComponentKey)
+		assert.Equal(t, compA, *consolidated[0].Attributes.ComponentKey)
+		assert.Equal(t, compB, *consolidated[1].Attributes.ComponentKey)
+	})
+
+	t.Run("consolidates duplicates within a component and preserves component order", func(t *testing.T) {
+		findings := []testapi.FindingData{
+			findingFor(compA, "SNYK-TEST-001", testapi.SeverityHigh),
+			findingFor(compB, "SNYK-TEST-002", testapi.SeverityMedium),
+			findingFor(compA, "SNYK-TEST-001", testapi.SeverityCritical), // duplicate within compA
+		}
+
+		consolidated, err := ostest.ConsolidateFindingsByComponent(newCtx(), findings)
+		require.NoError(t, err)
+		require.Len(t, consolidated, 2)
+
+		// compA group comes first (first-seen order) with its duplicate merged and highest severity kept.
+		require.NotNil(t, consolidated[0].Attributes.ComponentKey)
+		assert.Equal(t, compA, *consolidated[0].Attributes.ComponentKey)
+		assert.Equal(t, testapi.SeverityCritical, consolidated[0].Attributes.Rating.Severity)
+
+		require.NotNil(t, consolidated[1].Attributes.ComponentKey)
+		assert.Equal(t, compB, *consolidated[1].Attributes.ComponentKey)
+	})
+
+	t.Run("a single component behaves like global consolidation", func(t *testing.T) {
+		findings := []testapi.FindingData{
+			findingFor(compA, "SNYK-TEST-001", testapi.SeverityHigh),
+			findingFor(compA, "SNYK-TEST-001", testapi.SeverityHigh),
+		}
+
+		consolidated, err := ostest.ConsolidateFindingsByComponent(newCtx(), findings)
+		require.NoError(t, err)
+		require.Len(t, consolidated, 1)
 	})
 }
 
