@@ -29,6 +29,8 @@ const (
 	DflyDepgraphFlow Flow = "dfly-depgraph"
 )
 
+const failOnPatchable = "patchable"
+
 func validateLegacyCLIOptions(
 	fc *FlowConfig,
 	errFactory *internalErrors.ErrorFactory,
@@ -151,6 +153,23 @@ func doesPathExist(path string) (bool, error) {
 	return false, fmt.Errorf("failed to stat path %s: %w", path, err)
 }
 
+// requiresLegacyByFlags reports whether any flag is only supported by the legacy flow.
+func requiresLegacyByFlags(cfg configuration.Configuration, unmanaged bool) bool {
+	nonOSTestType := cfg.GetBool(flags.FlagIAC) ||
+		cfg.GetBool(flags.FlagDocker) ||
+		cfg.GetBool(flags.FlagContainer) ||
+		cfg.GetBool(flags.FlagCode)
+
+	return cfg.GetBool(flags.FlagPrintGraph) ||
+		cfg.GetBool(flags.FlagPrintEffectiveGraph) ||
+		cfg.GetBool(flags.FlagPrintDeps) ||
+		cfg.GetBool(flags.FlagPrintDepPaths) ||
+		nonOSTestType ||
+		unmanaged ||
+		// The unified test API has no notion of patches, so only legacy can honor this value.
+		cfg.GetString(flags.FlagFailOn) == failOnPatchable
+}
+
 // ParseFlowConfig reads and parses all flow-related configuration flags.
 func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	ffRiskScore := cfg.GetBool(constants.FeatureFlagRiskScore)
@@ -171,16 +190,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	fileFlag := cfg.GetString(flags.FlagFile)
 
 	forceLegacyTest := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
-	nonOSTestType := cfg.GetBool(flags.FlagIAC) ||
-		cfg.GetBool(flags.FlagDocker) ||
-		cfg.GetBool(flags.FlagContainer) ||
-		cfg.GetBool(flags.FlagCode)
-	requiresLegacy := cfg.GetBool(flags.FlagPrintGraph) ||
-		cfg.GetBool(flags.FlagPrintEffectiveGraph) ||
-		cfg.GetBool(flags.FlagPrintDeps) ||
-		cfg.GetBool(flags.FlagPrintDepPaths) ||
-		nonOSTestType ||
-		unmanaged
+	requiresLegacy := requiresLegacyByFlags(cfg, unmanaged)
 	var targetPackage string
 
 	// The legacy `snyk test` command supports testing packages directly. e.g `snyk test lodash`.

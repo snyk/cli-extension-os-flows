@@ -769,3 +769,41 @@ func Test_ShouldUseLegacyFlow_UnifiedTestAPIOptOut(t *testing.T) {
 		})
 	}
 }
+
+func Test_ShouldUseLegacyFlow_FailOn(t *testing.T) {
+	t.Parallel()
+
+	tcs := map[string]struct {
+		failOn          string
+		expectUseLegacy bool
+	}{
+		"stays on the unified test API for --fail-on=all":        {failOn: "all", expectUseLegacy: false},
+		"stays on the unified test API for --fail-on=upgradable": {failOn: "upgradable", expectUseLegacy: false},
+		// The unified test API has no notion of patches, so only legacy can honor this value.
+		"routes to legacy for --fail-on=patchable": {failOn: "patchable", expectUseLegacy: true},
+	}
+
+	for tcName, tc := range tcs {
+		t.Run(tcName, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := configuration.New()
+			cfg.Set(flags.FlagRiskScoreThreshold, -1)
+			cfg.Set(orchestrator.FlagUnifiedTestAPIOsCLI.Key, true)
+			cfg.Set(flags.FlagFailOn, tc.failOn)
+
+			ctx := t.Context()
+			ctx = cmdctx.WithConfig(ctx, cfg)
+			ctx = cmdctx.WithLogger(ctx, &nopLogger)
+			ctx = cmdctx.WithErrorFactory(ctx, errFactory)
+
+			flowCfg, err := ostest.ParseFlowConfig(cfg)
+			require.NoError(t, err)
+
+			useLegacy, err := ostest.ShouldUseLegacyFlow(ctx, flowCfg, []string{"."})
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.expectUseLegacy, useLegacy)
+		})
+	}
+}
