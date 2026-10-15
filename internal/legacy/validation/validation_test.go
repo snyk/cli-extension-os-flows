@@ -41,6 +41,48 @@ func TestValidateFlagValues_EmptyConfig_ReturnsNoError(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestValidateFlagValues_SourceDirRequiresReachability(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		args    []string
+		command validation.Command
+		wantErr bool
+	}{
+		{"source absent", nil, validation.CommandTest, false},
+		{"equals without reachability", []string{"--source-dir=source"}, validation.CommandTest, true},
+		{"space without reachability", []string{"--source-dir", "source"}, validation.CommandTest, true},
+		{"equals reachability false", []string{"--source-dir=source", "--reachability=false"}, validation.CommandTest, true},
+		{"space reachability false", []string{"--source-dir", "source", "--reachability=false"}, validation.CommandTest, true},
+		{"equals reachability true", []string{"--source-dir=source", "--reachability=true"}, validation.CommandTest, false},
+		{"space reachability true", []string{"--source-dir", "source", "--reachability=true"}, validation.CommandTest, false},
+		{"empty without reachability", []string{"--source-dir="}, validation.CommandTest, true},
+		{"empty reachability false", []string{"--source-dir=", "--reachability=false"}, validation.CommandTest, true},
+		{"empty reachability true", []string{"--source-dir=", "--reachability=true"}, validation.CommandTest, false},
+		{"monitor equals unchanged", []string{"--source-dir=source"}, validation.CommandMonitor, false},
+		{"monitor space unchanged", []string{"--source-dir", "source", "--reachability=false"}, validation.CommandMonitor, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			flagSet := flags.OSTestFlagSet()
+			require.NoError(t, flagSet.Parse(append([]string{"project"}, tt.args...)))
+			assert.Equal(t, []string{"project"}, flagSet.Args())
+			cfg := configuration.New()
+			require.NoError(t, cfg.AddFlagSet(flagSet))
+
+			err := validation.ValidateFlagValues(cfg, tt.command)
+			if tt.wantErr {
+				assertCatalogError(t, err, catalogErrorCodeInvalidFlagOption, catalogTitleInvalidFlagOption,
+					"--source-dir requires --reachability=true. To select the project directory, pass it as a positional argument.")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestValidateFlagValues_Exclude_RequiresAllProjectsOrYarnWorkspaces(t *testing.T) {
 	t.Parallel()
 
