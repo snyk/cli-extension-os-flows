@@ -79,6 +79,37 @@ func Test_getUnifiedProjectResults_AssetLinkPropagates(t *testing.T) {
 	assert.Equal(t, assetURL, results[0].AssetLink)
 }
 
+func Test_getUnifiedProjectResults_ProjectIdentityPropagates(t *testing.T) {
+	logger := zerolog.Nop()
+
+	mkData := func(t *testing.T, contentType string, v any) workflow.Data {
+		t.Helper()
+		b, err := json.Marshal(v)
+		require.NoError(t, err)
+		return workflow.NewData(workflow.NewTypeIdentifier(workflow.NewWorkflowIdentifier("test"), "x"), contentType, b)
+	}
+
+	findings := []testapi.FindingData{{Attributes: &testapi.FindingAttributes{Title: "x"}}}
+	summary := presenters.SummaryPayload{
+		Summary:           &json_schemas.TestSummary{Type: "open-source"},
+		ProjectName:       "nl.ohra.tools:DeployDBWEB",
+		TargetDirectory:   "/var/lib/jenkins/workspace",
+		DisplayTargetFile: "pom.xml",
+	}
+
+	input := []workflow.Data{
+		mkData(t, LocalUnifiedFindingModel, findings),
+		mkData(t, LocalUnifiedSummaryModel, summary),
+	}
+
+	results, remaining := getUnifiedProjectResults(input, &logger)
+	require.Len(t, results, 1)
+	assert.Empty(t, remaining)
+	assert.Equal(t, "nl.ohra.tools:DeployDBWEB", results[0].ProjectName)
+	assert.Equal(t, "/var/lib/jenkins/workspace", results[0].TargetDirectory)
+	assert.Equal(t, "pom.xml", results[0].DisplayTargetFile)
+}
+
 func Test_getWritersToUse(t *testing.T) {
 	t.Run("default writer only", func(t *testing.T) {
 		config := configuration.NewWithOpts()
