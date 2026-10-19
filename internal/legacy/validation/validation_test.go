@@ -41,6 +41,53 @@ func TestValidateFlagValues_EmptyConfig_ReturnsNoError(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestValidateFlagValues_SourceDirRequiresReachability(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr bool
+	}{
+		{"source absent", nil, false},
+		{"equals without reachability", []string{"--source-dir=source"}, true},
+		{"space without reachability", []string{"--source-dir", "source"}, true},
+		{"equals reachability false", []string{"--source-dir=source", "--reachability=false"}, true},
+		{"space reachability false", []string{"--source-dir", "source", "--reachability=false"}, true},
+		{"equals reachability true", []string{"--source-dir=source", "--reachability=true"}, false},
+		{"space reachability true", []string{"--source-dir", "source", "--reachability=true"}, false},
+		{"empty without reachability", []string{"--source-dir="}, true},
+		{"empty reachability false", []string{"--source-dir=", "--reachability=false"}, true},
+		{"empty reachability true", []string{"--source-dir=", "--reachability=true"}, false},
+	}
+	for _, command := range []validation.Command{validation.CommandTest, validation.CommandMonitor} {
+		t.Run(string(command), func(t *testing.T) {
+			t.Parallel()
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					flagSet := flags.OSTestFlagSet()
+					if command == validation.CommandMonitor {
+						flagSet = flags.OSMonitorFlagSet()
+					}
+					require.NoError(t, flagSet.Parse(append([]string{"project"}, tt.args...)))
+					assert.Equal(t, []string{"project"}, flagSet.Args())
+					cfg := configuration.New()
+					require.NoError(t, cfg.AddFlagSet(flagSet))
+
+					err := validation.ValidateFlagValues(cfg, command)
+					if tt.wantErr {
+						assertCatalogError(t, err, catalogErrorCodeInvalidFlagOption, catalogTitleInvalidFlagOption,
+							"--source-dir requires --reachability=true. To select the project directory, pass it as a positional argument.")
+					} else {
+						require.NoError(t, err)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestValidateFlagValues_Exclude_RequiresAllProjectsOrYarnWorkspaces(t *testing.T) {
 	t.Parallel()
 
