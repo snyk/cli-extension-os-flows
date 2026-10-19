@@ -35,10 +35,8 @@ func isEmptyFlagValue(v string) bool {
 // command is the workflow command name; only CommandTest allows --json-file-output and --sarif-file-output.
 // It returns an error if any rule is violated.
 func ValidateFlagValues(cfg configuration.Configuration, command Command) error {
-	if command == CommandTest && cfg.IsSet(flags.FlagSourceDir) && !cfg.GetBool(flags.FlagReachability) {
-		return snyk_cli_errors.NewInvalidFlagOptionError(
-			"--source-dir requires --reachability=true. To select the project directory, pass it as a positional argument.",
-		)
+	if err := validateSourceDirRequiresReachability(cfg); err != nil {
+		return err
 	}
 	if err := validateOutputFileFlagsOnlyForTest(cfg, command); err != nil {
 		return err
@@ -67,6 +65,15 @@ func ValidateFlagValues(cfg configuration.Configuration, command Command) error 
 	//nolint:revive // Code is cleaner this way.
 	if err := validateProjectTags(cfg); err != nil {
 		return err
+	}
+	return nil
+}
+
+func validateSourceDirRequiresReachability(cfg configuration.Configuration) error {
+	if cfg.IsSet(flags.FlagSourceDir) && !cfg.GetBool(flags.FlagReachability) {
+		return snyk_cli_errors.NewInvalidFlagOptionError(
+			"--source-dir requires --reachability=true. To select the project directory, pass it as a positional argument.",
+		)
 	}
 	return nil
 }

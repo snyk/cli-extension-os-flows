@@ -47,37 +47,42 @@ func TestValidateFlagValues_SourceDirRequiresReachability(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    []string
-		command validation.Command
 		wantErr bool
 	}{
-		{"source absent", nil, validation.CommandTest, false},
-		{"equals without reachability", []string{"--source-dir=source"}, validation.CommandTest, true},
-		{"space without reachability", []string{"--source-dir", "source"}, validation.CommandTest, true},
-		{"equals reachability false", []string{"--source-dir=source", "--reachability=false"}, validation.CommandTest, true},
-		{"space reachability false", []string{"--source-dir", "source", "--reachability=false"}, validation.CommandTest, true},
-		{"equals reachability true", []string{"--source-dir=source", "--reachability=true"}, validation.CommandTest, false},
-		{"space reachability true", []string{"--source-dir", "source", "--reachability=true"}, validation.CommandTest, false},
-		{"empty without reachability", []string{"--source-dir="}, validation.CommandTest, true},
-		{"empty reachability false", []string{"--source-dir=", "--reachability=false"}, validation.CommandTest, true},
-		{"empty reachability true", []string{"--source-dir=", "--reachability=true"}, validation.CommandTest, false},
-		{"monitor equals unchanged", []string{"--source-dir=source"}, validation.CommandMonitor, false},
-		{"monitor space unchanged", []string{"--source-dir", "source", "--reachability=false"}, validation.CommandMonitor, false},
+		{"source absent", nil, false},
+		{"equals without reachability", []string{"--source-dir=source"}, true},
+		{"space without reachability", []string{"--source-dir", "source"}, true},
+		{"equals reachability false", []string{"--source-dir=source", "--reachability=false"}, true},
+		{"space reachability false", []string{"--source-dir", "source", "--reachability=false"}, true},
+		{"equals reachability true", []string{"--source-dir=source", "--reachability=true"}, false},
+		{"space reachability true", []string{"--source-dir", "source", "--reachability=true"}, false},
+		{"empty without reachability", []string{"--source-dir="}, true},
+		{"empty reachability false", []string{"--source-dir=", "--reachability=false"}, true},
+		{"empty reachability true", []string{"--source-dir=", "--reachability=true"}, false},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, command := range []validation.Command{validation.CommandTest, validation.CommandMonitor} {
+		t.Run(string(command), func(t *testing.T) {
 			t.Parallel()
-			flagSet := flags.OSTestFlagSet()
-			require.NoError(t, flagSet.Parse(append([]string{"project"}, tt.args...)))
-			assert.Equal(t, []string{"project"}, flagSet.Args())
-			cfg := configuration.New()
-			require.NoError(t, cfg.AddFlagSet(flagSet))
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+					flagSet := flags.OSTestFlagSet()
+					if command == validation.CommandMonitor {
+						flagSet = flags.OSMonitorFlagSet()
+					}
+					require.NoError(t, flagSet.Parse(append([]string{"project"}, tt.args...)))
+					assert.Equal(t, []string{"project"}, flagSet.Args())
+					cfg := configuration.New()
+					require.NoError(t, cfg.AddFlagSet(flagSet))
 
-			err := validation.ValidateFlagValues(cfg, tt.command)
-			if tt.wantErr {
-				assertCatalogError(t, err, catalogErrorCodeInvalidFlagOption, catalogTitleInvalidFlagOption,
-					"--source-dir requires --reachability=true. To select the project directory, pass it as a positional argument.")
-			} else {
-				require.NoError(t, err)
+					err := validation.ValidateFlagValues(cfg, command)
+					if tt.wantErr {
+						assertCatalogError(t, err, catalogErrorCodeInvalidFlagOption, catalogTitleInvalidFlagOption,
+							"--source-dir requires --reachability=true. To select the project directory, pass it as a positional argument.")
+					} else {
+						require.NoError(t, err)
+					}
+				})
 			}
 		})
 	}
