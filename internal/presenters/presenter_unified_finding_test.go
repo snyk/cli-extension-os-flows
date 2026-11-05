@@ -1357,6 +1357,62 @@ func TestUnifiedFindingPresenter_MultipleProjects_ShouldShowAggregateSummary(t *
 	assert.Equal(t, 4, strings.Count(output, "Test Summary"))
 }
 
+func TestUnifiedFindingPresenter_MultiModuleMaven_ShowsProjectNamePerModule(t *testing.T) {
+	config := configuration.New()
+	buffer := &bytes.Buffer{}
+
+	newModule := func(projectName string) *presenters.UnifiedProjectResult {
+		return &presenters.UnifiedProjectResult{
+			Findings:          []testapi.FindingData{},
+			ProjectName:       projectName,
+			TargetDirectory:   "/workspace/app",
+			DisplayTargetFile: "pom.xml",
+			Summary: &json_schemas.TestSummary{
+				Type:             "open-source",
+				Path:             "/workspace/app",
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+			},
+		}
+	}
+	results := []*presenters.UnifiedProjectResult{
+		newModule("nl.ohra.tools:DeployDB"),
+		newModule("nl.ohra.tools:DeployDBWEB"),
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer(results, config, buffer)
+	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	require.NoError(t, err)
+
+	output := buffer.String()
+	assert.Equal(t, 2, strings.Count(output, "Testing /workspace/app (pom.xml)"))
+	assert.Contains(t, output, "Project name:      nl.ohra.tools:DeployDB ")
+	assert.Contains(t, output, "Project name:      nl.ohra.tools:DeployDBWEB ")
+}
+
+func TestUnifiedFindingPresenter_NoProjectName_OmitsProjectNameLine(t *testing.T) {
+	config := configuration.New()
+	buffer := &bytes.Buffer{}
+
+	results := []*presenters.UnifiedProjectResult{
+		{
+			Findings:          []testapi.FindingData{},
+			TargetDirectory:   "/workspace/app",
+			DisplayTargetFile: "pom.xml",
+			Summary: &json_schemas.TestSummary{
+				Type:             "open-source",
+				Path:             "/workspace/app",
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+			},
+		},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer(results, config, buffer)
+	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	require.NoError(t, err)
+
+	assert.NotContains(t, buffer.String(), "Project name:")
+}
+
 func TestUnifiedFindingPresenter_SingleProject_NoAggregateSummary(t *testing.T) {
 	config := configuration.New()
 	buffer := &bytes.Buffer{}

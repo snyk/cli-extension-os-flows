@@ -350,6 +350,7 @@
   ],
   "type": "open-source"
  },
+ "targetDirectory": ".",
  "vulnerablePathsCount": 1
 }
 ---
