@@ -168,6 +168,31 @@ func Test_OSWorkflow_DflyFFDisabled_UsesLegacy(t *testing.T) {
 	assert.NotNil(t, result)
 }
 
+func Test_OSWorkflow_DflyFF_FlagsOnlyLegacySupports_UseLegacy(t *testing.T) {
+	for _, flag := range []string{flags.FlagDocker, flags.FlagContainer, flags.FlagUnmanaged, flags.FlagPrintDeps} {
+		t.Run("--"+flag, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			legacyWorkflowID := workflow.NewWorkflowIdentifier("legacycli")
+			mockEngine := createMockEngine(ctrl)
+			mockEngine.EXPECT().
+				InvokeWithConfig(legacyWorkflowID, gomock.Any()).
+				Return([]workflow.Data{}, nil).
+				Times(1)
+
+			mockIctx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
+			cfg := mockIctx.GetConfiguration()
+			cfg.Set(constants.FeatureFlagDlfyCLIRollout, true)
+			cfg.Set(flag, true)
+
+			result, err := osmonitor.OSWorkflow(mockIctx, []workflow.Data{})
+			require.NoError(t, err)
+			assert.NotNil(t, result)
+		})
+	}
+}
+
 func Test_OSWorkflow_ForceLegacy_OverridesDflyFF(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

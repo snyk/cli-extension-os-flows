@@ -86,6 +86,23 @@ func TestNonOpenSourceTestTypeFlags(t *testing.T) {
 	}
 }
 
+func TestOSMonitorFlagSet_ContainerFlags(t *testing.T) {
+	for _, name := range []string{flags.FlagDocker, flags.FlagContainer} {
+		t.Run(fmt.Sprintf("--%s parses as a bool on OSMonitorFlagSet", name), func(t *testing.T) {
+			flagSet := flags.OSMonitorFlagSet()
+			require.NotNil(t, flagSet.Lookup(name), "--%s should be registered on OSMonitorFlagSet", name)
+
+			err := flagSet.Parse([]string{"alpine:3", "--" + name})
+			require.NoError(t, err, "flag parsing should not fail")
+
+			value, err := flagSet.GetBool(name)
+			require.NoError(t, err, "getting flag value should not fail")
+			assert.True(t, value)
+			assert.Equal(t, []string{"alpine:3"}, flagSet.Args(), "the image must stay a positional argument")
+		})
+	}
+}
+
 func TestOSTestFlagSet_HasMonitorFlag(t *testing.T) {
 	fs := flags.OSTestFlagSet()
 	f := fs.Lookup(flags.FlagMonitor)

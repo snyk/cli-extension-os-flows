@@ -181,11 +181,18 @@ func OSWorkflow(
 	inst.RecordShowNpmScopeFlag(cfg.GetBool(constants.FeatureFlagShowNpmScope))
 
 	forceLegacy := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
-	if !forceLegacy && cfg.GetBool(constants.FeatureFlagDlfyCLIRollout) {
+	if !forceLegacy && cfg.GetBool(constants.FeatureFlagDlfyCLIRollout) && !requiresLegacyByFlags(cfg) {
 		return runDflyMonitorEntrypoint(ctx)
 	}
 
 	return runLegacyMonitorFlow(ctx)
+}
+
+func requiresLegacyByFlags(cfg configuration.Configuration) bool {
+	return cfg.GetBool(flags.FlagDocker) ||
+		cfg.GetBool(flags.FlagContainer) ||
+		cfg.GetBool(flags.FlagUnmanaged) ||
+		cfg.GetBool(flags.FlagPrintDeps)
 }
 
 func setupDflyMonitor(ctx context.Context) (uuid.UUID, common.FlowClients, error) {
