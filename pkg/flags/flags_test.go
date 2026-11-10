@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -135,5 +136,59 @@ func TestRemoteRepoURLFlag(t *testing.T) {
 			require.NoError(t, err, "getting flag value should not fail")
 			assert.Equal(t, "https://github.com/example/repo.git", value)
 		})
+	}
+}
+
+func TestMavenPluginFlags_BindIntoConfig(t *testing.T) {
+	flagSets := []struct {
+		name     string
+		createFn func() *pflag.FlagSet
+	}{
+		{
+			name:     "OSTestFlagSet",
+			createFn: flags.OSTestFlagSet,
+		},
+		{
+			name:     "OSMonitorFlagSet",
+			createFn: flags.OSMonitorFlagSet,
+		},
+	}
+
+	flagNames := []string{flags.FlagMavenSkipWrapper, flags.FlagIncludeProvenance}
+
+	testCases := []struct {
+		name     string
+		args     func(flagName string) []string
+		expected bool
+	}{
+		{
+			name:     "no flag provided - default false",
+			args:     func(string) []string { return []string{} },
+			expected: false,
+		},
+		{
+			name:     "flag provided - enabled",
+			args:     func(flagName string) []string { return []string{"--" + flagName} },
+			expected: true,
+		},
+	}
+
+	for _, fs := range flagSets {
+		for _, flagName := range flagNames {
+			t.Run(fs.name+"/"+flagName, func(t *testing.T) {
+				for _, tt := range testCases {
+					t.Run(tt.name, func(t *testing.T) {
+						flagSet := fs.createFn()
+						require.NotNil(t, flagSet.Lookup(flagName), "--%s should be registered on %s", flagName, fs.name)
+						require.NoError(t, flagSet.Parse(tt.args(flagName)), "flag parsing should not fail")
+
+						cfg := configuration.New()
+						require.NoError(t, cfg.AddFlagSet(flagSet))
+
+						assert.Equal(t, tt.expected, cfg.GetBool(flagName))
+					})
+				}
+			})
+		}
 	}
 }

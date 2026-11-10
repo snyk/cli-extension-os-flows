@@ -45,6 +45,8 @@ const (
 	FlagAssetName               = "asset-name"
 	FlagPolicyPath              = "policy-path"
 	FlagMavenAggregateProject   = "maven-aggregate-project"
+	FlagMavenSkipWrapper        = "maven-skip-wrapper" //nolint:gosec // G101: a CLI flag name, not a credential.
+	FlagIncludeProvenance       = "include-provenance"
 	FlagScanUnmanaged           = "scan-unmanaged"
 	FlagScanAllUnmanaged        = "scan-all-unmanaged"
 	FlagSubProject              = "sub-project"
@@ -169,6 +171,8 @@ func OSTestFlagSet() *pflag.FlagSet {
 	flagSet.String(FlagVersion, "", "Specify a version for the collection of all projects in the working directory.")
 	flagSet.Bool(FlagDev, false, "Include development-only dependencies. Applicable only for some package managers.")
 	flagSet.Bool(FlagMavenAggregateProject, false, "Ensure all modules are resolvable by the Maven reactor.")
+	flagSet.Bool(FlagMavenSkipWrapper, false, "Force the globally installed mvn command, even when a Maven wrapper is present.")
+	flagSet.Bool(FlagIncludeProvenance, false, "Experimental. Generate provenance fingerprints for Maven artifacts during analysis.")
 	flagSet.Bool(FlagScanUnmanaged, false, "Specify an individual JAR, WAR, or AAR file.")
 	flagSet.Bool(FlagScanAllUnmanaged, false, "Auto-detect Maven, JAR, WAR, and AAR files recursively from the current folder.")
 	flagSet.String(FlagSubProject, "", "Name of Gradle sub-project to test.")
@@ -258,6 +262,8 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 	}
 	flagSet.String(FlagTags, "", "This is an alias for --project-tags")
 	flagSet.Bool(FlagMavenAggregateProject, false, "Ensure all modules are resolvable by the Maven reactor.")
+	flagSet.Bool(FlagMavenSkipWrapper, false, "Force the globally installed mvn command, even when a Maven wrapper is present.")
+	flagSet.Bool(FlagIncludeProvenance, false, "Experimental. Generate provenance fingerprints for Maven artifacts during analysis.")
 	flagSet.Bool(FlagScanUnmanaged, false, "Specify an individual JAR, WAR, or AAR file.")
 	flagSet.Bool(FlagScanAllUnmanaged, false, "Auto-detect Maven, JAR, WAR, and AAR files recursively from the current folder.")
 	flagSet.String(FlagSubProject, "", "Name of Gradle sub-project to test.")
