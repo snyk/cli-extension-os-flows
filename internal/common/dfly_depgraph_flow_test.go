@@ -3,6 +3,7 @@ package common_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -507,6 +508,66 @@ func Test_RunDflyDepgraphFlow_TagsFallbackToProjectTags(t *testing.T) {
 	assert.Equal(t, []string{"env=prod"}, *capturedConfig.ProjectTags)
 }
 
+func Test_RunDflyDepgraphFlow_ReachabilityAnalysisFollowsReachabilityFlag(t *testing.T) {
+	for _, reachability := range []bool{true, false} {
+		t.Run(fmt.Sprintf("reachability=%t", reachability), func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockIctx := setupDflyInvocationContext(t, ctrl, true)
+			cfg := mockIctx.GetConfiguration()
+			cfg.Set(flags.FlagReachability, reachability)
+
+			var capturedConfig *testapi.TestConfiguration
+			mockTestHandle := gafclientmocks.NewMockTestHandle(ctrl)
+			mockTestHandle.EXPECT().Wait(gomock.Any()).Return(nil).Times(1)
+			mockTestHandle.EXPECT().Result().Return(setupDflyMockTestResultEmpty(ctrl)).Times(1)
+
+			mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+			mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ interface{}, params testapi.StartTestParams) (testapi.TestHandle, error) {
+					capturedConfig = params.TestConfig()
+					return mockTestHandle, nil
+				},
+			).Times(1)
+
+			fdr := common.NewFakeDepgraphResolver([]common.DepgraphWithIdentity{
+				{
+					Identity: common.Identity{TargetFile: "proj/package.json"},
+					DepGraph: &depgraph.DepGraph{
+						SchemaVersion: "1.2.0",
+						PkgManager:    depgraph.PkgManager{Name: "npm"},
+						Pkgs: []depgraph.Pkg{
+							{ID: "proj@1.0.0", Info: depgraph.PkgInfo{Name: "proj", Version: "1.0.0"}},
+						},
+						Graph: depgraph.Graph{RootNodeID: "root"},
+					},
+				},
+			}, nil)
+
+			ctx := t.Context()
+			ctx = cmdctx.WithIctx(ctx, mockIctx)
+			ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
+			ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
+			ctx = cmdctx.WithConfig(ctx, cfg)
+
+			_, _, err := common.RunDflyDepgraphFlow(
+				ctx, ".", fdr,
+				common.FlowClients{FileUploadClient: fileupload.NewFakeClient(), TestClient: mockTestClient},
+				uuid.New(), nil, nil,
+				ostest.RunTestWithResources,
+			)
+			require.NoError(t, err)
+
+			require.NotNil(t, capturedConfig)
+			require.NotNil(t, capturedConfig.ScanConfig)
+			require.NotNil(t, capturedConfig.ScanConfig.Sca)
+			require.NotNil(t, capturedConfig.ScanConfig.Sca.ReachabilityAnalysis)
+			assert.Equal(t, reachability, *capturedConfig.ScanConfig.Sca.ReachabilityAnalysis)
+		})
+	}
+}
+
 func setupDflyMockTestResultEmpty(ctrl *gomock.Controller) *gafclientmocks.MockTestResult {
 	mockTestResult := gafclientmocks.NewMockTestResult(ctrl)
 	mockTestResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
@@ -832,4 +893,20 @@ func Test_BuildTestConfig_NoReportFlagLeavesPublishReportNil(t *testing.T) {
 	cfg := configuration.New()
 	tc := common.BuildTestConfig(cfg, nil)
 	assert.Nil(t, tc.PublishReport)
+}
+
+func Test_BuildTestConfig_ReachabilityAnalysisFollowsReachabilityFlag(t *testing.T) {
+	for _, reachability := range []bool{true, false} {
+		t.Run(fmt.Sprintf("reachability=%t", reachability), func(t *testing.T) {
+			cfg := configuration.New()
+			cfg.Set(flags.FlagReachability, reachability)
+
+			tc := common.BuildTestConfig(cfg, nil)
+
+			require.NotNil(t, tc.ScanConfig)
+			require.NotNil(t, tc.ScanConfig.Sca)
+			require.NotNil(t, tc.ScanConfig.Sca.ReachabilityAnalysis)
+			assert.Equal(t, reachability, *tc.ScanConfig.Sca.ReachabilityAnalysis)
+		})
+	}
 }
