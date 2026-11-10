@@ -169,7 +169,7 @@ func Test_OSWorkflow_DflyFFDisabled_UsesLegacy(t *testing.T) {
 }
 
 func Test_OSWorkflow_DflyFF_FlagsOnlyLegacySupports_UseLegacy(t *testing.T) {
-	for _, flag := range []string{flags.FlagDocker, flags.FlagContainer, flags.FlagUnmanaged, flags.FlagPrintDeps} {
+	for _, flag := range []string{flags.FlagDocker, flags.FlagContainer, flags.FlagUnmanaged, flags.FlagPrintDeps, flags.FlagPrintDepPaths} {
 		t.Run("--"+flag, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()

@@ -11,6 +11,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	"github.com/snyk/cli-extension-os-flows/internal/commands/routing"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	internalErrors "github.com/snyk/cli-extension-os-flows/internal/errors"
@@ -28,8 +29,6 @@ const (
 	DepgraphFlow     Flow = "depgraph"
 	DflyDepgraphFlow Flow = "dfly-depgraph"
 )
-
-const failOnPatchable = "patchable"
 
 func validateLegacyCLIOptions(
 	fc *FlowConfig,
@@ -153,23 +152,6 @@ func doesPathExist(path string) (bool, error) {
 	return false, fmt.Errorf("failed to stat path %s: %w", path, err)
 }
 
-// requiresLegacyByFlags reports whether any flag is only supported by the legacy flow.
-func requiresLegacyByFlags(cfg configuration.Configuration, unmanaged bool) bool {
-	nonOSTestType := cfg.GetBool(flags.FlagIAC) ||
-		cfg.GetBool(flags.FlagDocker) ||
-		cfg.GetBool(flags.FlagContainer) ||
-		cfg.GetBool(flags.FlagCode)
-
-	return cfg.GetBool(flags.FlagPrintGraph) ||
-		cfg.GetBool(flags.FlagPrintEffectiveGraph) ||
-		cfg.GetBool(flags.FlagPrintDeps) ||
-		cfg.GetBool(flags.FlagPrintDepPaths) ||
-		nonOSTestType ||
-		unmanaged ||
-		// The unified test API has no notion of patches, so only legacy can honor this value.
-		cfg.GetString(flags.FlagFailOn) == failOnPatchable
-}
-
 // ParseFlowConfig reads and parses all flow-related configuration flags.
 func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	ffRiskScore := cfg.GetBool(constants.FeatureFlagRiskScore)
@@ -190,7 +172,7 @@ func ParseFlowConfig(cfg configuration.Configuration) (*FlowConfig, error) {
 	fileFlag := cfg.GetString(flags.FlagFile)
 
 	forceLegacyTest := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
-	requiresLegacy := requiresLegacyByFlags(cfg, unmanaged)
+	requiresLegacy := routing.RequiresLegacyByFlags(cfg, routing.CommandTest)
 	var targetPackage string
 
 	// The legacy `snyk test` command supports testing packages directly. e.g `snyk test lodash`.
