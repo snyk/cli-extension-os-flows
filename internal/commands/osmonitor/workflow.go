@@ -15,6 +15,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/clientsetup"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
+	"github.com/snyk/cli-extension-os-flows/internal/commands/routing"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
 	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
@@ -180,8 +181,10 @@ func OSWorkflow(
 	inst.RecordShowMavenBuildScopeFlag(cfg.GetBool(constants.FeatureFlagShowMavenBuildScope))
 	inst.RecordShowNpmScopeFlag(cfg.GetBool(constants.FeatureFlagShowNpmScope))
 
-	forceLegacy := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
-	if !forceLegacy && cfg.GetBool(constants.FeatureFlagDlfyCLIRollout) {
+	useDfly := !cfg.GetBool(constants.ForceLegacyCLIEnvVar) &&
+		cfg.GetBool(constants.FeatureFlagDlfyCLIRollout) &&
+		!routing.RequiresLegacyByFlags(cfg, routing.CommandMonitor)
+	if useDfly {
 		return runDflyMonitorEntrypoint(ctx)
 	}
 

@@ -218,6 +218,8 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 	flagSet.String(FlagProjectName, "", "Specify a name for the project.")
 
 	// Unused flags for passing to legacy CLI
+	flagSet.Bool(FlagDocker, false, "Monitor a container image.")
+	flagSet.Bool(FlagContainer, false, "Monitor a container image.")
 	flagSet.Bool(FlagAllProjects, false, "Auto-detect all projects in the working directory (including Yarn workspaces).")
 	flagSet.Bool(FlagFailFast, false, "Stop scanning after the first vulnerability is found when used with --all-projects.")
 	flagSet.String(FlagDetectionDepth, "", "Use with --all-projects to indicate how many subdirectories to search. "+
