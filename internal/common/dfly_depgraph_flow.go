@@ -150,7 +150,9 @@ func BuildTestConfig(cfg configuration.Configuration, localPolicy *testapi.Local
 	testConfig := &testapi.TestConfiguration{
 		LocalPolicy: localPolicy,
 		ScanConfig: &testapi.ScanConfiguration{
-			Sca: &testapi.ScaScanConfiguration{},
+			Sca: &testapi.ScaScanConfiguration{
+				ReachabilityAnalysis: new(cfg.GetBool(flags.FlagReachability)),
+			},
 		},
 	}
 	if tr := cfg.GetString(flags.FlagTargetReference); tr != "" {
