@@ -20,7 +20,7 @@ func ResolveScmInfo(inputDir, remoteURLOverride string, logger *zerolog.Logger) 
 	if remoteURL == "" {
 		detected, err := git.GetRemoteUrl(inputDir)
 		if err != nil {
-			logger.Warn().Err(err).Msg("Could not resolve git remote URL, proceeding without SCM context")
+			logger.Debug().Err(err).Msg("Could not resolve git remote URL, proceeding without SCM context")
 			return nil
 		}
 		remoteURL = detected
@@ -28,11 +28,24 @@ func ResolveScmInfo(inputDir, remoteURLOverride string, logger *zerolog.Logger) 
 
 	branch, err := git.BranchNameFromDir(inputDir)
 	if err != nil {
-		logger.Warn().Err(err).Msg("Could not resolve git branch, proceeding without branch in SCM context")
+		logger.Debug().Err(err).Msg("Could not resolve git branch, proceeding without branch in SCM context")
 	}
 
 	return &ScmInfo{
 		RemoteURL: remoteURL,
 		Branch:    branch,
 	}
+}
+
+// HasScmContext reports whether every input directory has SCM info, either from its
+// git remote or from remoteURLOverride. The dfly flow identifies the project by that
+// context, so `test` and `monitor` only route to it when every directory has one.
+func HasScmContext(inputDirs []string, remoteURLOverride string, logger *zerolog.Logger) bool {
+	for _, inputDir := range inputDirs {
+		if ResolveScmInfo(inputDir, remoteURLOverride, logger) == nil {
+			return false
+		}
+	}
+
+	return true
 }

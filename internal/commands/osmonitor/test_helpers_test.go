@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	gogit "github.com/go-git/go-git/v5"
+	gitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -27,6 +29,22 @@ var (
 	errFactory = errors.NewErrorFactory(&nopLogger)
 	noopInst   = instrumentation.NewGAFInstrumentation(analytics.New())
 )
+
+// initGitRepo creates a git repository in a temp dir. An empty remoteURL leaves it without a remote.
+func initGitRepo(t *testing.T, remoteURL string) string {
+	t.Helper()
+	dir := t.TempDir()
+
+	repo, err := gogit.PlainInit(dir, false)
+	require.NoError(t, err)
+
+	if remoteURL != "" {
+		_, err = repo.CreateRemote(&gitconfig.RemoteConfig{Name: "origin", URLs: []string{remoteURL}})
+		require.NoError(t, err)
+	}
+
+	return dir
+}
 
 func createMockEngine(ctrl *gomock.Controller) *mocks.MockEngine {
 	return mocks.NewMockEngine(ctrl)
