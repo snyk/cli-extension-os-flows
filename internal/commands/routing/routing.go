@@ -55,13 +55,13 @@ func RequiresLegacyByFlags(cfg configuration.Configuration, cmd Command) bool {
 		return true
 	}
 
-	if cmd != CommandTest {
-		return false
+	if cmd == CommandTest {
+		// The unified test API has no notion of patches, so only legacy can honor this
+		// --fail-on value. `monitor` has no --fail-on.
+		return anyFlagSet(cfg, testOnlyLegacyFlags) || cfg.GetString(flags.FlagFailOn) == failOnPatchable
 	}
 
-	// The unified test API has no notion of patches, so only legacy can honor this
-	// --fail-on value. `monitor` has no --fail-on.
-	return anyFlagSet(cfg, testOnlyLegacyFlags) || cfg.GetString(flags.FlagFailOn) == failOnPatchable
+	return false
 }
 
 // anyFlagSet reports whether any of the named boolean flags is set.
