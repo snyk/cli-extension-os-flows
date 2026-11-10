@@ -137,8 +137,9 @@ func Test_OSWorkflow_DflyFFEnabled_UsesDflyFlow(t *testing.T) {
 	mockIctx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
 	cfg := mockIctx.GetConfiguration()
 	cfg.Set(constants.FeatureFlagDlfyCLIRollout, true)
-	cfg.Set(configuration.INPUT_DIRECTORY, t.TempDir())
-	cfg.Set(configuration.RAW_CMD_ARGS, "monitor "+t.TempDir())
+	inputDir := initGitRepo(t, "https://github.com/acme/repo.git")
+	cfg.Set(configuration.INPUT_DIRECTORY, inputDir)
+	cfg.Set(configuration.RAW_CMD_ARGS, "monitor "+inputDir)
 
 	// The dfly flow will fail trying to resolve dep graphs since there's no real project,
 	// but that's expected -- we're verifying routing, not the full flow.
@@ -191,6 +192,66 @@ func Test_OSWorkflow_DflyFF_FlagsOnlyLegacySupports_UseLegacy(t *testing.T) {
 			assert.NotNil(t, result)
 		})
 	}
+}
+
+func Test_OSWorkflow_DflyFF_NoGitRemote_UsesLegacy(t *testing.T) {
+	tests := map[string]func(t *testing.T) []string{
+		"not a git repository": func(t *testing.T) []string {
+			t.Helper()
+			return []string{t.TempDir()}
+		},
+		"git repository without a remote": func(t *testing.T) []string {
+			t.Helper()
+			return []string{initGitRepo(t, "")}
+		},
+		"one of several input dirs without a remote": func(t *testing.T) []string {
+			t.Helper()
+			return []string{initGitRepo(t, "https://github.com/acme/repo.git"), t.TempDir()}
+		},
+	}
+
+	for name, inputDirs := range tests {
+		t.Run(name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			legacyWorkflowID := workflow.NewWorkflowIdentifier("legacycli")
+			mockEngine := createMockEngine(ctrl)
+			mockEngine.EXPECT().
+				InvokeWithConfig(legacyWorkflowID, gomock.Any()).
+				Return([]workflow.Data{}, nil).
+				Times(1)
+
+			mockIctx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
+			cfg := mockIctx.GetConfiguration()
+			cfg.Set(constants.FeatureFlagDlfyCLIRollout, true)
+			cfg.Set(configuration.INPUT_DIRECTORY, inputDirs(t))
+
+			result, err := osmonitor.OSWorkflow(mockIctx, []workflow.Data{})
+			require.NoError(t, err)
+			assert.NotNil(t, result)
+		})
+	}
+}
+
+func Test_OSWorkflow_DflyFF_RemoteRepoURLFlag_UsesDflyFlow(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockEngine := createMockEngine(ctrl)
+	mockEngine.EXPECT().InvokeWithConfig(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+
+	mockIctx := createMockInvocationCtxWithURL(t, ctrl, mockEngine)
+	cfg := mockIctx.GetConfiguration()
+	cfg.Set(constants.FeatureFlagDlfyCLIRollout, true)
+	inputDir := t.TempDir()
+	cfg.Set(configuration.INPUT_DIRECTORY, inputDir)
+	cfg.Set(configuration.RAW_CMD_ARGS, "monitor "+inputDir)
+	cfg.Set(flags.FlagRemoteRepoURL, "https://github.com/acme/repo.git")
+
+	// --remote-repo-url supplies the SCM context, so the dfly flow runs (and fails on the empty project).
+	_, err := osmonitor.OSWorkflow(mockIctx, []workflow.Data{})
+	assert.Error(t, err)
 }
 
 func Test_OSWorkflow_ForceLegacy_OverridesDflyFF(t *testing.T) {

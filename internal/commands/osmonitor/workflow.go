@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/local_workflows/config_utils"
@@ -181,14 +182,31 @@ func OSWorkflow(
 	inst.RecordShowMavenBuildScopeFlag(cfg.GetBool(constants.FeatureFlagShowMavenBuildScope))
 	inst.RecordShowNpmScopeFlag(cfg.GetBool(constants.FeatureFlagShowNpmScope))
 
-	useDfly := !cfg.GetBool(constants.ForceLegacyCLIEnvVar) &&
-		cfg.GetBool(constants.FeatureFlagDlfyCLIRollout) &&
-		!routing.RequiresLegacyByFlags(cfg, routing.CommandMonitor)
-	if useDfly {
-		return runDflyMonitorEntrypoint(ctx)
+	forceLegacyTest := cfg.GetBool(constants.ForceLegacyCLIEnvVar)
+	requiresLegacy := routing.RequiresLegacyByFlags(cfg, routing.CommandMonitor)
+
+	useDfly := cfg.GetBool(constants.FeatureFlagDlfyCLIRollout) && hasScmContext(cfg, logger)
+
+	useLegacy := forceLegacyTest || requiresLegacy || !useDfly
+
+	if useLegacy {
+		return runLegacyMonitorFlow(ctx)
 	}
 
-	return runLegacyMonitorFlow(ctx)
+	return runDflyMonitorEntrypoint(ctx)
+}
+
+// hasScmContext reports whether every input directory has SCM info, either from its
+// git remote or from --remote-repo-url. Without it the dfly flow has no SCM context to
+// identify the monitored project by, so monitor stays on the legacy flow.
+func hasScmContext(cfg configuration.Configuration, logger *zerolog.Logger) bool {
+	inputDirs, err := common.GetInputDirectories(cfg)
+	if err != nil {
+		logger.Debug().Err(err).Msg("Could not resolve input directories, routing monitor to legacy")
+		return false
+	}
+
+	return common.HasScmContext(inputDirs, cfg.GetString(flags.FlagRemoteRepoURL), logger)
 }
 
 func setupDflyMonitor(ctx context.Context) (uuid.UUID, common.FlowClients, error) {

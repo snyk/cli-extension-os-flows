@@ -138,6 +138,14 @@ type FlowConfig struct {
 	TargetPackage                   string
 	AllProjects                     bool
 	FileFlag                        string
+	// MissingScmContext is set by ShouldUseLegacyFlow when an input directory has no SCM context.
+	MissingScmContext bool
+}
+
+// useDfly reports whether the dfly rollout applies. The dfly flow identifies the tested
+// project by its SCM context, so without one the run routes as if the rollout were off.
+func (fc *FlowConfig) useDfly() bool {
+	return fc.FFDflyRollout && !fc.MissingScmContext
 }
 
 func doesPathExist(path string) (bool, error) {
@@ -236,7 +244,9 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 		logger.Debug().Msg("uv.lock not found, skipping uv feature flag check")
 	}
 
-	hasNewFeatures := fc.FFDflyRollout ||
+	fc.MissingScmContext = !common.HasScmContext(inputDirs, cfg.GetString(flags.FlagRemoteRepoURL), logger)
+
+	needsModernStack := fc.useDfly() ||
 		fc.RiskScoreTest ||
 		fc.Reachability ||
 		fc.SBOM != "" ||
@@ -244,13 +254,15 @@ func ShouldUseLegacyFlow(ctx context.Context, fc *FlowConfig, inputDirs []string
 		uvSupportWithLockFile ||
 		fc.FFUseTestShimForOSCliTest ||
 		fc.FFUseUnifiedTestAPIForOSCliTest
-	useLegacy := fc.ForceLegacyTest || fc.RequiresLegacy || !hasNewFeatures
+
+	useLegacy := fc.ForceLegacyTest || fc.RequiresLegacy || !needsModernStack
 
 	logger.Debug().Msgf(
-		"Using legacy flow: %t. Legacy CLI Env var: %t. SBOM Reachability Test: %t."+
+		"Using legacy flow: %t. Legacy CLI Env var: %t. Missing SCM context: %t. SBOM Reachability Test: %t."+
 			"Risk Score Test: %t. Experimental uv Support: %t. Test Shim FF: %t. Dfly Rollout: %t. Unified Test API FF: %t.",
 		useLegacy,
 		fc.ForceLegacyTest,
+		fc.MissingScmContext,
 		fc.SBOMReachabilityTest,
 		fc.RiskScoreTest,
 		uvSupportWithLockFile,
@@ -281,7 +293,7 @@ func RouteToFlow(ctx context.Context, fc *FlowConfig, orgUUID uuid.UUID, sc sett
 	case fc.SBOM != "":
 		return SbomFlow, nil
 
-	case fc.FFDflyRollout:
+	case fc.useDfly():
 		if fc.Reachability && !cfg.GetBool(constants.FeatureFlagReachabilityForCLI) {
 			//nolint:wrapcheck // No need to wrap error factory errors.
 			return "", errFactory.NewReachabilitySettingsDisabledError(
