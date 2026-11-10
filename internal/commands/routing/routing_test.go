@@ -18,15 +18,12 @@ func Test_RequiresLegacyByFlags_BoolFlags(t *testing.T) {
 		wantTest    bool
 		wantMonitor bool
 	}{
-		// Shared: neither flow can serve these for either command.
 		flags.FlagDocker:        {flag: flags.FlagDocker, wantTest: true, wantMonitor: true},
 		flags.FlagContainer:     {flag: flags.FlagContainer, wantTest: true, wantMonitor: true},
 		flags.FlagUnmanaged:     {flag: flags.FlagUnmanaged, wantTest: true, wantMonitor: true},
 		flags.FlagPrintDeps:     {flag: flags.FlagPrintDeps, wantTest: true, wantMonitor: true},
 		flags.FlagPrintDepPaths: {flag: flags.FlagPrintDepPaths, wantTest: true, wantMonitor: true},
 
-		// Test-only: legacy `monitor` ignores these, so they must not take monitor off
-		// the new flow.
 		flags.FlagIAC:                 {flag: flags.FlagIAC, wantTest: true, wantMonitor: false},
 		flags.FlagCode:                {flag: flags.FlagCode, wantTest: true, wantMonitor: false},
 		flags.FlagPrintGraph:          {flag: flags.FlagPrintGraph, wantTest: true, wantMonitor: false},
@@ -54,7 +51,6 @@ func Test_RequiresLegacyByFlags_FailOn(t *testing.T) {
 		wantTest    bool
 		wantMonitor bool
 	}{
-		// Only legacy knows about patches; `monitor` has no --fail-on at all.
 		"patchable":  {value: "patchable", wantTest: true, wantMonitor: false},
 		"upgradable": {value: "upgradable", wantTest: false, wantMonitor: false},
 		"all":        {value: "all", wantTest: false, wantMonitor: false},
