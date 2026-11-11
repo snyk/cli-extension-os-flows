@@ -62,14 +62,16 @@ func RunSbomFlow(
 
 	resources := []testapi.TestResourceCreateItem{sbomResource}
 
+	var upload UploadResult
 	if reachabilityOpts != nil {
 		//nolint:errcheck // The SBOM flow carries on without the source upload, as before.
-		if upload, _ := uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, reachabilityOpts); upload.resource != nil {
+		upload, _ = uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, reachabilityOpts)
+		if upload.resource != nil {
 			resources = append(resources, *upload.resource)
 		}
 	}
 
-	testConfig := BuildTestConfig(cfg, localPolicy, false)
+	testConfig := BuildTestConfig(cfg, localPolicy, upload.sourceCodeUploaded)
 
 	osAnalysisStart := time.Now()
 	legacyVulnRes, wfData, err := runTest(
