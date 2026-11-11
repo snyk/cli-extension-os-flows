@@ -13,21 +13,26 @@ import (
 	listsources "github.com/snyk/cli-extension-os-flows/internal/files"
 )
 
+type UploadResult struct {
+	resource           *testapi.TestResourceCreateItem
+	sourceCodeUploaded bool
+}
+
 func uploadDflySources(
 	ctx context.Context,
 	orgUUID uuid.UUID,
 	clients FlowClients,
 	inputDir string,
 	opts *ReachabilityOpts,
-) (resource *testapi.TestResourceCreateItem, policyFilesOnly bool, err error) {
+) (result UploadResult, err error) {
 	reachabilityRequested := opts != nil
 
 	if reachabilityRequested {
 		return uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, opts, listsources.PolicyFileName)
 	}
 
-	resource, err = uploadPolicyFilesIfAny(ctx, clients.FileUploadClient, inputDir)
-	return resource, resource != nil, err
+	resource, err := uploadPolicyFilesIfAny(ctx, clients.FileUploadClient, inputDir)
+	return UploadResult{resource: resource, sourceCodeUploaded: false}, err
 }
 
 func uploadPolicyFilesIfAny(ctx context.Context, fc fileupload.Client, dir string) (*testapi.TestResourceCreateItem, error) {
