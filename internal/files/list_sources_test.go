@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	listsources "github.com/snyk/cli-extension-os-flows/internal/files"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 func Test_ListsSources_Simplest(t *testing.T) {
@@ -39,18 +40,27 @@ func Test_ListsSources_WithIgnores(t *testing.T) {
 	assert.Contains(t, files, filepath.Join(sourcesDir, "src", "with-ignores.js"))
 }
 
+func Test_PolicyFilesForPath_FindsNestedPolicyFilesAndHonoursIgnoreRules(t *testing.T) {
+	dir := util.CreateTmpFiles(t, []util.LoadedFile{
+		{Path: ".gitignore", Content: "ignored/\n"},
+		{Path: ".snyk", Content: "version: v1.25.0\n"},
+		{Path: "app/.snyk", Content: "version: v1.25.0\n"},
+		{Path: "app/index.js"},
+		{Path: "ignored/.snyk", Content: "version: v1.25.0\n"},
+	}).Name()
+
+	files, err := listsources.PolicyFilesForPath(fileFilterIctx(t), dir, 2)
+	require.NoError(t, err)
+
+	assert.ElementsMatch(t, []string{
+		filepath.Join(dir, ".snyk"),
+		filepath.Join(dir, "app", ".snyk"),
+	}, files)
+}
+
 func listSourcesForPath(t *testing.T, sourcesDir string) ([]string, error) {
 	t.Helper()
-	mockLogger := zerolog.New(io.Discard)
-	config := configuration.New()
-	ictx := gafmocks.NewMockInvocationContext(gomock.NewController(t))
-	ictx.EXPECT().GetFileFilter(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(path string, options ...utils.FileFilterOption) *utils.FileFilter {
-			return utils.NewFileFilter(path, &mockLogger, append([]utils.FileFilterOption{utils.WithConfig(config)}, options...)...)
-		},
-	).AnyTimes()
-
-	filesCh, err := listsources.ForPath(ictx, sourcesDir, 2)
+	filesCh, err := listsources.ForPath(fileFilterIctx(t), sourcesDir, 2)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sources: %w", err)
 	}
@@ -61,4 +71,17 @@ func listSourcesForPath(t *testing.T, sourcesDir string) ([]string, error) {
 	}
 
 	return files, nil
+}
+
+func fileFilterIctx(t *testing.T) *gafmocks.MockInvocationContext {
+	t.Helper()
+	logger := zerolog.New(io.Discard)
+	config := configuration.New()
+	ictx := gafmocks.NewMockInvocationContext(gomock.NewController(t))
+	ictx.EXPECT().GetFileFilter(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(path string, options ...utils.FileFilterOption) *utils.FileFilter {
+			return utils.NewFileFilter(path, &logger, append([]utils.FileFilterOption{utils.WithConfig(config)}, options...)...)
+		},
+	).AnyTimes()
+	return ictx
 }
