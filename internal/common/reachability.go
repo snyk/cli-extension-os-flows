@@ -56,18 +56,15 @@ func uploadReachabilitySourcesIfAny(
 		//nolint:errcheck // Best-effort warning output.
 		ictx.GetUserInterface().OutputError(reachability.NewWarning(fmt.Errorf("no reachability-supported source files were found; skipping reachability analysis")))
 
-		resource, err := uploadPolicyFilesIfAny(ctx, clients.FileUploadClient, opts.SourceDir)
-		return UploadResult{resource: resource}, err
+		return UploadResult{resource: nil}, nil
 	}
 
 	progressBar.SetTitle(constants.UploadingSourceCodeMessage)
 
 	resource, err := UploadSourceCodeResource(ctx, orgUUID, clients.FileUploadClient, clients.DeeproxyClient, opts.SourceDir, extraFileNames...)
 	if err != nil {
-		logger.Warn().Err(err).Msg("Failed to upload source code, proceeding without reachability")
-		//nolint:errcheck // Best-effort warning output.
-		ictx.GetUserInterface().OutputError(reachability.NewWarning(err))
-		return UploadResult{}, nil
+		logger.Err(err).Msg("Failed to upload source code")
+		return UploadResult{}, err
 	}
 
 	return UploadResult{resource: &resource, sourceCodeUploaded: true}, nil
