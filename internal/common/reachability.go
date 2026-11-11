@@ -62,7 +62,7 @@ func uploadReachabilitySourcesIfAny(ctx context.Context, orgUUID uuid.UUID, clie
 		logger.Warn().Err(err).Msg("Failed to upload source code, proceeding without reachability")
 		//nolint:errcheck // Best-effort warning output.
 		ictx.GetUserInterface().OutputError(reachability.NewWarning(err))
-		return nil, false, err
+		return nil, false, nil
 	}
 
 	return &resource, false, nil
