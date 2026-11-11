@@ -13,6 +13,8 @@ import (
 	listsources "github.com/snyk/cli-extension-os-flows/internal/files"
 )
 
+// UploadResult is the source resource of a test, if any, and whether it holds source code for
+// reachability analysis.
 type UploadResult struct {
 	resource           *testapi.TestResourceCreateItem
 	sourceCodeUploaded bool
