@@ -38,8 +38,9 @@ func ShouldRunReachability(ictx workflow.InvocationContext, sourceDir string) bo
 
 // uploadReachabilitySourcesIfAny uploads source code for reachability analysis when the
 // source directory contains supported files. Files named in extraFileNames are uploaded
-// even when Code's allow-list omits them. Without supported files it warns and uploads only
-// the .snyk files; when the source code upload fails it warns and uploads nothing. The
+// even when Code's allow-list omits them. Without supported files it warns and uploads
+// nothing. When the source code upload fails it returns the error without warning or
+// logging it, so the caller decides whether to warn and carry on or to fail the run. The
 // result's sourceCodeUploaded is true only when source code was uploaded.
 func uploadReachabilitySourcesIfAny(
 	ctx context.Context,
@@ -49,7 +50,6 @@ func uploadReachabilitySourcesIfAny(
 	extraFileNames ...string,
 ) (UploadResult, error) {
 	ictx := cmdctx.Ictx(ctx)
-	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
 
 	if !ShouldRunReachability(ictx, opts.SourceDir) {
@@ -63,7 +63,6 @@ func uploadReachabilitySourcesIfAny(
 
 	resource, err := UploadSourceCodeResource(ctx, orgUUID, clients.FileUploadClient, clients.DeeproxyClient, opts.SourceDir, extraFileNames...)
 	if err != nil {
-		logger.Err(err).Msg("Failed to upload source code")
 		return UploadResult{}, err
 	}
 
