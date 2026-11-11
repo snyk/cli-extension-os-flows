@@ -686,7 +686,7 @@ func Test_RunDflyDepgraphFlow_ReachabilityOn_AddsPolicyFilesToSourceUpload(t *te
 	assert.True(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
 }
 
-func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsPolicyFilesAloneWhenNoSourcesAreUploaded(t *testing.T) {
+func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsNothingWhenNoSupportedSources(t *testing.T) {
 	tests := map[string]struct {
 		sourceFile string
 		deeproxy   deeproxy.Client
@@ -727,14 +727,14 @@ func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsPolicyFilesAloneWhenNoSource
 			)
 			require.NoError(t, err)
 
-			assert.Equal(t, []string{filepath.Join(sourceDir, ".snyk")}, ffc.GetRevisionPaths(ffc.GetLastRevisionID()))
-			require.Len(t, *started.Resources(), 2)
+			assert.Equal(t, 1, ffc.GetUploadCount(), "only the dep graphs are uploaded")
+			require.Len(t, *started.Resources(), 1)
 			assert.False(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
 		})
 	}
 }
 
-func Test_RunDflyDepgraphFlow_ReachabilityOn_ContinuesWithoutSourcesWhenSourceCodeUploadFails(t *testing.T) {
+func Test_RunDflyDepgraphFlow_ReachabilityOn_FailsWhenSourceCodeUploadFails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -746,7 +746,8 @@ func Test_RunDflyDepgraphFlow_ReachabilityOn_ContinuesWithoutSourcesWhenSourceCo
 	mockIctx := setupDflyInvocationContext(t, ctrl, true)
 	cfg := mockIctx.GetConfiguration()
 	cfg.Set(flags.FlagReachability, true)
-	mockTestClient, started := setupDflyCapturingTestClient(ctrl)
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Times(0)
 	ffc := fileupload.NewFakeClient()
 
 	ctx := t.Context()
@@ -766,11 +767,8 @@ func Test_RunDflyDepgraphFlow_ReachabilityOn_ContinuesWithoutSourcesWhenSourceCo
 		ostest.RunTestWithResources,
 	)
 
-	require.NoError(t, err)
-
+	require.ErrorContains(t, err, "failed to upload source code")
 	assert.Equal(t, 1, ffc.GetUploadCount(), "only the dep graphs are uploaded")
-	require.Len(t, *started.Resources(), 1)
-	assert.False(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
 }
 
 type failingPolicyFileUpload struct {
