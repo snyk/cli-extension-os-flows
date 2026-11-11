@@ -511,7 +511,7 @@ func Test_RunDflyDepgraphFlow_TagsFallbackToProjectTags(t *testing.T) {
 	assert.Equal(t, []string{"env=prod"}, *capturedConfig.ProjectTags)
 }
 
-func Test_RunDflyDepgraphFlow_ReachabilityAnalysisFollowsReachabilityFlag(t *testing.T) {
+func Test_RunDflyDepgraphFlow_ReachabilityAnalysisIsFalseWithoutSourceCodeUpload(t *testing.T) {
 	for _, reachability := range []bool{true, false} {
 		t.Run(fmt.Sprintf("reachability=%t", reachability), func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -566,7 +566,7 @@ func Test_RunDflyDepgraphFlow_ReachabilityAnalysisFollowsReachabilityFlag(t *tes
 			require.NotNil(t, capturedConfig.ScanConfig)
 			require.NotNil(t, capturedConfig.ScanConfig.Sca)
 			require.NotNil(t, capturedConfig.ScanConfig.Sca.ReachabilityAnalysis)
-			assert.Equal(t, reachability, *capturedConfig.ScanConfig.Sca.ReachabilityAnalysis)
+			assert.False(t, *capturedConfig.ScanConfig.Sca.ReachabilityAnalysis)
 		})
 	}
 }
@@ -770,7 +770,7 @@ func Test_RunDflyDepgraphFlow_ReachabilityOn_ContinuesWithoutSourcesWhenSourceCo
 
 	assert.Equal(t, 1, ffc.GetUploadCount(), "only the dep graphs are uploaded")
 	require.Len(t, *started.Resources(), 1)
-	assert.True(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
+	assert.False(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
 }
 
 type failingPolicyFileUpload struct {
@@ -1164,18 +1164,18 @@ func Test_BuildTestConfig_NoReportFlagLeavesPublishReportNil(t *testing.T) {
 	assert.Nil(t, tc.PublishReport)
 }
 
-func Test_BuildTestConfig_ReachabilityAnalysisFollowsReachabilityFlag(t *testing.T) {
-	for _, reachability := range []bool{true, false} {
-		t.Run(fmt.Sprintf("reachability=%t", reachability), func(t *testing.T) {
+func Test_BuildTestConfig_ReachabilityAnalysisFollowsSourceCodeUpload(t *testing.T) {
+	for _, sourceCodeUploaded := range []bool{true, false} {
+		t.Run(fmt.Sprintf("sourceCodeUploaded=%t", sourceCodeUploaded), func(t *testing.T) {
 			cfg := configuration.New()
-			cfg.Set(flags.FlagReachability, reachability)
+			cfg.Set(flags.FlagReachability, !sourceCodeUploaded)
 
-			tc := common.BuildTestConfig(cfg, nil, false)
+			tc := common.BuildTestConfig(cfg, nil, sourceCodeUploaded)
 
 			require.NotNil(t, tc.ScanConfig)
 			require.NotNil(t, tc.ScanConfig.Sca)
 			require.NotNil(t, tc.ScanConfig.Sca.ReachabilityAnalysis)
-			assert.Equal(t, reachability, *tc.ScanConfig.Sca.ReachabilityAnalysis)
+			assert.Equal(t, sourceCodeUploaded, *tc.ScanConfig.Sca.ReachabilityAnalysis)
 		})
 	}
 }
