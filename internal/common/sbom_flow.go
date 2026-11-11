@@ -64,8 +64,8 @@ func RunSbomFlow(
 
 	if reachabilityOpts != nil {
 		//nolint:errcheck // The SBOM flow carries on without the source upload, as before.
-		if upload, _, _ := uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, reachabilityOpts); upload != nil {
-			resources = append(resources, *upload)
+		if upload, _ := uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, reachabilityOpts); upload.resource != nil {
+			resources = append(resources, *upload.resource)
 		}
 	}
 

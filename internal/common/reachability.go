@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
@@ -39,16 +38,16 @@ func ShouldRunReachability(ictx workflow.InvocationContext, sourceDir string) bo
 
 // uploadReachabilitySourcesIfAny uploads source code for reachability analysis when the
 // source directory contains supported files. Files named in extraFileNames are uploaded
-// even when Code's allow-list omits them. Returns the upload resource on success, nil
-// if skipped (no supported files) or if the upload fails; in both nil cases a user-facing
-// warning is emitted via OutputError.
+// even when Code's allow-list omits them. Without supported files it warns and uploads only
+// the .snyk files; when the source code upload fails it warns and uploads nothing. The
+// result's sourceCodeUploaded is true only when source code was uploaded.
 func uploadReachabilitySourcesIfAny(
 	ctx context.Context,
 	orgUUID uuid.UUID,
 	clients FlowClients,
 	opts *ReachabilityOpts,
 	extraFileNames ...string,
-) (*testapi.TestResourceCreateItem, bool, error) {
+) (UploadResult, error) {
 	ictx := cmdctx.Ictx(ctx)
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
@@ -58,7 +57,7 @@ func uploadReachabilitySourcesIfAny(
 		ictx.GetUserInterface().OutputError(reachability.NewWarning(fmt.Errorf("no reachability-supported source files were found; skipping reachability analysis")))
 
 		resource, err := uploadPolicyFilesIfAny(ctx, clients.FileUploadClient, opts.SourceDir)
-		return resource, true, err
+		return UploadResult{resource: resource}, err
 	}
 
 	progressBar.SetTitle(constants.UploadingSourceCodeMessage)
@@ -68,10 +67,10 @@ func uploadReachabilitySourcesIfAny(
 		logger.Warn().Err(err).Msg("Failed to upload source code, proceeding without reachability")
 		//nolint:errcheck // Best-effort warning output.
 		ictx.GetUserInterface().OutputError(reachability.NewWarning(err))
-		return nil, false, nil
+		return UploadResult{}, nil
 	}
 
-	return &resource, false, nil
+	return UploadResult{resource: &resource, sourceCodeUploaded: true}, nil
 }
 
 // ResolveMonitorReachabilityOpts determines the reachability options for the monitor flow.
