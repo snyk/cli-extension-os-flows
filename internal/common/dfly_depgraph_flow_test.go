@@ -734,7 +734,7 @@ func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsPolicyFilesAloneWhenNoSource
 	}
 }
 
-func Test_RunDflyDepgraphFlow_ReachabilityOn_FailsWhenSourceCodeUploadFails(t *testing.T) {
+func Test_RunDflyDepgraphFlow_ReachabilityOn_ContinuesWithoutSourcesWhenSourceCodeUploadFails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -746,8 +746,7 @@ func Test_RunDflyDepgraphFlow_ReachabilityOn_FailsWhenSourceCodeUploadFails(t *t
 	mockIctx := setupDflyInvocationContext(t, ctrl, true)
 	cfg := mockIctx.GetConfiguration()
 	cfg.Set(flags.FlagReachability, true)
-	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
-	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Times(0)
+	mockTestClient, started := setupDflyCapturingTestClient(ctrl)
 	ffc := fileupload.NewFakeClient()
 
 	ctx := t.Context()
@@ -767,8 +766,11 @@ func Test_RunDflyDepgraphFlow_ReachabilityOn_FailsWhenSourceCodeUploadFails(t *t
 		ostest.RunTestWithResources,
 	)
 
-	require.ErrorContains(t, err, "failed to upload source code")
+	require.NoError(t, err)
+
 	assert.Equal(t, 1, ffc.GetUploadCount(), "only the dep graphs are uploaded")
+	require.Len(t, *started.Resources(), 1)
+	assert.True(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
 }
 
 type failingPolicyFileUpload struct {
