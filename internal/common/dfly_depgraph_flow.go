@@ -117,15 +117,15 @@ func RunDflyDepgraphFlow(
 
 	resources := []testapi.TestResourceCreateItem{uploadResource}
 
-	sourceResource, err := uploadDflySources(ctx, orgUUID, clients, inputDir, reachabilityOpts)
+	uploadResult, err := uploadDflySources(ctx, orgUUID, clients, inputDir, reachabilityOpts)
 	if err != nil {
 		return nil, nil, err
 	}
-	if sourceResource != nil {
-		resources = append(resources, *sourceResource)
+	if uploadResult.resource != nil {
+		resources = append(resources, *uploadResult.resource)
 	}
 
-	testConfig := BuildTestConfig(cfg, localPolicy)
+	testConfig := BuildTestConfig(cfg, localPolicy, uploadResult.sourceCodeUploaded)
 
 	projectName := depGraphs[0].Identity.Name
 	targetFile := depGraphs[0].Identity.TargetFile
@@ -148,12 +148,12 @@ func RunDflyDepgraphFlow(
 }
 
 // BuildTestConfig creates a TestConfiguration from CLI flags and a local policy.
-func BuildTestConfig(cfg configuration.Configuration, localPolicy *testapi.LocalPolicy) *testapi.TestConfiguration {
+func BuildTestConfig(cfg configuration.Configuration, localPolicy *testapi.LocalPolicy, reachabilityRequested bool) *testapi.TestConfiguration {
 	testConfig := &testapi.TestConfiguration{
 		LocalPolicy: localPolicy,
 		ScanConfig: &testapi.ScanConfiguration{
 			Sca: &testapi.ScaScanConfiguration{
-				ReachabilityAnalysis: new(cfg.GetBool(flags.FlagReachability)),
+				ReachabilityAnalysis: new(reachabilityRequested),
 			},
 		},
 	}

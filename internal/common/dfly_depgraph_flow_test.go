@@ -25,6 +25,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	gafmocks "github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/runtimeinfo"
+	"github.com/snyk/go-application-framework/pkg/ui"
 	"github.com/snyk/go-application-framework/pkg/utils"
 	"github.com/snyk/go-application-framework/pkg/utils/ufm"
 	"github.com/snyk/go-application-framework/pkg/workflow"
@@ -34,6 +35,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
@@ -510,7 +512,7 @@ func Test_RunDflyDepgraphFlow_TagsFallbackToProjectTags(t *testing.T) {
 	assert.Equal(t, []string{"env=prod"}, *capturedConfig.ProjectTags)
 }
 
-func Test_RunDflyDepgraphFlow_ReachabilityAnalysisFollowsReachabilityFlag(t *testing.T) {
+func Test_RunDflyDepgraphFlow_ReachabilityAnalysisIsFalseWithoutSourceCodeUpload(t *testing.T) {
 	for _, reachability := range []bool{true, false} {
 		t.Run(fmt.Sprintf("reachability=%t", reachability), func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -565,7 +567,7 @@ func Test_RunDflyDepgraphFlow_ReachabilityAnalysisFollowsReachabilityFlag(t *tes
 			require.NotNil(t, capturedConfig.ScanConfig)
 			require.NotNil(t, capturedConfig.ScanConfig.Sca)
 			require.NotNil(t, capturedConfig.ScanConfig.Sca.ReachabilityAnalysis)
-			assert.Equal(t, reachability, *capturedConfig.ScanConfig.Sca.ReachabilityAnalysis)
+			assert.False(t, *capturedConfig.ScanConfig.Sca.ReachabilityAnalysis)
 		})
 	}
 }
@@ -641,6 +643,243 @@ func Test_RunDflyDepgraphFlow_ReachabilityOff_UploadsOnlyPolicyFiles(t *testing.
 	source := uploadResourceAt(t, started, 1)
 	assert.Equal(t, testapi.UploadResourceContentTypeSource, source.ContentType)
 	assert.Equal(t, policyRevision.String(), source.RevisionId)
+}
+
+func Test_RunDflyDepgraphFlow_ReachabilityOn_AddsPolicyFilesToSourceUpload(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	sourceDir := util.CreateTmpFiles(t, []util.LoadedFile{
+		{Path: "index.js"},
+		{Path: ".snyk", Content: "version: v1.25.0\n"},
+		{Path: "app/.snyk", Content: "version: v1.25.0\n"},
+	}).Name()
+
+	mockIctx := setupDflyInvocationContext(t, ctrl, true)
+	cfg := mockIctx.GetConfiguration()
+	cfg.Set(flags.FlagReachability, true)
+	mockTestClient, started := setupDflyCapturingTestClient(ctrl)
+	ffc := fileupload.NewFakeClient()
+
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
+	ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
+	ctx = cmdctx.WithConfig(ctx, cfg)
+
+	_, _, err := common.RunDflyDepgraphFlow(
+		ctx, sourceDir, newDflySinglePkgResolver(),
+		common.FlowClients{
+			FileUploadClient: ffc,
+			TestClient:       mockTestClient,
+			DeeproxyClient:   deeproxy.NewFakeClient(deeproxy.AllowList{Extensions: []string{".js"}}, nil),
+		},
+		uuid.New(), nil, &common.ReachabilityOpts{SourceDir: sourceDir},
+		ostest.RunTestWithResources,
+	)
+	require.NoError(t, err)
+
+	assert.ElementsMatch(t, []string{
+		filepath.Join(sourceDir, "index.js"),
+		filepath.Join(sourceDir, ".snyk"),
+		filepath.Join(sourceDir, "app", ".snyk"),
+	}, ffc.GetRevisionPaths(ffc.GetLastRevisionID()))
+	assert.True(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
+}
+
+func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsPolicyFilesAloneWhenNoSupportedSources(t *testing.T) {
+	tests := map[string]struct {
+		sourceFile string
+		deeproxy   deeproxy.Client
+	}{
+		"no reachability-supported source files": {
+			sourceFile: "main.go",
+			deeproxy:   deeproxy.NewFakeClient(deeproxy.AllowList{Extensions: []string{".go"}}, nil),
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			sourceDir := util.CreateTmpFiles(t, []util.LoadedFile{
+				{Path: tc.sourceFile},
+				{Path: ".snyk", Content: "version: v1.25.0\n"},
+			}).Name()
+
+			mockIctx := setupDflyInvocationContext(t, ctrl, true)
+			cfg := mockIctx.GetConfiguration()
+			cfg.Set(flags.FlagReachability, true)
+			mockTestClient, started := setupDflyCapturingTestClient(ctrl)
+			ffc := fileupload.NewFakeClient()
+
+			ctx := t.Context()
+			ctx = cmdctx.WithIctx(ctx, mockIctx)
+			ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
+			ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
+			ctx = cmdctx.WithConfig(ctx, cfg)
+
+			_, _, err := common.RunDflyDepgraphFlow(
+				ctx, sourceDir, newDflySinglePkgResolver(),
+				common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient, DeeproxyClient: tc.deeproxy},
+				uuid.New(), nil, &common.ReachabilityOpts{SourceDir: sourceDir},
+				ostest.RunTestWithResources,
+			)
+			require.NoError(t, err)
+
+			require.Len(t, *started.Resources(), 2)
+			source := uploadResourceAt(t, started, 1)
+			assert.Equal(t, []string{filepath.Join(sourceDir, ".snyk")}, ffc.GetRevisionPaths(uuid.MustParse(source.RevisionId)))
+			assert.False(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
+		})
+	}
+}
+
+func Test_RunDflyDepgraphFlow_ReachabilityOn_FailsWhenSourceCodeUploadFails(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	sourceDir := util.CreateTmpFiles(t, []util.LoadedFile{
+		{Path: "index.js"},
+		{Path: ".snyk", Content: "version: v1.25.0\n"},
+	}).Name()
+
+	mockIctx := setupDflyInvocationContext(t, ctrl, true)
+	cfg := mockIctx.GetConfiguration()
+	cfg.Set(flags.FlagReachability, true)
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Times(0)
+	ffc := fileupload.NewFakeClient()
+
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
+	ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
+	ctx = cmdctx.WithConfig(ctx, cfg)
+
+	_, _, err := common.RunDflyDepgraphFlow(
+		ctx, sourceDir, newDflySinglePkgResolver(),
+		common.FlowClients{
+			FileUploadClient: ffc,
+			TestClient:       mockTestClient,
+			DeeproxyClient:   deeproxy.NewFakeClient(deeproxy.AllowList{}, errors.New("filters unavailable")),
+		},
+		uuid.New(), nil, &common.ReachabilityOpts{SourceDir: sourceDir},
+		ostest.RunTestWithResources,
+	)
+
+	require.ErrorContains(t, err, "failed to upload source code")
+	assert.Equal(t, 1, ffc.GetUploadCount(), "only the dep graphs are uploaded")
+}
+
+func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsSourcesFromInputDirIgnoringSourceDir(t *testing.T) {
+	inputDir := util.CreateTmpFiles(t, []util.LoadedFile{
+		{Path: "index.js"},
+		{Path: ".snyk", Content: "version: v1.25.0\n"},
+	}).Name()
+	sourceDir := util.CreateTmpFiles(t, []util.LoadedFile{
+		{Path: "other.js"},
+		{Path: ".snyk", Content: "version: v1.25.0\n"},
+	}).Name()
+
+	ffc, started, _ := runDflyFlowWithSourceDir(t, inputDir, sourceDir)
+
+	assert.ElementsMatch(t, []string{
+		filepath.Join(inputDir, "index.js"),
+		filepath.Join(inputDir, ".snyk"),
+	}, ffc.GetRevisionPaths(ffc.GetLastRevisionID()))
+	assert.True(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
+}
+
+func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsPolicyFilesFromInputDirWhenItHasNoSupportedSources(t *testing.T) {
+	inputDir := util.CreateTmpFiles(t, []util.LoadedFile{
+		{Path: "main.go"},
+		{Path: ".snyk", Content: "version: v1.25.0\n"},
+	}).Name()
+	sourceDir := util.CreateTmpFiles(t, []util.LoadedFile{
+		{Path: "index.js"},
+		{Path: ".snyk", Content: "version: v1.25.0\n"},
+	}).Name()
+
+	ffc, started, _ := runDflyFlowWithSourceDir(t, inputDir, sourceDir)
+
+	assert.Equal(t, []string{filepath.Join(inputDir, ".snyk")}, ffc.GetRevisionPaths(ffc.GetLastRevisionID()))
+	assert.False(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
+}
+
+func Test_RunDflyDepgraphFlow_ReachabilityOn_WarnsOnlyWhenSourceDirDiffersFromInputDir(t *testing.T) {
+	dir := util.CreateTmpFiles(t, []util.LoadedFile{{Path: "index.js"}}).Name()
+	otherDir := t.TempDir()
+
+	tests := map[string]struct {
+		inputDir  string
+		sourceDir string
+		wantWarn  bool
+	}{
+		"different directory":                {inputDir: dir, sourceDir: otherDir, wantWarn: true},
+		"same directory":                     {inputDir: dir, sourceDir: dir, wantWarn: false},
+		"same directory, trailing separator": {inputDir: dir, sourceDir: dir + string(filepath.Separator), wantWarn: false},
+		"same directory, relative source":    {inputDir: dir, sourceDir: ".", wantWarn: false},
+		"same directory, relative input":     {inputDir: ".", sourceDir: dir, wantWarn: false},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Chdir(dir)
+
+			_, _, shown := runDflyFlowWithSourceDir(t, tc.inputDir, tc.sourceDir)
+
+			if tc.wantWarn {
+				assert.Contains(t, shown, sourceDirIgnoredWarning)
+			} else {
+				assert.NotContains(t, shown, sourceDirIgnoredWarning)
+			}
+		})
+	}
+}
+
+const sourceDirIgnoredWarning = "warn: --source-dir is ignored"
+
+func runDflyFlowWithSourceDir(t *testing.T, inputDir, sourceDir string) (*fileupload.FakeClient, *testapi.StartTestParams, []string) {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+
+	var shown []string
+	mockUI := gafmocks.NewMockUserInterface(ctrl)
+	mockUI.EXPECT().Output(gomock.Any()).Return(nil).Times(0)
+	mockUI.EXPECT().OutputError(gomock.Any()).DoAndReturn(func(err error, _ ...ui.Opts) error {
+		var snykErr snyk_errors.Error
+		if errors.As(err, &snykErr) {
+			shown = append(shown, snykErr.Level+": "+snykErr.Title)
+		}
+		return nil
+	}).AnyTimes()
+
+	mockIctx := setupDflyInvocationContextWithUI(t, ctrl, true, mockUI)
+	cfg := mockIctx.GetConfiguration()
+	cfg.Set(flags.FlagReachability, true)
+	mockTestClient, started := setupDflyCapturingTestClient(ctrl)
+	ffc := fileupload.NewFakeClient()
+
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
+	ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
+	ctx = cmdctx.WithConfig(ctx, cfg)
+
+	_, _, err := common.RunDflyDepgraphFlow(
+		ctx, inputDir, newDflySinglePkgResolver(),
+		common.FlowClients{
+			FileUploadClient: ffc,
+			TestClient:       mockTestClient,
+			DeeproxyClient:   deeproxy.NewFakeClient(deeproxy.AllowList{Extensions: []string{".js", ".go"}}, nil),
+		},
+		uuid.New(), nil, &common.ReachabilityOpts{SourceDir: sourceDir},
+		ostest.RunTestWithResources,
+	)
+	require.NoError(t, err)
+	return ffc, started, shown
 }
 
 type failingPolicyFileUpload struct {
@@ -743,14 +982,23 @@ func setupDflyMockTestResultEmpty(ctrl *gomock.Controller) *gafclientmocks.MockT
 
 func setupDflyInvocationContext(t *testing.T, ctrl *gomock.Controller, jsonOutput bool) *gafmocks.MockInvocationContext {
 	t.Helper()
+	mockUI := gafmocks.NewMockUserInterface(ctrl)
+	mockUI.EXPECT().Output(gomock.Any()).Return(nil).Times(0)
+	mockUI.EXPECT().OutputError(gomock.Any()).Return(nil).AnyTimes()
+	return setupDflyInvocationContextWithUI(t, ctrl, jsonOutput, mockUI)
+}
+
+func setupDflyInvocationContextWithUI(
+	t *testing.T,
+	ctrl *gomock.Controller,
+	jsonOutput bool,
+	mockUI *gafmocks.MockUserInterface,
+) *gafmocks.MockInvocationContext {
+	t.Helper()
 	orgSlug := "test-org-slug"
 	fakeConfig := configuration.New()
 	fakeConfig.Set(outputworkflow.OutputConfigKeyJSON, jsonOutput)
 	fakeConfig.Set(configuration.ORGANIZATION_SLUG, orgSlug)
-
-	mockUI := gafmocks.NewMockUserInterface(ctrl)
-	mockUI.EXPECT().Output(gomock.Any()).Return(nil).Times(0)
-	mockUI.EXPECT().OutputError(gomock.Any()).Return(nil).AnyTimes()
 
 	mockIctx := gafmocks.NewMockInvocationContext(ctrl)
 	mockIctx.EXPECT().GetConfiguration().Return(fakeConfig).AnyTimes()
@@ -1004,7 +1252,7 @@ func Test_BuildTestConfig_MonitorFlagSetsMonitor(t *testing.T) {
 	cfg := configuration.New()
 	cfg.Set(flags.FlagMonitor, true)
 
-	tc := common.BuildTestConfig(cfg, nil)
+	tc := common.BuildTestConfig(cfg, nil, false)
 
 	require.NotNil(t, tc.Monitor)
 	assert.True(t, *tc.Monitor)
@@ -1013,7 +1261,7 @@ func Test_BuildTestConfig_MonitorFlagSetsMonitor(t *testing.T) {
 
 func Test_BuildTestConfig_NoMonitorFlagLeavesMonitorNil(t *testing.T) {
 	cfg := configuration.New()
-	tc := common.BuildTestConfig(cfg, nil)
+	tc := common.BuildTestConfig(cfg, nil, false)
 	assert.Nil(t, tc.Monitor)
 }
 
@@ -1021,7 +1269,7 @@ func Test_BuildTestConfig_ReportFlagSetsPublishReport(t *testing.T) {
 	cfg := configuration.New()
 	cfg.Set(flags.FlagReport, true)
 
-	tc := common.BuildTestConfig(cfg, nil)
+	tc := common.BuildTestConfig(cfg, nil, false)
 
 	require.NotNil(t, tc.PublishReport)
 	assert.True(t, *tc.PublishReport)
@@ -1030,22 +1278,22 @@ func Test_BuildTestConfig_ReportFlagSetsPublishReport(t *testing.T) {
 
 func Test_BuildTestConfig_NoReportFlagLeavesPublishReportNil(t *testing.T) {
 	cfg := configuration.New()
-	tc := common.BuildTestConfig(cfg, nil)
+	tc := common.BuildTestConfig(cfg, nil, false)
 	assert.Nil(t, tc.PublishReport)
 }
 
-func Test_BuildTestConfig_ReachabilityAnalysisFollowsReachabilityFlag(t *testing.T) {
-	for _, reachability := range []bool{true, false} {
-		t.Run(fmt.Sprintf("reachability=%t", reachability), func(t *testing.T) {
+func Test_BuildTestConfig_ReachabilityAnalysisFollowsSourceCodeUpload(t *testing.T) {
+	for _, sourceCodeUploaded := range []bool{true, false} {
+		t.Run(fmt.Sprintf("sourceCodeUploaded=%t", sourceCodeUploaded), func(t *testing.T) {
 			cfg := configuration.New()
-			cfg.Set(flags.FlagReachability, reachability)
+			cfg.Set(flags.FlagReachability, !sourceCodeUploaded)
 
-			tc := common.BuildTestConfig(cfg, nil)
+			tc := common.BuildTestConfig(cfg, nil, sourceCodeUploaded)
 
 			require.NotNil(t, tc.ScanConfig)
 			require.NotNil(t, tc.ScanConfig.Sca)
 			require.NotNil(t, tc.ScanConfig.Sca.ReachabilityAnalysis)
-			assert.Equal(t, reachability, *tc.ScanConfig.Sca.ReachabilityAnalysis)
+			assert.Equal(t, sourceCodeUploaded, *tc.ScanConfig.Sca.ReachabilityAnalysis)
 		})
 	}
 }

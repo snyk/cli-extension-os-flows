@@ -2,6 +2,7 @@
 package ostest_test
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -298,6 +299,45 @@ func Test_RunSbomFlow_SkipsSourceUploadWhenNoSupportedSources(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, 1, ffc.GetUploadCount(), "Expected only the SBOM upload; source code upload must be skipped")
+}
+
+func Test_RunSbomFlow_SendsReachabilityAnalysisWhenSourceCodeIsUploaded(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ef := errors.NewErrorFactory(&nopLogger)
+	mockIctx, mockTestClient, ffc, fdc, orgID, sbomPath, sourceCodePath := setupTest(t, ctrl, true)
+	testClient := &startTestRecorder{TestClient: mockTestClient}
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+	ctx = cmdctx.WithLogger(ctx, &nopLogger)
+	ctx = cmdctx.WithErrorFactory(ctx, ef)
+	ctx = cmdctx.WithProgressBar(ctx, &nopProgressBar)
+
+	_, _, err := common.RunSbomFlow(
+		ctx,
+		sbomPath,
+		common.FlowClients{TestClient: testClient, FileUploadClient: ffc, DeeproxyClient: fdc},
+		orgID,
+		nil,
+		&common.ReachabilityOpts{SourceDir: sourceCodePath}, ostest.RunTestWithResourcesByComponent,
+	)
+	require.NoError(t, err)
+
+	require.Equal(t, 2, ffc.GetUploadCount(), "Expected the SBOM and the source code uploads")
+	require.NotNil(t, testClient.started)
+	assert.True(t, *testClient.started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
+}
+
+type startTestRecorder struct {
+	testapi.TestClient
+	started *testapi.StartTestParams
+}
+
+func (r *startTestRecorder) StartTest(ctx context.Context, params testapi.StartTestParams) (testapi.TestHandle, error) {
+	r.started = &params
+	return r.TestClient.StartTest(ctx, params)
 }
 
 //nolint:gocritic // Not important for tests.

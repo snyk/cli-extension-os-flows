@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 
@@ -38,10 +37,17 @@ func ShouldRunReachability(ictx workflow.InvocationContext, sourceDir string) bo
 }
 
 // uploadReachabilitySourcesIfAny uploads source code for reachability analysis when the
-// source directory contains supported files. Returns the upload resource on success, nil
-// if skipped (no supported files) or if the upload fails; in both nil cases a user-facing
-// warning is emitted via OutputError.
-func uploadReachabilitySourcesIfAny(ctx context.Context, orgUUID uuid.UUID, clients FlowClients, opts *ReachabilityOpts) *testapi.TestResourceCreateItem {
+// source directory contains supported files. Files named in extraFileNames are uploaded
+// even when Code's allow-list omits them. Without supported files it warns and uploads only
+// the .snyk files; when the source code upload fails it warns and uploads nothing. The
+// result's sourceCodeUploaded is true only when source code was uploaded.
+func uploadReachabilitySourcesIfAny(
+	ctx context.Context,
+	orgUUID uuid.UUID,
+	clients FlowClients,
+	opts *ReachabilityOpts,
+	extraFileNames ...string,
+) (UploadResult, error) {
 	ictx := cmdctx.Ictx(ctx)
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
@@ -49,20 +55,19 @@ func uploadReachabilitySourcesIfAny(ctx context.Context, orgUUID uuid.UUID, clie
 	if !ShouldRunReachability(ictx, opts.SourceDir) {
 		//nolint:errcheck // Best-effort warning output.
 		ictx.GetUserInterface().OutputError(reachability.NewWarning(fmt.Errorf("no reachability-supported source files were found; skipping reachability analysis")))
-		return nil
+
+		return UploadResult{resource: nil}, nil
 	}
 
 	progressBar.SetTitle(constants.UploadingSourceCodeMessage)
 
-	resource, err := UploadSourceCodeResource(ctx, orgUUID, clients.FileUploadClient, clients.DeeproxyClient, opts.SourceDir)
+	resource, err := UploadSourceCodeResource(ctx, orgUUID, clients.FileUploadClient, clients.DeeproxyClient, opts.SourceDir, extraFileNames...)
 	if err != nil {
-		logger.Warn().Err(err).Msg("Failed to upload source code, proceeding without reachability")
-		//nolint:errcheck // Best-effort warning output.
-		ictx.GetUserInterface().OutputError(reachability.NewWarning(err))
-		return nil
+		logger.Err(err).Msg("Failed to upload source code")
+		return UploadResult{}, err
 	}
 
-	return &resource
+	return UploadResult{resource: &resource, sourceCodeUploaded: true}, nil
 }
 
 // ResolveMonitorReachabilityOpts determines the reachability options for the monitor flow.
