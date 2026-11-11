@@ -28,12 +28,20 @@ func uploadDflySources(
 	opts *ReachabilityOpts,
 ) (result UploadResult, err error) {
 	reachabilityRequested := opts != nil
+	policyDir := inputDir
 
 	if reachabilityRequested {
-		return uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, opts, listsources.PolicyFileName)
+		upload, err := uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, opts, listsources.PolicyFileName)
+		if err != nil {
+			return upload, err
+		}
+		if upload.resource != nil {
+			return upload, nil
+		}
+		policyDir = opts.SourceDir
 	}
 
-	resource, err := uploadPolicyFilesIfAny(ctx, clients.FileUploadClient, inputDir)
+	resource, err := uploadPolicyFilesIfAny(ctx, clients.FileUploadClient, policyDir)
 	return UploadResult{resource: resource, sourceCodeUploaded: false}, err
 }
 
