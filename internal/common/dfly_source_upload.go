@@ -26,7 +26,7 @@ func uploadDflySources(
 	clients FlowClients,
 	inputDir string,
 	opts *ReachabilityOpts,
-) (result UploadResult, err error) {
+) (UploadResult, error) {
 	reachabilityRequested := opts != nil
 	policyDir := inputDir
 
