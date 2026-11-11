@@ -581,7 +581,7 @@ func Test_RunDflyDepgraphFlow_FailsWhenPolicyFileUploadFails(t *testing.T) {
 	mockIctx := setupDflyInvocationContext(t, ctrl, true)
 	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
 	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Times(0)
-	uploads := &failingNthUpload{FakeClient: fileupload.NewFakeClient(), n: 2}
+	uploads := &failingPolicyFileUpload{FakeClient: fileupload.NewFakeClient()}
 
 	ctx := t.Context()
 	ctx = cmdctx.WithIctx(ctx, mockIctx)
@@ -597,6 +597,7 @@ func Test_RunDflyDepgraphFlow_FailsWhenPolicyFileUploadFails(t *testing.T) {
 	)
 
 	require.ErrorContains(t, err, "failed to upload .snyk policy files")
+	assert.Equal(t, 1, uploads.GetUploadCount(), "the dep graph upload still succeeds")
 }
 
 func Test_RunDflyDepgraphFlow_ReachabilityOff_UploadsOnlyPolicyFiles(t *testing.T) {
@@ -642,20 +643,27 @@ func Test_RunDflyDepgraphFlow_ReachabilityOff_UploadsOnlyPolicyFiles(t *testing.
 	assert.Equal(t, policyRevision.String(), source.RevisionId)
 }
 
-type failingNthUpload struct {
+type failingPolicyFileUpload struct {
 	*fileupload.FakeClient
-	n     int
-	calls int
 }
 
-func (f *failingNthUpload) CreateRevisionFromChan(ctx context.Context, paths <-chan string, rootPath string) (fileupload.UploadResult, error) {
-	f.calls++
-	if f.calls != f.n {
-		return f.FakeClient.CreateRevisionFromChan(ctx, paths, rootPath)
+func (f *failingPolicyFileUpload) CreateRevisionFromChan(ctx context.Context, paths <-chan string, rootPath string) (fileupload.UploadResult, error) {
+	var files []string
+	for file := range paths {
+		files = append(files, file)
 	}
-	for range paths { //nolint:revive // Drain so the producer goroutine can exit.
+	for _, file := range files {
+		if filepath.Base(file) == ".snyk" {
+			return fileupload.UploadResult{}, errors.New("upload failed")
+		}
 	}
-	return fileupload.UploadResult{}, errors.New("upload failed")
+
+	replay := make(chan string, len(files))
+	for _, file := range files {
+		replay <- file
+	}
+	close(replay)
+	return f.FakeClient.CreateRevisionFromChan(ctx, replay, rootPath)
 }
 
 func newDflySinglePkgResolver() common.DepgraphResolver {
