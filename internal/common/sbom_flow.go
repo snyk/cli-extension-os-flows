@@ -12,6 +12,7 @@ import (
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
+	"github.com/snyk/cli-extension-os-flows/internal/reachability"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
@@ -64,8 +65,12 @@ func RunSbomFlow(
 
 	var upload UploadResult
 	if reachabilityOpts != nil {
-		//nolint:errcheck // The SBOM flow carries on without the source upload, as before.
-		upload, _ = uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, reachabilityOpts)
+		upload, err = uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, reachabilityOpts)
+		if err != nil {
+			logger.Warn().Err(err).Msg("Failed to upload source code, proceeding without reachability")
+			//nolint:errcheck // Best-effort warning output.
+			cmdctx.Ictx(ctx).GetUserInterface().OutputError(reachability.NewWarning(err))
+		}
 		if upload.resource != nil {
 			resources = append(resources, *upload.resource)
 		}

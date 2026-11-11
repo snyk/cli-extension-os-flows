@@ -35,6 +35,7 @@ func uploadDflySources(
 		warnIfSourceDirIsIgnored(ctx, inputDir, opts.SourceDir)
 		upload, err := uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, &ReachabilityOpts{SourceDir: inputDir}, listsources.PolicyFileName)
 		if err != nil {
+			cmdctx.Logger(ctx).Err(err).Msg("Failed to upload source code")
 			return upload, err
 		}
 		if upload.resource != nil {
