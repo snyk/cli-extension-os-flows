@@ -63,6 +63,7 @@ func RunSbomFlow(
 	resources := []testapi.TestResourceCreateItem{sbomResource}
 
 	if reachabilityOpts != nil {
+		//nolint:errcheck // The SBOM flow carries on without the source upload, as before.
 		if upload, _, _ := uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, reachabilityOpts); upload != nil {
 			resources = append(resources, *upload)
 		}

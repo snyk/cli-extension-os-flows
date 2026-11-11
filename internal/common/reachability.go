@@ -42,7 +42,13 @@ func ShouldRunReachability(ictx workflow.InvocationContext, sourceDir string) bo
 // even when Code's allow-list omits them. Returns the upload resource on success, nil
 // if skipped (no supported files) or if the upload fails; in both nil cases a user-facing
 // warning is emitted via OutputError.
-func uploadReachabilitySourcesIfAny(ctx context.Context, orgUUID uuid.UUID, clients FlowClients, opts *ReachabilityOpts, extraFileNames ...string) (*testapi.TestResourceCreateItem, bool, error) {
+func uploadReachabilitySourcesIfAny(
+	ctx context.Context,
+	orgUUID uuid.UUID,
+	clients FlowClients,
+	opts *ReachabilityOpts,
+	extraFileNames ...string,
+) (*testapi.TestResourceCreateItem, bool, error) {
 	ictx := cmdctx.Ictx(ctx)
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
