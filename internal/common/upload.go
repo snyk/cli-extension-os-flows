@@ -33,6 +33,28 @@ func UploadSourceCodeResource(
 	return NewUploadResource(sourceResult.RevisionID.String(), testapi.UploadResourceContentTypeSource, nil)
 }
 
+// UploadPolicyFilesResource uploads the given .snyk files, with paths relative to rootDir,
+// and returns them as a source test resource.
+func UploadPolicyFilesResource(
+	ctx context.Context,
+	fc fileupload.Client,
+	rootDir string,
+	policyFiles []string,
+) (testapi.TestResourceCreateItem, error) {
+	paths := make(chan string, len(policyFiles))
+	for _, file := range policyFiles {
+		paths <- file
+	}
+	close(paths)
+
+	res, err := fc.CreateRevisionFromChan(ctx, paths, rootDir)
+	if err != nil {
+		return testapi.TestResourceCreateItem{}, fmt.Errorf("failed to upload .snyk policy files: %w", err)
+	}
+
+	return NewUploadResource(res.RevisionID.String(), testapi.UploadResourceContentTypeSource, nil)
+}
+
 // NewUploadResource creates a TestResourceCreateItem from a revision ID, content type, and optional SCM context.
 func NewUploadResource(revisionID string, contentType testapi.UploadResourceContentType, scmCtx *testapi.ScmContext) (testapi.TestResourceCreateItem, error) {
 	uploadResource := testapi.UploadResource{

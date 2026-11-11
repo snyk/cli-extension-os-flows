@@ -2,7 +2,9 @@
 package common_test
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -566,6 +568,143 @@ func Test_RunDflyDepgraphFlow_ReachabilityAnalysisFollowsReachabilityFlag(t *tes
 			assert.Equal(t, reachability, *capturedConfig.ScanConfig.Sca.ReachabilityAnalysis)
 		})
 	}
+}
+
+func Test_RunDflyDepgraphFlow_FailsWhenPolicyFileUploadFails(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	inputDir := util.CreateTmpFiles(t, []util.LoadedFile{
+		{Path: ".snyk", Content: "version: v1.25.0\n"},
+	}).Name()
+
+	mockIctx := setupDflyInvocationContext(t, ctrl, true)
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Times(0)
+	uploads := &failingPolicyFileUpload{FakeClient: fileupload.NewFakeClient()}
+
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
+	ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+
+	_, _, err := common.RunDflyDepgraphFlow(
+		ctx, inputDir, newDflySinglePkgResolver(),
+		common.FlowClients{FileUploadClient: uploads, TestClient: mockTestClient},
+		uuid.New(), nil, nil,
+		ostest.RunTestWithResources,
+	)
+
+	require.ErrorContains(t, err, "failed to upload .snyk policy files")
+	assert.Equal(t, 1, uploads.GetUploadCount(), "the dep graph upload still succeeds")
+}
+
+func Test_RunDflyDepgraphFlow_ReachabilityOff_UploadsOnlyPolicyFiles(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	inputDir := util.CreateTmpFiles(t, []util.LoadedFile{
+		{Path: ".snyk", Content: "version: v1.25.0\n"},
+		{Path: "app/.snyk", Content: "version: v1.25.0\n"},
+		{Path: "app/package.json", Content: "{}"},
+		{Path: "app/index.js"},
+	}).Name()
+
+	mockIctx := setupDflyInvocationContext(t, ctrl, true)
+	mockTestClient, started := setupDflyCapturingTestClient(ctrl)
+	ffc := fileupload.NewFakeClient()
+
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
+	ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
+	ctx = cmdctx.WithConfig(ctx, mockIctx.GetConfiguration())
+
+	_, _, err := common.RunDflyDepgraphFlow(
+		ctx, inputDir, newDflySinglePkgResolver(),
+		common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient},
+		uuid.New(), nil, nil,
+		ostest.RunTestWithResources,
+	)
+	require.NoError(t, err)
+
+	require.Equal(t, 2, ffc.GetUploadCount(), "dep graphs, then .snyk files")
+	policyRevision := ffc.GetLastRevisionID()
+	assert.ElementsMatch(t, []string{
+		filepath.Join(inputDir, ".snyk"),
+		filepath.Join(inputDir, "app", ".snyk"),
+	}, ffc.GetRevisionPaths(policyRevision))
+
+	require.NotNil(t, started.Resources())
+	require.Len(t, *started.Resources(), 2)
+	source := uploadResourceAt(t, started, 1)
+	assert.Equal(t, testapi.UploadResourceContentTypeSource, source.ContentType)
+	assert.Equal(t, policyRevision.String(), source.RevisionId)
+}
+
+type failingPolicyFileUpload struct {
+	*fileupload.FakeClient
+}
+
+func (f *failingPolicyFileUpload) CreateRevisionFromChan(ctx context.Context, paths <-chan string, rootPath string) (fileupload.UploadResult, error) {
+	var files []string
+	for file := range paths {
+		files = append(files, file)
+	}
+	for _, file := range files {
+		if filepath.Base(file) == ".snyk" {
+			return fileupload.UploadResult{}, errors.New("upload failed")
+		}
+	}
+
+	replay := make(chan string, len(files))
+	for _, file := range files {
+		replay <- file
+	}
+	close(replay)
+	return f.FakeClient.CreateRevisionFromChan(ctx, replay, rootPath)
+}
+
+func newDflySinglePkgResolver() common.DepgraphResolver {
+	return common.NewFakeDepgraphResolver([]common.DepgraphWithIdentity{
+		{
+			Identity: common.Identity{TargetFile: "proj/package.json"},
+			DepGraph: &depgraph.DepGraph{
+				SchemaVersion: "1.2.0",
+				PkgManager:    depgraph.PkgManager{Name: "npm"},
+				Pkgs: []depgraph.Pkg{
+					{ID: "proj@1.0.0", Info: depgraph.PkgInfo{Name: "proj", Version: "1.0.0"}},
+				},
+				Graph: depgraph.Graph{RootNodeID: "root"},
+			},
+		},
+	}, nil)
+}
+
+func setupDflyCapturingTestClient(ctrl *gomock.Controller) (*gafclientmocks.MockTestClient, *testapi.StartTestParams) {
+	started := &testapi.StartTestParams{}
+	mockTestHandle := gafclientmocks.NewMockTestHandle(ctrl)
+	mockTestHandle.EXPECT().Wait(gomock.Any()).Return(nil).Times(1)
+	mockTestHandle.EXPECT().Result().Return(setupDflyMockTestResultEmpty(ctrl)).Times(1)
+
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ interface{}, params testapi.StartTestParams) (testapi.TestHandle, error) {
+			*started = params
+			return mockTestHandle, nil
+		},
+	).Times(1)
+	return mockTestClient, started
+}
+
+func uploadResourceAt(t *testing.T, started *testapi.StartTestParams, i int) testapi.UploadResource {
+	t.Helper()
+	base, err := (*started.Resources())[i].AsBaseResourceCreateItem()
+	require.NoError(t, err)
+	upload, err := base.Resource.AsUploadResource()
+	require.NoError(t, err)
+	return upload
 }
 
 func setupDflyMockTestResultEmpty(ctrl *gomock.Controller) *gafclientmocks.MockTestResult {

@@ -117,10 +117,12 @@ func RunDflyDepgraphFlow(
 
 	resources := []testapi.TestResourceCreateItem{uploadResource}
 
-	if reachabilityOpts != nil {
-		if upload := uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, reachabilityOpts); upload != nil {
-			resources = append(resources, *upload)
-		}
+	sourceResource, err := uploadDflySources(ctx, orgUUID, clients, inputDir, reachabilityOpts)
+	if err != nil {
+		return nil, nil, err
+	}
+	if sourceResource != nil {
+		resources = append(resources, *sourceResource)
 	}
 
 	testConfig := BuildTestConfig(cfg, localPolicy)

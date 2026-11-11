@@ -16,6 +16,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/mocks"
+	"github.com/snyk/go-application-framework/pkg/utils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
@@ -157,6 +158,11 @@ func setupDflyTestFixture(t *testing.T, ctrl *gomock.Controller) (ctx context.Co
 	orgID = uuid.New()
 	mockIctx := createMockInvocationCtxWithURL(t, ctrl, nil)
 	cfg = mockIctx.GetConfiguration()
+	mockIctx.EXPECT().GetFileFilter(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(path string, options ...utils.FileFilterOption) *utils.FileFilter {
+			return utils.NewFileFilter(path, mockIctx.GetEnhancedLogger(), append([]utils.FileFilterOption{utils.WithConfig(cfg)}, options...)...)
+		},
+	).AnyTimes()
 	cfg.Set(configuration.ORGANIZATION, orgID.String())
 	cfg.Set(configuration.INPUT_DIRECTORY, ".")
 
