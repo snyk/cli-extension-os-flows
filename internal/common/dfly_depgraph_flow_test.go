@@ -686,7 +686,7 @@ func Test_RunDflyDepgraphFlow_ReachabilityOn_AddsPolicyFilesToSourceUpload(t *te
 	assert.True(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
 }
 
-func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsNothingWhenNoSupportedSources(t *testing.T) {
+func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsPolicyFilesAloneWhenNoSupportedSources(t *testing.T) {
 	tests := map[string]struct {
 		sourceFile string
 		deeproxy   deeproxy.Client
@@ -727,8 +727,9 @@ func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsNothingWhenNoSupportedSource
 			)
 			require.NoError(t, err)
 
-			assert.Equal(t, 1, ffc.GetUploadCount(), "only the dep graphs are uploaded")
-			require.Len(t, *started.Resources(), 1)
+			require.Len(t, *started.Resources(), 2)
+			source := uploadResourceAt(t, started, 1)
+			assert.Equal(t, []string{filepath.Join(sourceDir, ".snyk")}, ffc.GetRevisionPaths(uuid.MustParse(source.RevisionId)))
 			assert.False(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
 		})
 	}
