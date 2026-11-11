@@ -69,7 +69,7 @@ func RunSbomFlow(
 		}
 	}
 
-	testConfig := BuildTestConfig(cfg)
+	testConfig := BuildTestConfig(cfg, localPolicy)
 
 	osAnalysisStart := time.Now()
 	legacyVulnRes, wfData, err := runTest(

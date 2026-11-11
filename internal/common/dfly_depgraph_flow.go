@@ -125,7 +125,7 @@ func RunDflyDepgraphFlow(
 		resources = append(resources, *sourceResource)
 	}
 
-	testConfig := BuildTestConfig(cfg)
+	testConfig := BuildTestConfig(cfg, localPolicy)
 	if policyFilesOnly {
 		testConfig.ScanConfig.Sca.ReachabilityAnalysis = new(false)
 	}
@@ -151,8 +151,9 @@ func RunDflyDepgraphFlow(
 }
 
 // BuildTestConfig creates a TestConfiguration from CLI flags and a local policy.
-func BuildTestConfig(cfg configuration.Configuration) *testapi.TestConfiguration {
+func BuildTestConfig(cfg configuration.Configuration, localPolicy *testapi.LocalPolicy) *testapi.TestConfiguration {
 	testConfig := &testapi.TestConfiguration{
+		LocalPolicy: localPolicy,
 		ScanConfig: &testapi.ScanConfiguration{
 			Sca: &testapi.ScaScanConfiguration{
 				ReachabilityAnalysis: new(cfg.GetBool(flags.FlagReachability)),

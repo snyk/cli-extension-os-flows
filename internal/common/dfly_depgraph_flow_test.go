@@ -1134,7 +1134,7 @@ func Test_BuildTestConfig_MonitorFlagSetsMonitor(t *testing.T) {
 	cfg := configuration.New()
 	cfg.Set(flags.FlagMonitor, true)
 
-	tc := common.BuildTestConfig(cfg)
+	tc := common.BuildTestConfig(cfg, nil)
 
 	require.NotNil(t, tc.Monitor)
 	assert.True(t, *tc.Monitor)
@@ -1143,7 +1143,7 @@ func Test_BuildTestConfig_MonitorFlagSetsMonitor(t *testing.T) {
 
 func Test_BuildTestConfig_NoMonitorFlagLeavesMonitorNil(t *testing.T) {
 	cfg := configuration.New()
-	tc := common.BuildTestConfig(cfg)
+	tc := common.BuildTestConfig(cfg, nil)
 	assert.Nil(t, tc.Monitor)
 }
 
@@ -1151,7 +1151,7 @@ func Test_BuildTestConfig_ReportFlagSetsPublishReport(t *testing.T) {
 	cfg := configuration.New()
 	cfg.Set(flags.FlagReport, true)
 
-	tc := common.BuildTestConfig(cfg)
+	tc := common.BuildTestConfig(cfg, nil)
 
 	require.NotNil(t, tc.PublishReport)
 	assert.True(t, *tc.PublishReport)
@@ -1160,7 +1160,7 @@ func Test_BuildTestConfig_ReportFlagSetsPublishReport(t *testing.T) {
 
 func Test_BuildTestConfig_NoReportFlagLeavesPublishReportNil(t *testing.T) {
 	cfg := configuration.New()
-	tc := common.BuildTestConfig(cfg)
+	tc := common.BuildTestConfig(cfg, nil)
 	assert.Nil(t, tc.PublishReport)
 }
 
@@ -1170,7 +1170,7 @@ func Test_BuildTestConfig_ReachabilityAnalysisFollowsReachabilityFlag(t *testing
 			cfg := configuration.New()
 			cfg.Set(flags.FlagReachability, reachability)
 
-			tc := common.BuildTestConfig(cfg)
+			tc := common.BuildTestConfig(cfg, nil)
 
 			require.NotNil(t, tc.ScanConfig)
 			require.NotNil(t, tc.ScanConfig.Sca)
