@@ -34,6 +34,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/deeproxy"
 	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/internal/util"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
@@ -641,6 +642,100 @@ func Test_RunDflyDepgraphFlow_ReachabilityOff_UploadsOnlyPolicyFiles(t *testing.
 	source := uploadResourceAt(t, started, 1)
 	assert.Equal(t, testapi.UploadResourceContentTypeSource, source.ContentType)
 	assert.Equal(t, policyRevision.String(), source.RevisionId)
+}
+
+func Test_RunDflyDepgraphFlow_ReachabilityOn_AddsPolicyFilesToSourceUpload(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	sourceDir := util.CreateTmpFiles(t, []util.LoadedFile{
+		{Path: "index.js"},
+		{Path: ".snyk", Content: "version: v1.25.0\n"},
+		{Path: "app/.snyk", Content: "version: v1.25.0\n"},
+	}).Name()
+
+	mockIctx := setupDflyInvocationContext(t, ctrl, true)
+	cfg := mockIctx.GetConfiguration()
+	cfg.Set(flags.FlagReachability, true)
+	mockTestClient, started := setupDflyCapturingTestClient(ctrl)
+	ffc := fileupload.NewFakeClient()
+
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
+	ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
+	ctx = cmdctx.WithConfig(ctx, cfg)
+
+	_, _, err := common.RunDflyDepgraphFlow(
+		ctx, sourceDir, newDflySinglePkgResolver(),
+		common.FlowClients{
+			FileUploadClient: ffc,
+			TestClient:       mockTestClient,
+			DeeproxyClient:   deeproxy.NewFakeClient(deeproxy.AllowList{Extensions: []string{".js"}}, nil),
+		},
+		uuid.New(), nil, &common.ReachabilityOpts{SourceDir: sourceDir},
+		ostest.RunTestWithResources,
+	)
+	require.NoError(t, err)
+
+	assert.ElementsMatch(t, []string{
+		filepath.Join(sourceDir, "index.js"),
+		filepath.Join(sourceDir, ".snyk"),
+		filepath.Join(sourceDir, "app", ".snyk"),
+	}, ffc.GetRevisionPaths(ffc.GetLastRevisionID()))
+	assert.True(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
+}
+
+func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsPolicyFilesAloneWhenNoSourcesAreUploaded(t *testing.T) {
+	tests := map[string]struct {
+		sourceFile string
+		deeproxy   deeproxy.Client
+	}{
+		"no reachability-supported source files": {
+			sourceFile: "main.go",
+			deeproxy:   deeproxy.NewFakeClient(deeproxy.AllowList{Extensions: []string{".go"}}, nil),
+		},
+		"source code upload fails": {
+			sourceFile: "index.js",
+			deeproxy:   deeproxy.NewFakeClient(deeproxy.AllowList{}, errors.New("filters unavailable")),
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			sourceDir := util.CreateTmpFiles(t, []util.LoadedFile{
+				{Path: tc.sourceFile},
+				{Path: ".snyk", Content: "version: v1.25.0\n"},
+			}).Name()
+
+			mockIctx := setupDflyInvocationContext(t, ctrl, true)
+			cfg := mockIctx.GetConfiguration()
+			cfg.Set(flags.FlagReachability, true)
+			mockTestClient, started := setupDflyCapturingTestClient(ctrl)
+			ffc := fileupload.NewFakeClient()
+
+			ctx := t.Context()
+			ctx = cmdctx.WithIctx(ctx, mockIctx)
+			ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
+			ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
+			ctx = cmdctx.WithConfig(ctx, cfg)
+
+			_, _, err := common.RunDflyDepgraphFlow(
+				ctx, sourceDir, newDflySinglePkgResolver(),
+				common.FlowClients{FileUploadClient: ffc, TestClient: mockTestClient, DeeproxyClient: tc.deeproxy},
+				uuid.New(), nil, &common.ReachabilityOpts{SourceDir: sourceDir},
+				ostest.RunTestWithResources,
+			)
+			require.NoError(t, err)
+
+			assert.Equal(t, []string{filepath.Join(sourceDir, ".snyk")}, ffc.GetRevisionPaths(ffc.GetLastRevisionID()))
+			require.Len(t, *started.Resources(), 2)
+			assert.False(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
+		})
+	}
 }
 
 type failingPolicyFileUpload struct {

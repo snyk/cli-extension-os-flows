@@ -247,6 +247,29 @@ func Test_UploadSourceCode_PreservesTrackedGitignoredFiles(t *testing.T) {
 	assert.Equal(t, "tracked.json", filepath.Base(uploadedPaths[0]))
 }
 
+func Test_UploadSourceCode_UploadsExtraFileNamesOutsideCodeAllowList(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	ctx := cmdctx.WithLogger(t.Context(), &nopLogger)
+	ctx = withFileFilter(ctx, ctrl, configuration.New())
+
+	sourceDir := t.TempDir()
+	writeUploadFile(t, sourceDir, "index.js", "")
+	writeUploadFile(t, sourceDir, ".snyk", "version: v1.25.0\n")
+	writeUploadFile(t, sourceDir, "README.md", "")
+
+	uploadClient := fileupload.NewFakeClient()
+	deeproxyClient := deeproxy.NewFakeClient(deeproxy.AllowList{Extensions: []string{".js"}}, nil)
+
+	_, err := reachability.UploadSourceCode(ctx, uuid.New(), uploadClient, deeproxyClient, sourceDir, ".snyk")
+	require.NoError(t, err)
+
+	assert.ElementsMatch(t, []string{
+		filepath.Join(sourceDir, "index.js"),
+		filepath.Join(sourceDir, ".snyk"),
+	}, uploadClient.GetRevisionPaths(uploadClient.GetLastRevisionID()))
+}
+
 func gitRepoWithTrackedUploadFile(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()

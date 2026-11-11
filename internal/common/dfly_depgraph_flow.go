@@ -117,7 +117,7 @@ func RunDflyDepgraphFlow(
 
 	resources := []testapi.TestResourceCreateItem{uploadResource}
 
-	sourceResource, err := uploadDflySources(ctx, orgUUID, clients, inputDir, reachabilityOpts)
+	sourceResource, policyFilesOnly, err := uploadDflySources(ctx, orgUUID, clients, inputDir, reachabilityOpts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -126,6 +126,9 @@ func RunDflyDepgraphFlow(
 	}
 
 	testConfig := BuildTestConfig(cfg, localPolicy)
+	if policyFilesOnly {
+		testConfig.ScanConfig.Sca.ReachabilityAnalysis = new(false)
+	}
 
 	projectName := depGraphs[0].Identity.Name
 	targetFile := depGraphs[0].Identity.TargetFile

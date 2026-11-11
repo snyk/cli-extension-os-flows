@@ -19,11 +19,17 @@ func uploadDflySources(
 	clients FlowClients,
 	inputDir string,
 	opts *ReachabilityOpts,
-) (*testapi.TestResourceCreateItem, error) {
+) (resource *testapi.TestResourceCreateItem, policyFilesOnly bool, err error) {
+	policyRoot := inputDir
 	if opts != nil {
-		return uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, opts), nil
+		if upload := uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, opts, listsources.PolicyFileName); upload != nil {
+			return upload, false, nil
+		}
+		policyRoot = opts.SourceDir
 	}
-	return uploadPolicyFilesIfAny(ctx, clients.FileUploadClient, inputDir)
+
+	resource, err = uploadPolicyFilesIfAny(ctx, clients.FileUploadClient, policyRoot)
+	return resource, resource != nil, err
 }
 
 func uploadPolicyFilesIfAny(ctx context.Context, fc fileupload.Client, dir string) (*testapi.TestResourceCreateItem, error) {

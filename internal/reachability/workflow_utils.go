@@ -30,7 +30,7 @@ func codeEngineFilter(_ string, stat os.FileInfo) error {
 	return nil
 }
 
-func getDeeproxyFilter(ctx context.Context, orgID uuid.UUID, dclient deeproxy.Client) (fileFilter, error) {
+func getDeeproxyFilter(ctx context.Context, orgID uuid.UUID, dclient deeproxy.Client, extraFileNames []string) (fileFilter, error) {
 	allowList, err := dclient.GetFilters(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load file filters: %w", err)
@@ -49,6 +49,9 @@ func getDeeproxyFilter(ctx context.Context, orgID uuid.UUID, dclient deeproxy.Cl
 			continue
 		}
 		supportedConfigFiles[configFile] = true
+	}
+	for _, fileName := range extraFileNames {
+		supportedConfigFiles[fileName] = true
 	}
 
 	return func(_ string, stat os.FileInfo) error {
@@ -116,19 +119,21 @@ func filterFiles(input <-chan string, output chan<- string, filteredFiles *[]fil
 
 // UploadSourceCode uploads a source code directory for reachability analysis.
 // It applies the standard source code filters (1MiB file size limit).
+// extraFileNames are file names uploaded even when Code's allow-list omits them.
 func UploadSourceCode(
 	ctx context.Context,
 	orgID uuid.UUID,
 	fc fileupload.Client,
 	dclient deeproxy.Client,
 	sourceDir string,
+	extraFileNames ...string,
 ) (*fileupload.UploadResult, error) {
 	instrumentation := cmdctx.Instrumentation(ctx)
 	ictx := cmdctx.Ictx(ctx)
 	logger := cmdctx.Logger(ctx)
 	codeUploadStart := time.Now()
 
-	deeproxyFilter, err := getDeeproxyFilter(ctx, orgID, dclient)
+	deeproxyFilter, err := getDeeproxyFilter(ctx, orgID, dclient, extraFileNames)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load deeproxy filter: %w", err)
 	}

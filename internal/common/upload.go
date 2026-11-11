@@ -20,10 +20,11 @@ func UploadSourceCodeResource(
 	fc fileupload.Client,
 	dc deeproxy.Client,
 	sourceCodePath string,
+	extraFileNames ...string,
 ) (testapi.TestResourceCreateItem, error) {
 	logger := cmdctx.Logger(ctx)
 
-	sourceResult, err := reachability.UploadSourceCode(ctx, orgID, fc, dc, sourceCodePath)
+	sourceResult, err := reachability.UploadSourceCode(ctx, orgID, fc, dc, sourceCodePath, extraFileNames...)
 	if err != nil {
 		logger.Error().Err(err).Str("sourceCodePath", sourceCodePath).Msg("Failed to upload source code")
 		return testapi.TestResourceCreateItem{}, fmt.Errorf("failed to upload source code: %w", err)
