@@ -20,15 +20,13 @@ func uploadDflySources(
 	inputDir string,
 	opts *ReachabilityOpts,
 ) (resource *testapi.TestResourceCreateItem, policyFilesOnly bool, err error) {
-	policyRoot := inputDir
-	if opts != nil {
-		if upload := uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, opts, listsources.PolicyFileName); upload != nil {
-			return upload, false, nil
-		}
-		policyRoot = opts.SourceDir
+	reachabilityRequested := opts != nil
+
+	if reachabilityRequested {
+		return uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, opts, listsources.PolicyFileName)
 	}
 
-	resource, err = uploadPolicyFilesIfAny(ctx, clients.FileUploadClient, policyRoot)
+	resource, err = uploadPolicyFilesIfAny(ctx, clients.FileUploadClient, inputDir)
 	return resource, resource != nil, err
 }
 

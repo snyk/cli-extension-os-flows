@@ -42,13 +42,7 @@ func ShouldRunReachability(ictx workflow.InvocationContext, sourceDir string) bo
 // even when Code's allow-list omits them. Returns the upload resource on success, nil
 // if skipped (no supported files) or if the upload fails; in both nil cases a user-facing
 // warning is emitted via OutputError.
-func uploadReachabilitySourcesIfAny(
-	ctx context.Context,
-	orgUUID uuid.UUID,
-	clients FlowClients,
-	opts *ReachabilityOpts,
-	extraFileNames ...string,
-) *testapi.TestResourceCreateItem {
+func uploadReachabilitySourcesIfAny(ctx context.Context, orgUUID uuid.UUID, clients FlowClients, opts *ReachabilityOpts, extraFileNames ...string) (*testapi.TestResourceCreateItem, bool, error) {
 	ictx := cmdctx.Ictx(ctx)
 	logger := cmdctx.Logger(ctx)
 	progressBar := cmdctx.ProgressBar(ctx)
@@ -56,7 +50,9 @@ func uploadReachabilitySourcesIfAny(
 	if !ShouldRunReachability(ictx, opts.SourceDir) {
 		//nolint:errcheck // Best-effort warning output.
 		ictx.GetUserInterface().OutputError(reachability.NewWarning(fmt.Errorf("no reachability-supported source files were found; skipping reachability analysis")))
-		return nil
+
+		resource, err := uploadPolicyFilesIfAny(ctx, clients.FileUploadClient, opts.SourceDir)
+		return resource, true, err
 	}
 
 	progressBar.SetTitle(constants.UploadingSourceCodeMessage)
@@ -66,10 +62,10 @@ func uploadReachabilitySourcesIfAny(
 		logger.Warn().Err(err).Msg("Failed to upload source code, proceeding without reachability")
 		//nolint:errcheck // Best-effort warning output.
 		ictx.GetUserInterface().OutputError(reachability.NewWarning(err))
-		return nil
+		return nil, false, err
 	}
 
-	return &resource
+	return &resource, false, nil
 }
 
 // ResolveMonitorReachabilityOpts determines the reachability options for the monitor flow.

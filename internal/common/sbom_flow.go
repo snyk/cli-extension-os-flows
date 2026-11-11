@@ -63,7 +63,7 @@ func RunSbomFlow(
 	resources := []testapi.TestResourceCreateItem{sbomResource}
 
 	if reachabilityOpts != nil {
-		if upload := uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, reachabilityOpts); upload != nil {
+		if upload, _, _ := uploadReachabilitySourcesIfAny(ctx, orgUUID, clients, reachabilityOpts); upload != nil {
 			resources = append(resources, *upload)
 		}
 	}
