@@ -695,10 +695,6 @@ func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsPolicyFilesAloneWhenNoSource
 			sourceFile: "main.go",
 			deeproxy:   deeproxy.NewFakeClient(deeproxy.AllowList{Extensions: []string{".go"}}, nil),
 		},
-		"source code upload fails": {
-			sourceFile: "index.js",
-			deeproxy:   deeproxy.NewFakeClient(deeproxy.AllowList{}, errors.New("filters unavailable")),
-		},
 	}
 
 	for name, tc := range tests {
@@ -736,6 +732,43 @@ func Test_RunDflyDepgraphFlow_ReachabilityOn_UploadsPolicyFilesAloneWhenNoSource
 			assert.False(t, *started.TestConfig().ScanConfig.Sca.ReachabilityAnalysis)
 		})
 	}
+}
+
+func Test_RunDflyDepgraphFlow_ReachabilityOn_FailsWhenSourceCodeUploadFails(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	sourceDir := util.CreateTmpFiles(t, []util.LoadedFile{
+		{Path: "index.js"},
+		{Path: ".snyk", Content: "version: v1.25.0\n"},
+	}).Name()
+
+	mockIctx := setupDflyInvocationContext(t, ctrl, true)
+	cfg := mockIctx.GetConfiguration()
+	cfg.Set(flags.FlagReachability, true)
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Times(0)
+	ffc := fileupload.NewFakeClient()
+
+	ctx := t.Context()
+	ctx = cmdctx.WithIctx(ctx, mockIctx)
+	ctx = cmdctx.WithLogger(ctx, &dflyNopLogger)
+	ctx = cmdctx.WithProgressBar(ctx, &dflyNopProgressBar)
+	ctx = cmdctx.WithConfig(ctx, cfg)
+
+	_, _, err := common.RunDflyDepgraphFlow(
+		ctx, sourceDir, newDflySinglePkgResolver(),
+		common.FlowClients{
+			FileUploadClient: ffc,
+			TestClient:       mockTestClient,
+			DeeproxyClient:   deeproxy.NewFakeClient(deeproxy.AllowList{}, errors.New("filters unavailable")),
+		},
+		uuid.New(), nil, &common.ReachabilityOpts{SourceDir: sourceDir},
+		ostest.RunTestWithResources,
+	)
+
+	require.ErrorContains(t, err, "failed to upload source code")
+	assert.Equal(t, 1, ffc.GetUploadCount(), "only the dep graphs are uploaded")
 }
 
 type failingPolicyFileUpload struct {
