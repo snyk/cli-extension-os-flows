@@ -3,6 +3,11 @@ package constants
 // ForceLegacyCLIEnvVar is an internal environment variable to force the legacy CLI flow.
 const ForceLegacyCLIEnvVar = "SNYK_FORCE_LEGACY_CLI"
 
+// AutodetectOSSEnvVar opts a session into auto-detecting C/C++ artefacts in
+// each input directory. When found, an extra unmanaged scan runs alongside
+// the managed scan so mixed projects don't need an explicit --unmanaged flag.
+const AutodetectOSSEnvVar = "SNYK_AUTODETECT_OSS"
+
 // FeatureFlagReachabilityForCLI is to gate the reachability capability on the CLI.
 const FeatureFlagReachabilityForCLI = "internal_snyk_cli_reachability_enabled"
 
