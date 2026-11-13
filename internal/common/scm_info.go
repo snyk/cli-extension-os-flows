@@ -32,7 +32,7 @@ func ResolveScmInfo(inputDir, remoteURLOverride string, logger *zerolog.Logger) 
 	}
 
 	return &ScmInfo{
-		RemoteURL: remoteURL,
+		RemoteURL: git.StripGitCredentials(remoteURL),
 		Branch:    branch,
 	}
 }

@@ -55,6 +55,48 @@ func TestResolveScmInfo(t *testing.T) {
 		assert.Equal(t, "https://override.example.com/repo.git", info.RemoteURL)
 		assert.Empty(t, info.Branch)
 	})
+
+	t.Run("strips credentials from the remote url", func(t *testing.T) {
+		tcs := []struct {
+			name     string
+			remote   string
+			override string
+			expected string
+		}{
+			{
+				name:     "token in detected https remote",
+				remote:   "https://gitlab-ci-token:secret@gitlab.com/acme/repo.git",
+				expected: "https://gitlab.com/acme/repo.git",
+			},
+			{
+				name:     "username in detected https remote",
+				remote:   "https://acme@bitbucket.org/acme/repo.git",
+				expected: "https://bitbucket.org/acme/repo.git",
+			},
+			{
+				name:     "user in detected scp-style remote",
+				remote:   "git@github.com:acme/repo.git",
+				expected: "github.com:acme/repo.git",
+			},
+			{
+				name:     "credentials in override",
+				remote:   "https://github.com/acme/repo.git",
+				override: "https://user:token@custom.example.com/override.git",
+				expected: "https://custom.example.com/override.git",
+			},
+		}
+
+		for _, tc := range tcs {
+			t.Run(tc.name, func(t *testing.T) {
+				dir := initGitRepo(t, tc.remote)
+
+				info := common.ResolveScmInfo(dir, tc.override, &nop)
+
+				require.NotNil(t, info)
+				assert.Equal(t, tc.expected, info.RemoteURL)
+			})
+		}
+	})
 }
 
 func initGitRepo(t *testing.T, remoteURL string) string {
