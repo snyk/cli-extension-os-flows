@@ -108,6 +108,12 @@ func TestCreateLocalPolicy(t *testing.T) {
 			setFailOnFlag:            true,
 			expectedFailOnUpgradable: util.Ptr(true),
 		},
+		{
+			name:                     "fail-on patchable is deprecated and treated as all",
+			failOnValue:              "patchable",
+			setFailOnFlag:            true,
+			expectedFailOnUpgradable: util.Ptr(true),
+		},
 	}
 
 	pb := &nopProgressBar{}

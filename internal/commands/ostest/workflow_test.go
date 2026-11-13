@@ -1,9 +1,11 @@
 package ostest_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,6 +24,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/mocks"
 	"github.com/snyk/go-application-framework/pkg/networking"
 	"github.com/snyk/go-application-framework/pkg/ui"
+	"github.com/snyk/go-application-framework/pkg/ui/consoleui"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -76,6 +79,45 @@ func TestOSWorkflow_LegacyFlow(t *testing.T) {
 
 	// Verify
 	assert.NoError(t, err)
+}
+
+func TestOSWorkflow_FailOnPatchableDeprecationWarning(t *testing.T) {
+	tests := map[string]struct {
+		failOn      string
+		wantWarning bool
+	}{
+		"warns for --fail-on=patchable":          {failOn: "patchable", wantWarning: true},
+		"does not warn for --fail-on=upgradable": {failOn: "upgradable", wantWarning: false},
+		"does not warn for --fail-on=all":        {failOn: "all", wantWarning: false},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			var stderr bytes.Buffer
+			userInterface := consoleui.New(consoleui.WithOutput(io.Discard), consoleui.WithErrorOutput(&stderr))
+
+			mockEngine := mocks.NewMockEngine(ctrl)
+			mockInvocationCtx := createMockInvocationCtxWithUI(t, ctrl, mockEngine, "", userInterface)
+			mockInvocationCtx.GetConfiguration().Set(flags.FlagFailOn, tc.failOn)
+
+			mockEngine.EXPECT().
+				InvokeWithConfig(legacyWorkflowID, gomock.Any()).
+				Return([]workflow.Data{}, nil).
+				Times(1)
+
+			_, err := ostest.OSWorkflow(mockInvocationCtx, []workflow.Data{})
+			require.NoError(t, err)
+
+			if tc.wantWarning {
+				assert.Contains(t, stderr.String(), "--fail-on=patchable is deprecated")
+			} else {
+				assert.Empty(t, stderr.String())
+			}
+		})
+	}
 }
 
 func TestOSWorkflow_OrgIDHandling(t *testing.T) {
@@ -469,6 +511,19 @@ func TestOSWorkflow_FlagCombinations(t *testing.T) {
 func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engine workflow.Engine, mockServerURL string) workflow.InvocationContext {
 	t.Helper()
 
+	return createMockInvocationCtxWithUI(t, ctrl, engine, mockServerURL, ui.DefaultUi())
+}
+
+// createMockInvocationCtxWithUI is createMockInvocationCtxWithURL with the user interface supplied by the caller.
+func createMockInvocationCtxWithUI(
+	t *testing.T,
+	ctrl *gomock.Controller,
+	engine workflow.Engine,
+	mockServerURL string,
+	userInterface ui.UserInterface,
+) workflow.InvocationContext {
+	t.Helper()
+
 	mockConfig := configuration.New()
 	mockConfig.Set(configuration.AUTHENTICATION_TOKEN, "<SOME API TOKEN>")
 	mockConfig.Set(configuration.ORGANIZATION, uuid.New().String())
@@ -487,7 +542,7 @@ func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engin
 	icontext.EXPECT().GetEnhancedLogger().Return(&mockLogger).AnyTimes()
 	icontext.EXPECT().GetNetworkAccess().Return(networking.NewNetworkAccess(mockConfig)).AnyTimes()
 	icontext.EXPECT().GetWorkflowIdentifier().Return(workflow.NewWorkflowIdentifier("test")).AnyTimes()
-	icontext.EXPECT().GetUserInterface().Return(ui.DefaultUi()).AnyTimes()
+	icontext.EXPECT().GetUserInterface().Return(userInterface).AnyTimes()
 
 	if engine != nil {
 		icontext.EXPECT().GetEngine().Return(engine).AnyTimes()
