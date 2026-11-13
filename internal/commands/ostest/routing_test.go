@@ -779,8 +779,8 @@ func Test_ShouldUseLegacyFlow_FailOn(t *testing.T) {
 	}{
 		"stays on the unified test API for --fail-on=all":        {failOn: "all", expectUseLegacy: false},
 		"stays on the unified test API for --fail-on=upgradable": {failOn: "upgradable", expectUseLegacy: false},
-		// The unified test API has no notion of patches, so only legacy can honor this value.
-		"routes to legacy for --fail-on=patchable": {failOn: "patchable", expectUseLegacy: true},
+		// patchable is deprecated and treated as all, so it follows the rollout like any other value.
+		"stays on the unified test API for --fail-on=patchable": {failOn: "patchable", expectUseLegacy: false},
 	}
 
 	for tcName, tc := range tcs {

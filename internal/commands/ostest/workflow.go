@@ -280,6 +280,7 @@ func OSWorkflow(
 	_ []workflow.Data,
 ) ([]workflow.Data, error) {
 	showEarlyAccessBanner(ictx)
+	warnIfFailOnPatchable(ictx)
 
 	ctx := initializeWorkflowContext(ictx)
 	cfg := cmdctx.Config(ctx)

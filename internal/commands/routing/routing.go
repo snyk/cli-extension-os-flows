@@ -16,8 +16,6 @@ const (
 	CommandMonitor Command = "monitor"
 )
 
-const failOnPatchable = "patchable"
-
 var sharedLegacyOnlyFlags = []string{
 	flags.FlagDocker,
 	flags.FlagContainer,
@@ -41,7 +39,7 @@ func RequiresLegacyByFlags(cfg configuration.Configuration, cmd Command) bool {
 	}
 
 	if cmd == CommandTest {
-		return anyFlagSet(cfg, testOnlyLegacyFlags) || cfg.GetString(flags.FlagFailOn) == failOnPatchable
+		return anyFlagSet(cfg, testOnlyLegacyFlags)
 	}
 
 	return false

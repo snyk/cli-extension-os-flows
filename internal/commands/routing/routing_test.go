@@ -51,7 +51,8 @@ func Test_RequiresLegacyByFlags_FailOn(t *testing.T) {
 		wantTest    bool
 		wantMonitor bool
 	}{
-		"patchable":  {value: "patchable", wantTest: true, wantMonitor: false},
+		// patchable is deprecated and treated as all, so it no longer forces the legacy flow.
+		"patchable":  {value: "patchable", wantTest: false, wantMonitor: false},
 		"upgradable": {value: "upgradable", wantTest: false, wantMonitor: false},
 		"all":        {value: "all", wantTest: false, wantMonitor: false},
 	}

@@ -117,7 +117,8 @@ func getFailOnPolicy(ctx context.Context) (supportedFailOnPolicy, error) {
 	}
 
 	switch failOnFromConfig {
-	case "upgradable", "all":
+	// patchable is deprecated: Snyk no longer publishes patches, so it is treated as all.
+	case "upgradable", "all", "patchable":
 		failOnPolicy.onUpgradable = util.Ptr(true)
 	default:
 		//nolint:wrapcheck // No need to wrap error factory errors.
