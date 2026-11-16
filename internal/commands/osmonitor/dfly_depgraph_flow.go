@@ -12,22 +12,25 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/internal/outputworkflow"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 // RunDflyMonitorFlow runs the dragonfly depgraph flow for `snyk monitor`.
 // It iterates over all input directories, resolves dep graphs, uploads them,
-// runs a test with monitor=true, and returns the aggregated workflow output.
+// runs a test with monitor=true, and returns legacy monitor's per-project output.
+// With JSON output it returns the test's workflow output instead.
 func RunDflyMonitorFlow(
 	ctx context.Context,
 	inputDirs []string,
 	orgUUID uuid.UUID,
 	clients common.FlowClients,
+	dgResolver common.DepgraphResolver,
 ) ([]workflow.Data, error) {
 	cfg := cmdctx.Config(ctx)
 	cfg.Set(flags.FlagMonitor, true)
-	dgResolver := common.NewDepgraphResolver()
 	var allWfData []workflow.Data
+	var projects []monitoredProject
 
 	for _, inputDir := range inputDirs {
 		localPolicy, err := common.CreateLocalPolicy(ctx, inputDir)
@@ -45,17 +48,23 @@ func RunDflyMonitorFlow(
 			return nil, fmt.Errorf("failed to resolve reachability options: %w", err)
 		}
 
+		recorder := &recordingDepgraphResolver{DepgraphResolver: dgResolver}
 		_, wfData, err := common.RunDflyDepgraphFlow(
-			ctx, inputDir, dgResolver, clients, orgUUID, localPolicy, reachOpts, ostest.RunTestWithResources,
+			ctx, inputDir, recorder, clients, orgUUID, localPolicy, reachOpts, ostest.RunTestWithResources,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to run depgraph flow: %w", err)
 		}
 
 		allWfData = append(allWfData, wfData...)
+		projects = append(projects, monitoredProjects(inputDir, recorder.depGraphs, wfData)...)
 	}
 
-	return handleDflyOutput(ctx, allWfData)
+	if cfg.GetBool(outputworkflow.OutputConfigKeyJSON) || cfg.GetString(outputworkflow.OutputConfigKeyJSONFile) != "" {
+		return handleDflyOutput(ctx, allWfData)
+	}
+
+	return []workflow.Data{monitorOutputData(ctx, projects)}, nil
 }
 
 func handleDflyOutput(ctx context.Context, outputData []workflow.Data) ([]workflow.Data, error) {

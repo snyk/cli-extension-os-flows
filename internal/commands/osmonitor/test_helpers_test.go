@@ -133,6 +133,63 @@ func mustSetupMockTestResultEmpty(ctrl *gomock.Controller) *gafclientmocks.MockT
 	return mockTestResult
 }
 
+func setupMockTestClientWithComponents(
+	ctrl *gomock.Controller,
+	passFail testapi.PassFail,
+	components []testapi.TestComponent,
+) *gafclientmocks.MockTestClient {
+	outcomeReason := testapi.TestOutcomeReasonOther
+	mockTestResult := gafclientmocks.NewMockTestResult(ctrl)
+	mockTestResult.EXPECT().GetExecutionState().Return(testapi.TestExecutionStatesFinished).AnyTimes()
+	mockTestResult.EXPECT().Findings(gomock.Any()).Return([]testapi.FindingData{}, true, nil).AnyTimes()
+	mockTestResult.EXPECT().GetTestSubject().Return(nil).AnyTimes()
+	mockTestResult.EXPECT().GetEffectiveSummary().Return(&testapi.FindingSummary{}).AnyTimes()
+	mockTestResult.EXPECT().GetRawSummary().Return(&testapi.FindingSummary{}).AnyTimes()
+	mockTestResult.EXPECT().GetSubjectLocators().Return(nil).AnyTimes()
+	mockTestResult.EXPECT().GetTestID().Return(&uuid.UUID{}).AnyTimes()
+	mockTestResult.EXPECT().GetTestConfiguration().Return(&testapi.TestConfiguration{}).AnyTimes()
+	mockTestResult.EXPECT().GetCreatedAt().Return(&time.Time{}).AnyTimes()
+	mockTestResult.EXPECT().GetErrors().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
+	mockTestResult.EXPECT().GetWarnings().Return(&[]testapi.IoSnykApiCommonError{}).AnyTimes()
+	mockTestResult.EXPECT().GetPassFail().Return(&passFail).AnyTimes()
+	mockTestResult.EXPECT().GetOutcomeReason().Return(&outcomeReason).AnyTimes()
+	mockTestResult.EXPECT().SetMetadata(gomock.Any(), gomock.Any()).Return().AnyTimes()
+	mockTestResult.EXPECT().GetMetadata().Return(make(map[string]interface{})).AnyTimes()
+	mockTestResult.EXPECT().GetMetadataValue(gomock.Any()).Return(nil).AnyTimes()
+	mockTestResult.EXPECT().GetTestFacts().Return(nil).AnyTimes()
+	mockTestResult.EXPECT().GetBreachedPolicies().Return(&testapi.PolicyRefSet{}).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultTestSubject).Return(nil).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultSubjectLocators).Return(nil).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultBreachedPolicies).Return(&testapi.PolicyRefSet{}).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultRawSummary).Return(&testapi.FindingSummary{}).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultTestFacts).Return(nil).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultMetadata).Return(make(map[string]interface{})).AnyTimes()
+	mockTestResult.EXPECT().Get(testapi.TestResultComponents).Return(&components).AnyTimes()
+
+	mockTestHandle := gafclientmocks.NewMockTestHandle(ctrl)
+	mockTestHandle.EXPECT().Wait(gomock.Any()).Return(nil).Times(1)
+	mockTestHandle.EXPECT().Result().Return(mockTestResult).Times(1)
+
+	mockTestClient := gafclientmocks.NewMockTestClient(ctrl)
+	mockTestClient.EXPECT().StartTest(gomock.Any(), gomock.Any()).Return(mockTestHandle, nil).Times(1)
+
+	return mockTestClient
+}
+
+func newDepgraphWithIdentity(identity common.Identity) common.DepgraphWithIdentity {
+	return common.DepgraphWithIdentity{
+		Identity: identity,
+		DepGraph: &depgraph.DepGraph{
+			SchemaVersion: "1.2.0",
+			PkgManager:    depgraph.PkgManager{Name: identity.Type},
+			Pkgs: []depgraph.Pkg{
+				{ID: identity.Name + "@1.0.0", Info: depgraph.PkgInfo{Name: identity.Name, Version: "1.0.0"}},
+			},
+			Graph: depgraph.Graph{RootNodeID: "root"},
+		},
+	}
+}
+
 // noopInstrumentation is unused but kept for reference; in tests we use the real
 // GAFInstrumentation with nil analytics which is safe for recording calls.
 var _ = require.NoError
