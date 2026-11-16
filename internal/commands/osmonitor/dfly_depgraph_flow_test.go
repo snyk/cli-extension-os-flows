@@ -4,9 +4,13 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/snyk/go-application-framework/pkg/apiclients/fileupload"
 	gafclientmocks "github.com/snyk/go-application-framework/pkg/apiclients/mocks"
+	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 	"github.com/snyk/go-application-framework/pkg/configuration"
+	"github.com/snyk/go-application-framework/pkg/local_workflows/content_type"
+	"github.com/snyk/go-application-framework/pkg/utils/ufm"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -124,6 +128,96 @@ func Test_RunDflyMonitorFlow_UploadFailure(t *testing.T) {
 		ostest.RunTestWithResources,
 	)
 	assert.ErrorContains(t, err, "failed to upload dependency graphs")
+}
+
+func Test_RunDflyMonitorFlow_PrintsLegacyMonitorOutputPerProject(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx, orgID, cfg := setupDflyTestFixture(t, ctrl)
+	cfg.Set(configuration.WEB_APP_URL, "https://app.snyk.io")
+	inputDir := t.TempDir()
+	frontendID, backendID := uuid.New(), uuid.New()
+	mockTestClient := setupMockTestClientWithComponents(ctrl, testapi.Pass, []testapi.TestComponent{
+		{Key: "gomodules:go.mod", ProjectId: &backendID, ScanType: testapi.FindingTypeSca},
+		{Key: "npm:frontend", ProjectId: &frontendID, ScanType: testapi.FindingTypeSca},
+	})
+	fdr := common.NewFakeDepgraphResolver([]common.DepgraphWithIdentity{
+		newDepgraphWithIdentity(common.Identity{Type: "npm", Name: "frontend"}),
+		newDepgraphWithIdentity(common.Identity{Type: "gomodules", Name: "backend", TargetFile: "go.mod"}),
+	}, nil)
+
+	wfData, err := osmonitor.RunDflyMonitorFlow(
+		ctx, []string{inputDir}, orgID,
+		common.FlowClients{FileUploadClient: fileupload.NewFakeClient(), TestClient: mockTestClient},
+		fdr,
+	)
+	require.NoError(t, err)
+
+	require.Len(t, wfData, 1)
+	assert.Equal(t, "text/plain", wfData[0].GetContentType())
+	assert.Equal(t,
+		"\nMonitoring "+inputDir+" (frontend)...\n\n"+
+			"Explore this snapshot at https://app.snyk.io/org/some-org/project/"+frontendID.String()+"\n\n"+
+			"Notifications about newly disclosed issues related to these dependencies will be emailed to you.\n"+
+			"\n\n-------------------------------------------------------\n"+
+			"\nMonitoring "+inputDir+" (backend)...\n\n"+
+			"Explore this snapshot at https://app.snyk.io/org/some-org/project/"+backendID.String()+"\n\n"+
+			"Notifications about newly disclosed issues related to these dependencies will be emailed to you.\n",
+		string(wfData[0].GetPayload().([]byte)),
+	)
+}
+
+func Test_RunDflyMonitorFlow_WhenProjectHasNoProjectID_ThenOmitsTheSnapshotLink(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx, orgID, _ := setupDflyTestFixture(t, ctrl)
+	inputDir := t.TempDir()
+	mockTestClient := setupMockTestClientWithComponents(ctrl, testapi.Pass, nil)
+	fdr := common.NewFakeDepgraphResolver([]common.DepgraphWithIdentity{
+		newDepgraphWithIdentity(common.Identity{Type: "npm", Name: "frontend"}),
+	}, nil)
+
+	wfData, err := osmonitor.RunDflyMonitorFlow(
+		ctx, []string{inputDir}, orgID,
+		common.FlowClients{FileUploadClient: fileupload.NewFakeClient(), TestClient: mockTestClient},
+		fdr,
+	)
+	require.NoError(t, err)
+
+	require.Len(t, wfData, 1)
+	assert.Equal(t,
+		"\nMonitoring "+inputDir+" (frontend)...\n\n"+
+			"Notifications about newly disclosed issues related to these dependencies will be emailed to you.\n",
+		string(wfData[0].GetPayload().([]byte)),
+	)
+}
+
+func Test_RunDflyMonitorFlow_WhenTestFails_ThenReturnsNoDataThatSetsAFailingExitCode(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx, orgID, _ := setupDflyTestFixture(t, ctrl)
+	projectID := uuid.New()
+	mockTestClient := setupMockTestClientWithComponents(ctrl, testapi.Fail, []testapi.TestComponent{
+		{Key: "npm:frontend", ProjectId: &projectID, ScanType: testapi.FindingTypeSca},
+	})
+	fdr := common.NewFakeDepgraphResolver([]common.DepgraphWithIdentity{
+		newDepgraphWithIdentity(common.Identity{Type: "npm", Name: "frontend"}),
+	}, nil)
+
+	wfData, err := osmonitor.RunDflyMonitorFlow(
+		ctx, []string{t.TempDir()}, orgID,
+		common.FlowClients{FileUploadClient: fileupload.NewFakeClient(), TestClient: mockTestClient},
+		fdr,
+	)
+	require.NoError(t, err)
+
+	for _, d := range wfData {
+		assert.Empty(t, ufm.GetTestResultsFromWorkflowData(d), "test results decide the exit code")
+		assert.NotEqual(t, content_type.TEST_SUMMARY, d.GetContentType(), "a test summary decides the exit code")
+	}
 }
 
 func Test_OSWorkflow_DflyFFEnabled_UsesDflyFlow(t *testing.T) {

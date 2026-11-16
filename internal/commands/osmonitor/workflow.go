@@ -243,7 +243,7 @@ func runDflyMonitorEntrypoint(ctx context.Context) ([]workflow.Data, error) {
 		return nil, fmt.Errorf("failed to get input directories: %w", err)
 	}
 
-	return RunDflyMonitorFlow(ctx, inputDirs, orgUUID, clients)
+	return RunDflyMonitorFlow(ctx, inputDirs, orgUUID, clients, common.NewDepgraphResolver())
 }
 
 func runLegacyMonitorFlow(ctx context.Context) ([]workflow.Data, error) {
