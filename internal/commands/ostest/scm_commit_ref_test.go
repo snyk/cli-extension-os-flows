@@ -44,7 +44,9 @@ func TestOSWorkflow_DflyFlow_CommitIDFlagOverridesHeadCommit(t *testing.T) {
 
 	scmContext := runOSTestAndCaptureScmContext(t, func(cfg configuration.Configuration) {
 		cfg.Set(configuration.INPUT_DIRECTORY, []string{dir})
-		cfg.Set(configuration.FLAG_COMMIT_ID, commitID)
+		flagSet := flags.OSTestFlagSet()
+		require.NoError(t, flagSet.Parse([]string{"--commit-id", commitID}))
+		require.NoError(t, cfg.AddFlagSet(flagSet))
 	})
 
 	assert.Equal(t, &commitID, scmContext.CommitRef)

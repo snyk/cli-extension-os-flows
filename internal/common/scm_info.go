@@ -55,11 +55,15 @@ func ResolveScmContext(cfg configuration.Configuration, inputDir string, logger 
 		Branch:  &scmInfo.Branch,
 	}
 
-	// The commit comes from the scanned checkout even when --remote-repo-url overrides the URL:
+	// Without --commit-id, the commit comes from the scanned checkout even when --remote-repo-url overrides the URL:
 	// the override only names the project, while the code being tested is the local checkout.
-	commitID, err := git.ResolveCommitId(cfg, inputDir)
-	if err != nil {
-		logger.Debug().Err(err).Msg("Could not resolve git commit, proceeding without commit in SCM context")
+	commitID := cfg.GetString(flags.FlagCommitID)
+	if commitID == "" {
+		var err error
+		commitID, err = git.HeadCommitHashFromDir(inputDir)
+		if err != nil {
+			logger.Debug().Err(err).Msg("Could not resolve git commit, proceeding without commit in SCM context")
+		}
 	}
 	if commitID != "" {
 		scmCtx.CommitRef = &commitID
