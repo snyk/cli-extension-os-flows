@@ -100,15 +100,7 @@ func RunDflyDepgraphFlow(
 		return nil, nil, fmt.Errorf("failed to upload dependency graphs: %w", err)
 	}
 
-	scmInfo := ResolveScmInfo(inputDir, cfg.GetString(flags.FlagRemoteRepoURL), logger)
-
-	var scmCtx *testapi.ScmContext
-	if scmInfo != nil {
-		scmCtx = &testapi.ScmContext{
-			RepoUrl: &scmInfo.RemoteURL,
-			Branch:  &scmInfo.Branch,
-		}
-	}
+	scmCtx := ResolveScmContext(cfg, inputDir, logger)
 
 	uploadResource, err := NewUploadResource(uploadRes.RevisionID.String(), testapi.UploadResourceContentTypeSbom, scmCtx)
 	if err != nil {

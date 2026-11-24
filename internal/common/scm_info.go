@@ -2,7 +2,11 @@ package common
 
 import (
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
+	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/utils/git"
+
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 // ScmInfo holds SCM metadata resolved from the local git repository.
@@ -35,6 +39,33 @@ func ResolveScmInfo(inputDir, remoteURLOverride string, logger *zerolog.Logger) 
 		RemoteURL: remoteURL,
 		Branch:    branch,
 	}
+}
+
+// ResolveScmContext builds the SCM context sent with Test API resources for inputDir, or returns
+// nil when ResolveScmInfo finds no SCM info. The commit is best-effort like the branch: a HEAD
+// that cannot be read is logged at Debug level and left out rather than failing the scan.
+func ResolveScmContext(cfg configuration.Configuration, inputDir string, logger *zerolog.Logger) *testapi.ScmContext {
+	scmInfo := ResolveScmInfo(inputDir, cfg.GetString(flags.FlagRemoteRepoURL), logger)
+	if scmInfo == nil {
+		return nil
+	}
+
+	scmCtx := &testapi.ScmContext{
+		RepoUrl: &scmInfo.RemoteURL,
+		Branch:  &scmInfo.Branch,
+	}
+
+	// The commit comes from the scanned checkout even when --remote-repo-url overrides the URL:
+	// the override only names the project, while the code being tested is the local checkout.
+	commitID, err := git.ResolveCommitId(cfg, inputDir)
+	if err != nil {
+		logger.Debug().Err(err).Msg("Could not resolve git commit, proceeding without commit in SCM context")
+	}
+	if commitID != "" {
+		scmCtx.CommitRef = &commitID
+	}
+
+	return scmCtx
 }
 
 // HasScmContext reports whether every input directory has SCM info, either from its

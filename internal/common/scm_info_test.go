@@ -2,6 +2,7 @@ package common_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/configuration"
+	"github.com/snyk/go-application-framework/pkg/utils/git"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -88,4 +91,21 @@ func initGitRepo(t *testing.T, remoteURL string) string {
 	require.NoError(t, err)
 
 	return dir
+}
+
+func TestResolveScmContext(t *testing.T) {
+	nop := zerolog.Nop()
+
+	t.Run("omits commit when HEAD cannot be read", func(t *testing.T) {
+		dir := initGitRepo(t, "https://github.com/acme/repo.git")
+		require.NoError(t, os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("ref: refs/heads/main\x00"), 0o600))
+		_, headErr := git.HeadCommitHashFromDir(dir)
+		require.Error(t, headErr)
+
+		scmCtx := common.ResolveScmContext(configuration.NewWithOpts(), dir, &nop)
+
+		require.NotNil(t, scmCtx)
+		assert.Equal(t, "https://github.com/acme/repo.git", *scmCtx.RepoUrl)
+		assert.Nil(t, scmCtx.CommitRef)
+	})
 }

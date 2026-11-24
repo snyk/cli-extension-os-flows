@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -507,11 +508,12 @@ func createMockInvocationCtxWithURL(t *testing.T, ctrl *gomock.Controller, engin
 
 // mockAPIState holds the state for the mock API server.
 type mockAPIState struct {
-	t           *testing.T
-	mu          sync.Mutex
-	server      *httptest.Server
-	jobToTestID map[string]string
-	testStates  map[string]*testRunState
+	t                *testing.T
+	mu               sync.Mutex
+	server           *httptest.Server
+	jobToTestID      map[string]string
+	testStates       map[string]*testRunState
+	createTestBodies [][]byte
 }
 
 // testRunState holds the state for a single test run.
@@ -551,6 +553,8 @@ func (s *mockAPIState) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/tests"):
 		s.handleCreateTest(w, r)
+	case strings.Contains(r.URL.Path, "/upload_revisions"):
+		s.handleUploadRevision(w, r)
 	case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/test_jobs/"):
 		s.handlePollJob(w, r)
 	case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/tests/") && !strings.HasSuffix(r.URL.Path, "/findings"):
@@ -582,7 +586,27 @@ func (s *mockAPIState) handleGetSettings(w http.ResponseWriter, _ *http.Request)
 	require.NoError(s.t, err)
 }
 
-func (s *mockAPIState) handleCreateTest(w http.ResponseWriter, _ *http.Request) {
+func (s *mockAPIState) handleUploadRevision(w http.ResponseWriter, r *http.Request) {
+	status, sealed := http.StatusCreated, false
+	switch {
+	case strings.HasSuffix(r.URL.Path, "/files"):
+		w.WriteHeader(http.StatusNoContent)
+		return
+	case r.Method == http.MethodPatch:
+		status, sealed = http.StatusOK, true
+	}
+
+	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(status)
+	_, err := fmt.Fprintf(w, `{"data":{"id":"%s","type":"upload_revision","attributes":{"revision_type":"snapshot","sealed":%t}}}`, uuid.New(), sealed)
+	require.NoError(s.t, err)
+}
+
+func (s *mockAPIState) handleCreateTest(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	require.NoError(s.t, err)
+	s.createTestBodies = append(s.createTestBodies, body)
+
 	jobID := uuid.New()
 	testID := uuid.New()
 
@@ -604,7 +628,7 @@ func (s *mockAPIState) handleCreateTest(w http.ResponseWriter, _ *http.Request) 
 			"attributes": {"status": "pending"}
 		}
 	}`, jobID)
-	_, err := w.Write([]byte(respBody))
+	_, err = w.Write([]byte(respBody))
 	require.NoError(s.t, err)
 }
 

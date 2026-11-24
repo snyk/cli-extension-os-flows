@@ -13,7 +13,6 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
 	"github.com/snyk/cli-extension-os-flows/internal/reachability"
-	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 // RunSbomFlow uploads an SBOM document, resolves SCM context, optionally uploads
@@ -46,15 +45,7 @@ func RunSbomFlow(
 	logger.Debug().Str("sbomRevisionID", sbomResult.RevisionID.String()).Msg("SBOM uploaded successfully")
 
 	targetDir := filepath.Dir(sbomPath)
-	scmInfo := ResolveScmInfo(targetDir, cfg.GetString(flags.FlagRemoteRepoURL), logger)
-
-	var scmCtx *testapi.ScmContext
-	if scmInfo != nil {
-		scmCtx = &testapi.ScmContext{
-			RepoUrl: &scmInfo.RemoteURL,
-			Branch:  &scmInfo.Branch,
-		}
-	}
+	scmCtx := ResolveScmContext(cfg, targetDir, logger)
 
 	sbomResource, err := NewUploadResource(sbomResult.RevisionID.String(), testapi.UploadResourceContentTypeSbom, scmCtx)
 	if err != nil {
