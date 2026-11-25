@@ -74,17 +74,21 @@ func ExtendLocalPolicyFromFindings(ctx context.Context, lp *localpolicy.Policy, 
 	}
 
 	for vulnID, ignore := range projectIgnores {
+		var ignoredBy *localpolicy.IgnoredBy
+		if ignore.IgnoredBy != nil {
+			ignoredBy = &localpolicy.IgnoredBy{
+				ID:    util.Ptr(ignore.IgnoredBy.Id.String()),
+				Name:  &ignore.IgnoredBy.Name,
+				Email: ignore.IgnoredBy.Email,
+			}
+		}
 		lp.AddIgnore(localpolicy.VulnID(vulnID), util.DefaultValue(ignore.Path, nil), &localpolicy.Rule{
 			Created:    ignore.Created,
 			Expires:    ignore.Expires,
 			Reason:     util.Ptr(ignore.Reason),
 			ReasonType: (*localpolicy.ReasonType)(ignore.ReasonType),
 			Source:     util.Ptr(ignore.Source),
-			IgnoredBy: &localpolicy.IgnoredBy{
-				ID:    util.Ptr(ignore.IgnoredBy.Id.String()),
-				Name:  &ignore.IgnoredBy.Name,
-				Email: ignore.IgnoredBy.Email,
-			},
+			IgnoredBy:  ignoredBy,
 		})
 	}
 
