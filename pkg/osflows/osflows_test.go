@@ -23,7 +23,9 @@ func TestInit_TestAndMonitorWorkflowsAcceptCommitIDFlag(t *testing.T) {
 			entry, ok := engine.GetWorkflow(id)
 			require.True(t, ok)
 			flagSet := workflow.FlagsetFromConfigurationOptions(entry.GetConfigurationOptions())
-			require.NotNil(t, flagSet.Lookup(flags.FlagCommitID), "--%s is not registered", flags.FlagCommitID)
+			flag := flagSet.Lookup(flags.FlagCommitID)
+			require.NotNil(t, flag, "--%s is not registered", flags.FlagCommitID)
+			assert.Contains(t, flag.Usage, "Only applies when the new Test API is used.")
 
 			require.NoError(t, flagSet.Parse([]string{"--commit-id", "0123456789abcdef0123456789abcdef01234567", "path"}))
 
