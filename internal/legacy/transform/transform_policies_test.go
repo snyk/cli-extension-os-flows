@@ -466,3 +466,35 @@ func TestGroupLevelIgnore_WithoutIgnoredBy(t *testing.T) {
 	require.NotNil(t, vuln.AppliedPolicyRules.Ignore)
 	assert.Empty(t, vuln.AppliedPolicyRules.Ignore.Policy.Id)
 }
+
+func TestConvertSnykSchemaFindingsToLegacy_GroupIgnoreWithoutIgnoredBy(t *testing.T) {
+	findings := loadFindings(t, "testdata/policyGroupIgnoreNoIgnoredBy-findings.json")
+
+	logger := zerolog.Nop()
+	ctx := cmdctx.WithLogger(t.Context(), &logger)
+	ctx = cmdctx.WithConfig(ctx, configuration.NewWithOpts())
+
+	res, err := transform.ConvertSnykSchemaFindingsToLegacy(ctx, &transform.SnykSchemaToLegacyParams{
+		Findings:   findings,
+		TargetDir:  t.TempDir(),
+		ErrFactory: errors.NewErrorFactory(&logger),
+		Logger:     &logger,
+	})
+	require.NoError(t, err)
+
+	vuln := findByID("SNYK-GOLANG-GOPKGINYAMLV2-12330650", res.Filtered.Ignore)
+	require.NotNil(t, vuln.IsIgnored)
+	assert.True(t, *vuln.IsIgnored)
+
+	expectedPolicy := `version: v1.25.1
+ignore:
+    SNYK-GOLANG-GOPKGINYAMLV2-12330650:
+        - '*':
+            created: 2025-10-27T17:31:19.674Z
+            reason: vuln ignored by group policy for test reasons
+            reasonType: wont-fix
+            source: unknown
+patch: {}
+`
+	assert.Equal(t, expectedPolicy, res.Policy, "an ignore without an author has no ignoredBy block")
+}
