@@ -2,6 +2,7 @@ package common_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -10,27 +11,30 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/rs/zerolog"
+	"github.com/snyk/go-application-framework/pkg/configuration"
+	"github.com/snyk/go-application-framework/pkg/utils/git"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/snyk/cli-extension-os-flows/internal/common"
+	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
 func TestResolveScmInfo(t *testing.T) {
 	nop := zerolog.Nop()
 
 	t.Run("returns remote url and branch from git repo", func(t *testing.T) {
-		dir := initGitRepo(t, "https://github.com/acme/repo.git")
+		dir := initGitRepo(t)
 
 		info := common.ResolveScmInfo(dir, "", &nop)
 
 		require.NotNil(t, info)
-		assert.Equal(t, "https://github.com/acme/repo.git", info.RemoteURL)
+		assert.Equal(t, testRemoteURL, info.RemoteURL)
 		assert.Equal(t, "main", info.Branch)
 	})
 
 	t.Run("override replaces detected remote url", func(t *testing.T) {
-		dir := initGitRepo(t, "https://github.com/acme/repo.git")
+		dir := initGitRepo(t)
 
 		info := common.ResolveScmInfo(dir, "https://custom.example.com/override.git", &nop)
 
@@ -57,7 +61,9 @@ func TestResolveScmInfo(t *testing.T) {
 	})
 }
 
-func initGitRepo(t *testing.T, remoteURL string) string {
+const testRemoteURL = "https://github.com/acme/repo.git"
+
+func initGitRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 
@@ -70,7 +76,7 @@ func initGitRepo(t *testing.T, remoteURL string) string {
 
 	_, err = repo.CreateRemote(&config.RemoteConfig{
 		Name: "origin",
-		URLs: []string{remoteURL},
+		URLs: []string{testRemoteURL},
 	})
 	require.NoError(t, err)
 
@@ -88,4 +94,55 @@ func initGitRepo(t *testing.T, remoteURL string) string {
 	require.NoError(t, err)
 
 	return dir
+}
+
+func headCommit(t *testing.T, dir string) string {
+	t.Helper()
+	repo, err := gogit.PlainOpen(dir)
+	require.NoError(t, err)
+	head, err := repo.Head()
+	require.NoError(t, err)
+	return head.Hash().String()
+}
+
+func TestResolveScmContext(t *testing.T) {
+	nop := zerolog.Nop()
+
+	t.Run("uses HEAD commit when commit-id is unset", func(t *testing.T) {
+		dir := initGitRepo(t)
+		head := headCommit(t, dir)
+
+		scmCtx := common.ResolveScmContext(configuration.NewWithOpts(), dir, &nop)
+
+		require.NotNil(t, scmCtx)
+		require.NotNil(t, scmCtx.CommitRef)
+		assert.Equal(t, head, *scmCtx.CommitRef)
+	})
+
+	t.Run("commit-id overrides HEAD commit", func(t *testing.T) {
+		dir := initGitRepo(t)
+		const commitID = "0123456789abcdef0123456789abcdef01234567"
+		require.NotEqual(t, commitID, headCommit(t, dir))
+		cfg := configuration.NewWithOpts()
+		cfg.Set(flags.FlagCommitID, commitID)
+
+		scmCtx := common.ResolveScmContext(cfg, dir, &nop)
+
+		require.NotNil(t, scmCtx)
+		require.NotNil(t, scmCtx.CommitRef)
+		assert.Equal(t, commitID, *scmCtx.CommitRef)
+	})
+
+	t.Run("omits commit when HEAD cannot be read", func(t *testing.T) {
+		dir := initGitRepo(t)
+		require.NoError(t, os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("ref: refs/heads/main\x00"), 0o600))
+		_, headErr := git.HeadCommitHashFromDir(dir)
+		require.Error(t, headErr)
+
+		scmCtx := common.ResolveScmContext(configuration.NewWithOpts(), dir, &nop)
+
+		require.NotNil(t, scmCtx)
+		assert.Equal(t, testRemoteURL, *scmCtx.RepoUrl)
+		assert.Nil(t, scmCtx.CommitRef)
+	})
 }

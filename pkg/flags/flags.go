@@ -64,6 +64,7 @@ const (
 	FlagPythonSkipUnresolved    = "skip-unresolved"
 	FlagPythonPackageManager    = "package-manager"
 	FlagRemoteRepoURL           = "remote-repo-url"
+	FlagCommitID                = "commit-id"
 	FlagUnmanagedMaxDepth       = "max-depth"
 	FlagVersion                 = "version"
 
@@ -205,6 +206,7 @@ func OSTestFlagSet() *pflag.FlagSet {
 	flagSet.Bool(FlagDotnetRuntimeResolution, false, "You must use this option when you test .NET projects using Runtime Resolution Scanning.")
 	flagSet.String(FlagDotnetTargetFramework, "", "Specify the target framework for .NET projects.")
 	flagSet.String(FlagRemoteRepoURL, "", "Set or override the remote URL for the repository.")
+	flagSet.String(FlagCommitID, "", "The unique identifier of the commit to test. Only applies when the new Test API is used.")
 
 	return flagSet
 }
@@ -237,6 +239,7 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 	flagSet.Bool(FlagPrintDeps, false, "Print the dependency tree before sending it for analysis.")
 	flagSet.Bool(FlagPrintDepPaths, false, "Display dependencies. Shows what files contributed to each dependency.")
 	flagSet.String(FlagRemoteRepoURL, "", "Set or override the remote URL for the repository.")
+	flagSet.String(FlagCommitID, "", "The unique identifier of the commit to monitor. Only applies when the new Test API is used.")
 	flagSet.Bool(FlagDev, false, "Include development-only dependencies. Applicable only for some package managers.")
 	flagSet.String(FlagPythonPackageManager, "", `Add --package-manager=pip to your command if the file name is not "requirements.txt".`)
 	flagSet.Bool(FlagUnmanaged, false, "For C/C++ only, scan all files for known open source dependencies and build an SBOM.")
