@@ -1,6 +1,8 @@
 package transform_test
 
 import (
+	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/snyk/cli-extension-os-flows/internal/commands/cmdctx"
@@ -356,4 +358,111 @@ func TestConvertSnykSchemaFindingsToLegacy_OkWhenAllFindingsIgnored(t *testing.T
 	require.Empty(t, res.Vulnerabilities, "every finding in this test is ignored")
 	require.NotEmpty(t, res.Filtered.Ignore)
 	assert.True(t, res.Ok, "a test whose every finding is ignored passes, as it does in legacy")
+}
+
+func TestConvertSnykSchemaFindingsToLegacy_OnlyIgnoredSuppressionIsFiltered(t *testing.T) {
+	tests := []struct {
+		name               string
+		fixture            string
+		wantVulns          int
+		wantFilteredIgnore int
+		wantOk             bool
+	}{
+		{
+			name:               "ignored suppression is filtered",
+			fixture:            "testdata/finding-with-local-policy-suppression-stub.json",
+			wantVulns:          0,
+			wantFilteredIgnore: 1,
+			wantOk:             true,
+		},
+		{
+			name:               "pending ignore approval stays open",
+			fixture:            "testdata/finding-with-pending-suppression-stub.json",
+			wantVulns:          1,
+			wantFilteredIgnore: 0,
+			wantOk:             false,
+		},
+		{
+			name:               "other suppression status stays open",
+			fixture:            "testdata/finding-with-other-suppression-stub.json",
+			wantVulns:          1,
+			wantFilteredIgnore: 0,
+			wantOk:             false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf, err := os.ReadFile(tt.fixture)
+			require.NoError(t, err)
+			var finding testapi.FindingData
+			require.NoError(t, json.Unmarshal(buf, &finding))
+
+			logger := zerolog.Nop()
+			ctx := cmdctx.WithLogger(t.Context(), &logger)
+			ctx = cmdctx.WithConfig(ctx, configuration.NewWithOpts())
+
+			res, err := transform.ConvertSnykSchemaFindingsToLegacy(ctx, &transform.SnykSchemaToLegacyParams{
+				Findings:   []testapi.FindingData{finding},
+				TargetDir:  t.TempDir(),
+				ErrFactory: errors.NewErrorFactory(&logger),
+				Logger:     &logger,
+			})
+			require.NoError(t, err)
+
+			assert.Len(t, res.Vulnerabilities, tt.wantVulns)
+			for i := range res.Vulnerabilities {
+				assert.Nil(t, res.Vulnerabilities[i].IsIgnored)
+				assert.Nil(t, res.Vulnerabilities[i].Filtered)
+			}
+			assert.Len(t, res.Filtered.Ignore, tt.wantFilteredIgnore)
+			for i := range res.Filtered.Ignore {
+				require.NotNil(t, res.Filtered.Ignore[i].IsIgnored)
+				assert.True(t, *res.Filtered.Ignore[i].IsIgnored)
+			}
+			assert.Equal(t, tt.wantOk, res.Ok)
+		})
+	}
+}
+
+func TestDotSnykFileIgnore_WithoutJustification(t *testing.T) {
+	buf, err := os.ReadFile("testdata/finding-with-local-policy-suppression-no-justification-stub.json")
+	require.NoError(t, err)
+	var finding testapi.FindingData
+	require.NoError(t, json.Unmarshal(buf, &finding))
+
+	vulns, err := transform.FindingsToLegacyVulns([]testapi.FindingData{finding}, "package-manager", utils.Ptr(zerolog.Nop()))
+	require.NoError(t, err)
+
+	require.Len(t, vulns, 1)
+	require.NotNil(t, vulns[0].IsIgnored)
+	assert.True(t, *vulns[0].IsIgnored)
+	require.NotNil(t, vulns[0].Filtered)
+	require.NotNil(t, vulns[0].Filtered.Ignored)
+	require.Len(t, *vulns[0].Filtered.Ignored, 1)
+	assert.Empty(t, (*vulns[0].Filtered.Ignored)[0].Reason)
+}
+
+func TestGroupLevelIgnore_WithoutIgnoredBy(t *testing.T) {
+	findings := loadFindings(t, "testdata/policyGroupIgnoreNoIgnoredBy-findings.json")
+
+	vulns, err := transform.FindingsToLegacyVulns(findings, "package-manager", utils.Ptr(zerolog.Nop()))
+	require.NoError(t, err)
+
+	vuln := findByID("SNYK-GOLANG-GOPKGINYAMLV2-12330650", vulns)
+	require.NotNil(t, vuln.IsIgnored)
+	assert.True(t, *vuln.IsIgnored)
+	require.NotNil(t, vuln.Filtered)
+	require.NotNil(t, vuln.Filtered.Ignored)
+	require.Len(t, *vuln.Filtered.Ignored, 1)
+	ignoredBy := (*vuln.Filtered.Ignored)[0].IgnoredBy
+	require.NotNil(t, ignoredBy)
+	assert.Empty(t, ignoredBy.Id)
+	assert.Empty(t, ignoredBy.Name)
+	assert.Nil(t, ignoredBy.Email)
+	assert.True(t, ignoredBy.IsGroupPolicy, "an ignore without an author has no email, which means a group policy")
+
+	require.NotNil(t, vuln.AppliedPolicyRules)
+	require.NotNil(t, vuln.AppliedPolicyRules.Ignore)
+	assert.Empty(t, vuln.AppliedPolicyRules.Ignore.Policy.Id)
 }

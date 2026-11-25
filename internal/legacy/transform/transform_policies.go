@@ -10,6 +10,7 @@ import (
 	"github.com/snyk/go-application-framework/pkg/apiclients/testapi"
 
 	"github.com/snyk/cli-extension-os-flows/internal/legacy/definitions"
+	"github.com/snyk/cli-extension-os-flows/internal/util"
 )
 
 // ProcessPoliciesAndSuppressionsForVuln mutates the vuln by setting fields derived from the policy relationships of a finding.
@@ -27,7 +28,7 @@ func ProcessPoliciesAndSuppressionsForVuln(vuln *definitions.Vulnerability, find
 	}
 
 	suppression := finding.Attributes.Suppression
-	if suppression != nil {
+	if suppression != nil && suppression.Status == testapi.SuppressionStatusIgnored {
 		processSuppressionForVuln(vuln, *suppression, ignorePolicy)
 	}
 
@@ -51,7 +52,7 @@ func processSuppressionForVuln(vuln *definitions.Vulnerability, suppression test
 		vuln.Filtered = buildFiltered(&definitions.VulnFilteredIgnored{
 			Created: formatTimeOrBlank(suppression.CreatedAt, time.RFC3339Nano),
 			Expires: formatTimeOrNil(suppression.ExpiresAt, time.RFC3339Nano),
-			Reason:  *suppression.Justification,
+			Reason:  util.DefaultValue(suppression.Justification, ""),
 			Path:    buildArrayPath(suppression.Path),
 			Source:  "cli",
 		})
@@ -172,7 +173,7 @@ func severityChangePolicyOrNil(finding *testapi.FindingData) (*testapi.SeverityC
 }
 
 func buildLegacyIgnore(ignore *testapi.IgnoreDetails) definitions.VulnFilteredIgnored {
-	isGroupPolicy := ignore.IgnoredBy.Email == nil
+	isGroupPolicy := ignore.IgnoredBy == nil || ignore.IgnoredBy.Email == nil
 	ignoredBy := definitions.VulnFilteredIgnoredBy{
 		IsGroupPolicy: isGroupPolicy,
 	}
@@ -206,6 +207,10 @@ func buildFiltered(legacyIgnore *definitions.VulnFilteredIgnored) *definitions.V
 }
 
 func buildAppliedPolicyRules(ignore *testapi.Ignore, legacyIgnore *definitions.VulnFilteredIgnored) *definitions.AppliedPolicyRules {
+	var policyID string
+	if ignore.Ignore.IgnoredBy != nil {
+		policyID = ignore.Ignore.IgnoredBy.Id.String()
+	}
 	return &definitions.AppliedPolicyRules{
 		Ignore: &definitions.AppliedPolicyRulesIgnore{
 			Id:     ignore.Rule.Id.String(),
@@ -232,7 +237,7 @@ func buildAppliedPolicyRules(ignore *testapi.Ignore, legacyIgnore *definitions.V
 				},
 			},
 			Policy: definitions.Policy{
-				Id:    ignore.Ignore.IgnoredBy.Id.String(),
+				Id:    policyID,
 				Owner: "group",
 			},
 		},
