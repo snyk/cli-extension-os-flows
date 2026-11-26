@@ -22,6 +22,7 @@ import (
 	"github.com/snyk/cli-extension-os-flows/internal/commands/ostest"
 	"github.com/snyk/cli-extension-os-flows/internal/common"
 	"github.com/snyk/cli-extension-os-flows/internal/constants"
+	"github.com/snyk/cli-extension-os-flows/internal/util/fakeapi"
 	"github.com/snyk/cli-extension-os-flows/pkg/flags"
 )
 
@@ -119,7 +120,7 @@ func runOSTestAndCaptureScmContext(t *testing.T, setup func(cfg configuration.Co
 	t.Helper()
 	ctrl := gomock.NewController(t)
 
-	mockAPI := newMockAPIState(t)
+	mockAPI := fakeapi.NewTestAPIServer(t)
 	t.Cleanup(mockAPI.Close)
 
 	originalPollInterval := common.PollInterval
@@ -151,9 +152,10 @@ func runOSTestAndCaptureScmContext(t *testing.T, setup func(cfg configuration.Co
 	_, err := ostest.OSWorkflow(ictx, []workflow.Data{})
 	require.NoError(t, err)
 
-	require.Len(t, mockAPI.createTestBodies, 1)
+	createTestBodies := mockAPI.CreateTestBodies()
+	require.Len(t, createTestBodies, 1)
 	var body testapi.TestRequestBody
-	require.NoError(t, json.Unmarshal(mockAPI.createTestBodies[0], &body))
+	require.NoError(t, json.Unmarshal(createTestBodies[0], &body))
 	require.NotNil(t, body.Data.Attributes.Resources)
 	resources := *body.Data.Attributes.Resources
 	require.NotEmpty(t, resources)

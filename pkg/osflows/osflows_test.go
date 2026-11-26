@@ -18,14 +18,21 @@ func TestInit_TestAndMonitorWorkflowsAcceptCommitIDFlag(t *testing.T) {
 	engine := workflow.NewWorkFlowEngine(configuration.NewWithOpts())
 	require.NoError(t, osflows.Init(engine))
 
-	for _, id := range []workflow.Identifier{ostest.WorkflowID, osmonitor.WorkflowID} {
+	wantUsage := map[workflow.Identifier]string{
+		ostest.WorkflowID: "The unique identifier of the commit to test. " +
+			"Only applies to projects in a git repository with a remote (or --remote-repo-url) that are tested with the new Test API.",
+		osmonitor.WorkflowID: "The unique identifier of the commit to monitor. " +
+			"Only applies to projects in a git repository with a remote (or --remote-repo-url) that are monitored with the new Test API.",
+	}
+
+	for id, usage := range wantUsage {
 		t.Run(id.Host, func(t *testing.T) {
 			entry, ok := engine.GetWorkflow(id)
 			require.True(t, ok)
 			flagSet := workflow.FlagsetFromConfigurationOptions(entry.GetConfigurationOptions())
 			flag := flagSet.Lookup(flags.FlagCommitID)
 			require.NotNil(t, flag, "--%s is not registered", flags.FlagCommitID)
-			assert.Contains(t, flag.Usage, "Only applies when the new Test API is used.")
+			assert.Equal(t, usage, flag.Usage)
 
 			require.NoError(t, flagSet.Parse([]string{"--commit-id", "0123456789abcdef0123456789abcdef01234567", "path"}))
 
