@@ -1357,6 +1357,96 @@ func TestUnifiedFindingPresenter_MultipleProjects_ShouldShowAggregateSummary(t *
 	assert.Equal(t, 4, strings.Count(output, "Test Summary"))
 }
 
+func TestUnifiedFindingPresenter_MultipleComponents_GroupsByComponent(t *testing.T) {
+	config := configuration.New()
+	buffer := &bytes.Buffer{}
+	lipgloss.SetColorProfile(termenv.Ascii)
+
+	const (
+		compA = "pkg:npm/app-a@1.0.0"
+		compB = "pkg:npm/app-b@2.0.0"
+	)
+
+	findingFor := func(id, component string, sev testapi.Severity) testapi.FindingData {
+		return testapi.FindingData{
+			Id:   util.Ptr(uuid.MustParse(id)),
+			Type: util.Ptr(testapi.Findings),
+			Attributes: &testapi.FindingAttributes{
+				Title:        "issue in " + component,
+				Rating:       testapi.Rating{Severity: sev},
+				ComponentKey: util.Ptr(component),
+			},
+		}
+	}
+
+	results := []*presenters.UnifiedProjectResult{
+		{
+			Findings: []testapi.FindingData{
+				findingFor("00000000-0000-0000-0000-0000000000a1", compA, testapi.SeverityCritical),
+				findingFor("00000000-0000-0000-0000-0000000000b1", compB, testapi.SeverityHigh),
+				findingFor("00000000-0000-0000-0000-0000000000a2", compA, testapi.SeverityMedium),
+			},
+			TargetDirectory:   "my-sbom.json",
+			DisplayTargetFile: "",
+			Summary: &json_schemas.TestSummary{
+				Type:             "open-source",
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+			},
+		},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer(results, config, buffer)
+	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	require.NoError(t, err)
+
+	output := buffer.String()
+	assert.Contains(t, output, "Component: "+compA)
+	assert.Contains(t, output, "Component: "+compB)
+	// First-seen order: component A is rendered before component B.
+	assert.Less(t, strings.Index(output, "Component: "+compA), strings.Index(output, "Component: "+compB))
+	// Each component renders its own "Security issues" section (two findings under A, one under B).
+	assert.Equal(t, 2, strings.Count(output, "Security issues:"))
+	// A single result => no aggregate summary, exactly one shared Test Summary box.
+	assert.NotContains(t, output, "Overall Test Summary")
+	assert.Equal(t, 1, strings.Count(output, "Test Summary"))
+	snaps.MatchSnapshot(t, output)
+}
+
+func TestUnifiedFindingPresenter_SingleComponent_NoComponentHeader(t *testing.T) {
+	config := configuration.New()
+	buffer := &bytes.Buffer{}
+	lipgloss.SetColorProfile(termenv.Ascii)
+
+	finding := testapi.FindingData{
+		Id:   util.Ptr(uuid.New()),
+		Type: util.Ptr(testapi.Findings),
+		Attributes: &testapi.FindingAttributes{
+			Title:        "single component issue",
+			Rating:       testapi.Rating{Severity: testapi.SeverityHigh},
+			ComponentKey: util.Ptr("pkg:npm/only@1.0.0"),
+		},
+	}
+
+	results := []*presenters.UnifiedProjectResult{
+		{
+			Findings:          []testapi.FindingData{finding},
+			TargetDirectory:   "my-sbom.json",
+			DisplayTargetFile: "",
+			Summary: &json_schemas.TestSummary{
+				Type:             "open-source",
+				SeverityOrderAsc: []string{"low", "medium", "high", "critical"},
+			},
+		},
+	}
+
+	presenter := presenters.NewUnifiedFindingsRenderer(results, config, buffer)
+	err := presenter.RenderTemplate(presenters.DefaultTemplateFiles, presenters.DefaultMimeType)
+	require.NoError(t, err)
+
+	// With fewer than two distinct components, findings render as a flat list with no component header.
+	assert.NotContains(t, buffer.String(), "Component:")
+}
+
 func TestUnifiedFindingPresenter_SingleProject_NoAggregateSummary(t *testing.T) {
 	config := configuration.New()
 	buffer := &bytes.Buffer{}

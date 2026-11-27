@@ -169,3 +169,45 @@ Testing another-project (requirements.txt) ...
 │   Total issues: 0                   │
 ╰─────────────────────────────────────╯
 ---
+
+[TestUnifiedFindingPresenter_MultipleComponents_GroupsByComponent - 1]
+
+Testing my-sbom.json ...
+
+Component: pkg:npm/app-a@1.0.0
+Security issues: 2
+
+ ✗ [MEDIUM] issue in pkg:npm/app-a@1.0.0
+   Finding ID: 00000000-0000-0000-0000-0000000000a2
+   Risk Score: N/A
+
+ ✗ [CRITICAL] issue in pkg:npm/app-a@1.0.0
+   Finding ID: 00000000-0000-0000-0000-0000000000a1
+   Risk Score: N/A
+
+
+Component: pkg:npm/app-b@2.0.0
+Security issues: 1
+
+ ✗ [HIGH] issue in pkg:npm/app-b@2.0.0
+   Finding ID: 00000000-0000-0000-0000-0000000000b1
+   Risk Score: N/A
+
+
+╭─────────────────────────────────────────────────────────╮
+│ Test Summary                                            │
+│                                                         │
+│   Organization:                                         │
+│   Test type:         open-source                        │
+│   Project path:                                         │
+│                                                         │
+│   Total security issues: 3                              │
+│   Ignored: 0 [ 0 CRITICAL  0 HIGH  0 MEDIUM  0 LOW ]    │
+│   Open   : 3 [ 1 CRITICAL  1 HIGH  1 MEDIUM  0 LOW ]    │
+╰─────────────────────────────────────────────────────────╯
+💡 Tip
+
+   To view ignored issues, use the --include-ignores option.
+                                                            
+
+---
