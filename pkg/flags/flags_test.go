@@ -215,6 +215,10 @@ func TestPythonSkipUnresolvedFlag_ReachesLegacyCLI(t *testing.T) {
 			name:     "OSTestFlagSet",
 			createFn: flags.OSTestFlagSet,
 		},
+		{
+			name:     "OSMonitorFlagSet",
+			createFn: flags.OSMonitorFlagSet,
+		},
 	}
 
 	testCases := []struct {

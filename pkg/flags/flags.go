@@ -282,7 +282,7 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 	flagSet.String(FlagNPMStrictOutOfSync, "true", "Prevent testing out-of-sync lockfiles.")
 	flagSet.Bool(FlagYarnWorkspaces, false, "Detect and scan Yarn Workspaces only when a lockfile is in the root.")
 	flagSet.String(FlagPythonCommand, "", "Indicate which specific Python commands to use based on the Python version.")
-	flagSet.Bool(FlagPythonSkipUnresolved, false, "Skip Python packages that cannot be found in the environment.")
+	addPythonSkipUnresolvedFlag(flagSet)
 
 	flagSet.String(FlagJSONFileOutput, "", "Write JSON output to a file.")
 	if f := flagSet.Lookup(FlagJSONFileOutput); f != nil {
