@@ -186,7 +186,10 @@ func OSTestFlagSet() *pflag.FlagSet {
 	flagSet.String(FlagConfigurationAttributes, "", "Select certain values of configuration attributes to install and resolve dependencies.")
 	flagSet.String(FlagInitScript, "", "Use for projects that contain a Gradle initialization script.")
 	flagSet.String(FlagPythonCommand, "", "Indicate which specific Python commands to use based on the Python version.")
-	addPythonSkipUnresolvedFlag(flagSet)
+	flagSet.String(FlagPythonSkipUnresolved, "", "Skip Python packages that cannot be found in the environment.")
+	if f := flagSet.Lookup(FlagPythonSkipUnresolved); f != nil {
+		f.NoOptDefVal = "true"
+	}
 	flagSet.String(FlagPythonPackageManager, "", `Add --package-manager=pip to your command if the file name is not "requirements.txt".`)
 	flagSet.Int(FlagUnmanagedMaxDepth, 0, "Specify the maximum level of archive extraction for unmanaged scanning.")
 	flagSet.Bool(FlagFailFast, false, "Stop scanning after the first vulnerability is found when used with --all-projects.")
@@ -282,7 +285,10 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 	flagSet.String(FlagNPMStrictOutOfSync, "true", "Prevent testing out-of-sync lockfiles.")
 	flagSet.Bool(FlagYarnWorkspaces, false, "Detect and scan Yarn Workspaces only when a lockfile is in the root.")
 	flagSet.String(FlagPythonCommand, "", "Indicate which specific Python commands to use based on the Python version.")
-	addPythonSkipUnresolvedFlag(flagSet)
+	flagSet.String(FlagPythonSkipUnresolved, "", "Skip Python packages that cannot be found in the environment.")
+	if f := flagSet.Lookup(FlagPythonSkipUnresolved); f != nil {
+		f.NoOptDefVal = "true"
+	}
 
 	flagSet.String(FlagJSONFileOutput, "", "Write JSON output to a file.")
 	if f := flagSet.Lookup(FlagJSONFileOutput); f != nil {
@@ -296,17 +302,4 @@ func OSMonitorFlagSet() *pflag.FlagSet {
 	flagSet.String(FlagReachabilityID, "", "The reachability scan ID of the analyzed source code")
 
 	return flagSet
-}
-
-// addPythonSkipUnresolvedFlag registers --skip-unresolved as a string flag whose
-// bare form means "true". It cannot be a bool: cli-extension-dep-graph reads it
-// with GetString when it builds the legacy CLI argv, and GetString returns ""
-// for a bool, so the flag never reaches the legacy CLI (OSF-641). Without
-// NoOptDefVal, pflag would demand a value for a bare --skip-unresolved, or take
-// the next argument as one.
-func addPythonSkipUnresolvedFlag(flagSet *pflag.FlagSet) {
-	flagSet.String(FlagPythonSkipUnresolved, "", "Skip Python packages that cannot be found in the environment.")
-	if f := flagSet.Lookup(FlagPythonSkipUnresolved); f != nil {
-		f.NoOptDefVal = "true"
-	}
 }
