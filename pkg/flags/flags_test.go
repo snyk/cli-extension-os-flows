@@ -2,9 +2,17 @@ package flags_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/rs/zerolog"
+	"github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems"
+	"github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems/legacy"
+	depgraphlogger "github.com/snyk/cli-extension-dep-graph/v2/pkg/ecosystems/logger"
 	"github.com/snyk/go-application-framework/pkg/configuration"
+	gafmocks "github.com/snyk/go-application-framework/pkg/mocks"
+	"github.com/snyk/go-application-framework/pkg/workflow"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -191,4 +199,99 @@ func TestMavenPluginFlags_BindIntoConfig(t *testing.T) {
 			})
 		}
 	}
+}
+
+// TestPythonSkipUnresolvedFlag_ReachesLegacyCLI pins OSF-641. Nothing in this
+// extension reads --skip-unresolved: cli-extension-dep-graph's legacy plugin
+// copies it from this flag set's values into the legacy CLI argv, and leaves
+// out a value it cannot read without raising an error. The test runs that
+// plugin, so it fails when the two extensions disagree on the flag's type.
+func TestPythonSkipUnresolvedFlag_ReachesLegacyCLI(t *testing.T) {
+	flagSets := []struct {
+		name     string
+		createFn func() *pflag.FlagSet
+	}{
+		{
+			name:     "OSTestFlagSet",
+			createFn: flags.OSTestFlagSet,
+		},
+	}
+
+	testCases := []struct {
+		name     string
+		args     []string
+		expected []string
+	}{
+		{
+			name:     "no flag provided - not forwarded",
+			args:     []string{},
+			expected: nil,
+		},
+		{
+			name:     "flag without value - forwarded as true",
+			args:     []string{"--skip-unresolved"},
+			expected: []string{"--skip-unresolved=true"},
+		},
+		{
+			name:     "flag with explicit true",
+			args:     []string{"--skip-unresolved=true"},
+			expected: []string{"--skip-unresolved=true"},
+		},
+		{
+			name:     "flag with explicit false",
+			args:     []string{"--skip-unresolved=false"},
+			expected: []string{"--skip-unresolved=false"},
+		},
+	}
+
+	for _, fs := range flagSets {
+		t.Run(fs.name, func(t *testing.T) {
+			for _, tt := range testCases {
+				t.Run(tt.name, func(t *testing.T) {
+					var forwarded []string
+					for _, arg := range legacyCLIArgs(t, fs.createFn(), tt.args) {
+						if strings.HasPrefix(arg, "--"+flags.FlagPythonSkipUnresolved) {
+							forwarded = append(forwarded, arg)
+						}
+					}
+					assert.Equal(t, tt.expected, forwarded)
+				})
+			}
+		})
+	}
+}
+
+// legacyCLIArgs parses args with flagSet and returns the argv that
+// cli-extension-dep-graph's legacy plugin builds for the legacy CLI from the
+// resulting configuration. The legacy CLI itself is not run.
+func legacyCLIArgs(t *testing.T, flagSet *pflag.FlagSet, args []string) []string {
+	t.Helper()
+
+	require.NoError(t, flagSet.Parse(args), "flag parsing should not fail")
+	cfg := configuration.New()
+	require.NoError(t, cfg.AddFlagSet(flagSet))
+
+	ctrl := gomock.NewController(t)
+	var legacyArgs []string
+	engine := gafmocks.NewMockEngine(ctrl)
+	engine.EXPECT().
+		InvokeWithConfig(workflow.NewWorkflowIdentifier("legacycli"), gomock.Any()).
+		DoAndReturn(func(_ workflow.Identifier, legacyCfg configuration.Configuration) ([]workflow.Data, error) {
+			legacyArgs = legacyCfg.GetStringSlice(configuration.RAW_CMD_ARGS)
+			return nil, nil
+		})
+
+	nopLogger := zerolog.Nop()
+	ictx := gafmocks.NewMockInvocationContext(ctrl)
+	ictx.EXPECT().GetConfiguration().Return(cfg).AnyTimes()
+	ictx.EXPECT().GetEngine().Return(engine).AnyTimes()
+	ictx.EXPECT().GetEnhancedLogger().Return(&nopLogger).AnyTimes()
+
+	err := legacy.NewPlugin(ictx).BuildDepGraphsFromDir(
+		t.Context(), depgraphlogger.Nop(), t.TempDir(), &ecosystems.SCAPluginOptions{},
+		func(ecosystems.SCAResult) error { return nil },
+	)
+	require.NoError(t, err)
+
+	return legacyArgs
 }
